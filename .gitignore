@@ -1,0 +1,25 @@
+node_modules/
+dist/
+build/
+dev-dist/
+.env
+.env.*
+!.env.example
+
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+coverage/
+.vite/
+
+# Scratch output from manual API testing. Cookie jars and request bodies can
+# hold session ids and passwords, so they must never be committable.
+tmp/
+tmp-*
+*.cookies

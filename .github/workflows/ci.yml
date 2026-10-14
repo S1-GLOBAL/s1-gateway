@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      # Tests run against real Postgres by decision — ADR 0008.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: s1gateway
+          POSTGRES_PASSWORD: s1gateway
+          POSTGRES_DB: s1_gateway_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U s1gateway -d s1_gateway_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgres://s1gateway:s1gateway@localhost:5432/s1_gateway_test
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      # The commit-msg hook only protects clones that ran `npm run setup`.
+      # This is the real enforcement — ADR 0009.
+      - name: Commit messages
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+          BEFORE: ${{ github.event.before }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            range="$BASE..$PR_HEAD"
+          elif git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            range="$BEFORE..$HEAD_SHA"
+          elif git rev-parse -q --verify "$HEAD_SHA^" >/dev/null; then
+            range="$HEAD_SHA~1..$HEAD_SHA"
+          else
+            range="$HEAD_SHA"
+          fi
+          echo "checking $range"
+          node scripts/check-commit-msg.mjs --range "$range"
+
+      - name: Install backend
+        run: npm ci --prefix backend
+
+      - name: Install frontend
+        run: npm ci --prefix frontend
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Architecture
+        run: npm run arch:check
+
+      # The backend's globalSetup creates and migrates the test database.
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Docs
+        run: npm run docs:check

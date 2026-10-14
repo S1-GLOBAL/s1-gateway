@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: s1-gateway-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: s1gateway
+      POSTGRES_PASSWORD: s1gateway
+      POSTGRES_DB: s1_gateway
+    # 5436 on the host so this never collides with another project's
+    # Postgres on 5432.
+    ports:
+      - '5436:5432'
+    volumes:
+      - s1-gateway-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U s1gateway -d s1_gateway']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  s1-gateway-pgdata:
