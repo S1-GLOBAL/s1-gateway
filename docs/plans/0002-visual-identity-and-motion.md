@@ -1,6 +1,6 @@
 # 0002. Visual identity, motion and the app shell
 
-- **Status:** Draft
+- **Status:** Ready
 - **Owner:** Rey Denzo
 - **Related:** [plan 0001](./0001-project-scaffold.md) ·
   [ADR 0003](../decisions/0003-clean-architecture-with-layers-inside-modules.md) ·
@@ -66,7 +66,7 @@ Neutrals are graphite with a faint green cast, so the lime belongs to them.
 | `border-strong` | `#353a33` | `#cfd3c8` | Input borders, dividers that must be seen |
 | `ink` | `#eef0ea` | `#111310` | Primary text |
 | `ink-muted` | `#a2a89c` | `#565c52` | Secondary text |
-| `ink-subtle` | `#6c7267` | `#8a9084` | Placeholders, disabled, metadata |
+| `ink-subtle` | `#80867b` | `#6b7166` | Placeholders, metadata — AA on every surface |
 | `accent` | `#c8f135` | `#c8f135` | Fills: primary button, active nav pill, selection |
 | `accent-hover` | `#d6f75e` | `#bce41f` | Hover on an accent fill |
 | `on-accent` | `#0b0c0b` | `#111310` | Text and icons on an accent fill |
@@ -171,7 +171,7 @@ The set, and what each part does:
 
 | Icon | Used for | Motion |
 |---|---|---|
-| `ToolsIcon` (wrench) | Tools nav | head twists −25° about the bolt, handle stays |
+| `ToolsIcon` (app grid) | Tools nav | the four tiles dip and spring back in turn, clockwise |
 | `ThemeIcon` (palette) | Theme nav | the four paint dots pop in sequence |
 | `SunIcon` | Light theme | core scales; rays extend one by one around it |
 | `MoonIcon` | Dark theme | crescent rocks; a star blinks in |
@@ -224,7 +224,8 @@ maskable variant. `theme-color` in the manifest becomes `#0b0c0b`.
   and the sliding lime pill; at the foot, the collapse button. Collapses to a
   72px icon rail with tooltips. On phones (< 768px) the sidebar becomes a
   bottom bar of icons and labels.
-- **Top bar**, 56px, inside the content column: the page title on the left;
+- **Top bar**, 56px, inside the content column: where you are, as
+  `Gateway / <page>`, on the left;
   the theme switch (a three-way segmented control with the animated icons) on
   the right. Nothing else.
 - The offline banner and the update prompt keep their behaviour, restyled.
@@ -290,8 +291,34 @@ exactly those two.
   opening in a new tab only for web URLs
 - Existing tests keep passing; `typecheck`, `lint`, `arch:check`, `test:unit`,
   `docs:check`, `build` all exit 0
-- Bundle: the initial JS stays under 150 kB gzip; `motion` features load in a
+- Bundle: the initial JS stays under 170 kB gzip; `motion` features load in a
   separate chunk
+
+### Changes made while proving the handoff
+
+Every piece of code in the handoff was built and checked once before it was
+written down. That pass changed these details of the design above; the tables
+above already show the result.
+
+- **`ink-subtle`** was `#8a9084` (light) and `#6c7267` (dark), which read at
+  3.3:1 and 3.7:1 — below AA. It is now `#6b7166` and `#80867b`, at least
+  4.6:1 on every surface in both themes.
+- **The Tools icon is an app grid**, not a wrench. Lucide's wrench is a single
+  stroke, so it could only ever rotate as a whole; the grid has four tiles to
+  move one by one.
+- **The bundle budget is 170 kB gzip**, not 150. Measured: 162 kB. `motion`'s
+  core is shared by every `m.*` element and its lazy feature bundle, so it
+  stays in the main chunk; pages and the animation engine are separate chunks.
+- **The stages** are: 1 — tokens, fonts, logo, theme logic, the `motion`
+  foundation and the restyled primitives; 2 — icons, the shell, transitions,
+  skeletons and the Tools page (a skeleton has to match its page, so they ship
+  together); 3 — the showcase, the docs and the browser check.
+- **The top bar** shows `Gateway / <page>` rather than repeating the page's
+  own title, which the page header already shows at full size.
+- **Logo files**: only the two crops (`brand/wordmark.png`, `brand/mark.png`)
+  and the app-icon source are kept in `public/brand/`; the PWA icons are
+  generated beside them by `pwa-assets.config.ts`, with no padding, on
+  `#0b0c0b`.
 
 ### Verification in a browser
 
@@ -299,3 +326,16 @@ Run once, with the owner's agreement, on the built app (`npm run preview`),
 light and dark: shell, both pages, a transition, a hover on each icon, the
 skeleton via the showcase switch, collapse, phone width. Stop the preview
 server afterwards.
+
+---
+
+## Progress
+
+Built by following [the handoff](../handoffs/plan-0002-visual-identity-and-motion.md),
+one stage at a time, stopping for the owner after each.
+
+| Phase | Steps | Status |
+|---|---|---|
+| 1. Tokens, fonts, logo, theme, motion, primitives | 0 / 1 | Not started |
+| 2. Icons, shell, transitions, skeletons, Tools page | 0 / 1 | Not started |
+| 3. Showcase, docs, browser check | 0 / 1 | Not started |

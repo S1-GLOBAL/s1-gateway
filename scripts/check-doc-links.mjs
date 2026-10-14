@@ -31,17 +31,26 @@ function collect(dir, found = []) {
  * Fenced code blocks contain things that look like links but are not — a regex
  * such as `[a-z](?:x)` parses as markdown link syntax. Strip them before
  * scanning, preserving line count so reported line numbers stay accurate.
+ *
+ * A fence closes only on a line of the same character, at least as long, as
+ * CommonMark has it — so a handoff can embed a whole markdown file, inner
+ * ``` fences and all, inside a ```` fence.
  */
 function stripCodeFences(text) {
-  let inFence = false;
+  let open = null;
   return text
     .split('\n')
     .map((line) => {
-      if (/^\s*```/.test(line)) {
-        inFence = !inFence;
+      const fence = /^\s*(`{3,}|~{3,})/.exec(line)?.[1];
+      if (fence && !open) {
+        open = fence;
         return '';
       }
-      return inFence ? '' : line;
+      if (fence && open && fence[0] === open[0] && fence.length >= open.length && line.trim() === fence) {
+        open = null;
+        return '';
+      }
+      return open ? '' : line;
     })
     .join('\n');
 }
