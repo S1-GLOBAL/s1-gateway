@@ -81,6 +81,10 @@ sizes carry negative tracking from the token; never add `tracking-*` by hand.
   highlight — a surface also always has `border border-border`.
 - **Spacing:** Tailwind's 4px scale. Page gutter 24px (16px on phones); 40px
   between page sections; 20px inside cards.
+- **Scrollbars** are styled once, globally, in `src/styles/index.css`: a
+  `border-strong` pill in a clear 12px track, `ink-subtle` under the pointer,
+  `accent-ink` while held (olive on light, lime on dark). CSS only — never a scrollbar library or a JavaScript
+  scroll container. Firefox gets the thin standard version in the same colours.
 
 ## Motion
 
@@ -99,6 +103,9 @@ Tokens in `src/shared/ui/motion.ts` (seconds) and `theme.css` (CSS):
   `motion.div`, which `<LazyMotion strict>` rejects.
 - Only the content region moves between pages. Transforms, opacity and a
   small blur only.
+- Nothing shifts sideways between pages. The root always reserves the
+  scrollbar's space (`scrollbar-gutter: stable` in `src/styles/index.css`), so
+  a page that scrolls and one that does not have the same width.
 - Every animation respects reduced motion (`MotionConfig reducedMotion="user"`).
 
 ## Icons
