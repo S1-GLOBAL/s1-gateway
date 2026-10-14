@@ -1,0 +1,74 @@
+import { useState, type ReactNode } from 'react';
+import { Badge } from '@/shared/ui/Badge';
+import { Button } from '@/shared/ui/Button';
+import { CheckIcon, PlusIcon, ToolsIcon } from '@/shared/ui/icons';
+import { SegmentedControl } from '@/shared/ui/SegmentedControl';
+import { TextField } from '@/shared/ui/TextField';
+import { ShowcaseSection } from '../ShowcaseSection';
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-ink-muted">{label}</p>
+      <div className="flex flex-wrap items-center gap-3">{children}</div>
+    </div>
+  );
+}
+
+export function ControlsSection() {
+  const [view, setView] = useState<'grid' | 'list'>('grid');
+
+  return (
+    <ShowcaseSection
+      index={4}
+      title="Controls"
+      description="One primary action per screen, in lime. Hover a button with an icon to see it play."
+    >
+      <div className="flex flex-col gap-8 rounded-surface border border-border bg-surface p-6">
+        <Row label="Buttons">
+          <Button>
+            <PlusIcon size={16} />
+            Add tool
+          </Button>
+          <Button variant="secondary">Secondary</Button>
+          <Button variant="ghost">Ghost</Button>
+          <Button variant="danger">Remove</Button>
+        </Row>
+        <Row label="States and sizes">
+          <Button size="sm">
+            <CheckIcon size={14} />
+            Small
+          </Button>
+          <Button loading>Saving</Button>
+          <Button disabled>Disabled</Button>
+          <Button variant="secondary" disabled>
+            Disabled
+          </Button>
+        </Row>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <TextField label="Name" placeholder="Payroll" hint="As staff will see it in the list." />
+          <TextField label="URL" defaultValue="payroll" errors={['URL must be a full http:// or https:// address.']} />
+        </div>
+        <Row label="Badges">
+          <Badge>Neutral</Badge>
+          <Badge tone="accent">New</Badge>
+          <Badge tone="success">Healthy</Badge>
+          <Badge tone="warning">Degraded</Badge>
+          <Badge tone="danger">Down</Badge>
+          <Badge tone="info">Maintenance</Badge>
+        </Row>
+        <Row label="Segmented control">
+          <SegmentedControl
+            label="View"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'grid', label: 'Grid', icon: <ToolsIcon size={14} /> },
+              { value: 'list', label: 'List' },
+            ]}
+          />
+        </Row>
+      </div>
+    </ShowcaseSection>
+  );
+}

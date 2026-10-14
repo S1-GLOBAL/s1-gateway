@@ -47,6 +47,6 @@ Number sequentially. Never renumber.
 | [0008](./0008-testing-strategy.md) | Testing strategy | Accepted |
 | [0009](./0009-ai-attribution-is-blocked-by-a-hook-not-a-rule.md) | AI attribution is blocked by a hook, not a rule | Accepted |
 | [0010](./0010-the-app-shell-is-cached-api-responses-never-are.md) | The app shell is cached; API responses never are | Accepted |
-| [0011](./0011-visual-identity.md) | Visual identity: lime as fill, olive as ink | Proposed |
-| [0012](./0012-motion-and-animated-icons.md) | Motion: page transitions and stroke-animated icons | Proposed |
-| [0013](./0013-loading-states-are-page-shaped-skeletons.md) | Loading states are page-shaped skeletons | Proposed |
+| [0011](./0011-visual-identity.md) | Visual identity: lime as fill, olive as ink | Accepted |
+| [0012](./0012-motion-and-animated-icons.md) | Motion: page transitions and stroke-animated icons | Accepted |
+| [0013](./0013-loading-states-are-page-shaped-skeletons.md) | Loading states are page-shaped skeletons | Accepted |

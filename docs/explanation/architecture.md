@@ -113,11 +113,28 @@ bare 500 `INTERNAL_ERROR`. The client sees one error shape, always.
 ## The frontend
 
 ```
-pages/          route composition only
+pages/<name>/   a page and its skeleton — composition only
 features/<name>/{domain,application,infrastructure,presentation}
-shared/ui/      primitives with no domain knowledge
-app/            providers, router, the PWA's prompt and banner
+shared/ui/      primitives and animated icons, no domain knowledge
+app/            providers, routes, the shell, the PWA's prompt and banner
 ```
+
+**The shell never moves; pages do.** `app/shell/` draws the sidebar, the top
+bar and the phone's bottom bar once. Only the content region changes between
+pages, with a short transition
+([ADR 0012](../decisions/0012-motion-and-animated-icons.md)). The routes
+table, `app/routes.tsx`, is the one place a page is registered, lazily, with
+its skeleton.
+
+**Loading is a skeleton of the page; failure is a sentence.** Pages read data
+with suspense queries, so one `Suspense` per route covers code and data, and
+one error boundary per route turns any failure into `ErrorState` with Try
+again ([ADR 0013](../decisions/0013-loading-states-are-page-shaped-skeletons.md)).
+
+**The theme is a feature like any other.** `features/appearance` owns the
+preference (domain), its ports and `useTheme` (application), `localStorage`
+and the `<html>` attribute (infrastructure), and the switch (presentation)
+([ADR 0011](../decisions/0011-visual-identity.md)).
 
 **Server state belongs to TanStack Query.** Fetched data lives in the query
 cache under a key from the feature's key factory; copying it into

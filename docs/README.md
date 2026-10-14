@@ -61,6 +61,7 @@ Different categories rot at different speeds. Treat them accordingly.
 - [Add a use case](./guides/add-a-use-case.md) — one more operation on an existing module
 - [Change the database schema](./guides/change-the-database-schema.md)
 - [Add a UI component](./guides/add-a-ui-component.md)
+- [Add a page](./guides/add-a-page.md) — a new place in the sidebar, with its skeleton
 - [Turn off the service worker](./guides/turn-off-the-service-worker.md) — the PWA kill switch
 
 **Reference**

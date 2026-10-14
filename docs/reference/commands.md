@@ -28,5 +28,5 @@ Run from the repository root unless noted.
 
 | Command | Does |
 |---|---|
-| `npm run pwa:icons` | Regenerates the PWA icons in `public/` from `public/icon.svg` |
+| `npm run pwa:icons` | Regenerates the PWA icons in `public/brand/` from `public/brand/app-icon.png` (settings in `pwa-assets.config.ts`) |
 | `npm run preview` | Serves the production build locally, with the service worker |

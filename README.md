@@ -80,10 +80,13 @@ Working end to end:
 - **PWA** — installable, opens instantly and offline from a cached shell,
   says plainly when it cannot reach the server, and offers new versions with a
   Reload prompt
+- **The Gateway's look** — light and dark themes around Source One's lime,
+  Poppins type, a collapsible sidebar, page transitions, stroke-animated icons
+  and page-shaped skeletons. All of it is on show at `/theme`
+  ([`frontend/DESIGN.md`](./frontend/DESIGN.md))
 
 Not built yet:
 
 - **Authentication** — nothing is access-controlled, so **do not expose this
   outside the internal network** ([constraints](./docs/explanation/constraints.md))
 - **Deployment** — no hosting or release procedure yet
-- **Visual identity** — colours and the icon are neutral placeholders

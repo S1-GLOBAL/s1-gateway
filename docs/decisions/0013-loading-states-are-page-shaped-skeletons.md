@@ -1,6 +1,6 @@
 # 0013. Loading states are page-shaped skeletons
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-15
 - **Related:** [plan 0002](../plans/0002-visual-identity-and-motion.md) ·
   [0012](./0012-motion-and-animated-icons.md)

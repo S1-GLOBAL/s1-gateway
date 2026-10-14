@@ -61,4 +61,4 @@ does not exist yet, say so and mark the plan blocked rather than inventing it.
 | # | Plan | Status |
 |---|---|---|
 | [0001](./0001-project-scaffold.md) | Project scaffold | Complete except the browser checks of the PWA and the Tools page |
-| [0002](./0002-visual-identity-and-motion.md) | Visual identity, motion and the app shell | Ready |
+| [0002](./0002-visual-identity-and-motion.md) | Visual identity, motion and the app shell | Complete |

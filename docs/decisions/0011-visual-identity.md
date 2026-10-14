@@ -1,6 +1,6 @@
 # 0011. Visual identity: lime as fill, olive as ink
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-15
 - **Related:** [plan 0002](../plans/0002-visual-identity-and-motion.md) ·
   [`frontend/DESIGN.md`](../../frontend/DESIGN.md)

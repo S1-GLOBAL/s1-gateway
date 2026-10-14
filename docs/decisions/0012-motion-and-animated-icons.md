@@ -1,6 +1,6 @@
 # 0012. Motion: page transitions and stroke-animated icons
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-15
 - **Related:** [plan 0002](../plans/0002-visual-identity-and-motion.md) ·
   [0013](./0013-loading-states-are-page-shaped-skeletons.md)

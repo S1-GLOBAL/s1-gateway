@@ -1,6 +1,6 @@
 # 0002. Visual identity, motion and the app shell
 
-- **Status:** Ready
+- **Status:** Complete
 - **Owner:** Rey Denzo
 - **Related:** [plan 0001](./0001-project-scaffold.md) ·
   [ADR 0003](../decisions/0003-clean-architecture-with-layers-inside-modules.md) ·
@@ -336,6 +336,6 @@ one stage at a time, stopping for the owner after each.
 
 | Phase | Steps | Status |
 |---|---|---|
-| 1. Tokens, fonts, logo, theme, motion, primitives | 0 / 1 | Not started |
-| 2. Icons, shell, transitions, skeletons, Tools page | 0 / 1 | Not started |
-| 3. Showcase, docs, browser check | 0 / 1 | Not started |
+| 1. Tokens, fonts, logo, theme, motion, primitives | 1 / 1 | Done |
+| 2. Icons, shell, transitions, skeletons, Tools page | 1 / 1 | Done |
+| 3. Showcase, docs, browser check | 1 / 1 | Done |

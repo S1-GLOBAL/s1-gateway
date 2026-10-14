@@ -27,6 +27,7 @@ irrelevant to any single task. More context is not better context.
 **Frontend**
 - [`frontend/DESIGN.md`](./frontend/DESIGN.md) — tokens and rules. Not optional.
 - [`docs/guides/add-a-ui-component.md`](./docs/guides/add-a-ui-component.md)
+- [`docs/guides/add-a-page.md`](./docs/guides/add-a-page.md)
 
 **Database**
 - [`docs/guides/change-the-database-schema.md`](./docs/guides/change-the-database-schema.md)
@@ -47,6 +48,8 @@ Faster and more reliable than any description of the conventions:
 | A frontend adapter | `frontend/src/features/tools/infrastructure/http-tools-gateway.ts` |
 | A UI primitive | `frontend/src/shared/ui/Button.tsx` |
 | Design tokens | `frontend/src/styles/theme.css` |
+| An animated icon | `frontend/src/shared/ui/icons/icons.tsx` |
+| A page and its skeleton | `frontend/src/pages/tools/ToolsPage.tsx`, `ToolsPageSkeleton.tsx` |
 
 ### Look up, do not preload
 
