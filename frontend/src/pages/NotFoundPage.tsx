@@ -2,11 +2,16 @@ import { Link } from 'react-router-dom';
 
 export function NotFoundPage() {
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-10">
-      <h1 className="text-2xl font-semibold">Page not found</h1>
-      <p className="text-ink-muted">
-        There is nothing at this address. <Link to="/" className="text-accent-ink hover:underline">Go to the hub</Link>.
+    <div className="flex flex-col items-start gap-3 py-16">
+      <p className="font-mono text-sm text-ink-subtle">404</p>
+      <h1 className="text-2xl font-semibold text-ink">There is nothing at this address.</h1>
+      <p className="text-base text-ink-muted">
+        It may have moved. Everything the Gateway has is in the sidebar, or go to{' '}
+        <Link to="/" className="font-medium text-accent-ink underline-offset-4 hover:underline">
+          Tools
+        </Link>
+        .
       </p>
-    </main>
+    </div>
   );
 }

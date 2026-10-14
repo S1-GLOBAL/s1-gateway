@@ -8,3 +8,4 @@ export {
   THEME_STORAGE_KEY,
   browserLocalStorage,
 } from './infrastructure/local-storage-theme-preference-store';
+export { ThemeSwitch } from './presentation/ThemeSwitch';
