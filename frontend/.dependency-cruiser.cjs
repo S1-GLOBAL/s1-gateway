@@ -48,7 +48,7 @@ module.exports = {
       name: 'shared-ui-is-generic',
       severity: 'error',
       from: { path: '^src/shared/ui/' },
-      to: { pathNot: ['^src/shared/ui/', '^node_modules/(react|clsx|tailwind-merge)/'] },
+      to: { pathNot: ['^src/shared/ui/', '^node_modules/(react|clsx|tailwind-merge|motion|lucide-react)/'] },
     },
     {
       name: 'features-meet-only-at-index',

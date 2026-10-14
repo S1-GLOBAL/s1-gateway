@@ -10,7 +10,7 @@ export function ToolCard({ tool }: { tool: Tool }) {
           href={tool.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-medium text-accent hover:underline"
+          className="font-medium text-accent-ink hover:underline"
         >
           {tool.name}
         </a>

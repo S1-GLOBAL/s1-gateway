@@ -26,18 +26,25 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        background_color: '#ffffff',
-        theme_color: '#2453c7',
+        background_color: '#0b0c0b',
+        theme_color: '#0b0c0b',
         icons: [
-          { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
-          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'brand/pwa-64x64.png', sizes: '64x64', type: 'image/png' },
+          { src: 'brand/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'brand/pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'brand/maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
         // The app shell only. API responses are never cached (ADR 0010).
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // The icon source is for `npm run pwa:icons`, not for the app.
+        globIgnores: [
+          'brand/app-icon.png',
+          // Geist Mono ships every script; staff text is Latin. The other
+          // subsets still load on demand, they are just not precached.
+          '**/geist-mono-{cyrillic,cyrillic-ext,latin-ext,vietnamese,symbols2}-*.woff2',
+        ],
         navigateFallback: '/index.html',
         // An API request must never be answered with the cached HTML shell.
         navigateFallbackDenylist: [/^\/api\//],

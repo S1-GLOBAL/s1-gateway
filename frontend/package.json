@@ -14,7 +14,7 @@
     "lint": "oxlint --deny-warnings src",
     "arch:check": "depcruise src --config .dependency-cruiser.cjs",
     "test": "vitest run",
-    "pwa:icons": "pwa-assets-generator --preset minimal-2023 public/icon.svg"
+    "pwa:icons": "pwa-assets-generator"
   },
   "dependencies": {
     "@fontsource-variable/geist-mono": "^5.3.0",

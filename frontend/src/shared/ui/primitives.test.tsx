@@ -1,0 +1,41 @@
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { Badge } from './Badge';
+import { Button } from './Button';
+import { Logo } from './Logo';
+
+describe('Button', () => {
+  it('is a plain button by default', () => {
+    render(<Button>Save</Button>);
+    const button = screen.getByRole('button', { name: 'Save' });
+    expect(button.getAttribute('type')).toBe('button');
+    expect(button.hasAttribute('disabled')).toBe(false);
+  });
+
+  it('is busy and cannot be pressed while loading', () => {
+    render(<Button loading>Save</Button>);
+    const button = screen.getByRole('button', { name: 'Save' });
+    expect(button.getAttribute('aria-busy')).toBe('true');
+    expect(button.hasAttribute('disabled')).toBe(true);
+  });
+});
+
+describe('Logo', () => {
+  it('is announced as Source One', () => {
+    render(<Logo />);
+    expect(screen.getByRole('img', { name: 'Source One' })).toBeTruthy();
+  });
+
+  it('keeps the artwork proportions at any height', () => {
+    render(<Logo variant="mark" height={42.4} />);
+    const logo = screen.getByRole('img', { name: 'Source One' });
+    expect(logo.style.width).toBe('59px');
+  });
+});
+
+describe('Badge', () => {
+  it('uses the accent ink for the accent tone, never the fill', () => {
+    render(<Badge tone="accent">New</Badge>);
+    expect(screen.getByText('New').className).toContain('text-accent-ink');
+  });
+});

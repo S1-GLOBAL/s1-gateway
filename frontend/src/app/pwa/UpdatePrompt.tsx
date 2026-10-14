@@ -13,7 +13,7 @@ export function UpdatePrompt() {
   return (
     <div
       role="status"
-      className="fixed inset-x-4 bottom-4 mx-auto flex max-w-md items-center gap-3 rounded-box border border-border bg-surface-raised p-4"
+      className="fixed inset-x-4 bottom-4 mx-auto flex max-w-md items-center gap-3 rounded-surface border border-border bg-surface-raised p-4"
     >
       <p className="flex-1 text-sm">A new version of the Gateway is ready.</p>
       <Button variant="secondary" onClick={() => setNeedRefresh(false)}>
