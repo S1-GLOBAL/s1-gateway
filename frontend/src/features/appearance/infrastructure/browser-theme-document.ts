@@ -5,9 +5,6 @@ import type { ResolvedTheme } from '../domain/theme';
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
-/** The browser-chrome colour (address bar, PWA title bar) per theme: the canvas token. */
-const THEME_COLOR: Record<ResolvedTheme, string> = { light: '#f6f7f3', dark: '#0b0c0b' };
-
 export class BrowserThemeDocument implements ThemeDocument {
   prefersDark(): boolean {
     return window.matchMedia(DARK_QUERY).matches;
@@ -21,7 +18,12 @@ export class BrowserThemeDocument implements ThemeDocument {
 
   apply(theme: ResolvedTheme): void {
     document.documentElement.dataset.theme = theme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[theme]);
+    // Read the canvas token after the theme attribute switches — one source
+    // of truth in theme.css, no duplicated hex (frontend/DESIGN.md).
+    const canvas = getComputedStyle(document.documentElement).getPropertyValue('--color-canvas').trim();
+    if (canvas) {
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', canvas);
+    }
   }
 
   /**

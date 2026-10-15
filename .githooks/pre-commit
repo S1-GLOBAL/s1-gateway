@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# Blocks committing an environment file. Only .env.example may be committed.
+#
+# The same files pr-audit refuses (FORBIDDEN in scripts/check-pr.mjs), caught
+# before they leave this machine: a secret pushed even once is public, because
+# the repository is. pr-audit stays the gate for clones that never ran setup.
+
+bad=$(git diff --cached --name-only --diff-filter=d | grep -E '(^|/)\.env(\.[^/]+)?$' | grep -Ev '(^|/)\.env\.example$')
+
+if [ -n "$bad" ]; then
+  echo "pre-commit: these files hold secrets and must not be committed:" >&2
+  echo "$bad" >&2
+  echo "" >&2
+  echo "Unstage them with: git restore --staged <file>" >&2
+  exit 1
+fi

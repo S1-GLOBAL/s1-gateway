@@ -177,6 +177,20 @@ test('template comments do not count as content', () => {
   assert.ok(has(auditPullRequest({ body, files: [] }), '"Known gaps and risks" section is empty'));
 });
 
+test('AI attribution in the description fails', () => {
+  for (const line of ['🤖 Generated with [Claude Code](https://claude.com/claude-code)', 'Co-Authored-By: Claude <noreply@anthropic.com>', 'Assisted by Cursor']) {
+    const body = COMPLETE.replace('None.', `None.\n\n${line}`);
+    assert.ok(has(auditPullRequest({ body, files: [] }), 'credits an AI tool'), line);
+  }
+});
+
+test('a human co-author, and attribution inside a template comment, pass', () => {
+  for (const extra of ['Co-authored-by: Rey Denzo <rey@example.com>', '<!-- No AI attribution: no "Generated with Claude" footer -->']) {
+    const body = COMPLETE.replace('None.', `None.\n\n${extra}`);
+    assert.deepEqual(auditPullRequest({ body, files: [] }), [], extra);
+  }
+});
+
 // --- rules Bilikha added after auditing a pull request that passed every gate --
 
 test('tooling changed alongside the product fails, unless an exception gives a reason', () => {

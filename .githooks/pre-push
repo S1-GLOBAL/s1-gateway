@@ -29,7 +29,7 @@ fi
 
 cd "$root" || exit 1
 
-for check in typecheck lint arch:check docs:check; do
+for check in typecheck lint arch:check design:check docs:check; do
   echo "pre-push: npm run $check" >&2
   if ! output=$(npm run --silent "$check" 2>&1); then
     echo "$output" >&2

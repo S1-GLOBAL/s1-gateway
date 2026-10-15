@@ -15,7 +15,10 @@ and [ADR 0013](../docs/decisions/0013-loading-states-are-page-shaped-skeletons.m
 2. **Restraint with the accent.** Lime marks the one thing that matters on a
    screen — the primary action, the current place. Everything else is neutral.
 3. **One system.** Every colour, size, radius, shadow, duration and easing is a
-   token. A value that is not a token becomes one first.
+   token. A value that is not a token becomes one first. `npm run design:check`
+   (CI and `pre-push`) refuses raw colours, one-off type/elevation/radius/
+   duration/easing values, interpolated classes, `text-accent`, and hand-added
+   tracking under `src/`.
 4. **Motion explains; it never performs.** It shows where something came from
    or went, and it is short. Nothing loops for attention.
 

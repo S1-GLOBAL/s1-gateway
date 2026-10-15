@@ -26,6 +26,10 @@ enforced, not requested:
 - CI runs the same script over every pushed range, for clones that never ran
   setup.
 
+> Since 2026-10-16, `pr-audit` also runs the same patterns, kept in
+> `scripts/ai-attribution.mjs`, over the pull request description. Nothing
+> else checked the description.
+
 ## Alternatives considered
 
 **The rule in `CLAUDE.md` alone.** Binds only the tools that read it.

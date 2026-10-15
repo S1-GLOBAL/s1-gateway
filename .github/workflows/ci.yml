@@ -81,6 +81,9 @@ jobs:
       - name: Architecture
         run: npm run arch:check
 
+      - name: Design tokens
+        run: npm run design:check
+
       # The backend's globalSetup creates and migrates the test database.
       - name: Test
         run: npm test
