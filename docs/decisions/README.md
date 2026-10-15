@@ -53,3 +53,4 @@ Number sequentially. Never renumber.
 | [0014](./0014-only-reyxdz-merges-and-releases.md) | Only reyxdz merges and releases, and a pull request must be ready first | Accepted |
 | [0015](./0015-pull-requests-merge-by-squash-only.md) | Pull requests merge into `main` by squash only | Accepted |
 | [0016](./0016-the-repository-lives-in-the-s1-global-organisation.md) | The repository lives in the S1-GLOBAL organisation | Accepted |
+| [0017](./0017-staging-deploys-every-commit-on-main.md) | Staging deploys every commit on `main`: Vercel, Render and Supabase | Accepted |
