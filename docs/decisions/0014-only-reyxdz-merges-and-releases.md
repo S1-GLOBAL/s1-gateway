@@ -4,6 +4,7 @@
 - **Date:** 2026-10-15
 - **Related:** [0009](./0009-ai-attribution-is-blocked-by-a-hook-not-a-rule.md) ·
   [0015](./0015-pull-requests-merge-by-squash-only.md) ·
+  [0016](./0016-the-repository-lives-in-the-s1-global-organisation.md) ·
   [Open a pull request](../guides/open-a-pull-request.md) ·
   [Release to production](../guides/release-to-production.md)
 
@@ -28,6 +29,10 @@ over unchanged in substance. Three facts shape it:
 - **A ruleset's bypass list names roles, not people.** The repository belongs
   to reyxdz's personal account, so its only admin is reyxdz: "repository
   admin" means reyxdz — for as long as that stays true.
+
+> Since [0016](./0016-the-repository-lives-in-the-s1-global-organisation.md),
+> the repository belongs to the S1-GLOBAL organisation and the bypass is
+> "Organization admin": its owners, which is reyxdz alone.
 
 Rulesets need the repository to be public on this account's plan. It was made
 public for that reason.

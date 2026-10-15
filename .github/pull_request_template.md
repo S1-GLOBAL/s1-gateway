@@ -1,7 +1,7 @@
 <!--
 Every PR into main is audited before it is merged. This template is what the
 audit reads first. The reasoning behind each section, and what the audit checks:
-https://github.com/reyxdz/s1-gateway/blob/main/docs/guides/open-a-pull-request.md
+https://github.com/S1-GLOBAL/s1-gateway/blob/main/docs/guides/open-a-pull-request.md
 
 The `pr-audit` check fails this pull request until every section is filled
 in, and merging is blocked until it passes. Check before opening, with this
