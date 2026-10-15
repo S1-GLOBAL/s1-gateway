@@ -15,9 +15,10 @@ Nothing here is on trust:
 
 | Gate | When | Blocks |
 |---|---|---|
+| `pre-commit` hook | Every `git commit` | The commit, if it adds a `.env` file other than `.env.example` |
 | `commit-msg` hook | Every `git commit` | The commit, if its message credits an AI tool |
-| `pre-push` hook | Every `git push` | The push, if typecheck, lint, the architecture check or the docs checks fail. Skippable — it is early warning, not the gate |
-| `check` (CI) | Every push | The merge, if commit messages, typecheck, lint, the architecture check, tests, build or docs fail |
+| `pre-push` hook | Every `git push` | The push, if typecheck, lint, the architecture check, the design-token check or the docs checks fail. Skippable — it is early warning, not the gate |
+| `check` (CI) | Every push | The merge, if commit messages, typecheck, lint, the architecture check, the design-token check, tests, build or docs fail |
 | `pr-audit` | Opening, editing or pushing to a pull request | The merge, if the description is incomplete or the diff breaks a rule below |
 | Code owner | — | The merge, until reyxdz approves. A push after approval dismisses it, and the last push must be approved by someone other than whoever pushed it |
 | `main` rulesets | — | Anyone but reyxdz merging, anyone merging past a red check, and any merge method but squash |
@@ -42,7 +43,8 @@ does not change how that pull request is checked. It applies after merging.
 
 **The description:** every template section filled in; `Plan / issue:` not
 blank; at least one checkable acceptance criterion; no blank layer under "What
-changed"; no unticked box under Rollout or Checklist. When the UI changes,
+changed"; no unticked box under Rollout or Checklist; no line crediting an AI
+tool, outside a comment. When the UI changes,
 "States checked" has every state ticked or marked `n/a`, and "Screenshots" has
 an image. **A ticked box must not contradict its own note** — a ticked line in
 Acceptance criteria, States checked, Rollout or Checklist that also says "not
@@ -93,8 +95,9 @@ reason holds.
   has merged, and never branch from another open pull request's branch. The
   branch is deleted on merge, and the pull request's Merged state — not
   `git branch --merged` — is the record that it landed.
-- **No AI attribution** in commits or the description. The hook and CI both
-  reject it ([ADR 0009](../decisions/0009-ai-attribution-is-blocked-by-a-hook-not-a-rule.md)).
+- **No AI attribution** in commits or the description. The hook and CI reject
+  it in commits, and `pr-audit` in the description
+  ([ADR 0009](../decisions/0009-ai-attribution-is-blocked-by-a-hook-not-a-rule.md)).
 - **Never commit** `.env`, a secret, `tmp/`, or a cookie jar.
 - **No lockfile changes unless dependencies changed.** npm on Windows can strip
   the `libc` fields from `package-lock.json` on a plain install. The diff looks
@@ -136,6 +139,7 @@ red CI is not ready for review.
 npm run typecheck
 npm run lint
 npm run arch:check
+npm run design:check
 npm test
 npm run build
 npm run docs:check
@@ -166,13 +170,15 @@ npm run docs:check
 - Follow [Add a use case](./add-a-use-case.md): the error envelope, a domain
   error with a stable code, and the shared contract
   ([ADR 0007](../decisions/0007-one-definition-of-an-api-shape.md)).
-- Relative imports end in `.js`. It compiles without; it fails at runtime.
+- Relative imports end in `.js`. Omitting the extension fails `npm run typecheck`
+  and the build, though `npm run dev` would not catch it.
 - Update [the API reference](../reference/api.md).
 
 ## Frontend changes
 
 - Tokens only, per [`frontend/DESIGN.md`](../../frontend/DESIGN.md) — no raw
   colours, sizes or shadows, and never an interpolated class name.
+  `npm run design:check` enforces it.
 - Reuse the primitives in `frontend/src/shared/ui/` before adding one
   ([Add a UI component](./add-a-ui-component.md)); a new page has a skeleton
   ([Add a page](./add-a-page.md)).

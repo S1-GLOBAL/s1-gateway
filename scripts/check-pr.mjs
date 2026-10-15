@@ -25,6 +25,7 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { findAttribution } from './ai-attribution.mjs';
 
 /** Sections every description must fill in, as headed in the template. */
 const REQUIRED_SECTIONS = [
@@ -206,6 +207,10 @@ export function auditPullRequest({ body, files, contents = {} }) {
         );
       }
     }
+  }
+
+  for (const { text: line, why } of findAttribution(text)) {
+    problems.push(`Description: "${line.slice(0, 120)}" credits an AI tool (${why}). Remove it — see ADR 0009.`);
   }
 
   // --- what only a screen change needs ------------------------------------

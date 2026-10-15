@@ -87,7 +87,7 @@ Delete this section if there are none. -->
 ## Checklist
 
 - [ ] One feature; no unrelated refactors or reformatting
-- [ ] `npm run typecheck`, `npm run lint`, `npm run arch:check`, `npm test`, `npm run build` and `npm run docs:check` pass locally
+- [ ] `npm run typecheck`, `npm run lint`, `npm run arch:check`, `npm run design:check`, `npm test`, `npm run build` and `npm run docs:check` pass locally
 - [ ] New behaviour has tests, including the unhappy paths; a bug fix has a test that fails without it
 - [ ] No secrets, `.env`, `tmp/` files, or lockfile changes unless dependencies changed
 - [ ] Docs updated where the change makes them wrong (`api.md`, `data-model.md`, plan boxes, an ADR for an expensive-to-reverse choice)

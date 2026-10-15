@@ -15,7 +15,9 @@ irrelevant to any single task. More context is not better context.
 2. **[`docs/explanation/constraints.md`](./docs/explanation/constraints.md)** —
    what shapes this product, including why nothing may be exposed outside the
    internal network yet.
-3. **Your plan** — [`docs/plans/`](./docs/plans/). The plan is the task.
+3. **Your task** — the issue, its plan in [`docs/plans/`](./docs/plans/),
+   and its handoff in [`docs/handoffs/`](./docs/handoffs/) if there is one.
+   Check a handoff's ground-truth section against `main` before executing it.
 
 ### Then, by what you are touching
 
@@ -81,7 +83,8 @@ professional record of the organisation's work; the tooling used to produce it
 does not belong in authorship metadata.
 
 **This is enforced, not merely requested.** A `commit-msg` hook rejects the
-commit locally, and CI runs the same check on every push — see
+commit locally, CI runs the same check on every push, and `pr-audit` runs it on
+the pull request description — see
 [ADR 0009](./docs/decisions/0009-ai-attribution-is-blocked-by-a-hook-not-a-rule.md).
 Stripping the trailer in a later amend is not a fix: GitHub credits a
 co-author the moment it first receives the commit and does not retract it.
@@ -90,9 +93,15 @@ co-author the moment it first receives the commit and does not retract it.
 
 ## Other standing rules
 
-**Never commit a secret.** `.env` files are gitignored. Add every new variable
-to the relevant `.env.example` with a safe placeholder, and to
+**Never commit a secret.** `.env` files are gitignored, the `pre-commit` hook
+rejects them, and so does `pr-audit`. Add every new variable to the relevant
+`.env.example` with a safe placeholder, and to
 [`docs/reference/environment.md`](./docs/reference/environment.md).
+
+**The repository is public.** No Source One data — workbook rows, prices,
+supplier names — in code, tests, fixtures, screenshots or docs. Use
+illustrative data
+([constraints](./docs/explanation/constraints.md#6-the-repository-is-public)).
 
 **The dependency rule is enforced.** Run `npm run arch:check`. When it fails,
 move the code to the right layer — never weaken a rule in
@@ -101,7 +110,8 @@ move the code to the right layer — never weaken a rule in
 [ADR 0004](./docs/decisions/0004-layer-rules-are-enforced-by-dependency-cruiser.md)).
 
 **Backend relative imports end in `.js`**, even though the files are `.ts`. The
-build is ESM with `NodeNext`. Omitting the extension fails at runtime.
+build is ESM with `NodeNext`. Omitting the extension fails `npm run typecheck`
+and the build, though `npm run dev` would not catch it.
 
 **Contracts are types only**
 ([ADR 0007](./docs/decisions/0007-one-definition-of-an-api-shape.md)). No zod,
@@ -109,7 +119,8 @@ no runtime code in `backend/src/contracts/`.
 
 **Before writing UI**, read [`frontend/DESIGN.md`](./frontend/DESIGN.md).
 Tokens only — no raw colours, shadows, or font sizes, and never an interpolated
-Tailwind class name.
+Tailwind class name. `npm run design:check` enforces it (also in CI and
+`pre-push`).
 
 **Schema changes go through generated migrations**, never `drizzle-kit push`
 ([ADR 0005](./docs/decisions/0005-migrations-over-db-push.md)).
@@ -118,15 +129,24 @@ Tailwind class name.
 rejects a reasonable alternative, gets an entry in
 [`docs/decisions/`](./docs/decisions/).
 
+**The hooks run only in a clone where `npm run setup` has run.** `pre-commit`
+rejects `.env` files; `pre-push` runs typecheck, lint, `arch:check`,
+`design:check` and `docs:check`. Do not use `--no-verify`.
+
 **Verify before reporting done.** Run `npm run typecheck`, `npm run lint`,
-`npm run arch:check`, `npm run test:unit` and `npm run docs:check`. Do not
-report work complete on the basis that it looks right.
+`npm run arch:check`, `npm run design:check`, `npm run test:unit` and
+`npm run docs:check`. Do not report work complete on the basis that it looks
+right. Before ticking the pull request checklist, also run `npm test` (needs
+`npm run db:up`) and `npm run build`.
 
 **Every pull request into `main` is audited before it merges, and only reyxdz
 merges.** Fill in the template GitHub pre-fills; the `pr-audit` check fails the
 pull request until it is complete. What each part is for, and what the audit
 checks, is in
 [`docs/guides/open-a-pull-request.md`](./docs/guides/open-a-pull-request.md).
+A change to `CLAUDE.md`, `.github/`, `.githooks/`, `scripts/` or the root
+`package.json` goes in its own pull request, not alongside product code —
+`pr-audit` fails the mix unless the description has `Tooling change: <why>`.
 Merging is squash-only, so start every branch fresh from `origin/main` — never
 reuse a merged branch or branch from another open pull request's branch
 ([ADR 0014](./docs/decisions/0014-only-reyxdz-merges-and-releases.md),
