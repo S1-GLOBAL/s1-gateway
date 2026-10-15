@@ -121,3 +121,19 @@ rejects a reasonable alternative, gets an entry in
 **Verify before reporting done.** Run `npm run typecheck`, `npm run lint`,
 `npm run arch:check`, `npm run test:unit` and `npm run docs:check`. Do not
 report work complete on the basis that it looks right.
+
+**Every pull request into `main` is audited before it merges, and only reyxdz
+merges.** Fill in the template GitHub pre-fills; the `pr-audit` check fails the
+pull request until it is complete. What each part is for, and what the audit
+checks, is in
+[`docs/guides/open-a-pull-request.md`](./docs/guides/open-a-pull-request.md).
+Merging is squash-only, so start every branch fresh from `origin/main` — never
+reuse a merged branch or branch from another open pull request's branch
+([ADR 0014](./docs/decisions/0014-only-reyxdz-merges-and-releases.md),
+[ADR 0015](./docs/decisions/0015-pull-requests-merge-by-squash-only.md)).
+
+**Release only when reyxdz asks, and only by the procedure** in
+[`docs/guides/release-to-production.md`](./docs/guides/release-to-production.md):
+show what will ship, confirm CI is green on `main`, then
+`git push origin origin/main:production`. Never open a pull request into
+`production`, never force, never push any other ref.
