@@ -18,7 +18,7 @@ Run from the repository root unless noted.
 | `npm run typecheck` | TypeScript, both services | no |
 | `npm run lint` | oxlint, both services | no |
 | `npm run arch:check` | The dependency rule, both services ([ADR 0004](../decisions/0004-layer-rules-are-enforced-by-dependency-cruiser.md)) | no |
-| `npm run design:check` | Tokens only under `frontend/src`: no raw colours, one-off type/elevation/radius values, interpolated classes, `text-accent`, or hand-added tracking ([DESIGN.md](../../frontend/DESIGN.md)) | no |
+| `npm run design:check` | Tokens only under `frontend/src`: no raw colours, one-off type/elevation/radius/duration/easing values, interpolated classes, `text-accent`, or hand-added tracking ([DESIGN.md](../../frontend/DESIGN.md)) | no |
 | `npm run test:unit` | Every test that needs no database | no |
 | `npm test` | Every test. Creates and migrates `s1_gateway_test` first | yes |
 | `npm run docs:check` | Every relative link in the docs resolves; plan statuses agree with their checklists and the index | no |

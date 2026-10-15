@@ -144,9 +144,10 @@ merges.** Fill in the template GitHub pre-fills; the `pr-audit` check fails the
 pull request until it is complete. What each part is for, and what the audit
 checks, is in
 [`docs/guides/open-a-pull-request.md`](./docs/guides/open-a-pull-request.md).
-A change to `CLAUDE.md`, `.github/`, `.githooks/`, `scripts/` or the root
-`package.json` goes in its own pull request, not alongside product code —
-`pr-audit` fails the mix unless the description has `Tooling change: <why>`.
+A change to the repository's own tooling — `.claude/`, `.mcp.json`,
+`.githooks/`, `.github/`, `scripts/`, `CLAUDE.md`, or the root `package.json` —
+goes in its own pull request, not alongside product code — `pr-audit` fails the
+mix unless the description has `Tooling change: <why>`.
 Merging is squash-only, so start every branch fresh from `origin/main` — never
 reuse a merged branch or branch from another open pull request's branch
 ([ADR 0014](./docs/decisions/0014-only-reyxdz-merges-and-releases.md),

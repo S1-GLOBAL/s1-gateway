@@ -29,6 +29,8 @@ test('arbitrary token values fail; layout brackets do not', () => {
   assert.ok(has(inspectSource(`<div className="shadow-[0_1px_2px]">x</div>`), 'arbitrary token'));
   assert.ok(has(inspectSource(`<div className="bg-[#c8f135]">x</div>`), 'arbitrary token'));
   assert.ok(has(inspectSource(`<div className="rounded-[12px]">x</div>`), 'arbitrary token'));
+  assert.ok(has(inspectSource(`<div className="duration-[250ms]">x</div>`), 'arbitrary token'));
+  assert.ok(has(inspectSource(`<div className="ease-[cubic-bezier(0.4,0,0.2,1)]">x</div>`), 'arbitrary token'));
   assert.deepEqual(inspectSource(`<div className="grid grid-cols-[2fr_1fr] w-[28rem] pb-[env(safe-area-inset-bottom)]">x</div>`), []);
   assert.deepEqual(inspectSource(`<div className="transition-[color,opacity] duration-150">x</div>`), []);
 });
