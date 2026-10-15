@@ -50,3 +50,5 @@ Number sequentially. Never renumber.
 | [0011](./0011-visual-identity.md) | Visual identity: lime as fill, olive as ink | Accepted |
 | [0012](./0012-motion-and-animated-icons.md) | Motion: page transitions and stroke-animated icons | Accepted |
 | [0013](./0013-loading-states-are-page-shaped-skeletons.md) | Loading states are page-shaped skeletons | Accepted |
+| [0014](./0014-only-reyxdz-merges-and-releases.md) | Only reyxdz merges and releases, and a pull request must be ready first | Accepted |
+| [0015](./0015-pull-requests-merge-by-squash-only.md) | Pull requests merge into `main` by squash only | Accepted |

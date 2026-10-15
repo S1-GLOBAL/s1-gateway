@@ -22,6 +22,8 @@ Run from the repository root unless noted.
 | `npm test` | Every test. Creates and migrates `s1_gateway_test` first | yes |
 | `npm run docs:check` | Every relative link in the docs resolves; plan statuses agree with their checklists and the index | no |
 | `npm run check:commits` | The AI-attribution check over `origin/main..HEAD` | no |
+| `npm run check:pr -- --body-file pr.md` | What the `pr-audit` check runs: the description in `pr.md` and the diff against `origin/main` ([Open a pull request](../guides/open-a-pull-request.md)) | no |
+| `npm run test:scripts` | The tests of the repository scripts, such as the PR audit. Part of `npm test` and `npm run test:unit` | no |
 | `node scripts/screenshot.mjs '<json>'` | Screenshots a page of a locally running app in headless Chrome or Edge. Options are documented at the top of the script | no |
 
 ## In `frontend/`

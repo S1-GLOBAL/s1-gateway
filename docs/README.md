@@ -63,6 +63,8 @@ Different categories rot at different speeds. Treat them accordingly.
 - [Add a UI component](./guides/add-a-ui-component.md)
 - [Add a page](./guides/add-a-page.md) — a new place in the sidebar, with its skeleton
 - [Turn off the service worker](./guides/turn-off-the-service-worker.md) — the PWA kill switch
+- [Open a pull request](./guides/open-a-pull-request.md) — what the pre-merge audit needs
+- [Release to production](./guides/release-to-production.md) — moving `production` to `main`
 
 **Reference**
 - [API](./reference/api.md)
