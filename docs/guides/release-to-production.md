@@ -32,14 +32,14 @@ prepared to ship with the next release.
 
 ### 1. See what will ship
 
-<https://github.com/reyxdz/s1-gateway/compare/production...main>
+<https://github.com/S1-GLOBAL/s1-gateway/compare/production...main>
 
 Every commit and file the release will take to production. "There isn't
 anything to compare" means production is already up to date.
 
 ### 2. Check CI is green on `main`
 
-<https://github.com/reyxdz/s1-gateway/commits/main> — the top commit has a green
+<https://github.com/S1-GLOBAL/s1-gateway/commits/main> — the top commit has a green
 ✓. A red ✗ or a pending dot means wait: `production` accepts only a commit CI
 has already passed, so the release would be refused anyway.
 
@@ -68,12 +68,12 @@ you have checked out. Never push your local `main` or a feature branch.
 Your hashes will differ:
 
 ```
-To https://github.com/reyxdz/s1-gateway.git
+To https://github.com/S1-GLOBAL/s1-gateway.git
    6e20a2c..9f1c2ab  origin/main -> production
 ```
 
 Then, within a minute, a green **Release guard** run on
-<https://github.com/reyxdz/s1-gateway/actions> confirming the released commit is
+<https://github.com/S1-GLOBAL/s1-gateway/actions> confirming the released commit is
 on `main`.
 
 ### If it is refused
@@ -83,7 +83,7 @@ GitHub names the rule that refused it. The wording varies; look for these:
 | The message mentions | Means | Do |
 |---|---|---|
 | a required status check, `check` | CI has not passed on that commit yet | Wait for CI on `main`, then retry |
-| a protected ref it cannot update | You are not the repository admin | Only reyxdz releases |
+| a protected ref it cannot update | You are not an owner of the S1-GLOBAL organisation | Only reyxdz releases |
 | non-fast-forward, or force-push | `production` has a commit `main` does not | Do not force. See "The release guard failed" below |
 
 ---

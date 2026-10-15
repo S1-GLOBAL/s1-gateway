@@ -10,7 +10,7 @@
 <p><strong>The internal staff hub for Source One Global.</strong><br>
 One place to reach the applications and links staff use every day.</p>
 
-[![CI](https://github.com/reyxdz/s1-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/reyxdz/s1-gateway/actions/workflows/ci.yml)
+[![CI](https://github.com/S1-GLOBAL/s1-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/S1-GLOBAL/s1-gateway/actions/workflows/ci.yml)
 ![Node](https://img.shields.io/badge/node-22%20%7C%2024-3a3f37?style=flat-square&labelColor=111310)
 ![TypeScript](https://img.shields.io/badge/typescript-6-3a3f37?style=flat-square&labelColor=111310)
 ![React](https://img.shields.io/badge/react-19-3a3f37?style=flat-square&labelColor=111310)
