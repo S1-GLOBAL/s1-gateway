@@ -64,6 +64,7 @@ Different categories rot at different speeds. Treat them accordingly.
 - [Add a page](./guides/add-a-page.md) — a new place in the sidebar, with its skeleton
 - [Turn off the service worker](./guides/turn-off-the-service-worker.md) — the PWA kill switch
 - [Open a pull request](./guides/open-a-pull-request.md) — what the pre-merge audit needs
+- [Deploy to staging](./guides/deploy-to-staging.md) — what a merge into `main` sets off, and fixing it
 - [Release to production](./guides/release-to-production.md) — moving `production` to `main`
 
 **Reference**

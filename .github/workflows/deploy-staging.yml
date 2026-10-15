@@ -1,0 +1,64 @@
+name: Deploy staging
+
+# Every commit CI passes on main goes to staging (ADR 0017): the staging
+# database is migrated first, then Render deploys that exact commit. Render's
+# own auto-deploy is off, so nothing reaches the API before its migration.
+# Vercel deploys the frontend from main by itself.
+#
+# workflow_run only fires for a workflow file that is on main, so a change to
+# this file takes effect once merged.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+# One deploy at a time, in order. A queued deploy is never cancelled: each one
+# may carry a migration the next depends on.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    # Only CI runs that passed, on a push to this repository's main. A fork's
+    # pull request from a branch named main also arrives here; it is skipped.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend
+        run: npm ci --prefix backend
+
+      # Applies every migration in backend/drizzle/ not yet applied. A failure
+      # stops here, and the API keeps running the previous commit.
+      - name: Migrate the staging database
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: npm --prefix backend run db:migrate
+
+      - name: Deploy the API on Render
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          curl --fail --silent --show-error --output /dev/null -X POST "$DEPLOY_HOOK&ref=$SHA"
+          echo "Render is deploying $SHA. Follow it in the Render dashboard, under the service's Events." >> "$GITHUB_STEP_SUMMARY"

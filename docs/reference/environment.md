@@ -34,3 +34,25 @@ A missing or invalid value stops the process with the variable's name.
 | Variable | Default | Meaning |
 |---|---|---|
 | `PWA_SELF_DESTROY` | unset | `true` builds a service worker that removes itself. See [Turn off the service worker](../guides/turn-off-the-service-worker.md) |
+
+## Staging
+
+Values are set in each host's dashboard, never in the repository. Where each
+one lives, and how to change it: [Deploy to staging](../guides/deploy-to-staging.md).
+
+| Variable | Set on | Value |
+|---|---|---|
+| `NODE_ENV` | Render | `production` |
+| `LOG_LEVEL` | Render | `info` |
+| `DATABASE_URL` | Render | Supabase's session pooler URL, port 5432, ending `?sslmode=require` |
+| `CORS_ORIGIN` | Render | The Vercel staging address |
+| `PORT` | — | Set by Render; do not set it |
+| `VITE_API_URL` | — | Leave unset. `frontend/vercel.json` forwards `/api/*` to Render, so the default `/api/v1` works |
+
+The **Deploy staging** workflow reads two secrets from the GitHub environment
+`staging`:
+
+| Secret | Value |
+|---|---|
+| `STAGING_DATABASE_URL` | The same URL as Render's `DATABASE_URL` |
+| `RENDER_STAGING_DEPLOY_HOOK` | Render → the service → **Settings** → **Deploy Hook** |
