@@ -64,3 +64,4 @@ does not exist yet, say so and mark the plan blocked rather than inventing it.
 | [0002](./0002-visual-identity-and-motion.md) | Visual identity, motion and the app shell | Complete |
 | [0003](./0003-atlas-spec-ids.md) | Atlas: read, build and save S1 Spec IDs | In progress |
 | [0004](./0004-atlas-library-and-editable-spec-ids.md) | Atlas: a library, one workspace, and editable Spec IDs with History | Ready |
+| [0005](./0005-account-invites.md) | Accounts by invite: a one-time registration link, and first and last names | Ready |
