@@ -1,0 +1,117 @@
+/** The 18 slots of an S1 Spec ID, as the API names them. */
+export type SlotKey =
+  | 'formatVersion'
+  | 'productType'
+  | 'material'
+  | 'coating'
+  | 'colourClarity'
+  | 'shape'
+  | 'profile'
+  | 'capacity'
+  | 'topDiameter'
+  | 'bottomDiameter'
+  | 'height'
+  | 'length'
+  | 'width'
+  | 'gusset'
+  | 'unitWeight'
+  | 'basisWeight'
+  | 'thickness'
+  | 'variant';
+
+export type SlotRule = 'applies' | 'never' | 'round_only' | 'non_round_only' | 'paper_only';
+
+export interface DictionaryValue {
+  code: string;
+  meaning: string;
+}
+
+export interface DictionarySlot {
+  key: SlotKey;
+  /** As people read it: "Colour / clarity". */
+  name: string;
+  values: DictionaryValue[];
+}
+
+export interface SlotRuleEntry {
+  productType: string;
+  slot: SlotKey;
+  rule: SlotRule;
+}
+
+/** `GET /atlas/dictionary`. */
+export interface AtlasDictionary {
+  release: string;
+  /** `YYYY-MM-DD`. */
+  approvedOn: string;
+  /** The seven slots whose values the dictionary holds, in code order. */
+  slots: DictionarySlot[];
+  rules: SlotRuleEntry[];
+}
+
+export interface DecodedSlot {
+  /** 1–18. */
+  number: number;
+  key: SlotKey;
+  name: string;
+  /** The slot's characters, exactly as they appear in the code. */
+  raw: string;
+  state: 'value' | 'not-known' | 'does-not-apply';
+  /** "Bowl lid", "90 mm", "3.3 g", "Not known", "Doesn't apply". */
+  meaning: string;
+}
+
+/** A Spec ID, read slot by slot. */
+export interface DecodedSpecId {
+  code: string;
+  dictionaryRelease: string;
+  /** Always 18, in code order. */
+  slots: DecodedSlot[];
+}
+
+/** `POST /atlas/spec-ids/decode`. */
+export interface DecodeSpecIdRequest {
+  code: string;
+}
+
+/** A measured value as typed, never a JavaScript number: `{ value: "1.375", unit: "in" }`. */
+export interface MeasurementFact {
+  value: string;
+  /** `mm`, `cm` or `in` for dimensions; `g` for unit weight; `gsm`; `um` for thickness. */
+  unit: string;
+}
+
+export interface CapacityFact {
+  /** A capacity unit letter from the dictionary: `Z`, `M`, `S`, `N` or `G`. */
+  unit: string;
+  /** A whole number, 1–9999. */
+  value: string;
+}
+
+/**
+ * What is known about a product. A slot left out, or `null`, has no value:
+ * the encoder writes `X` where the slot doesn't apply and `0` everywhere else.
+ */
+export interface SpecIdFacts {
+  productType: string;
+  material?: string | null;
+  coating?: string | null;
+  colourClarity?: string | null;
+  shape?: string | null;
+  profile?: string | null;
+  capacity?: CapacityFact | null;
+  topDiameter?: MeasurementFact | null;
+  bottomDiameter?: MeasurementFact | null;
+  height?: MeasurementFact | null;
+  length?: MeasurementFact | null;
+  width?: MeasurementFact | null;
+  gusset?: MeasurementFact | null;
+  unitWeight?: MeasurementFact | null;
+  basisWeight?: MeasurementFact | null;
+  thickness?: MeasurementFact | null;
+}
+
+/** `POST /atlas/spec-ids/encode`. Answers with a `DecodedSpecId`; nothing is saved. */
+export interface EncodeSpecIdRequest {
+  facts: SpecIdFacts;
+}

@@ -5,6 +5,7 @@ import type { IconProps } from './icon-svg';
 import {
   AccountsIcon,
   AlertIcon,
+  AtlasIcon,
   CheckIcon,
   ExternalLinkIcon,
   MonitorIcon,
@@ -23,6 +24,7 @@ const ICONS: [string, ComponentType<IconProps>, number][] = [
   ['ToolsIcon', ToolsIcon, 4],
   ['ThemeIcon', ThemeIcon, 5],
   ['AccountsIcon', AccountsIcon, 4],
+  ['AtlasIcon', AtlasIcon, 3],
   ['SunIcon', SunIcon, 9],
   ['MoonIcon', MoonIcon, 3],
   ['MonitorIcon', MonitorIcon, 3],

@@ -1,4 +1,5 @@
 import { HttpAccountsGateway, type AccountsGateway } from '@/features/accounts';
+import { HttpAtlasGateway, type AtlasGateway } from '@/features/atlas';
 import {
   BrowserThemeDocument,
   LocalStorageThemePreferenceStore,
@@ -12,6 +13,7 @@ import { createHttpClient } from '@/shared/infrastructure/http-client';
 /** Every port's production adapter, chosen in one place. */
 export interface Dependencies {
   accountsGateway: AccountsGateway;
+  atlasGateway: AtlasGateway;
   toolsGateway: ToolsGateway;
   themeStore: ThemePreferenceStore;
   themeDocument: ThemeDocument;
@@ -21,6 +23,7 @@ export function createDependencies(): Dependencies {
   const http = createHttpClient(import.meta.env.VITE_API_URL ?? '/api/v1');
   return {
     accountsGateway: new HttpAccountsGateway(http),
+    atlasGateway: new HttpAtlasGateway(http),
     toolsGateway: new HttpToolsGateway(http),
     themeStore: new LocalStorageThemePreferenceStore(browserLocalStorage()),
     themeDocument: new BrowserThemeDocument(),

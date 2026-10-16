@@ -86,3 +86,52 @@ One-time public reset links. The URL holds the raw token; only `token_hash` is s
 | Name | On | Why |
 |---|---|---|
 | `password_reset_tokens_token_hash_unique` | `token_hash`, unique | Look up a reset from the URL token |
+
+## `atlas_dictionary_releases`
+
+Each released S1 dictionary ([ADR 0021](../decisions/0021-the-atlas-dictionary-changes-only-by-migration.md)).
+Defined in `backend/src/modules/atlas/infrastructure/atlas-dictionary.table.ts`,
+like the two tables below. Filled only by migration; nothing in the
+application writes these three tables.
+
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `release` | `varchar(16)` | no | — | Primary key, e.g. `S1 0.1.0` |
+| `approved_on` | `date` | no | — | |
+
+## `atlas_dictionary_values`
+
+The meaning of every dictionary code, per release. 28 rows for `S1 0.1.0`.
+
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `release` | `varchar(16)` | no | — | FK → `atlas_dictionary_releases.release` |
+| `slot` | `varchar(32)` | no | — | Slot key: `productType`, `material`, `coating`, `colourClarity`, `shape`, `profile`, or `capacity` (its unit letters) |
+| `code` | `varchar(5)` | no | — | Never all `0` or all `X` |
+| `meaning` | `varchar(120)` | no | — | |
+
+**Indexes**
+
+| Name | On | Why |
+|---|---|---|
+| `atlas_dictionary_values_release_slot_code_pk` | `release, slot, code`, primary key | One meaning per code, per slot, per release |
+| `atlas_dictionary_values_code_not_marker` | check | A value must never read as a marker |
+
+## `atlas_slot_rules`
+
+Which slots apply to each product type, per release. 56 rows for `S1 0.1.0`:
+fourteen ruled slots for each of four product types.
+
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `release` | `varchar(16)` | no | — | FK → `atlas_dictionary_releases.release` |
+| `product_type` | `varchar(3)` | no | — | A `productType` code |
+| `slot` | `varchar(32)` | no | — | Slot key, `coating` to `thickness` |
+| `rule` | `varchar(16)` | no | — | `applies`, `never`, `round_only`, `non_round_only` or `paper_only` |
+
+**Indexes**
+
+| Name | On | Why |
+|---|---|---|
+| `atlas_slot_rules_release_product_type_slot_pk` | `release, product_type, slot`, primary key | One rule per slot, per product type, per release |
+| `atlas_slot_rules_rule_check` | check | Only the five rules the encoder knows |

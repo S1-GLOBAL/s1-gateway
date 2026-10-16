@@ -2,6 +2,7 @@ import { lazy } from 'react';
 import { type RouteObject } from 'react-router-dom';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { AccountsPageSkeleton } from '@/pages/accounts/AccountsPageSkeleton';
+import { AtlasPageSkeleton } from '@/pages/atlas/AtlasPageSkeleton';
 import { AuthPageSkeleton } from '@/pages/auth/AuthPageSkeleton';
 import { LandingPageSkeleton } from '@/pages/landing/LandingPageSkeleton';
 import { ThemePageSkeleton } from '@/pages/theme/ThemePageSkeleton';
@@ -12,6 +13,7 @@ import { RouteBoundary } from './shell/RouteBoundary';
 // Each page is its own chunk. Its skeleton is not: it must be ready the
 // moment the page is not (ADR 0013).
 const ThemePage = lazy(() => import('@/pages/theme/ThemePage').then((module) => ({ default: module.ThemePage })));
+const AtlasPage = lazy(() => import('@/pages/atlas/AtlasPage').then((module) => ({ default: module.AtlasPage })));
 const AccountsPage = lazy(() =>
   import('@/pages/accounts/AccountsPage').then((module) => ({ default: module.AccountsPage })),
 );
@@ -84,6 +86,14 @@ export const routes: RouteObject[] = [
         element: (
           <RouteBoundary skeleton={<ThemePageSkeleton />}>
             <ThemePage />
+          </RouteBoundary>
+        ),
+      },
+      {
+        path: 'atlas',
+        element: (
+          <RouteBoundary skeleton={<AtlasPageSkeleton />}>
+            <AtlasPage />
           </RouteBoundary>
         ),
       },

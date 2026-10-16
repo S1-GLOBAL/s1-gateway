@@ -8,3 +8,8 @@ export {
   sessions,
 } from './modules/accounts/infrastructure/accounts.table.js';
 export { tools } from './modules/tools/infrastructure/tools.table.js';
+export {
+  atlasDictionaryReleases,
+  atlasDictionaryValues,
+  atlasSlotRules,
+} from './modules/atlas/infrastructure/atlas-dictionary.table.js';
