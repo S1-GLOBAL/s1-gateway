@@ -68,7 +68,7 @@ Built one phase per pull request, stopping for the owner after each.
 | First | How | Why this way |
 |---|---|---|
 | A public link that creates an account | Same shape as the reset link (ADR 0018): a random token from `TokenGenerator`, only its hash stored, URL `{CORS_ORIGIN}/register?token=…` | One pattern for every admin-issued public link |
-| A write across two tables of one module | `AccountInviteRepository.redeem(inviteId, account, now)` inserts the account and marks the invite used in one `db.transaction`, inside the adapter, with the invite update conditional on `used_at is null and revoked_at is null and expires_at > now`. Zero rows updated rolls back and answers `INVITE_INVALID` | Follows plan 0004's rule: atomicity belongs in the adapter, no unit-of-work port. The conditional update settles two simultaneous registrations |
+| A transaction across two aggregates of one module | `AccountInviteRepository.redeem(inviteId, account, now)` inserts the account and marks the invite used in one `db.transaction`, inside the adapter, with the invite update conditional on `used_at is null and revoked_at is null and expires_at > now`. Zero rows updated rolls back and answers `INVITE_INVALID` | Follows plan 0004's rule: atomicity belongs in the adapter, no unit-of-work port. The conditional update settles two simultaneous registrations |
 | A command that runs application code outside the server | `backend/src/scripts/create-admin.ts`, run with `tsx` by `npm --prefix backend run db:create-admin`, and from the root by `npm run db:create-admin`. It builds the accounts module's repository and hasher directly; it never starts the HTTP app | A script is the only way in once sign-up is gone, and it reuses the same domain rules |
 
 ### Data model
@@ -95,12 +95,18 @@ UPDATE accounts SET
   first_name = left(split_part(full_name, ' ', 1), 40),
   last_name = CASE
     WHEN strpos(full_name, ' ') = 0 THEN ''
-    ELSE left(btrim(substr(full_name, strpos(full_name, ' ') + 1)), 40)
+    ELSE btrim(left(btrim(substr(full_name, strpos(full_name, ' ') + 1)), 40))
   END;
 ```
 
 A part longer than 40 characters is cut to 40: `full_name` allows 80, so only a
-name with one very long word is affected.
+first word over 40 characters, or a rest of the name over 40, is affected.
+
+An account the previous release creates during the deploy, after the
+migrations and before the new API is live
+([ADR 0017](../decisions/0017-staging-deploys-every-commit-on-main.md)), gets
+both names empty. So the account mapper splits `full_name` as the backfill
+does whenever `first_name` and `last_name` are both empty.
 
 ### Contract additions — `backend/src/contracts/accounts.ts`
 
@@ -151,7 +157,7 @@ owns the code.
 4. Revoking a used, revoked or unknown invite answers 404 `INVITE_NOT_FOUND` (Step 1.4).
 5. A registration body carrying `email` creates the account with the invite's email, not that one (Step 1.5).
 6. Two simultaneous `POST /auth/register` with one token create one account; the other answers 404 `INVITE_INVALID` (Step 1.5).
-7. `POST /auth/sign-up` answers 404 once phase 2 lands, and nothing in `backend/src` or `frontend/src` still names it (Step 2.4).
+7. `POST /auth/sign-up` answers 404 once phase 2 lands, and nothing in `backend/src` or `frontend/src` still names it except the test that proves the 404 (Step 2.4).
 
 ---
 
@@ -177,17 +183,17 @@ form still sends a full name, which the server splits at the first space.
 
 ### Step 1.4 — Use cases
 
-- [ ] **Action.** Add the repository port and its in-memory fake, then `CreateInvite`, `ListInvites`, `RevokeInvite`, `GetInvite` and `RegisterWithInvite`. `SignUp` splits its full name at the first space into the two names. Tests over the fakes: Review Focus 1, 3 and 4; a second invite to one email revokes the first; an expired, used or revoked token → `InviteInvalidError`; mismatched passwords → 400 under `confirmPassword` and nothing written; a registered account is approved and its `fullName` is "First Last".
+- [ ] **Action.** Add the repository port and its in-memory fake, then `CreateInvite`, `ListInvites`, `RevokeInvite`, `GetInvite` and `RegisterWithInvite`. `SignUp` splits its full name at the first space into the two names, each cut to 40 characters, as the backfill does. Tests over the fakes: Review Focus 1, 3 and 4; a second invite to one email revokes the first; an expired, used or revoked token → `InviteInvalidError`; mismatched passwords → 400 under `confirmPassword` and nothing written; a registered account is approved and its `fullName` is "First Last".
 - [ ] **Verify.** `npm --prefix backend run test:unit -- accounts` passes.
 
 ### Step 1.5 — The repository and the routes
 
-- [ ] **Action.** `DrizzleAccountInviteRepository` with `redeem` in one transaction; the zod schemas (shape only); the controller methods and routes above; the account mapper reads and writes both names. Database tests: Review Focus 6; `add` revokes that email's open invite. HTTP tests: every status in the routes table, Review Focus 2 and 5, the invite routes answer 403 to a signed-in non-admin and 401 without a session.
+- [ ] **Action.** `DrizzleAccountInviteRepository` with `redeem` in one transaction; the zod schemas (shape only); the controller methods and routes above; the account mapper reads and writes both names, with the empty-names fallback above. Database tests: Review Focus 6; `add` revokes that email's open invite; an `accounts` row with both names empty reads back with them split from `full_name`. HTTP tests: every status in the routes table, Review Focus 2 and 5, the invite routes answer 403 to a signed-in non-admin and 401 without a session.
 - [ ] **Verify.** `npm run db:up`, then `npm test` passes.
 
 ### Step 1.6 — Contracts and docs
 
-- [ ] **Action.** The contract additions above, read on the frontend with a fallback (`firstName ?? ''`, `lastName ?? ''`) so a new frontend works with the old API during a release. `docs/reference/api.md`: the five routes and the two new error codes. `docs/reference/data-model.md`: `account_invites` and the two columns.
+- [ ] **Action.** The contract additions above, read on the frontend with a fallback (`firstName ?? ''`, `lastName ?? ''`) so a new frontend works with the old API during a release. `docs/reference/api.md`: the five routes, the two new error codes, `firstName` and `lastName` in the `Account` table, and the `AccountInvite` shape. `docs/reference/data-model.md`: `account_invites` and the two columns.
 - [ ] **Verify.** `npm run typecheck && npm run docs:check` exits 0; `npm --prefix frontend run build` exits 0.
 
 ### Step 1.7 — Open the pull request
@@ -203,7 +209,7 @@ One pull request, "Closes #21".
 
 ### Step 2.1 — Gateway and hooks
 
-- [ ] **Action.** The five gateway methods with their HTTP adapter and tests; hooks `useCreateInvite`, `useInvites`, `useRevokeInvite` (each invalidating `accountsKeys.all`), `useInvite(token)` and `useRegister`.
+- [ ] **Action.** The five gateway methods with their HTTP adapter and tests; hooks `useCreateInvite` and `useRevokeInvite` (each invalidating `accountsKeys.all`), `useInvites` (keyed under `accountsKeys.all`), `useInvite(token)` and `useRegister`.
 - [ ] **Verify.** `npm --prefix frontend run test -- --no-file-parallelism accounts` passes.
 
 ### Step 2.2 — The Accounts page
@@ -218,12 +224,12 @@ One pull request, "Closes #21".
 
 ### Step 2.4 — Close open sign-up
 
-- [ ] **Action.** Remove `POST /auth/sign-up`, `SignUp`, the `SignUpRateLimiter` port and `SlidingWindowSignUpRateLimiter`, `SignUpForm`, `useSignUp` and the gateway's `signUp`. `SignUpPage` becomes #21's invite-only note; the sign-in page loses its footer link. Update `docs/explanation/constraints.md` and `docs/reference/api.md` (remove the route and `SIGN_UP_RATE_LIMITED`).
-- [ ] **Verify.** Review Focus 7: `git grep -n -i "sign-up\|signUp" -- backend/src frontend/src` prints only the `/sign-up` route and `SignUpPage`; an HTTP test proves `POST /api/v1/auth/sign-up` answers 404.
+- [ ] **Action.** Remove `POST /auth/sign-up`, `SignUp`, the `SignUpRateLimiter` port and `SlidingWindowSignUpRateLimiter`, `SignUpForm`, `useSignUp` and the gateway's `signUp`, and `domain/full-name.ts`, its test and `InvalidFullNameError`, which only `SignUp` used. `sign-in.test.ts` and `auth.routes.test.ts` stop creating accounts through `SignUp`: they add them to `InMemoryAccountRepository` with `Account.register` (pending ones with `autoApprove: false`). `SignUpPage` becomes #21's invite-only note; the sign-in page loses its footer link. Update `docs/explanation/constraints.md` and `docs/reference/api.md` (remove the route and `SIGN_UP_RATE_LIMITED`, and describe `EMAIL_NOT_ALLOWED` as an invite's email, not a sign-up's).
+- [ ] **Verify.** Review Focus 7: `git grep -n -i "sign-up\|signUp" -- backend/src frontend/src` prints only the `/sign-up` route and `SignUpPage` (in `routes.tsx`, `SignUpPage.tsx`, `next-path.ts` and their tests) and the HTTP test that proves `POST /api/v1/auth/sign-up` answers 404.
 
 ### Step 2.5 — The create-admin command
 
-- [ ] **Action.** `backend/src/scripts/create-admin.ts` (exporting `createAdmin(db, input)` for tests), `"db:create-admin": "tsx src/scripts/create-admin.ts"` in `backend/package.json` and `"db:create-admin": "npm --prefix backend run db:create-admin --"` in the root `package.json`. `backend/src/compose.db.test.ts` and `backend/src/atlas.db.test.ts` create their admin with `createAdmin` instead of signing up, then sign in as before. Document it in `docs/reference/commands.md`.
+- [ ] **Action.** `backend/src/scripts/create-admin.ts` (exporting `createAdmin(db, input)` for tests): it takes `--email`, `--first-name` and `--last-name`, and reads the password from `ADMIN_PASSWORD` for that one run. `"db:create-admin": "tsx src/scripts/create-admin.ts"` in `backend/package.json` and `"db:create-admin": "npm --prefix backend run db:create-admin --"` in the root `package.json`. `backend/src/compose.db.test.ts` and `backend/src/atlas.db.test.ts` create their admin with `createAdmin` instead of signing up, then sign in as before. Document it in `docs/reference/commands.md`, and `ADMIN_PASSWORD` in `docs/reference/environment.md` and, commented out, in `backend/.env.example`.
 - [ ] **Verify.** Tests: `createAdmin` refuses with `NODE_ENV=production` and refuses an email not in `ACCOUNT_ADMIN_EMAILS`. `npm test` passes with the database running.
 
 ### Step 2.6 — Check it in a browser
@@ -233,7 +239,7 @@ One pull request, "Closes #21".
 
 ### Step 2.7 — Open the pull request, then staging
 
-- [ ] **Action.** Open "Closes #21" with the template, the screenshots and a `Tooling change:` exception for them.
+- [ ] **Action.** Open "Closes #21" with the template, the screenshots and a `Tooling change:` exception for them and the root `package.json` script.
 - [ ] **Verify.** CI and `pr-audit` pass. After merge, run #21's staging check and write the result as a comment on #21.
 
 ---
