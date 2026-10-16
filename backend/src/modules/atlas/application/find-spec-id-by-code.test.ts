@@ -5,6 +5,7 @@ import { FindSpecIdByCode } from './find-spec-id-by-code.js';
 import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
+import { UpdateSpecId } from './update-spec-id.js';
 
 const ILLUSTRATIVE = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX';
 const FACTS = {
@@ -45,5 +46,72 @@ describe('FindSpecIdByCode', () => {
     const result = await find.execute({ code: ILLUSTRATIVE.replace('.0090.', '.0091.') });
     expect(!result.ok && result.error).toBeInstanceOf(SpecIdNotFoundError);
     expect(!result.ok && result.error.message).toBe('No saved Spec ID has this code. Check it, or build and save it.');
+  });
+});
+
+describe('FindSpecIdByCode, after codes change', () => {
+  const EDITOR = { id: '00000000-0000-4000-8000-0000000000bb', fullName: 'Ben Invented' };
+  const C1 = ILLUSTRATIVE;
+  const C2 = ILLUSTRATIVE.replace('.0000.', '.0012.');
+
+  /** A is saved as C1 and corrected to C2; `takeC1` then saves B as C1. */
+  async function setup(takeC1: boolean) {
+    const dictionaries = new InMemoryDictionaryRepository();
+    const specIds = new InMemorySpecIdRepository();
+    specIds.nameSaver(SAVER.id, SAVER.fullName);
+    specIds.nameSaver(EDITOR.id, EDITOR.fullName);
+    const ids = new SequentialIdGenerator();
+    const save = new SaveSpecId(dictionaries, specIds, new FixedClock(new Date('2026-10-16T08:00:00.000Z')), ids);
+    const a = await save.execute({ name: 'A', facts: FACTS, savedBy: SAVER });
+    if (!a.ok) throw a.error;
+    const corrected = await new UpdateSpecId(
+      dictionaries,
+      specIds,
+      new FixedClock(new Date('2026-10-17T08:00:00.000Z')),
+      ids,
+    ).execute({ id: a.value.id, name: 'A', facts: { ...FACTS, height: { value: '12', unit: 'mm' } }, version: 1, updatedBy: EDITOR });
+    if (!corrected.ok) throw corrected.error;
+    if (takeC1) {
+      const b = await save.execute({ name: 'B', facts: FACTS, savedBy: SAVER });
+      if (!b.ok) throw b.error;
+    }
+    return { find: new FindSpecIdByCode(dictionaries, specIds), aId: a.value.id };
+  }
+
+  it('answers the Spec ID a replaced code became, naming the code asked for', async () => {
+    const { find, aId } = await setup(false);
+
+    const result = await find.execute({ code: C1 });
+
+    if (!result.ok) throw result.error;
+    expect(result.value.id).toBe(aId);
+    expect(result.value.code).toBe(C2);
+    expect(result.value.replacedCode).toBe(C1);
+    expect(result.value.formerHolders).toEqual([]);
+  });
+
+  it('answers the Spec ID that has a code now, with every one that had it before', async () => {
+    const { find, aId } = await setup(true);
+
+    const result = await find.execute({ code: C1 });
+
+    if (!result.ok) throw result.error;
+    expect(result.value.name).toBe('B');
+    expect(result.value.replacedCode).toBeNull();
+    expect(result.value.formerHolders).toEqual([
+      { id: aId, name: 'A', code: C2, until: '2026-10-17T08:00:00.000Z' },
+    ]);
+  });
+
+  it('finds a code typed in lower case', async () => {
+    const { find } = await setup(true);
+    const result = await find.execute({ code: C1.toLowerCase() });
+    expect(result.ok && result.value.name).toBe('B');
+  });
+
+  it('answers no former holders for a code that never changed', async () => {
+    const { find } = await setup(false);
+    const result = await find.execute({ code: C2 });
+    expect(result.ok && result.value.formerHolders).toEqual([]);
   });
 });

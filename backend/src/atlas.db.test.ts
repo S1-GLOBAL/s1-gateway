@@ -44,7 +44,7 @@ beforeAll(async () => {
   await agent.post('/api/v1/auth/sign-in').send({ email: ADMIN, password: PASSWORD });
 });
 beforeEach(async () => {
-  await connection.db.execute(sql`truncate table atlas_spec_ids`);
+  await connection.db.execute(sql`truncate table atlas_spec_id_changes, atlas_spec_ids`);
 });
 afterAll(() => connection.close());
 
@@ -173,10 +173,10 @@ describe('Atlas, composed over Postgres', () => {
     expect(response.body.error.details.fields.colour).toEqual(['Not a slot of an S1 Spec ID.']);
   });
 
-  it('answers 404 to PUT and DELETE on every path when signed in: nothing changes the dictionary or a saved Spec ID', async () => {
-    await agent.post(SPEC_IDS).send({ name: 'Illustrative lid', facts: FACTS });
+  it('answers 404 to PUT and DELETE on every path when signed in: nothing replaces or deletes the dictionary or a saved Spec ID', async () => {
+    const saved = await agent.post(SPEC_IDS).send({ name: 'Illustrative lid', facts: FACTS });
 
-    for (const path of [...PATHS, ...SAVED_PATHS]) {
+    for (const path of [...PATHS, ...SAVED_PATHS, `/api/v1/atlas/saved/${saved.body.data.id}`]) {
       for (const method of ['put', 'delete'] as const) {
         const response = await agent[method](path).send({});
         expect({ method, path, status: response.status, code: response.body.error?.code }).toEqual({
@@ -188,5 +188,67 @@ describe('Atlas, composed over Postgres', () => {
       }
     }
     expect(await savedCount()).toBe(1);
+  });
+
+  it('refuses to change a Spec ID without a session, and changes nothing', async () => {
+    const saved = await agent.post(SPEC_IDS).send({ name: 'Illustrative lid', facts: FACTS });
+
+    const response = await request(app)
+      .patch(`/api/v1/atlas/saved/${saved.body.data.id}`)
+      .send({ name: 'Changed', facts: FACTS, version: 1 });
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe('SIGN_IN_REQUIRED');
+    expect((await agent.get(`/api/v1/atlas/saved/${saved.body.data.id}`)).body.data.name).toBe('Illustrative lid');
+  });
+
+  it('changes a Spec ID, records the change, and still finds it by its old code', async () => {
+    const saved = await agent.post(SPEC_IDS).send({ name: 'Illustrative lid', facts: FACTS });
+    const path = `/api/v1/atlas/saved/${saved.body.data.id}`;
+
+    const changed = await agent
+      .patch(path)
+      .send({ name: 'Illustrative lid', facts: { ...FACTS, height: { value: '12', unit: 'mm' } }, version: 1 });
+    const history = await agent.get(`${path}/history`);
+    const byOldCode = await agent.get(`${SPEC_IDS}/${encodeURIComponent(ILLUSTRATIVE.toLowerCase())}`);
+
+    expect(changed.status).toBe(200);
+    expect(changed.body.data.version).toBe(2);
+    expect(changed.body.data.updatedBy.fullName).toBe('Admin');
+    expect(history.body.data.map((entry: { kind: string }) => entry.kind)).toEqual(['updated', 'created']);
+    expect(history.body.data[0].slots).toEqual([
+      { key: 'height', name: 'Height', before: 'Not known', after: '12 mm', corrected: false },
+    ]);
+    expect(byOldCode.status).toBe(200);
+    expect(byOldCode.body.data.id).toBe(saved.body.data.id);
+    expect(byOldCode.body.data.replacedCode).toBe(ILLUSTRATIVE);
+  });
+
+  it('answers 409 SPEC_ID_CHANGED to a second change from the same version', async () => {
+    const saved = await agent.post(SPEC_IDS).send({ name: 'Illustrative lid', facts: FACTS });
+    const path = `/api/v1/atlas/saved/${saved.body.data.id}`;
+    await agent.patch(path).send({ name: 'First change', facts: FACTS, version: 1 });
+
+    const second = await agent.patch(path).send({ name: 'Second change', facts: FACTS, version: 1 });
+
+    expect(second.status).toBe(409);
+    expect(second.body.error.code).toBe('SPEC_ID_CHANGED');
+    expect((await agent.get(path)).body.data.name).toBe('First change');
+  });
+
+  it('answers 404 to a saved Spec ID path whose id is not an id', async () => {
+    const response = await agent.get('/api/v1/atlas/saved/not-a-uuid');
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe('SPEC_ID_NOT_FOUND');
+  });
+
+  it('lists the library newest change first', async () => {
+    await agent.post(SPEC_IDS).send({ name: 'Illustrative lid', facts: FACTS });
+
+    const response = await agent.get('/api/v1/atlas/saved');
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.items.map((item: { name: string }) => item.name)).toEqual(['Illustrative lid']);
+    expect(response.body.data.nextCursor).toBeNull();
   });
 });

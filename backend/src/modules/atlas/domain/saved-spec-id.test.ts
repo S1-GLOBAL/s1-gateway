@@ -70,3 +70,48 @@ describe('checkName', () => {
     expect(checkName('Illustrative lid')).toEqual([]);
   });
 });
+
+describe('SavedSpecId.revise', () => {
+  const saved = (() => {
+    const result = create('Illustrative lid');
+    if (!result.ok) throw result.error;
+    return result.value;
+  })();
+  const revise = (name: string) =>
+    saved.revise({
+      specId,
+      name,
+      dictionaryRelease: 'S1 0.1.0',
+      by: '00000000-0000-4000-8000-0000000000bb',
+      at: new Date('2026-10-17T08:00:00.000Z'),
+    });
+
+  it('starts at version 1, changed by nobody yet', () => {
+    expect(saved.version).toBe(1);
+    expect(saved.updatedBy).toBeNull();
+    expect(saved.updatedAt).toBeNull();
+    expect(saved.lastChangedAt.toISOString()).toBe('2026-10-16T08:00:00.000Z');
+  });
+
+  it('raises the version by 1, trims the name, and records who changed it and when', () => {
+    const result = revise('  Clear dome lid  ');
+    if (!result.ok) throw result.error;
+    expect(result.value.version).toBe(2);
+    expect(result.value.name).toBe('Clear dome lid');
+    expect(result.value.updatedBy).toBe('00000000-0000-4000-8000-0000000000bb');
+    expect(result.value.lastChangedAt.toISOString()).toBe('2026-10-17T08:00:00.000Z');
+  });
+
+  it('keeps its id, and who saved it first and when', () => {
+    const result = revise('Clear dome lid');
+    if (!result.ok) throw result.error;
+    expect(result.value.id).toBe(saved.id);
+    expect(result.value.savedBy).toBe(saved.savedBy);
+    expect(result.value.savedAt.toISOString()).toBe('2026-10-16T08:00:00.000Z');
+  });
+
+  it('refuses a name of 121 characters', () => {
+    const result = revise('a'.repeat(121));
+    expect(!result.ok && result.error.issues).toEqual({ name: ['Name must be at most 120 characters.'] });
+  });
+});

@@ -124,11 +124,19 @@ export interface SavedBy {
 
 /** A Spec ID someone saved, with its name and who saved it when. */
 export interface SavedSpecId extends DecodedSpecId {
+  /** Permanent: it never changes, though the code does. */
+  id: string;
   /** 1–120 characters. */
   name: string;
   savedBy: SavedBy;
   /** ISO 8601. */
   savedAt: string;
+  /** 1 when saved; raised by 1 on every saved change. Send it back with `PATCH`. */
+  version: number;
+  /** Null until the first change. */
+  updatedBy: SavedBy | null;
+  /** ISO 8601; null until the first change. */
+  updatedAt: string | null;
 }
 
 /** `POST /atlas/spec-ids`. */
@@ -146,4 +154,66 @@ export interface SpecIdExistsDetails {
 export interface SimilarSpecIds {
   fits: SavedSpecId[];
   mightFit: SavedSpecId[];
+}
+
+/** `GET /atlas/saved`: one page of the library, newest change first. */
+export interface SpecIdLibraryPage {
+  /** At most 20. */
+  items: SavedSpecId[];
+  /** Pass as `cursor` for the next page; null on the last page. */
+  nextCursor: string | null;
+}
+
+/** `PATCH /atlas/saved/:id`. */
+export interface UpdateSpecIdRequest {
+  name: string;
+  facts: SpecIdFacts;
+  /** The `version` the change was started from. */
+  version: number;
+}
+
+/** One slot that a change altered, in plain words. */
+export interface SlotChange {
+  key: SlotKey;
+  /** As people read it: "Top diameter". */
+  name: string;
+  /** "Not known", "Doesn't apply", "90 mm". */
+  before: string;
+  after: string;
+  /** A known value was replaced. */
+  corrected: boolean;
+}
+
+/** One entry of `GET /atlas/saved/:id/history`, newest first. */
+export interface SpecIdChange {
+  kind: 'created' | 'updated';
+  changedBy: SavedBy;
+  /** ISO 8601. */
+  changedAt: string;
+  /** Null for `created`. */
+  codeBefore: string | null;
+  codeAfter: string;
+  /** Null for `created`. */
+  nameBefore: string | null;
+  nameAfter: string;
+  /** Empty for `created`, and for a change of name only. */
+  slots: SlotChange[];
+}
+
+/** A Spec ID that once had the code asked for. */
+export interface FormerHolder {
+  id: string;
+  name: string;
+  /** Its code now. */
+  code: string;
+  /** ISO 8601: when it stopped having the code asked for. */
+  until: string;
+}
+
+/** `GET /atlas/spec-ids/:code`. */
+export interface SpecIdLookup extends SavedSpecId {
+  /** The code asked for, when no Spec ID has it now and this one once did; otherwise null. */
+  replacedCode: string | null;
+  /** Every other Spec ID that once had the code asked for, newest first. */
+  formerHolders: FormerHolder[];
 }

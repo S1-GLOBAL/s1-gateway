@@ -1,10 +1,14 @@
 import { SavedSpecId } from '../domain/saved-spec-id.js';
+import { SpecIdChange, type SpecIdChangeKind } from '../domain/spec-id-change.js';
 import { FORMAT_VERSION, SLOTS } from '../domain/slots.js';
 import { SpecId } from '../domain/spec-id.js';
+import type { atlasSpecIdChanges } from './atlas-spec-id-changes.table.js';
 import type { atlasSpecIds } from './atlas-spec-ids.table.js';
 
 type SpecIdRow = typeof atlasSpecIds.$inferSelect;
 type NewSpecIdRow = typeof atlasSpecIds.$inferInsert;
+type ChangeRow = typeof atlasSpecIdChanges.$inferSelect;
+type NewChangeRow = typeof atlasSpecIdChanges.$inferInsert;
 
 /** Every slot's raw text, as the row holds it. The format version is not stored: it is always S1. */
 function slotValues(row: SpecIdRow) {
@@ -21,6 +25,9 @@ export function toDomain(row: SpecIdRow): SavedSpecId {
     dictionaryRelease: row.dictionaryRelease,
     savedBy: row.savedBy,
     savedAt: row.savedAt,
+    version: row.version,
+    updatedBy: row.updatedBy,
+    updatedAt: row.updatedAt,
   });
 }
 
@@ -50,5 +57,36 @@ export function toRow(saved: SavedSpecId): NewSpecIdRow {
     dictionaryRelease: saved.dictionaryRelease,
     savedBy: saved.savedBy,
     savedAt: saved.savedAt,
+    version: saved.version,
+    updatedBy: saved.updatedBy,
+    updatedAt: saved.updatedAt,
+  };
+}
+
+export function toChange(row: ChangeRow): SpecIdChange {
+  return SpecIdChange.restore({
+    id: row.id,
+    specId: row.specId,
+    kind: row.kind as SpecIdChangeKind,
+    changedBy: row.changedBy,
+    changedAt: row.changedAt,
+    codeBefore: row.codeBefore,
+    codeAfter: row.codeAfter,
+    nameBefore: row.nameBefore,
+    nameAfter: row.nameAfter,
+  });
+}
+
+export function toChangeRow(change: SpecIdChange): NewChangeRow {
+  return {
+    id: change.id,
+    specId: change.specId,
+    kind: change.kind,
+    changedBy: change.changedBy,
+    changedAt: change.changedAt,
+    codeBefore: change.codeBefore,
+    codeAfter: change.codeAfter,
+    nameBefore: change.nameBefore,
+    nameAfter: change.nameAfter,
   };
 }

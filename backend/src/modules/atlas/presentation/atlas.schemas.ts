@@ -6,6 +6,7 @@ import type {
   MeasurementFact,
   SaveSpecIdRequest,
   SpecIdFacts,
+  UpdateSpecIdRequest,
 } from '../../../contracts/atlas.js';
 
 /*
@@ -51,3 +52,12 @@ export const saveSpecIdRequestSchema = z.object({
   name: z.string(),
   facts: specIdFactsSchema,
 }) satisfies z.ZodType<SaveSpecIdRequest>;
+
+export const updateSpecIdRequestSchema = z.object({
+  name: z.string(),
+  facts: specIdFactsSchema,
+  version: z.number().int().positive(),
+}) satisfies z.ZodType<UpdateSpecIdRequest>;
+
+/** A saved Spec ID's id: anything else names no Spec ID, so it is answered 404 before any query. */
+export const savedSpecIdIdSchema = z.guid();

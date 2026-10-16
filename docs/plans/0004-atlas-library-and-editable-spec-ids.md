@@ -58,7 +58,7 @@ request, stopping for the owner after each.
 
 | Phase | Steps | Status |
 |---|---|---|
-| 1. Server: editable Spec IDs, history, library API | 0 / 7 | Not started |
+| 1. Server: editable Spec IDs, history, library API | 6 / 7 | In progress — step 1.7's staging check remains after merge |
 | 2. Workspace and History | 0 / 6 | Not started |
 | 3. Library | 0 / 5 | Not started |
 
@@ -189,33 +189,33 @@ One pull request, "Part of #16".
 
 ### Step 1.1 — Record the decision
 
-- [ ] **Action.** Write `docs/decisions/0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md` from `_template.md`, Accepted, dated the day it is written: saved Spec IDs are editable by any signed-in staff member, the code follows the facts, every change is a row in `atlas_spec_id_changes`, a corrected-away code is free and still finds its former holder, concurrent saves are refused by `version`. Alternatives: codes permanent with a new Spec ID per correction (rejected by reyxdz on 2026-10-17); last save wins (rejected, same date). Add to ADR 0019's status line "Partly superseded by 0022", linked to the new file, and a sentence saying "A code is permanent once issued" no longer holds for saved Spec IDs; add the same note to ADR 0021 for "or a saved Spec ID". Add 0022 to `docs/decisions/README.md`.
-- [ ] **Verify.** `npm run docs:check` exits 0.
+- [x] **Action.** Write `docs/decisions/0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md` from `_template.md`, Accepted, dated the day it is written: saved Spec IDs are editable by any signed-in staff member, the code follows the facts, every change is a row in `atlas_spec_id_changes`, a corrected-away code is free and still finds its former holder, concurrent saves are refused by `version`. Alternatives: codes permanent with a new Spec ID per correction (rejected by reyxdz on 2026-10-17); last save wins (rejected, same date). Add to ADR 0019's status line "Partly superseded by 0022", linked to the new file, and a sentence saying "A code is permanent once issued" no longer holds for saved Spec IDs; add the same note to ADR 0021 for "or a saved Spec ID". Add 0022 to `docs/decisions/README.md`.
+- [x] **Verify.** `npm run docs:check` exits 0.
 
 ### Step 1.2 — Columns, the change table, and the backfill
 
-- [ ] **Action.** Add the three columns to `atlas-spec-ids.table.ts` and the new table file, export it from `backend/src/database-schema.ts`, run `npm --prefix backend run db:generate -- --name atlas_spec_ids_editable_with_history`, then the custom backfill migration above. Extend `resetTables`, and in `backend/src/atlas.db.test.ts` change the `beforeEach` truncate to `truncate table atlas_spec_id_changes, atlas_spec_ids`: Postgres refuses to truncate a table another table's foreign key points at.
-- [ ] **Verify.** `npm run db:migrate` applies both; the generated SQL only adds (no `DROP`, no `ALTER COLUMN … TYPE`); a second `db:generate` prints "No schema changes"; a `*.db.test.ts` proves every Spec ID existing before the backfill has exactly one `created` row.
+- [x] **Action.** Add the three columns to `atlas-spec-ids.table.ts` and the new table file, export it from `backend/src/database-schema.ts`, run `npm --prefix backend run db:generate -- --name atlas_spec_ids_editable_with_history`, then the custom backfill migration above. Extend `resetTables`, and in `backend/src/atlas.db.test.ts` change the `beforeEach` truncate to `truncate table atlas_spec_id_changes, atlas_spec_ids`: Postgres refuses to truncate a table another table's foreign key points at.
+- [x] **Verify.** `npm run db:migrate` applies both; the generated SQL only adds (no `DROP`, no `ALTER COLUMN … TYPE`); a second `db:generate` prints "No schema changes"; a `*.db.test.ts` proves every Spec ID existing before the backfill has exactly one `created` row.
 
 ### Step 1.3 — The domain: revise, change, diff
 
-- [ ] **Action.** Tests first, then `SavedSpecId.revise`, `SpecIdChange`, `diffCodes` and `SpecIdChangedError`. Tests: revise raises `version` by 1 and trims the name; a 121-character name is refused; `diffCodes` of `…0000…` → `…0062…` gives one row, not corrected; `0120` → `0118` corrected; a product-type change from bowl to bowl lid shows capacity `Z0016` → `XXXXX`, corrected; identical codes give no rows.
-- [ ] **Verify.** `npm --prefix backend run test:unit -- atlas` passes; `npm run arch:check` exits 0.
+- [x] **Action.** Tests first, then `SavedSpecId.revise`, `SpecIdChange`, `diffCodes` and `SpecIdChangedError`. Tests: revise raises `version` by 1 and trims the name; a 121-character name is refused; `diffCodes` of `…0000…` → `…0062…` gives one row, not corrected; `0120` → `0118` corrected; a product-type change from bowl to bowl lid shows capacity `Z0016` → `XXXXX`, corrected; identical codes give no rows.
+- [x] **Verify.** `npm --prefix backend run test:unit -- atlas` passes; `npm run arch:check` exits 0.
 
 ### Step 1.4 — Update, get, history, and lookups in the application layer
 
-- [ ] **Action.** Extend the port and its in-memory fake; add `UpdateSpecId`, `GetSavedSpecId`, `GetSpecIdHistory`; make `SaveSpecId` write the `created` change and `FindSpecIdByCode` answer `SpecIdLookup`. Tests over the fakes, one per row: new facts change the code and write one `updated` change; a stale `version` → `SpecIdChangedError`, nothing written; another Spec ID's code → `SpecIdExistsError` with it, nothing written; a rename alone → one change, no slot rows; no change → no row; A corrected C1 → C2, then B saved as C1 → lookup of C1 answers B with A in `formerHolders`; a lookup of C2's old code with no current holder answers A with `replacedCode`.
-- [ ] **Verify.** `npm --prefix backend run test:unit -- atlas` passes.
+- [x] **Action.** Extend the port and its in-memory fake; add `UpdateSpecId`, `GetSavedSpecId`, `GetSpecIdHistory`; make `SaveSpecId` write the `created` change and `FindSpecIdByCode` answer `SpecIdLookup`. Tests over the fakes, one per row: new facts change the code and write one `updated` change; a stale `version` → `SpecIdChangedError`, nothing written; another Spec ID's code → `SpecIdExistsError` with it, nothing written; a rename alone → one change, no slot rows; no change → no row; A corrected C1 → C2, then B saved as C1 → lookup of C1 answers B with A in `formerHolders`; a lookup of C2's old code with no current holder answers A with `replacedCode`.
+- [x] **Verify.** `npm --prefix backend run test:unit -- atlas` passes.
 
 ### Step 1.5 — The repository, the library query and the routes
 
-- [ ] **Action.** Implement the port in `drizzle-spec-id-repository.ts` (transactions, the conditional `UPDATE … WHERE id = ? AND version = ?`, the keyset cursor, `ilike` with `%` and `_` escaped). Add the zod schemas (`version` a positive integer; `:id` a UUID or 404; `cursor` decodable or 400), controller methods and routes. Database tests: two concurrent `update`s with one `version` leave one change; the library pages 21 Spec IDs as 20 + 1; `%` matches only a literal `%`; a garbage cursor → 400; a lower-case pasted code is found. HTTP tests: every #16 status, a non-UUID `:id` on each `/saved/:id` route → 404 `SPEC_ID_NOT_FOUND`, `PATCH` without a session → 401, `PUT`/`DELETE` on every Atlas path → 404.
-- [ ] **Verify.** `npm run db:up`, then `npm test` passes, including `backend/src/atlas.db.test.ts`.
+- [x] **Action.** Implement the port in `drizzle-spec-id-repository.ts` (transactions, the conditional `UPDATE … WHERE id = ? AND version = ?`, the keyset cursor, `ilike` with `%` and `_` escaped). Add the zod schemas (`version` a positive integer; `:id` a UUID or 404; `cursor` decodable or 400), controller methods and routes. Database tests: two concurrent `update`s with one `version` leave one change; the library pages 21 Spec IDs as 20 + 1; `%` matches only a literal `%`; a garbage cursor → 400; a lower-case pasted code is found. HTTP tests: every #16 status, a non-UUID `:id` on each `/saved/:id` route → 404 `SPEC_ID_NOT_FOUND`, `PATCH` without a session → 401, `PUT`/`DELETE` on every Atlas path → 404.
+- [x] **Verify.** `npm run db:up`, then `npm test` passes, including `backend/src/atlas.db.test.ts`.
 
 ### Step 1.6 — Contracts and API docs
 
-- [ ] **Action.** The contract additions above; `docs/reference/api.md` (the four routes, `SPEC_ID_CHANGED`, `formerHolders`/`replacedCode`; remove "Nothing updates or deletes a saved Spec ID" and say what replaces it); `docs/reference/data-model.md` (the columns, the table, its indexes).
-- [ ] **Verify.** `npm run typecheck && npm run docs:check` exits 0. The frontend still builds against the wider `SavedSpecId`: `npm --prefix frontend run build` exits 0.
+- [x] **Action.** The contract additions above; `docs/reference/api.md` (the four routes, `SPEC_ID_CHANGED`, `formerHolders`/`replacedCode`; remove "Nothing updates or deletes a saved Spec ID" and say what replaces it); `docs/reference/data-model.md` (the columns, the table, its indexes).
+- [x] **Verify.** `npm run typecheck && npm run docs:check` exits 0. The frontend still builds against the wider `SavedSpecId`: `npm --prefix frontend run build` exits 0.
 
 ### Step 1.7 — Open the pull request
 
