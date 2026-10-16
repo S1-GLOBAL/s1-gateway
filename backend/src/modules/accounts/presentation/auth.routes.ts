@@ -6,6 +6,9 @@ export function createPublicAuthRouter(controller: AuthController): Router {
   router.post('/sign-up', controller.signUpHandler);
   router.post('/sign-in', controller.signInHandler);
   router.post('/reset-password', controller.resetPasswordHandler);
+  router.get('/invites/:token', controller.getInviteHandler);
+  router.use('/invites', controller.undecodableInviteHandler);
+  router.post('/register', controller.registerHandler);
   return router;
 }
 

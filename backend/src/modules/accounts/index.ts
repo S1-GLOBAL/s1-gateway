@@ -4,14 +4,20 @@ import type { Database } from '../../shared/infrastructure/database/connection.j
 import type { HttpModule } from '../../shared/presentation/http/http-module.js';
 import { ApproveAccount } from './application/approve-account.js';
 import { ChangePassword } from './application/change-password.js';
+import { CreateInvite } from './application/create-invite.js';
 import { CreatePasswordResetLink } from './application/create-password-reset-link.js';
 import { DisableAccount } from './application/disable-account.js';
+import { GetInvite } from './application/get-invite.js';
 import { GetMe } from './application/get-me.js';
 import { ListAccounts } from './application/list-accounts.js';
+import { ListInvites } from './application/list-invites.js';
+import { RegisterWithInvite } from './application/register-with-invite.js';
 import { ResetPasswordWithToken } from './application/reset-password-with-token.js';
+import { RevokeInvite } from './application/revoke-invite.js';
 import { SignIn } from './application/sign-in.js';
 import { SignOut } from './application/sign-out.js';
 import { SignUp } from './application/sign-up.js';
+import { DrizzleAccountInviteRepository } from './infrastructure/drizzle-account-invite-repository.js';
 import { DrizzleAccountRepository } from './infrastructure/drizzle-account-repository.js';
 import { DrizzlePasswordResetTokenRepository } from './infrastructure/drizzle-password-reset-token-repository.js';
 import { DrizzleSessionRepository } from './infrastructure/drizzle-session-repository.js';
@@ -44,6 +50,7 @@ export function buildAccountsModule(deps: AccountsModuleDependencies): AccountsH
   const accounts = new DrizzleAccountRepository(deps.db);
   const sessions = new DrizzleSessionRepository(deps.db);
   const resetTokens = new DrizzlePasswordResetTokenRepository(deps.db);
+  const invites = new DrizzleAccountInviteRepository(deps.db);
   const passwordHasher = new ScryptPasswordHasher();
   const tokens = new RandomTokenGenerator();
   const rateLimiter = new SlidingWindowSignUpRateLimiter();
@@ -57,6 +64,10 @@ export function buildAccountsModule(deps: AccountsModuleDependencies): AccountsH
     new ResetPasswordWithToken(accounts, resetTokens, sessions, passwordHasher, tokens, deps.clock),
     deps.accountAdminEmails,
     deps.cookieSecure,
+    {
+      get: new GetInvite(invites, tokens, deps.clock),
+      register: new RegisterWithInvite(invites, passwordHasher, tokens, deps.clock, deps.ids),
+    },
   );
 
   const accountsController = new AccountsController(
@@ -66,6 +77,11 @@ export function buildAccountsModule(deps: AccountsModuleDependencies): AccountsH
     new CreatePasswordResetLink(accounts, resetTokens, sessions, tokens, deps.clock, deps.ids),
     deps.accountAdminEmails,
     deps.corsOrigin,
+    {
+      create: new CreateInvite(accounts, invites, tokens, deps.clock, deps.ids),
+      list: new ListInvites(invites, deps.clock),
+      revoke: new RevokeInvite(invites, deps.clock),
+    },
   );
 
   const gateDeps: SessionGateDeps = {

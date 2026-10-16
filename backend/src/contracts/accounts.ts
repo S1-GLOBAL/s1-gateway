@@ -5,6 +5,10 @@ export type AccountStatus = 'pending' | 'approved' | 'disabled';
 export interface Account {
   id: string;
   email: string;
+  firstName: string;
+  /** Empty for an account whose name was one word before names were split. */
+  lastName: string;
+  /** "First Last". */
   fullName: string;
   status: AccountStatus;
   mustChangePassword: boolean;
@@ -45,4 +49,38 @@ export interface PasswordResetLink {
   resetUrl: string;
   /** ISO 8601. */
   expiresAt: string;
+}
+
+/** An unused invite, as the admin's Invited section lists it. Never its token. */
+export interface AccountInvite {
+  id: string;
+  email: string;
+  /** ISO 8601. */
+  expiresAt: string;
+}
+
+export interface CreateInviteRequest {
+  email: string;
+}
+
+export interface CreateInviteResponse {
+  invite: AccountInvite;
+  /** `{CORS_ORIGIN}/register?token=…` — shown once, never stored. */
+  inviteUrl: string;
+}
+
+/** `GET /auth/invites/:token`: what the registration page shows before the account exists. */
+export interface InviteDetails {
+  email: string;
+  /** ISO 8601. */
+  expiresAt: string;
+}
+
+/** The email comes from the invite; one sent here is ignored. */
+export interface RegisterRequest {
+  token: string;
+  firstName: string;
+  lastName: string;
+  password: string;
+  confirmPassword: string;
 }

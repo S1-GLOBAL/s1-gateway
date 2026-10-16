@@ -1,22 +1,52 @@
 import type { Request, Response } from 'express';
-import type { Account as AccountContract, PasswordResetLink } from '../../../contracts/accounts.js';
+import type {
+  Account as AccountContract,
+  AccountInvite as AccountInviteContract,
+  CreateInviteResponse,
+  PasswordResetLink,
+} from '../../../contracts/accounts.js';
 import type { UseCase } from '../../../shared/application/use-case.js';
 import type { Result } from '../../../shared/domain/result.js';
 import { HttpError } from '../../../shared/presentation/http/http-error.js';
+import { parseBody } from '../../../shared/presentation/http/parse-body.js';
 import { sendData } from '../../../shared/presentation/http/respond.js';
 import type { AccountDto } from '../application/account.dto.js';
+import type { AccountInviteDto } from '../application/account-invite.dto.js';
 import type { ApproveAccountInput } from '../application/approve-account.js';
+import type { CreateInviteError, CreateInviteInput, CreateInviteOutput } from '../application/create-invite.js';
 import type {
   CreatePasswordResetLinkInput,
   CreatePasswordResetLinkOutput,
 } from '../application/create-password-reset-link.js';
 import type { DisableAccountInput } from '../application/disable-account.js';
 import type { AccountsByStatus } from '../application/list-accounts.js';
-import { AccountNotFoundError } from '../domain/account.errors.js';
+import type { RevokeInviteInput } from '../application/revoke-invite.js';
+import { AccountNotFoundError, InviteNotFoundError } from '../domain/account.errors.js';
+import { createInviteRequestSchema, inviteIdSchema } from './accounts.schemas.js';
 import { requireAuth } from './session-gate.js';
+
+const CREATE_INVITE_STATUS: Record<CreateInviteError['code'], number> = {
+  EMAIL_NOT_ALLOWED: 400,
+  ACCOUNT_EXISTS: 409,
+};
+
+/** The use cases behind the admin's invite routes. */
+export interface InviteUseCases {
+  create: UseCase<CreateInviteInput, Result<CreateInviteOutput, CreateInviteError>>;
+  list: UseCase<void, AccountInviteDto[]>;
+  revoke: UseCase<RevokeInviteInput, Result<AccountInviteDto, InviteNotFoundError>>;
+}
 
 function toContract(account: AccountDto, isAdmin: boolean): AccountContract {
   return { ...account, isAdmin };
+}
+
+function toInviteContract(invite: AccountInviteDto): AccountInviteContract {
+  return { id: invite.id, email: invite.email, expiresAt: invite.expiresAt };
+}
+
+function toNotFound(error: InviteNotFoundError): HttpError {
+  return new HttpError(404, error.code, error.message, error.details);
 }
 
 export class AccountsController {
@@ -36,6 +66,7 @@ export class AccountsController {
     >,
     private readonly adminEmails: readonly string[],
     private readonly corsOrigin: string,
+    private readonly invites: InviteUseCases,
   ) {}
 
   list = async (_req: Request, res: Response): Promise<void> => {
@@ -72,13 +103,46 @@ export class AccountsController {
     if (!result.ok) {
       throw new HttpError(404, result.error.code, result.error.message, result.error.details);
     }
-    const origin = this.corsOrigin.replace(/\/$/, '');
     const body: PasswordResetLink = {
-      resetUrl: `${origin}/reset-password?token=${encodeURIComponent(result.value.token)}`,
+      resetUrl: `${this.origin()}/reset-password?token=${encodeURIComponent(result.value.token)}`,
       expiresAt: result.value.expiresAt,
     };
     sendData(res, 200, body);
   };
+
+  createInvite = async (req: Request, res: Response): Promise<void> => {
+    const auth = requireAuth(req);
+    const body = parseBody(createInviteRequestSchema, req.body);
+    const result = await this.invites.create.execute({ email: body.email, invitedBy: auth.account.id });
+    if (!result.ok) {
+      const { error } = result;
+      throw new HttpError(CREATE_INVITE_STATUS[error.code], error.code, error.message, error.details);
+    }
+    const created: CreateInviteResponse = {
+      invite: toInviteContract(result.value.invite),
+      inviteUrl: `${this.origin()}/register?token=${encodeURIComponent(result.value.token)}`,
+    };
+    sendData(res, 201, created);
+  };
+
+  listInvites = async (_req: Request, res: Response): Promise<void> => {
+    const invites = await this.invites.list.execute();
+    sendData(res, 200, invites.map(toInviteContract));
+  };
+
+  revokeInvite = async (req: Request, res: Response): Promise<void> => {
+    // Anything that is not an id names no invite: 404, before any query.
+    const id = inviteIdSchema.safeParse(req.params.id);
+    if (!id.success) throw toNotFound(new InviteNotFoundError());
+    const result = await this.invites.revoke.execute({ inviteId: id.data });
+    if (!result.ok) throw toNotFound(result.error);
+    sendData(res, 200, toInviteContract(result.value));
+  };
+
+  /** The SPA's origin, where the reset and invite links open. */
+  private origin(): string {
+    return this.corsOrigin.replace(/\/$/, '');
+  }
 
   private isAdmin(email: string): boolean {
     return this.adminEmails.includes(email);
