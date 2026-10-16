@@ -56,7 +56,11 @@ function ExactLookup({ timeZone }: { timeZone?: string }) {
       </form>
 
       {find.data && <SavedSpecIdCard saved={find.data} timeZone={timeZone} />}
-      {missing && <p className="text-sm text-ink-muted">{error.message}</p>}
+      {missing && (
+        <p role="status" className="text-sm text-ink-muted">
+          {error.message}
+        </p>
+      )}
       {error && !missing && <ErrorState message={error.message} onRetry={() => find.mutate(find.variables ?? code.trim())} />}
     </div>
   );
@@ -141,7 +145,7 @@ function SimilarLookup({ dictionary, timeZone }: { dictionary: AtlasDictionary; 
       {data && (
         <div className="flex flex-col gap-5">
           {data.fits.length === 0 && data.mightFit.length === 0 ? (
-            <p className="text-sm text-ink-muted">
+            <p role="status" className="text-sm text-ink-muted">
               {Object.keys(criteria).length === 0
                 ? 'No Spec IDs saved yet. Build one above and save it.'
                 : 'No saved Spec IDs fit these choices. Set a slot back to Any to widen the search.'}

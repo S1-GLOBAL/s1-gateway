@@ -50,6 +50,7 @@ describe('LookupPanel, exact code', () => {
     press('Find');
 
     expect(await screen.findByText(sentence)).toBeTruthy();
+    expect(screen.getAllByRole('status').map((status) => status.textContent)).toContain(sentence);
     expect(screen.queryByRole('article')).toBeNull();
   });
 
@@ -161,9 +162,9 @@ describe('LookupPanel, similar', () => {
     set('Top diameter (mm)', '91');
     press('Find similar');
 
-    expect(
-      await screen.findByText('No saved Spec IDs fit these choices. Set a slot back to Any to widen the search.'),
-    ).toBeTruthy();
+    const sentence = 'No saved Spec IDs fit these choices. Set a slot back to Any to widen the search.';
+    expect(await screen.findByText(sentence)).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toBe(sentence);
     expect(screen.queryByText('No Spec IDs saved yet. Build one above and save it.')).toBeNull();
   });
 
