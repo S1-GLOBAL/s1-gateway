@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { isSignInRequired, takePriorSessionEnded, useSession } from '@/features/accounts';
-import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonBlock, SkeletonRegion } from '@/shared/ui/Skeleton';
 
 export interface RequireAuthProps {
@@ -13,7 +12,8 @@ export interface RequireAuthProps {
 /**
  * The gate in front of every signed-in page. It asks the API who is signed
  * in: nobody sends you to /sign-in and back here afterwards; a password that
- * must change sends you to /change-password.
+ * must change sends you to /change-password. Any other session failure sends
+ * you home — the landing shows the unavailable note from the same query.
  */
 export function RequireAuth({ allowMustChangePassword = false, children }: RequireAuthProps) {
   const session = useSession();
@@ -27,16 +27,7 @@ export function RequireAuth({ allowMustChangePassword = false, children }: Requi
       const sessionEnded = takePriorSessionEnded();
       return <Navigate to={`/sign-in?next=${next}`} replace state={sessionEnded ? { sessionEnded: true } : null} />;
     }
-    return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-xl items-center bg-canvas px-4">
-        <ErrorState
-          className="w-full"
-          title="The Gateway could not check your sign-in."
-          message={session.error.message}
-          onRetry={() => void session.refetch()}
-        />
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
 
   if (session.data.mustChangePassword && !allowMustChangePassword) {

@@ -4,6 +4,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountsGatewayProvider, type AccountsGateway } from '@/features/accounts';
 import { ThemeProvider, type ThemeDocument, type ThemePreferenceStore } from '@/features/appearance';
+import { AppError } from '@/shared/application/app-error';
 import { account, fakeAccountsGateway, SIGNED_OUT } from '@/test/fake-accounts-gateway';
 import { routes } from './routes';
 
@@ -42,16 +43,21 @@ beforeEach(() => {
 });
 
 describe('the app, signed in', () => {
-  it('opens on Theme, inside the shell', async () => {
-    const router = renderAt('/');
-    expect(await screen.findByRole('heading', { level: 1, name: 'Theme' })).toBeTruthy();
-    expect(router.state.location.pathname).toBe('/theme');
-    expect(screen.getAllByRole('navigation', { name: 'Main' }).length).toBeGreaterThan(0);
-    expect(screen.getByRole('radiogroup', { name: 'Theme' })).toBeTruthy();
-  });
+  it(
+    'opens on Theme, inside the shell',
+    async () => {
+      const router = renderAt('/');
+      // Signed-in `/` hops through the landing Navigate before Theme loads.
+      expect(await screen.findByRole('heading', { level: 1, name: 'Theme' }, { timeout: 15_000 })).toBeTruthy();
+      expect(router.state.location.pathname).toBe('/theme');
+      expect(screen.getAllByRole('navigation', { name: 'Main' }).length).toBeGreaterThan(0);
+      expect(screen.getByRole('radiogroup', { name: 'Theme' })).toBeTruthy();
+    },
+    20_000,
+  );
 
   it('has no Tools page and no Tools link', async () => {
-    renderAt('/');
+    renderAt('/theme');
     await screen.findByRole('heading', { level: 1, name: 'Theme' });
     expect(screen.queryByRole('link', { name: 'Tools' })).toBeNull();
   });
@@ -82,13 +88,25 @@ describe('the app, signed in', () => {
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy();
   });
 
-  it('signs out, and lands on the sign-in page', async () => {
-    const signOut = vi.fn<AccountsGateway['signOut']>().mockResolvedValue(undefined);
-    const router = renderAt('/theme', fakeAccountsGateway({ signOut }));
+  it('signs out, and lands on the landing', async () => {
+    let signedIn = true;
+    const signOut = vi.fn<AccountsGateway['signOut']>().mockImplementation(async () => {
+      signedIn = false;
+    });
+    const router = renderAt(
+      '/theme',
+      fakeAccountsGateway({
+        signOut,
+        me: async () => {
+          if (!signedIn) throw SIGNED_OUT;
+          return account();
+        },
+      }),
+    );
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/sign-in'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
     expect(signOut).toHaveBeenCalledTimes(1);
-    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: "Source One's staff hub." })).toBeTruthy();
   });
 });
 
@@ -121,10 +139,26 @@ describe('the sign-in gate', () => {
     expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();
   });
 
-  it('says so, and offers Try again, when the check itself fails', async () => {
-    renderAt('/theme', fakeAccountsGateway({ me: async () => Promise.reject(new Error('boom')) }));
-    expect(await screen.findByText('The Gateway could not check your sign-in.')).toBeTruthy();
+  it('shows the landing unavailable note when the check itself fails', async () => {
+    const router = renderAt(
+      '/theme',
+      fakeAccountsGateway({
+        me: async () => Promise.reject(new AppError('HTTP_502', 'No route for GET /api/v1/auth/me')),
+      }),
+    );
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(await screen.findByText('The Gateway is temporarily unavailable.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
+    expect(screen.queryByText('The Gateway could not check your sign-in.')).toBeNull();
+  });
+
+  it('shows the branded landing when signed out at /', async () => {
+    const router = renderAt('/', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
+    expect(await screen.findByRole('heading', { level: 1, name: "Source One's staff hub." })).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/');
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
+    expect(screen.queryByText('Create an account')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Create an account' })).toBeNull();
   });
 
   it('keeps the public pages open without a session', async () => {

@@ -1,8 +1,9 @@
 import { lazy } from 'react';
-import { Navigate, type RouteObject } from 'react-router-dom';
+import { type RouteObject } from 'react-router-dom';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { AccountsPageSkeleton } from '@/pages/accounts/AccountsPageSkeleton';
 import { AuthPageSkeleton } from '@/pages/auth/AuthPageSkeleton';
+import { LandingPageSkeleton } from '@/pages/landing/LandingPageSkeleton';
 import { ThemePageSkeleton } from '@/pages/theme/ThemePageSkeleton';
 import { AppShell } from './shell/AppShell';
 import { RequireAuth } from './shell/RequireAuth';
@@ -13,6 +14,9 @@ import { RouteBoundary } from './shell/RouteBoundary';
 const ThemePage = lazy(() => import('@/pages/theme/ThemePage').then((module) => ({ default: module.ThemePage })));
 const AccountsPage = lazy(() =>
   import('@/pages/accounts/AccountsPage').then((module) => ({ default: module.AccountsPage })),
+);
+const LandingPage = lazy(() =>
+  import('@/pages/landing/LandingPage').then((module) => ({ default: module.LandingPage })),
 );
 const SignInPage = lazy(() => import('@/pages/auth/SignInPage').then((module) => ({ default: module.SignInPage })));
 const SignUpPage = lazy(() => import('@/pages/auth/SignUpPage').then((module) => ({ default: module.SignUpPage })));
@@ -25,6 +29,14 @@ const ChangePasswordPage = lazy(() =>
 
 export const routes: RouteObject[] = [
   // Outside the shell: bare layout, no navigation.
+  {
+    path: '/',
+    element: (
+      <RouteBoundary skeleton={<LandingPageSkeleton />}>
+        <LandingPage />
+      </RouteBoundary>
+    ),
+  },
   {
     path: 'sign-in',
     element: (
@@ -67,7 +79,6 @@ export const routes: RouteObject[] = [
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <Navigate to="/theme" replace /> },
       {
         path: 'theme',
         element: (

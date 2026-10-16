@@ -21,6 +21,7 @@ describe('safeNextPath', () => {
   });
 
   it('never returns to a signed-out page', () => {
+    expect(safeNextPath('/')).toBe('/');
     expect(safeNextPath('/sign-in')).toBe('/');
     expect(safeNextPath('/sign-in?next=%2Ftheme')).toBe('/');
     expect(safeNextPath('/reset-password?token=abc')).toBe('/');
