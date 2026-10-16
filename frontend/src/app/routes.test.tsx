@@ -97,9 +97,11 @@ describe('the app, signed in', () => {
     expect(router.state.location.pathname).toBe('/theme');
   });
 
-  it('says plainly when an address does not exist', async () => {
+  it('says plainly when an address does not exist, and offers Atlas', async () => {
     renderAt('/nowhere');
     expect(await screen.findByRole('heading', { level: 1, name: 'There is nothing at this address.' })).toBeTruthy();
+    const note = screen.getByText(/It may have moved\./);
+    expect(within(note).getByRole('link', { name: 'Atlas' }).getAttribute('href')).toBe('/atlas');
   });
 
   it('shows the signed-in name and Sign out in the top bar', async () => {
