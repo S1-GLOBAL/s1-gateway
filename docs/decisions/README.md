@@ -55,3 +55,6 @@ Number sequentially. Never renumber.
 | [0016](./0016-the-repository-lives-in-the-s1-global-organisation.md) | The repository lives in the S1-GLOBAL organisation | Accepted |
 | [0017](./0017-staging-deploys-every-commit-on-main.md) | Staging deploys every commit on `main`: Vercel, Render and Supabase | Accepted |
 | [0018](./0018-staff-sign-in-with-admin-approval.md) | Staff sign-in with admin approval | Accepted |
+| [0019](./0019-the-s1-spec-id-format.md) | The S1 Spec ID format | Accepted |
+| [0020](./0020-atlas-is-built-in-typescript-in-the-gateway.md) | Atlas is built in TypeScript in the Gateway | Accepted |
+| [0021](./0021-the-atlas-dictionary-changes-only-by-migration.md) | The Atlas dictionary lives in Postgres and changes only by migration | Accepted |

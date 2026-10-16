@@ -15,6 +15,20 @@
       "when": 1792105452771,
       "tag": "0001_create_accounts_sessions_and_password_reset_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792163349775,
+      "tag": "0002_create_atlas_dictionary",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792163356537,
+      "tag": "0003_seed_atlas_dictionary_s1_0_1_0",
+      "breakpoints": true
     }
   ]
 }

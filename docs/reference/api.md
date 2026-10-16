@@ -45,6 +45,9 @@ Request bodies are JSON, at most **100 kB**.
 | POST | `/accounts/:id/reset-password` | admin | 200 `{ data: { resetUrl, expiresAt } }` | 404, 401, 403 |
 | GET | `/tools` | session | 200 `{ data: Tool[] }` | 401 `SIGN_IN_REQUIRED` |
 | POST | `/tools` | session | 201 `{ data: Tool }` | 401, 400 `VALIDATION_FAILED`, 400 `MALFORMED_JSON`, 409 `TOOL_NAME_TAKEN`, 413, 415 |
+| GET | `/atlas/dictionary` | session | 200 `{ data: AtlasDictionary }` | 401 `SIGN_IN_REQUIRED` |
+| POST | `/atlas/spec-ids/decode` | session | 200 `{ data: DecodedSpecId }` | 401, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED` |
+| POST | `/atlas/spec-ids/encode` | session | 200 `{ data: DecodedSpecId }`; nothing is saved | 401, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED` |
 
 When `mustChangePassword` is true, every session route except
 `GET /auth/me`, `POST /auth/sign-out` and `POST /auth/change-password`
@@ -77,6 +80,53 @@ returns 403 `MUST_CHANGE_PASSWORD`.
 spaces are trimmed before the rules are checked. No field may contain a
 control character (U+0000–U+001F, U+007F).
 
+### Atlas
+
+The S1 Spec ID format is [ADR 0019](../decisions/0019-the-s1-spec-id-format.md).
+Slots are named by key, in code order: `formatVersion`, `productType`,
+`material`, `coating`, `colourClarity`, `shape`, `profile`, `capacity`,
+`topDiameter`, `bottomDiameter`, `height`, `length`, `width`, `gusset`,
+`unitWeight`, `basisWeight`, `thickness`, `variant`.
+
+`AtlasDictionary` is `{ release, approvedOn, slots, rules }`. `slots` holds the
+seven dictionary slots in code order (`productType` to `profile`, then
+`capacity` for its unit letters), each `{ key, name, values: { code, meaning }[] }`.
+`rules` holds one `{ productType, slot, rule }` per product type and ruled
+slot, where `rule` is `applies`, `never`, `round_only`, `non_round_only` or
+`paper_only`.
+
+`DecodedSpecId` is `{ code, dictionaryRelease, slots }`, with all 18 slots in
+order:
+
+| Field | Type | Notes |
+|---|---|---|
+| `number` | number | 1–18 |
+| `key` | string | The slot key |
+| `name` | string | As people read it, e.g. `Colour / clarity` |
+| `raw` | string | The slot's characters, exactly as in the code |
+| `state` | string | `value`, `not-known` (all `0`) or `does-not-apply` (all `X`) |
+| `meaning` | string | `Bowl lid`, `90 mm`, `3.3 g`, `6 oz`, `Not known`, `Doesn't apply` |
+
+`POST /atlas/spec-ids/decode` takes `{ code }`; surrounding spaces are trimmed.
+`POST /atlas/spec-ids/encode` takes `{ facts }`. `facts.productType` is
+required; every other slot may be left out or `null`, meaning no value: the
+encoder writes `X` where the slot doesn't apply and `0` everywhere else.
+Dictionary slots take a code (`"APS"`). `capacity` is `{ unit, value }`: a
+unit letter and a whole number. Measured slots are `{ value, unit }`, where
+`value` is a decimal string with at most 6 decimal places, never a JSON
+number:
+
+| Slots | Units |
+|---|---|
+| `topDiameter` to `gusset` | `mm`, `cm`, `in` |
+| `unitWeight` | `g` |
+| `basisWeight` | `gsm` |
+| `thickness` | `um` |
+
+`INVALID_SPEC_ID` reports every problem at once in `details.fields`, keyed by
+slot. A problem with the whole code (its length or its number of parts) is
+under `code`.
+
 ## Error codes
 
 | Code | Status | When |
@@ -99,5 +149,6 @@ control character (U+0000–U+001F, U+007F).
 | `RESET_TOKEN_INVALID` | 400 | Reset link is missing, used, or expired |
 | `ACCOUNT_NOT_FOUND` | 404 | No account with that id |
 | `TOOL_NAME_TAKEN` | 409 | Another tool already has this name, ignoring case |
+| `INVALID_SPEC_ID` | 400 | A Spec ID, or the facts to build one, break a rule of ADR 0019. `details.fields` holds every problem, keyed by slot (`code` for the whole code) |
 | `NOT_FOUND` | 404 | No route matches the method and path |
 | `INTERNAL_ERROR` | 500 | An unexpected failure. Logged in full on the server; the response says nothing more |

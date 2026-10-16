@@ -1,6 +1,6 @@
 # 0003. Atlas: read, build and save S1 Spec IDs
 
-- **Status:** Ready for phase 1
+- **Status:** In progress
 - **Owner:** Rey Denzo
 - **Related:** [#4](https://github.com/S1-GLOBAL/s1-gateway/issues/4) ·
   [#5](https://github.com/S1-GLOBAL/s1-gateway/issues/5) ·
@@ -50,9 +50,9 @@ and this plan is corrected.
 
 ## Blockers
 
-- **Phase 2** cannot start until [#5](https://github.com/S1-GLOBAL/s1-gateway/issues/5)
-  ships. Saving records the signed-in account, and no account exists before
-  it. Cleared by: reyxdz merging #5's pull request.
+None. Phase 2 waited for [#5](https://github.com/S1-GLOBAL/s1-gateway/issues/5),
+which merged on 2026-10-16. Every Atlas route is behind sign-in, as every
+data route is ([ADR 0018](../decisions/0018-staff-sign-in-with-admin-approval.md)).
 
 ---
 
@@ -60,7 +60,7 @@ and this plan is corrected.
 
 ### The format
 
-The full S1 specification becomes ADR 0018 in phase 1. In short: 18 slots,
+The S1 specification's rules are [ADR 0019](../decisions/0019-the-s1-spec-id-format.md). In short: 18 slots,
 dot-separated, 74 characters; `0` filling a slot means not known, `X` filling
 a slot means doesn't apply. Slots, widths and the 28 dictionary values are in
 [#4](https://github.com/S1-GLOBAL/s1-gateway/issues/4).
@@ -181,8 +181,8 @@ request, stopping for the owner after each.
 
 | Phase | Steps | Status |
 |---|---|---|
-| 1. Dictionary, decoder and dictionary browser | 0 / 7 | Not started |
-| 2. Build, save and look up | 0 / 5 | Not started — blocked by #5 |
+| 1. Dictionary, decoder and dictionary browser | 6 / 7 | In progress — step 1.7's staging check remains after merge |
+| 2. Build, save and look up | 0 / 5 | Not started |
 
 ---
 
@@ -192,33 +192,33 @@ One pull request, "Part of #4". It saves nothing and holds no supplier data.
 
 ### Step 1.1 — Record the three decisions
 
-- [ ] **Action.** Write the three ADRs listed under "Decisions to record" and add them to `docs/decisions/README.md`.
-- [ ] **Verify.** `npm run docs:check` exits 0.
+- [x] **Action.** Write the three ADRs listed under "Decisions to record" and add them to `docs/decisions/README.md`.
+- [x] **Verify.** `npm run docs:check` exits 0.
 
 ### Step 1.2 — The domain: slots, measurements, Spec ID
 
-- [ ] **Action.** Write the domain tests first, then the code that passes them, in `backend/src/modules/atlas/domain/`.
-- [ ] **Verify.** `npm --prefix backend run test:unit -- atlas` passes, and `npm run arch:check` exits 0.
+- [x] **Action.** Write the domain tests first, then the code that passes them, in `backend/src/modules/atlas/domain/`.
+- [x] **Verify.** `npm --prefix backend run test:unit -- atlas` passes, and `npm run arch:check` exits 0.
 
 ### Step 1.3 — Dictionary tables and their migrations
 
-- [ ] **Action.** Add the three dictionary tables, generate their migration, then write the custom seed migration with the 28 values and the slot rules.
-- [ ] **Verify.** `npm run db:migrate` applies both; `SELECT count(*) FROM atlas_dictionary_values` returns `28`.
+- [x] **Action.** Add the three dictionary tables, generate their migration, then write the custom seed migration with the 28 values and the slot rules.
+- [x] **Verify.** `npm run db:migrate` applies both; the repository test reads exactly 28 values and 56 slot rules.
 
 ### Step 1.4 — The dictionary repository
 
-- [ ] **Action.** Add the mapper, `DrizzleDictionaryRepository` and its `*.db.test.ts`.
-- [ ] **Verify.** `npm test` passes, with the database running (`npm run db:up`).
+- [x] **Action.** Add the mapper, `DrizzleDictionaryRepository` and its `*.db.test.ts`.
+- [x] **Verify.** `npm test` passes, with the database running (`npm run db:up`).
 
 ### Step 1.5 — Use cases, contract and routes
 
-- [ ] **Action.** Add `GetDictionary`, `DecodeSpecId` and `EncodeSpecId`, `backend/src/contracts/atlas.ts`, the controller and router, and wire the module in `backend/src/compose.ts`.
-- [ ] **Verify.** The HTTP tests pass, and `curl -s localhost:4000/api/v1/atlas/dictionary` returns release `S1 0.1.0` with 28 values.
+- [x] **Action.** Add `GetDictionary`, `DecodeSpecId` and `EncodeSpecId`, `backend/src/contracts/atlas.ts`, the controller and router, and wire the module in `backend/src/compose.ts`.
+- [x] **Verify.** The HTTP tests pass, and `backend/src/atlas.db.test.ts` signs in and reads release `S1 0.1.0` with 28 values from `GET /api/v1/atlas/dictionary`.
 
 ### Step 1.6 — The Atlas page: decode and dictionary
 
-- [ ] **Action.** Add the frontend feature, `AtlasPage` with its skeleton, the route, the nav item and its animated icon.
-- [ ] **Verify.** `npm run typecheck && npm run lint && npm run arch:check && npm run test:unit` exits 0.
+- [x] **Action.** Add the frontend feature, `AtlasPage` with its skeleton, the route, the nav item and its animated icon.
+- [x] **Verify.** `npm run typecheck && npm run lint && npm run arch:check && npm run test:unit` exits 0.
 
 ### Step 1.7 — Docs, then staging
 

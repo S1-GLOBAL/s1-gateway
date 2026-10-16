@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { AccountsIcon, ThemeIcon, type IconProps } from '@/shared/ui/icons';
+import { AccountsIcon, AtlasIcon, ThemeIcon, type IconProps } from '@/shared/ui/icons';
 
 export interface NavItem {
   /** Absolute path. */
@@ -17,6 +17,7 @@ export interface NavItem {
  */
 export const NAV_ITEMS: readonly NavItem[] = [
   { path: '/theme', label: 'Theme', icon: ThemeIcon },
+  { path: '/atlas', label: 'Atlas', icon: AtlasIcon },
   { path: '/accounts', label: 'Accounts', icon: AccountsIcon, adminOnly: true },
 ];
 

@@ -62,6 +62,12 @@ describe('the app, signed in', () => {
     expect(screen.queryByRole('link', { name: 'Tools' })).toBeNull();
   });
 
+  it('offers Atlas in the navigation', async () => {
+    renderAt('/theme');
+    await screen.findByRole('heading', { level: 1, name: 'Theme' });
+    expect(screen.getAllByRole('link', { name: 'Atlas' }).length).toBeGreaterThan(0);
+  });
+
   it("shows the destination's skeleton while it loads, then the page", async () => {
     renderAt('/theme');
     // Theme has no async gateway; the skeleton flashes then the heading appears.

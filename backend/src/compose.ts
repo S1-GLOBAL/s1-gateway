@@ -1,5 +1,6 @@
 import type { Express, RequestHandler } from 'express';
 import { buildAccountsModule } from './modules/accounts/index.js';
+import { buildAtlasModule } from './modules/atlas/index.js';
 import { buildHealthModule } from './modules/health/index.js';
 import { buildToolsModule } from './modules/tools/index.js';
 import type { Clock } from './shared/application/ports/clock.js';
@@ -40,6 +41,7 @@ export function composeApp(deps: AppDependencies): Express {
       buildHealthModule(),
       ...accounts.modules,
       buildToolsModule({ db: deps.db, clock: deps.clock, ids: deps.ids }),
+      buildAtlasModule({ db: deps.db }),
     ],
   });
 }
