@@ -19,7 +19,7 @@ describe('toCriteria', () => {
     });
   });
 
-  it('writes each typed measure as the slot`s raw text', () => {
+  it("writes each typed measure as the slot's raw text", () => {
     const initial = initialLookupForm();
     const criteria = toCriteria(
       form({ measures: { ...initial.measures, topDiameter: '90', unitWeight: '3.3', basisWeight: ' 45 ' } }),
