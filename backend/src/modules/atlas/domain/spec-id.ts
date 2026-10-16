@@ -241,7 +241,9 @@ export function checkSlotValue(key: SlotKey, raw: string, dictionary: Dictionary
   switch (kind) {
     case 'dictionary':
       if (key === 'productType' && isNotKnown(raw)) return messages.productTypeRequired();
-      if (key !== 'productType' && (isNotKnown(raw) || isDoesNotApply(raw))) return undefined;
+      if (key !== 'productType' && isNotKnown(raw)) return undefined;
+      // Product type and material are in every code, so X is no marker there: it is an unknown value.
+      if (key !== 'productType' && key !== 'material' && isDoesNotApply(raw)) return undefined;
       return dictionary.meaningOf(key as DictionarySlotKey, raw) === undefined
         ? messages.notInDictionary(name, raw)
         : undefined;

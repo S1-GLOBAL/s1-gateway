@@ -297,6 +297,11 @@ describe('every message the domain produces', () => {
         { productType: ['Product type: XXX is not in the dictionary.'] },
       ],
       [
+        'a material of X: material is in every code',
+        ILLUSTRATIVE.replace('.APS.', '.XXX.'),
+        { material: ['Material: XXX is not in the dictionary.'] },
+      ],
+      [
         'a capacity letter not in the dictionary',
         'S1.BWL.APS.00.CL.RD.XX.Q0006.0090.0000.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX',
         { capacity: ['Nominal capacity: Q0006 is not in the dictionary.'] },
