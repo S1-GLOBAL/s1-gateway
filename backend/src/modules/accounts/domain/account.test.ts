@@ -64,6 +64,16 @@ describe('Account', () => {
     expect(account.isLocked(new Date('2026-10-16T12:15:00.000Z'))).toBe(false);
   });
 
+  it('starts a fresh failure count after the lock window ends', () => {
+    const lockedAt = new Date('2026-10-16T12:00:00.000Z');
+    const afterLock = new Date('2026-10-16T12:15:00.000Z');
+    let account = pendingAccount().approve(id, createdAt);
+    for (let i = 0; i < 5; i += 1) account = account.recordFailedSignIn(lockedAt);
+    account = account.recordFailedSignIn(afterLock);
+    expect(account.failedSignInCount).toBe(1);
+    expect(account.isLocked(afterLock)).toBe(false);
+  });
+
   it('resets the failure count on a successful sign-in', () => {
     let account = pendingAccount().approve(id, createdAt);
     account = account.recordFailedSignIn(createdAt);

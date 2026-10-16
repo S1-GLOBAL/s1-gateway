@@ -133,11 +133,17 @@ export class Account {
   }
 
   recordFailedSignIn(now: Date): Account {
-    const failedSignInCount = this.props.failedSignInCount + 1;
+    // After the lock window ends, start a fresh streak — otherwise one more
+    // wrong password would re-lock immediately with the leftover count of 5.
+    const priorCount =
+      this.props.lockedUntil !== null && this.props.lockedUntil.getTime() <= now.getTime()
+        ? 0
+        : this.props.failedSignInCount;
+    const failedSignInCount = priorCount + 1;
     const lockedUntil =
       failedSignInCount >= FAILED_SIGN_IN_LIMIT
         ? new Date(now.getTime() + LOCKOUT_MINUTES * 60_000)
-        : this.props.lockedUntil;
+        : null;
     return new Account({ ...this.props, failedSignInCount, lockedUntil });
   }
 

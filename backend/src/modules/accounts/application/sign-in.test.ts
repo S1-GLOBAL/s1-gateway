@@ -93,6 +93,45 @@ describe('SignIn', () => {
     expect(!result.ok && result.error).toBeInstanceOf(AccountLockedError);
   });
 
+  it('accepts the correct password after the fifteen-minute lock ends', async () => {
+    const accounts = new InMemoryAccountRepository();
+    const sessions = new InMemorySessionRepository();
+    const passwordHasher = new FakePasswordHasher();
+    const ids = new SequentialIdGenerator();
+    const lockedAt = NOW;
+    const afterLock = new Date(NOW.getTime() + 15 * 60_000);
+
+    await new SignUp(
+      accounts,
+      new InMemorySignUpRateLimiter(),
+      passwordHasher,
+      new FixedClock(lockedAt),
+      ids,
+      [EMAIL],
+    ).execute({ email: EMAIL, fullName: 'Staff Member', password: PASSWORD, clientIp: '1.1.1.1' });
+
+    const lockedSignIn = new SignIn(
+      accounts,
+      sessions,
+      passwordHasher,
+      new FakeTokenGenerator(),
+      new FixedClock(lockedAt),
+      ids,
+    );
+    for (let i = 0; i < 5; i += 1) await lockedSignIn.execute({ email: EMAIL, password: 'wrong-password' });
+
+    const after = new SignIn(
+      accounts,
+      sessions,
+      passwordHasher,
+      new FakeTokenGenerator(),
+      new FixedClock(afterLock),
+      ids,
+    );
+    const result = await after.execute({ email: EMAIL, password: PASSWORD });
+    expect(result.ok).toBe(true);
+  });
+
   it('clears the failure count after a successful sign-in', async () => {
     const { signIn, accounts } = await setup();
     await signIn.execute({ email: EMAIL, password: 'wrong-password' });
