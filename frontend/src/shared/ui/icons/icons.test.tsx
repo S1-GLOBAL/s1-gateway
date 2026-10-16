@@ -3,6 +3,7 @@ import type { ComponentType } from 'react';
 import { describe, expect, it } from 'vitest';
 import type { IconProps } from './icon-svg';
 import {
+  AccountsIcon,
   AlertIcon,
   CheckIcon,
   ExternalLinkIcon,
@@ -21,6 +22,7 @@ import {
 const ICONS: [string, ComponentType<IconProps>, number][] = [
   ['ToolsIcon', ToolsIcon, 4],
   ['ThemeIcon', ThemeIcon, 5],
+  ['AccountsIcon', AccountsIcon, 4],
   ['SunIcon', SunIcon, 9],
   ['MoonIcon', MoonIcon, 3],
   ['MonitorIcon', MonitorIcon, 3],

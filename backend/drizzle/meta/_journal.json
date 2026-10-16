@@ -8,6 +8,13 @@
       "when": 1791994956499,
       "tag": "0000_create_tools",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792105452771,
+      "tag": "0001_create_accounts_sessions_and_password_reset_tokens",
+      "breakpoints": true
     }
   ]
 }

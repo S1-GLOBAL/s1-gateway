@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { ThemeIcon, ToolsIcon, type IconProps } from '@/shared/ui/icons';
+import { AccountsIcon, ThemeIcon, type IconProps } from '@/shared/ui/icons';
 
 export interface NavItem {
   /** Absolute path. */
@@ -7,13 +7,23 @@ export interface NavItem {
   /** In the sidebar, the bottom bar and the top bar. */
   label: string;
   icon: ComponentType<IconProps>;
+  /** Shown only to admins. */
+  adminOnly?: boolean;
 }
 
-/** Every place in the app, in the order the sidebar shows them. */
+/**
+ * Every place in the app, in the order the sidebar shows them. Tools is
+ * parked: its API stays, but it has no page or link for now.
+ */
 export const NAV_ITEMS: readonly NavItem[] = [
-  { path: '/', label: 'Tools', icon: ToolsIcon },
   { path: '/theme', label: 'Theme', icon: ThemeIcon },
+  { path: '/accounts', label: 'Accounts', icon: AccountsIcon, adminOnly: true },
 ];
+
+/** The places this person may go: Accounts only for an admin. */
+export function navItemsFor(isAdmin: boolean): readonly NavItem[] {
+  return NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+}
 
 /** The nav item a path belongs to, if any. */
 export function navItemFor(pathname: string): NavItem | undefined {

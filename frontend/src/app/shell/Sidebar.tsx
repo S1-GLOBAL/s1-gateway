@@ -4,12 +4,20 @@ import { cn } from '@/shared/ui/cn';
 import { SidebarIcon } from '@/shared/ui/icons';
 import { Logo } from '@/shared/ui/Logo';
 import { duration, ease, iconTrigger } from '@/shared/ui/motion';
-import { NAV_ITEMS } from '../nav';
+import type { NavItem } from '../nav';
 import { SidebarLink } from './SidebarLink';
 
 export const SIDEBAR_WIDTH = { expanded: 248, collapsed: 72 } as const;
 
-export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle(): void }) {
+export function Sidebar({
+  items,
+  collapsed,
+  onToggle,
+}: {
+  items: readonly NavItem[];
+  collapsed: boolean;
+  onToggle(): void;
+}) {
   return (
     <m.aside
       aria-label="Main"
@@ -26,7 +34,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle(
 
       <nav className="flex-1 px-3 py-4">
         <ul className="flex flex-col gap-1">
-          {NAV_ITEMS.map((item) => (
+          {items.map((item) => (
             <li key={item.path}>
               <SidebarLink item={item} collapsed={collapsed} />
             </li>

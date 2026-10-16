@@ -200,12 +200,13 @@ New here? Read [Operating constraints](./docs/explanation/constraints.md), then
 - [x] An installable PWA: offline shell, update prompt, a kill switch
 - [x] The design system: themes, shell, motion, icons, skeletons
 - [x] CI: typecheck, lint, architecture, every test against Postgres, build, docs
+- [x] **Staff sign-in.** `@sourceone.global` email and password, approved by an
+  admin, with an Accounts page and public one-time password-reset links. Every
+  API route except `/health` and `/auth/*` needs a session
+  ([constraints](./docs/explanation/constraints.md)).
 
 **Not built yet**
 
-- [ ] **Staff sign-in.** Nothing is access-controlled yet, so **do not expose
-  this outside the internal network**
-  ([constraints](./docs/explanation/constraints.md)).
 - [ ] Deployment, and a release procedure
 
 ---

@@ -21,5 +21,5 @@ export function buildToolsModule(deps: ToolsModuleDependencies): HttpModule {
     new ListTools(repository),
     new CreateTool(repository, deps.clock, deps.ids),
   );
-  return { path: '/tools', router: createToolsRouter(controller) };
+  return { path: '/tools', router: createToolsRouter(controller), access: 'session' };
 }

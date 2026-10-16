@@ -1,5 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
+import { AccountsGatewayProvider } from '@/features/accounts';
 import { ThemeProvider } from '@/features/appearance';
 import { ToolsGatewayProvider } from '@/features/tools';
 import { createDependencies } from './dependencies';
@@ -14,7 +15,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <ThemeProvider store={dependencies.themeStore} document={dependencies.themeDocument}>
       <MotionProvider>
         <QueryClientProvider client={queryClient}>
-          <ToolsGatewayProvider gateway={dependencies.toolsGateway}>{children}</ToolsGatewayProvider>
+          <AccountsGatewayProvider gateway={dependencies.accountsGateway}>
+            <ToolsGatewayProvider gateway={dependencies.toolsGateway}>{children}</ToolsGatewayProvider>
+          </AccountsGatewayProvider>
         </QueryClientProvider>
       </MotionProvider>
     </ThemeProvider>

@@ -13,8 +13,8 @@ irrelevant to any single task. More context is not better context.
 
 1. **This file** — the standing rules.
 2. **[`docs/explanation/constraints.md`](./docs/explanation/constraints.md)** —
-   what shapes this product, including why nothing may be exposed outside the
-   internal network yet.
+   what shapes this product, including why every data route needs a signed-in
+   session.
 3. **Your task** — the issue, its plan in [`docs/plans/`](./docs/plans/),
    and its handoff in [`docs/handoffs/`](./docs/handoffs/) if there is one.
    Check a handoff's ground-truth section against `main` before executing it.

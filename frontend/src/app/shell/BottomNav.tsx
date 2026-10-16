@@ -1,12 +1,12 @@
 import * as m from 'motion/react-m';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/shared/ui/cn';
-import { NAV_ITEMS } from '../nav';
+import type { NavItem } from '../nav';
 
 const MotionLink = m.create(Link);
 
 /** The sidebar's places, as a bottom bar on phones. */
-export function BottomNav() {
+export function BottomNav({ items }: { items: readonly NavItem[] }) {
   const { pathname } = useLocation();
 
   return (
@@ -14,8 +14,8 @@ export function BottomNav() {
       aria-label="Main"
       className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
     >
-      <ul className="grid" style={{ gridTemplateColumns: `repeat(${NAV_ITEMS.length}, minmax(0, 1fr))` }}>
-        {NAV_ITEMS.map((item) => {
+      <ul className="grid" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+        {items.map((item) => {
           const current = pathname === item.path;
           const Icon = item.icon;
           return (
