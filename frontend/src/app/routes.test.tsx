@@ -220,7 +220,10 @@ describe('navigation by role', () => {
   ] as const)('lists the places in order for %s, with Theme last', async (_who, isAdmin, labels) => {
     renderAt('/theme', fakeAccountsGateway({ me: async () => account({ isAdmin }) }));
     await screen.findByRole('heading', { level: 1, name: 'Theme' });
-    for (const nav of screen.getAllByRole('navigation', { name: 'Main' })) {
+    // The sidebar's name is on its <aside>; the bottom bar's is on its <nav>.
+    const sidebar = within(screen.getByRole('complementary', { name: 'Main' })).getByRole('navigation');
+    const bottomBar = screen.getByRole('navigation', { name: 'Main' });
+    for (const nav of [sidebar, bottomBar]) {
       expect(within(nav).getAllByRole('link').map((link) => link.textContent?.trim())).toEqual(labels);
     }
   });
