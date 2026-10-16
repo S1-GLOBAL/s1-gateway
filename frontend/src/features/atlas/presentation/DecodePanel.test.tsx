@@ -42,7 +42,15 @@ const decoded: DecodedSpecId = {
 
 function renderPanel(decode: AtlasGateway['decode']) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  const gateway: AtlasGateway = { dictionary: () => new Promise(() => undefined), decode };
+  const pending = () => new Promise<never>(() => undefined);
+  const gateway: AtlasGateway = {
+    dictionary: pending,
+    decode,
+    encode: pending,
+    save: pending,
+    findByCode: pending,
+    findSimilar: pending,
+  };
   render(
     <QueryClientProvider client={queryClient}>
       <AtlasGatewayProvider gateway={gateway}>

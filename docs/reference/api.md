@@ -48,6 +48,9 @@ Request bodies are JSON, at most **100 kB**.
 | GET | `/atlas/dictionary` | session | 200 `{ data: AtlasDictionary }` | 401 `SIGN_IN_REQUIRED` |
 | POST | `/atlas/spec-ids/decode` | session | 200 `{ data: DecodedSpecId }` | 401, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED` |
 | POST | `/atlas/spec-ids/encode` | session | 200 `{ data: DecodedSpecId }`; nothing is saved | 401, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED` |
+| POST | `/atlas/spec-ids` | session | 201 `{ data: SavedSpecId }` | 401 `SIGN_IN_REQUIRED`, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED`, 409 `SPEC_ID_EXISTS` |
+| GET | `/atlas/spec-ids/:code` | session | 200 `{ data: SavedSpecId }` | 401, 404 `SPEC_ID_NOT_FOUND` |
+| GET | `/atlas/spec-ids?<slot>=<value>…` | session | 200 `{ data: SimilarSpecIds }` | 401, 400 `VALIDATION_FAILED` |
 
 When `mustChangePassword` is true, every session route except
 `GET /auth/me`, `POST /auth/sign-out` and `POST /auth/change-password`
@@ -127,6 +130,33 @@ number:
 slot. A problem with the whole code (its length or its number of parts) is
 under `code`.
 
+`SavedSpecId` is a `DecodedSpecId` plus `name` (1–120 characters),
+`savedBy: { id, fullName }` and `savedAt` (ISO 8601).
+
+`POST /atlas/spec-ids` takes `{ name, facts }`. It encodes the facts, as
+`/encode` does, and saves the Spec ID under the signed-in account. Surrounding
+spaces in `name` are trimmed; it may not contain a control character
+(U+0000–U+001F, U+007F). Name problems are in `details.fields.name` of the
+same `INVALID_SPEC_ID`. When the code is already saved, it answers 409
+`SPEC_ID_EXISTS` with `details.existing`, the saved `SavedSpecId`, and saves
+nothing. Nothing is saved on any 4xx.
+
+`GET /atlas/spec-ids?<slot>=<value>…` takes any subset of slot keys from
+`productType` to `thickness`, each with a raw slot value (`topDiameter=0090`,
+`capacity=Z0006`). It answers `{ fits, mightFit }`, each newest first:
+
+- **fits:** every chosen slot equals the requested value;
+- **mightFit:** every chosen slot equals the requested value or is all `0`,
+  and at least one is all `0`.
+
+A different known value excludes a Spec ID; nothing is compared by closeness.
+With no slot chosen, every saved Spec ID is in `fits`. An unknown key, or a
+value that is not a valid slot value, answers 400 `VALIDATION_FAILED` with
+`details.fields` keyed by that slot.
+
+Nothing updates or deletes a saved Spec ID: `PUT` and `DELETE` on any Atlas
+path answer 404 ([ADR 0021](../decisions/0021-the-atlas-dictionary-changes-only-by-migration.md)).
+
 ## Error codes
 
 | Code | Status | When |
@@ -150,5 +180,7 @@ under `code`.
 | `ACCOUNT_NOT_FOUND` | 404 | No account with that id |
 | `TOOL_NAME_TAKEN` | 409 | Another tool already has this name, ignoring case |
 | `INVALID_SPEC_ID` | 400 | A Spec ID, or the facts to build one, break a rule of ADR 0019. `details.fields` holds every problem, keyed by slot (`code` for the whole code) |
+| `SPEC_ID_EXISTS` | 409 | That Spec ID is already saved. `details.existing` is the saved Spec ID; nothing new was saved |
+| `SPEC_ID_NOT_FOUND` | 404 | No saved Spec ID has this code |
 | `NOT_FOUND` | 404 | No route matches the method and path |
 | `INTERNAL_ERROR` | 500 | An unexpected failure. Logged in full on the server; the response says nothing more |

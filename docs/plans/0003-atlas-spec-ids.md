@@ -182,7 +182,7 @@ request, stopping for the owner after each.
 | Phase | Steps | Status |
 |---|---|---|
 | 1. Dictionary, decoder and dictionary browser | 6 / 7 | In progress — step 1.7's staging check remains after merge |
-| 2. Build, save and look up | 0 / 5 | Not started |
+| 2. Build, save and look up | 4 / 5 | In progress — step 2.5's staging check remains after merge |
 
 ---
 
@@ -233,23 +233,23 @@ One pull request, "Closes #4". Starts only after #5 is merged.
 
 ### Step 2.1 — The saved Spec ID table
 
-- [ ] **Action.** Add `atlas_spec_ids` with its unique code index and the reference to #5's accounts table, and generate the migration.
-- [ ] **Verify.** `npm run db:migrate` applies it; the migration only adds a table.
+- [x] **Action.** Add `atlas_spec_ids` with its unique code index and the reference to #5's accounts table, and generate the migration.
+- [x] **Verify.** `npm run db:migrate` applies it; the migration only adds a table.
 
 ### Step 2.2 — Saving and lookups in the domain and application layers
 
-- [ ] **Action.** Add the `SpecIdRepository` port, its in-memory fake, `SaveSpecId`, `FindSpecIdByCode` and `FindSimilarSpecIds`, tests first.
-- [ ] **Verify.** `npm --prefix backend run test:unit -- atlas` passes.
+- [x] **Action.** Add the `SpecIdRepository` port, its in-memory fake, `SaveSpecId`, `FindSpecIdByCode` and `FindSimilarSpecIds`, tests first.
+- [x] **Verify.** `npm --prefix backend run test:unit -- atlas` passes.
 
 ### Step 2.3 — The repository and the routes
 
-- [ ] **Action.** Add `DrizzleSpecIdRepository` with its `*.db.test.ts`, and the save, exact and similar routes behind #5's sign-in check.
-- [ ] **Verify.** `npm test` passes, including 401 without a session, 409 on a duplicate and the two-simultaneous-saves test.
+- [x] **Action.** Add `DrizzleSpecIdRepository` with its `*.db.test.ts`, and the save, exact and similar routes behind #5's sign-in check.
+- [x] **Verify.** `npm test` passes, including 401 without a session, 409 on a duplicate and the two-simultaneous-saves test.
 
 ### Step 2.4 — The Atlas page: build, save and look up
 
-- [ ] **Action.** Add the build form, Save, the exact-code box and the similar lookup to the page, with their states.
-- [ ] **Verify.** `npm run typecheck && npm run lint && npm run arch:check && npm run test:unit` exits 0.
+- [x] **Action.** Add the build form, Save, the exact-code box and the similar lookup to the page, with their states.
+- [x] **Verify.** `npm run typecheck && npm run lint && npm run arch:check && npm run test:unit` exits 0.
 
 ### Step 2.5 — Docs, then staging
 

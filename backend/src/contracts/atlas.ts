@@ -115,3 +115,35 @@ export interface SpecIdFacts {
 export interface EncodeSpecIdRequest {
   facts: SpecIdFacts;
 }
+
+/** Who saved a Spec ID. */
+export interface SavedBy {
+  id: string;
+  fullName: string;
+}
+
+/** A Spec ID someone saved, with its name and who saved it when. */
+export interface SavedSpecId extends DecodedSpecId {
+  /** 1–120 characters. */
+  name: string;
+  savedBy: SavedBy;
+  /** ISO 8601. */
+  savedAt: string;
+}
+
+/** `POST /atlas/spec-ids`. */
+export interface SaveSpecIdRequest {
+  name: string;
+  facts: SpecIdFacts;
+}
+
+/** `error.details` of a 409 `SPEC_ID_EXISTS`: the Spec ID already saved under this code. */
+export interface SpecIdExistsDetails {
+  existing: SavedSpecId;
+}
+
+/** `GET /atlas/spec-ids?<slot>=<value>…`. Each group is newest first. */
+export interface SimilarSpecIds {
+  fits: SavedSpecId[];
+  mightFit: SavedSpecId[];
+}

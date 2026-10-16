@@ -1,4 +1,4 @@
-import { DecodePanel, DictionaryBrowser, useDictionary } from '@/features/atlas';
+import { BuildPanel, DecodePanel, DictionaryBrowser, LookupPanel, useDictionary } from '@/features/atlas';
 import { PageHeader } from '@/shared/ui/PageHeader';
 
 export function AtlasPage() {
@@ -16,6 +16,20 @@ export function AtlasPage() {
           Decode
         </h2>
         <DecodePanel />
+      </section>
+
+      <section aria-labelledby="atlas-build" className="flex flex-col gap-4">
+        <h2 id="atlas-build" className="text-lg font-semibold text-ink">
+          Build
+        </h2>
+        <BuildPanel dictionary={dictionary} />
+      </section>
+
+      <section aria-labelledby="atlas-lookup" className="flex flex-col gap-4">
+        <h2 id="atlas-lookup" className="text-lg font-semibold text-ink">
+          Look up
+        </h2>
+        <LookupPanel dictionary={dictionary} />
       </section>
 
       <section aria-labelledby="atlas-dictionary" className="flex flex-col gap-4">

@@ -29,6 +29,13 @@
       "when": 1792163356537,
       "tag": "0003_seed_atlas_dictionary_s1_0_1_0",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792167703066,
+      "tag": "0004_create_atlas_spec_ids",
+      "breakpoints": true
     }
   ]
 }

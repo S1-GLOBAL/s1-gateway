@@ -88,3 +88,8 @@ export function buildAccountsModule(deps: AccountsModuleDependencies): AccountsH
     adminGate: createAdminGate(gateDeps),
   };
 }
+
+/** The accounts table, for another module's foreign key and joins (atlas). Nothing else. */
+export { accounts as accountsTable } from './infrastructure/accounts.table.js';
+/** The signed-in account of a request behind the session gate; throws 401 SIGN_IN_REQUIRED without one. */
+export { requireAuth } from './presentation/session-gate.js';
