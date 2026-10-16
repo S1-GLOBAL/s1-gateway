@@ -54,8 +54,9 @@ Number sequentially. Never renumber.
 | [0015](./0015-pull-requests-merge-by-squash-only.md) | Pull requests merge into `main` by squash only | Accepted |
 | [0016](./0016-the-repository-lives-in-the-s1-global-organisation.md) | The repository lives in the S1-GLOBAL organisation | Accepted |
 | [0017](./0017-staging-deploys-every-commit-on-main.md) | Staging deploys every commit on `main`: Vercel, Render and Supabase | Accepted |
-| [0018](./0018-staff-sign-in-with-admin-approval.md) | Staff sign-in with admin approval | Accepted |
+| [0018](./0018-staff-sign-in-with-admin-approval.md) | Staff sign-in with admin approval | Accepted; partly superseded by 0023 |
 | [0019](./0019-the-s1-spec-id-format.md) | The S1 Spec ID format | Accepted; partly superseded by 0022 |
 | [0020](./0020-atlas-is-built-in-typescript-in-the-gateway.md) | Atlas is built in TypeScript in the Gateway | Accepted |
 | [0021](./0021-the-atlas-dictionary-changes-only-by-migration.md) | The Atlas dictionary lives in Postgres and changes only by migration | Accepted; partly superseded by 0022 |
 | [0022](./0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md) | Saved Spec IDs can be edited, and every change is recorded | Accepted |
+| [0023](./0023-accounts-are-created-by-invite-only.md) | Accounts are created by invite only | Accepted |

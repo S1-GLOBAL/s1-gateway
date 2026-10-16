@@ -1,6 +1,7 @@
 # 0018. Staff sign-in with admin approval
 
-- **Status:** Accepted
+- **Status:** Accepted; partly superseded by [0023](./0023-accounts-are-created-by-invite-only.md):
+  open sign-up, its pending queue for new accounts and its sign-up rate limit no longer hold
 - **Date:** 2026-10-16
 - **Related:** [Issue #5](https://github.com/S1-GLOBAL/s1-gateway/issues/5)
 
