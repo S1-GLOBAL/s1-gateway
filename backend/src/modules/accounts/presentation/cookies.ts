@@ -1,5 +1,6 @@
 import type { Response } from 'express';
-import { SESSION_COOKIE } from './session-gate.js';
+
+export const SESSION_COOKIE = 's1_gateway_session';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 

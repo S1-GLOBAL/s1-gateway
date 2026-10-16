@@ -8,8 +8,9 @@ import {
   SignInRequiredError,
 } from '../domain/account.errors.js';
 import type { Session } from '../domain/session.js';
+import { SESSION_COOKIE, setSessionCookie } from './cookies.js';
 
-export const SESSION_COOKIE = 's1_gateway_session';
+export { SESSION_COOKIE };
 
 export interface AuthenticatedRequest extends Request {
   auth: {
@@ -27,6 +28,8 @@ export interface SessionGateDeps {
   hashToken(token: string): string;
   clock: Clock;
   accountAdminEmails: readonly string[];
+  /** Matches the Secure flag used when the cookie was first set. */
+  cookieSecure: boolean;
 }
 
 /** Paths that a must-change account may still call while signed in. */
@@ -47,7 +50,7 @@ function readCookie(req: Request, name: string): string | undefined {
 }
 
 export function createSessionGate(deps: SessionGateDeps): RequestHandler {
-  return async (req, _res, next) => {
+  return async (req, res, next) => {
     try {
       const token = readCookie(req, SESSION_COOKIE);
       if (!token) throw toHttp(new SignInRequiredError(), 401);
@@ -61,6 +64,8 @@ export function createSessionGate(deps: SessionGateDeps): RequestHandler {
 
       const renewed = session.renew(now);
       await deps.saveSession(renewed);
+      // Refresh the browser maxAge so "renewed on each use" is not only server-side.
+      setSessionCookie(res, token, deps.cookieSecure);
 
       (req as AuthenticatedRequest).auth = { account, session: renewed, sessionToken: token };
 

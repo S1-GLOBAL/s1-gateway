@@ -38,11 +38,11 @@ describe('GetMe', () => {
   });
 
   it('renews the session on a request within the 7-day window', async () => {
-    const dayFive = new Date(CREATED_AT.getTime() + 5 * 24 * 60 * 60 * 1000);
-    const { getMe, sessions } = await setup(dayFive);
+    const daySix = new Date(CREATED_AT.getTime() + 6 * 24 * 60 * 60 * 1000);
+    const { getMe, sessions } = await setup(daySix);
     await getMe.execute({ sessionToken: 'token-1' });
     const session = await sessions.findByTokenHash('hash(token-1)');
-    expect(session?.expiresAt.toISOString()).toBe(new Date(dayFive.getTime() + SESSION_TTL_MS).toISOString());
+    expect(session?.expiresAt.toISOString()).toBe(new Date(daySix.getTime() + SESSION_TTL_MS).toISOString());
   });
 
   it('fails after the session has expired', async () => {
