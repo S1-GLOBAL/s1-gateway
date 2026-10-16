@@ -223,6 +223,11 @@ describe('SpecId.build', () => {
     },
   );
 
+  it('reads a capacity written with zero decimals as the whole number it is', () => {
+    expect(built({ productType: 'BWL', capacity: { unit: 'Z', value: '6.0' } }).slot('capacity')).toBe('Z0006');
+    expect(built({ productType: 'BWL', capacity: { unit: 'M', value: '500.000' } }).slot('capacity')).toBe('M0500');
+  });
+
   it('makes basis weight not known on paper and X on anything else', () => {
     expect(built({ productType: 'BLD', material: 'B00' }).slot('basisWeight')).toBe('000');
     expect(built({ productType: 'BLD', material: 'BKR' }).slot('basisWeight')).toBe('000');

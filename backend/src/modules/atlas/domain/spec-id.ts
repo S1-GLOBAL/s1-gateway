@@ -305,16 +305,16 @@ function readCapacity(fact: CapacityInput, dictionary: Dictionary): Reading {
     return { problem: messages.notInDictionary(name, fact.unit) };
   }
   const label = capacityLabel(fact.unit);
-  const text = fact.value.trim();
-  if (DIGITS.test(text)) {
-    const amount = BigInt(text);
-    if (amount < 1n || amount > CAPACITY_MAX) {
-      return { problem: messages.outOfRange(name, `${fact.value} ${label}`, capacityRange(fact.unit)) };
-    }
-    return { raw: fact.unit + amount.toString().padStart(4, '0') };
+  const reading = readDecimal(fact.value);
+  if (!reading.ok) return { problem: messages.notANumber(name, fact.value) };
+  // Whole when the exact value has nothing after the point: 6 and 6.0 are both 6.
+  const { numerator, denominator } = reading.value;
+  if (numerator % denominator !== 0n) return { problem: messages.notWhole(name, fact.value) };
+  const amount = numerator / denominator;
+  if (amount < 1n || amount > CAPACITY_MAX) {
+    return { problem: messages.outOfRange(name, `${fact.value} ${label}`, capacityRange(fact.unit)) };
   }
-  if (readDecimal(text).ok) return { problem: messages.notWhole(name, fact.value) };
-  return { problem: messages.notANumber(name, fact.value) };
+  return { raw: fact.unit + amount.toString().padStart(4, '0') };
 }
 
 /** Exact decimal arithmetic, rounded half up to the slot's step (ADR 0019). */
