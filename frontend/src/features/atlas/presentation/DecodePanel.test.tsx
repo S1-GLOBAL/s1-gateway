@@ -76,7 +76,7 @@ describe('DecodePanel', () => {
     expect(within(table).getByRole('columnheader', { name: 'Meaning' })).toBeTruthy();
   });
 
-  it('shows each slot message in that slot’s row', async () => {
+  it("shows each slot message in that slot's row", async () => {
     const message = 'Top diameter: 0X90 mixes a marker with other characters.';
     renderPanel(async () => {
       throw new AppError('INVALID_SPEC_ID', 'The Spec ID is not valid.', { topDiameter: [message] });

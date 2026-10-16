@@ -128,7 +128,7 @@ describe('DictionaryBrowser', () => {
     expect(within(screen.getByRole('article', { name: 'Nominal capacity' })).getAllByRole('definition')).toHaveLength(5);
   });
 
-  it('shows which slots apply to each product type, in the specification’s words', () => {
+  it("shows which slots apply to each product type, in the specification's words", () => {
     render(<DictionaryBrowser dictionary={dictionary} />);
 
     expect(screen.getByRole('heading', { name: 'Which slots apply' })).toBeTruthy();

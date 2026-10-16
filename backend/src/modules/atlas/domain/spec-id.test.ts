@@ -151,7 +151,7 @@ describe('SpecId.parse', () => {
     });
   });
 
-  it('leaves the slots that depend on a shape of X to the shape’s own message', () => {
+  it("leaves the slots that depend on a shape of X to the shape's own message", () => {
     expect(parseIssues(ILLUSTRATIVE.replace('.RD.', '.XX.'))).toEqual({
       shape: ['Shape can\'t be "doesn\'t apply" for a bowl lid.'],
     });
