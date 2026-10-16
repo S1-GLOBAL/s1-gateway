@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { navItemsFor } from './nav';
 
 describe('navItemsFor', () => {
-  it('gives everyone Theme and Atlas, and no one Tools', () => {
-    expect(navItemsFor(false).map((item) => item.label)).toEqual(['Theme', 'Atlas']);
+  it('gives everyone Atlas, then Theme last, and no one Tools', () => {
+    expect(navItemsFor(false).map((item) => item.label)).toEqual(['Atlas', 'Theme']);
   });
 
-  it('adds Accounts for an admin', () => {
-    expect(navItemsFor(true).map((item) => item.label)).toEqual(['Theme', 'Atlas', 'Accounts']);
+  it('puts Accounts between Atlas and Theme for an admin', () => {
+    expect(navItemsFor(true).map((item) => item.label)).toEqual(['Atlas', 'Accounts', 'Theme']);
   });
 });

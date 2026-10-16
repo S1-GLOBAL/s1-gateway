@@ -20,7 +20,7 @@ export function LandingPage() {
   }
 
   if (!session.isError) {
-    return <Navigate to="/theme" replace />;
+    return <Navigate to="/atlas" replace />;
   }
 
   const unavailable = !isSignInRequired(session.error);
