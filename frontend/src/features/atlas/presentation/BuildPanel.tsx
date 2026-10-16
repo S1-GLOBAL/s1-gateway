@@ -101,7 +101,7 @@ export function BuildPanel({ dictionary, timeZone }: { dictionary: AtlasDictiona
 
       <div className="flex flex-col gap-1.5">
         <p className="text-sm font-medium text-ink">Spec ID</p>
-        <p aria-live="polite" className="min-h-6 font-mono text-sm break-all text-ink">
+        <p className="min-h-6 font-mono text-sm break-all text-ink">
           {refused ? '' : encoded.data?.code}
         </p>
         {encoded.error && !refused && <Alert message={encoded.error.message} />}

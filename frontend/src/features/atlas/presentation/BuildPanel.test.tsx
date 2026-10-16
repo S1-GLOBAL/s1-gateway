@@ -135,6 +135,14 @@ describe('BuildPanel', () => {
     expect((screen.getByLabelText('Bottom diameter') as HTMLInputElement).value).toBe('60');
   });
 
+  it('does not announce the code on every change: saving announces it', async () => {
+    renderPanel();
+    chooseIllustrative();
+
+    const code = await screen.findByText(ILLUSTRATIVE);
+    expect(code.closest('[aria-live]')).toBeNull();
+  });
+
   it("shows the server's messages beside their controls, and no code", async () => {
     const message = 'Top diameter: 12000 mm is outside 1–9999 mm.';
     renderPanel({
