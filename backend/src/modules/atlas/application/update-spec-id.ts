@@ -48,10 +48,18 @@ export class UpdateSpecId implements UseCase<UpdateSpecIdInput, Result<SavedSpec
       return err(new InvalidSpecIdError(issues));
     }
 
+    const revised = current.savedSpecId.revise({
+      specId: built.value,
+      name: input.name,
+      dictionaryRelease: dictionary.release,
+      by: input.updatedBy.id,
+      at: this.clock.now(),
+    });
+    if (!revised.ok) return revised;
+    const change = SpecIdChange.updated(current.savedSpecId, revised.value, this.ids.next());
+
     // Nothing to change: answer what is saved, and record nothing.
-    if (built.value.code === current.savedSpecId.specId.code && input.name.trim() === current.savedSpecId.name) {
-      return ok(toSavedSpecIdDto(current, dictionary));
-    }
+    if (change.isEmpty) return ok(toSavedSpecIdDto(current, dictionary));
 
     if (input.version !== current.savedSpecId.version) return err(new SpecIdChangedError());
 
@@ -61,16 +69,6 @@ export class UpdateSpecId implements UseCase<UpdateSpecIdInput, Result<SavedSpec
       return err(new SpecIdExistsError(toSavedSpecIdDto(other, dictionary)));
     }
 
-    const revised = current.savedSpecId.revise({
-      specId: built.value,
-      name: input.name,
-      dictionaryRelease: dictionary.release,
-      by: input.updatedBy.id,
-      at: this.clock.now(),
-    });
-    if (!revised.ok) return revised;
-
-    const change = SpecIdChange.updated(current.savedSpecId, revised.value, this.ids.next());
     // The database decides between simultaneous changes: the version, and the unique code.
     const updated = await this.specIds.update(revised.value, change, input.version);
     if (!updated.ok) {
