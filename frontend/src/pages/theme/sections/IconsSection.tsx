@@ -1,6 +1,7 @@
 import * as m from 'motion/react-m';
 import type { ComponentType } from 'react';
 import {
+  AccountsIcon,
   AlertIcon,
   CheckIcon,
   ExternalLinkIcon,
@@ -19,6 +20,7 @@ import { iconTrigger } from '@/shared/ui/motion';
 import { ShowcaseSection } from '../ShowcaseSection';
 
 const ICONS: { name: string; Icon: ComponentType<IconProps>; motion: string }[] = [
+  { name: 'Accounts', Icon: AccountsIcon, motion: 'Second person joins' },
   { name: 'Tools', Icon: ToolsIcon, motion: 'Tiles dip in turn' },
   { name: 'Theme', Icon: ThemeIcon, motion: 'Paint dots pop' },
   { name: 'Sun', Icon: SunIcon, motion: 'Rays redraw around' },

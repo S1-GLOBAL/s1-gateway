@@ -1,0 +1,57 @@
+import type { ReactNode } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { isSignInRequired, takePriorSessionEnded, useSession } from '@/features/accounts';
+import { ErrorState } from '@/shared/ui/ErrorState';
+import { SkeletonBlock, SkeletonRegion } from '@/shared/ui/Skeleton';
+
+export interface RequireAuthProps {
+  /** The change-password page itself must open for someone who has to change it. */
+  allowMustChangePassword?: boolean;
+  children: ReactNode;
+}
+
+/**
+ * The gate in front of every signed-in page. It asks the API who is signed
+ * in: nobody sends you to /sign-in and back here afterwards; a password that
+ * must change sends you to /change-password.
+ */
+export function RequireAuth({ allowMustChangePassword = false, children }: RequireAuthProps) {
+  const session = useSession();
+  const location = useLocation();
+
+  if (session.isPending) return <GateSkeleton />;
+
+  if (session.isError) {
+    if (isSignInRequired(session.error)) {
+      const next = encodeURIComponent(`${location.pathname}${location.search}${location.hash}`);
+      const sessionEnded = takePriorSessionEnded();
+      return <Navigate to={`/sign-in?next=${next}`} replace state={sessionEnded ? { sessionEnded: true } : null} />;
+    }
+    return (
+      <div className="mx-auto flex min-h-dvh w-full max-w-xl items-center bg-canvas px-4">
+        <ErrorState
+          className="w-full"
+          title="The Gateway could not check your sign-in."
+          message={session.error.message}
+          onRetry={() => void session.refetch()}
+        />
+      </div>
+    );
+  }
+
+  if (session.data.mustChangePassword && !allowMustChangePassword) {
+    return <Navigate to="/change-password" replace />;
+  }
+
+  return children;
+}
+
+/** Blank canvas until we know who is here; invisible when the answer is quick (ADR 0013). */
+function GateSkeleton() {
+  return (
+    <SkeletonRegion label="the Gateway" className="flex min-h-dvh flex-col gap-6 bg-canvas p-6">
+      <SkeletonBlock className="h-8 w-40" order={0} />
+      <SkeletonBlock className="h-64 w-full" order={1} />
+    </SkeletonRegion>
+  );
+}

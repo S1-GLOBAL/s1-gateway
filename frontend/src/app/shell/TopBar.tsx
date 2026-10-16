@@ -1,12 +1,21 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useMe, useSignOut } from '@/features/accounts';
 import { ThemeSwitch } from '@/features/appearance';
+import { Button } from '@/shared/ui/Button';
 import { Logo } from '@/shared/ui/Logo';
 import { navItemFor } from '../nav';
 
-/** Where you are, and the theme. Nothing else lives here until it does something. */
+/** Where you are, who you are, and the theme. Nothing else lives here until it does something. */
 export function TopBar() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { data: me } = useMe();
+  const signOut = useSignOut();
   const here = navItemFor(pathname)?.label ?? 'Not found';
+
+  function leave() {
+    signOut.mutate(undefined, { onSuccess: () => navigate('/sign-in', { replace: true }) });
+  }
 
   return (
     <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-canvas/80 px-4 backdrop-blur-md sm:px-6">
@@ -22,7 +31,13 @@ export function TopBar() {
           <span className="truncate font-medium text-ink">{here}</span>
         </p>
       </div>
-      <ThemeSwitch />
+      <div className="flex shrink-0 items-center gap-3">
+        <p className="hidden max-w-48 truncate text-sm text-ink-muted sm:block">{me.fullName}</p>
+        <Button variant="ghost" size="sm" loading={signOut.isPending} onClick={leave}>
+          Sign out
+        </Button>
+        <ThemeSwitch />
+      </div>
     </header>
   );
 }

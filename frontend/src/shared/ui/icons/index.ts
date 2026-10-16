@@ -1,5 +1,6 @@
 export type { IconProps } from './icon-svg';
 export {
+  AccountsIcon,
   AlertIcon,
   CheckIcon,
   ExternalLinkIcon,

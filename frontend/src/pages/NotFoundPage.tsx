@@ -7,8 +7,8 @@ export function NotFoundPage() {
       <h1 className="text-2xl font-semibold text-ink">There is nothing at this address.</h1>
       <p className="text-base text-ink-muted">
         It may have moved. Everything the Gateway has is in the sidebar, or go to{' '}
-        <Link to="/" className="font-medium text-accent-ink underline-offset-4 hover:underline">
-          Tools
+        <Link to="/theme" className="font-medium text-accent-ink underline-offset-4 hover:underline">
+          Theme
         </Link>
         .
       </p>

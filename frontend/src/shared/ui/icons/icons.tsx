@@ -59,6 +59,31 @@ export function ThemeIcon(props: IconProps) {
   );
 }
 
+/* ------------------------------------------------------------- Accounts -- */
+
+/** Primary person stays; the second joins with a short pop. */
+const join: Variants = {
+  rest: { scale: 1, opacity: 1 },
+  active: {
+    scale: [1, 0.6, 1.12, 1],
+    opacity: [1, 0.4, 1, 1],
+    transition: { duration: 0.5, ease: ease.standard },
+  },
+};
+
+export function AccountsIcon(props: IconProps) {
+  return (
+    <IconSvg {...props}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <m.g variants={join} style={iconCentre}>
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </m.g>
+    </IconSvg>
+  );
+}
+
 /* ------------------------------------------------------------------ Sun -- */
 
 const core: Variants = {

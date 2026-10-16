@@ -19,21 +19,29 @@
  *   scheme      the OS colour scheme to emulate, "light" or "dark" (default light)
  *   media       further media features, e.g. {"prefers-reduced-motion":"reduce"}
  *   seed        writes one localStorage key on the origin, then reloads
+ *   cookies     [{name,value,domain?,path?,httpOnly?,secure?,sameSite?}] set before navigate
  *   settle      ms to wait after loading (default 2500)
+ *   loadTimeout ms to wait for document complete + page text (default 30000)
+ *   readyText   substring that must appear in body text before settle (optional)
  *   click       a selector, or "text=Label", or an array of them, run in order
  *   hover       a selector to move the mouse onto just before the shot
  *   evaluate    a JS expression; its result is printed
+ *   awaitPromise  set true when evaluate returns a Promise
  *
  * The browser always exits, even when a step fails.
  */
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const spec = JSON.parse(process.argv[2] ?? '{}');
+const arg = process.argv[2] ?? '{}';
+const spec = JSON.parse(arg.endsWith('.json') && existsSync(arg) ? readFileSync(arg, 'utf8') : arg);
 if (!spec.url || !spec.out) {
-  console.error('usage: node scripts/screenshot.mjs \'{"url":"http://localhost:4173/","out":"shot.png"}\'');
+  console.error(
+    'usage: node scripts/screenshot.mjs \'{"url":"http://localhost:4173/","out":"shot.png"}\'\n' +
+      '   or: node scripts/screenshot.mjs path/to/spec.json',
+  );
   process.exit(2);
 }
 
@@ -52,8 +60,8 @@ if (!BROWSER) {
   process.exit(2);
 }
 
-const PORT = 9335;
-const profile = join(tmpdir(), 's1-gateway-screenshot-profile');
+const PORT = 9300 + Math.floor(Math.random() * 600);
+const profile = join(tmpdir(), `s1-gateway-screenshot-profile-${PORT}`);
 mkdirSync(profile, { recursive: true });
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -101,11 +109,13 @@ async function run() {
       pending.set(nextId, resolve);
       ws.send(JSON.stringify({ id: nextId, method, params }));
     });
-  const evaluate = async (expression) =>
-    (await send('Runtime.evaluate', { expression, returnByValue: true }))?.result?.value;
+  const evaluate = async (expression, awaitPromise = false) =>
+    (await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise }))?.result
+      ?.value;
 
   await send('Page.enable');
   await send('Runtime.enable');
+  await send('Network.enable');
 
   const width = spec.w ?? 1440;
   const height = spec.h ?? 900;
@@ -122,16 +132,51 @@ async function run() {
     ],
   });
 
+  for (const cookie of [].concat(spec.cookies ?? [])) {
+    const result = await send('Network.setCookie', {
+      name: cookie.name,
+      value: cookie.value,
+      url: cookie.url ?? spec.url,
+      path: cookie.path ?? '/',
+      httpOnly: cookie.httpOnly ?? true,
+      secure: cookie.secure ?? false,
+      sameSite: cookie.sameSite ?? 'Lax',
+    });
+    if (!result.success) {
+      throw new Error(`Network.setCookie failed for ${cookie.name}: ${JSON.stringify(result)}`);
+    }
+  }
+
+  const navigateAndWait = async (url) => {
+    await send('Page.navigate', { url });
+    // Wait for the load event, then for real page text. Vite's first compile of
+    // a lazy route can take several seconds; skeleton markup alone is not ready
+    // (accounts stays on skeletons until /auth/me returns).
+    const readyText = spec.readyText ?? '';
+    const deadline = Date.now() + (spec.loadTimeout ?? 30000);
+    while (Date.now() < deadline) {
+      const state = await evaluate(
+        `(() => ({
+          ready: document.readyState,
+          text: (document.body && document.body.innerText || '').trim()
+        }))()`,
+      );
+      const text = state?.text ?? '';
+      const hasMarker = !readyText || text.includes(readyText);
+      if (state?.ready === 'complete' && text.length > 20 && hasMarker) break;
+      await wait(250);
+    }
+    await wait(spec.settle ?? 2500);
+  };
+
   if (spec.seed) {
-    await send('Page.navigate', { url: spec.url });
-    await wait(1500);
+    await navigateAndWait(spec.url);
     await evaluate(
       `try { localStorage.setItem(${JSON.stringify(spec.seed.key)}, ${JSON.stringify(spec.seed.value)}) } catch (e) {}`,
     );
   }
 
-  await send('Page.navigate', { url: spec.url });
-  await wait(spec.settle ?? 2500);
+  await navigateAndWait(spec.url);
 
   for (const target of [].concat(spec.click ?? [])) {
     const result = await evaluate(
@@ -158,7 +203,10 @@ async function run() {
     await wait(spec.afterHover ?? 250);
   }
 
-  if (spec.evaluate) console.log('eval:', JSON.stringify(await evaluate(spec.evaluate)));
+  if (spec.evaluate) {
+    const value = await evaluate(spec.evaluate, Boolean(spec.awaitPromise));
+    console.log('eval:', JSON.stringify(value));
+  }
 
   const { data } = await send('Page.captureScreenshot', { format: 'png' });
   writeFileSync(spec.out, Buffer.from(data, 'base64'));

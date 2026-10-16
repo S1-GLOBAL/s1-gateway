@@ -25,6 +25,8 @@ const app = composeApp({
   clock: new SystemClock(),
   ids: new CryptoIdGenerator(),
   corsOrigin: env.CORS_ORIGIN,
+  accountAdminEmails: env.accountAdminEmails,
+  cookieSecure: env.NODE_ENV === 'production',
   requestLogger: pinoHttp({ logger: pino }),
 });
 

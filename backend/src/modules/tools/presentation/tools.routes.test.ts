@@ -23,8 +23,9 @@ function setup(listTools?: UseCase<void, ToolDto[]>) {
     listTools ?? new ListTools(repository),
     new CreateTool(repository, new FixedClock(new Date('2026-10-14T08:00:00.000Z')), new SequentialIdGenerator()),
   );
+  // Tools route shape only — production mounts tools behind the session gate.
   const app = createApp({
-    modules: [{ path: '/tools', router: createToolsRouter(controller) }],
+    modules: [{ path: '/tools', router: createToolsRouter(controller), access: 'public' }],
     logger,
     corsOrigin: 'http://localhost:5173',
   });

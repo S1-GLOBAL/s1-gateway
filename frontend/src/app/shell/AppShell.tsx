@@ -1,14 +1,18 @@
+import { useMe } from '@/features/accounts';
 import { OfflineBanner } from '../pwa/OfflineBanner';
 import { UpdatePrompt } from '../pwa/UpdatePrompt';
+import { navItemsFor } from '../nav';
 import { AnimatedOutlet } from './AnimatedOutlet';
 import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { useSidebarCollapsed } from './use-sidebar-collapsed';
 
-/** The frame every page lives in. Only the content region changes between pages. */
+/** The frame every signed-in page lives in. Only the content region changes between pages. */
 export function AppShell() {
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
+  const { data: me } = useMe();
+  const items = navItemsFor(me.isAdmin);
 
   return (
     <div className="flex min-h-dvh bg-canvas">
@@ -18,13 +22,13 @@ export function AppShell() {
       >
         Skip to content
       </a>
-      <Sidebar collapsed={collapsed} onToggle={toggleCollapsed} />
+      <Sidebar items={items} collapsed={collapsed} onToggle={toggleCollapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
         <OfflineBanner />
         <TopBar />
         <AnimatedOutlet />
       </div>
-      <BottomNav />
+      <BottomNav items={items} />
       <UpdatePrompt />
     </div>
   );

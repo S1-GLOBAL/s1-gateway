@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AccountsGatewayProvider, type AccountsGateway } from '@/features/accounts';
 import { ThemeProvider, type ThemeDocument, type ThemePreferenceStore } from '@/features/appearance';
-import { ToolsGatewayProvider, type ToolsGateway } from '@/features/tools';
+import { account, fakeAccountsGateway, SIGNED_OUT } from '@/test/fake-accounts-gateway';
 import { routes } from './routes';
 
 // The service worker's registration only exists in a Vite build.
@@ -15,7 +16,7 @@ vi.mock('virtual:pwa-register/react', () => ({
   }),
 }));
 
-function renderAt(path: string, list: ToolsGateway['list'] = async () => []) {
+function renderAt(path: string, gateway: AccountsGateway = fakeAccountsGateway()) {
   const store: ThemePreferenceStore = { read: () => 'light', write: () => undefined };
   const document: ThemeDocument = {
     prefersDark: () => false,
@@ -27,31 +28,43 @@ function renderAt(path: string, list: ToolsGateway['list'] = async () => []) {
   render(
     <ThemeProvider store={store} document={document}>
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <ToolsGatewayProvider gateway={{ list, create: async () => Promise.reject(new Error('unused')) }}>
+        <AccountsGatewayProvider gateway={gateway}>
           <RouterProvider router={router} />
-        </ToolsGatewayProvider>
+        </AccountsGatewayProvider>
       </QueryClientProvider>
     </ThemeProvider>,
   );
   return router;
 }
 
-describe('the app', () => {
-  it('opens on Tools, inside the shell', async () => {
-    renderAt('/');
-    expect(await screen.findByRole('heading', { level: 1, name: 'Tools' })).toBeTruthy();
+beforeEach(() => {
+  sessionStorage.clear();
+});
+
+describe('the app, signed in', () => {
+  it('opens on Theme, inside the shell', async () => {
+    const router = renderAt('/');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Theme' })).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/theme');
     expect(screen.getAllByRole('navigation', { name: 'Main' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('radiogroup', { name: 'Theme' })).toBeTruthy();
   });
 
+  it('has no Tools page and no Tools link', async () => {
+    renderAt('/');
+    await screen.findByRole('heading', { level: 1, name: 'Theme' });
+    expect(screen.queryByRole('link', { name: 'Tools' })).toBeNull();
+  });
+
   it("shows the destination's skeleton while it loads, then the page", async () => {
-    renderAt('/', () => new Promise(() => undefined));
-    expect(await screen.findByRole('status', { name: 'Loading tools' })).toBeTruthy();
+    renderAt('/theme');
+    // Theme has no async gateway; the skeleton flashes then the heading appears.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Theme' })).toBeTruthy();
   });
 
   it('moves between places from the sidebar', async () => {
-    const router = renderAt('/');
-    await screen.findByRole('heading', { level: 1, name: 'Tools' });
+    const router = renderAt('/theme');
+    await screen.findByRole('heading', { level: 1, name: 'Theme' });
     const [sidebarThemeLink] = screen.getAllByRole('link', { name: 'Theme' });
     fireEvent.click(sidebarThemeLink!);
     expect(await screen.findByRole('heading', { level: 1, name: 'Theme' })).toBeTruthy();
@@ -61,5 +74,89 @@ describe('the app', () => {
   it('says plainly when an address does not exist', async () => {
     renderAt('/nowhere');
     expect(await screen.findByRole('heading', { level: 1, name: 'There is nothing at this address.' })).toBeTruthy();
+  });
+
+  it('shows the signed-in name and Sign out in the top bar', async () => {
+    renderAt('/theme');
+    expect(await screen.findByText('Ada Lovelace')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy();
+  });
+
+  it('signs out, and lands on the sign-in page', async () => {
+    const signOut = vi.fn<AccountsGateway['signOut']>().mockResolvedValue(undefined);
+    const router = renderAt('/theme', fakeAccountsGateway({ signOut }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/sign-in'));
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeTruthy();
+  });
+});
+
+describe('the sign-in gate', () => {
+  it('sends someone signed out to /sign-in, remembering where they were going', async () => {
+    const router = renderAt('/theme', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/sign-in');
+    expect(router.state.location.search).toBe('?next=%2Ftheme');
+    // First visit — never had a session in this tab — so no "session ended" notice.
+    expect(screen.queryByText('Your session ended. Sign in again.')).toBeNull();
+  });
+
+  it('says the session ended when this tab had been signed in before', async () => {
+    sessionStorage.setItem('s1_gateway.had_session', '1');
+    const router = renderAt('/theme', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/sign-in');
+    expect(screen.getByText('Your session ended. Sign in again.')).toBeTruthy();
+  });
+
+  it('sends someone who must change their password to /change-password', async () => {
+    const router = renderAt(
+      '/theme',
+      fakeAccountsGateway({ me: async () => account({ mustChangePassword: true }) }),
+    );
+    expect(await screen.findByRole('heading', { level: 1, name: 'Change your password' })).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/change-password');
+    expect(screen.getByText('Choose a new password before you continue.')).toBeTruthy();
+    expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();
+  });
+
+  it('says so, and offers Try again, when the check itself fails', async () => {
+    renderAt('/theme', fakeAccountsGateway({ me: async () => Promise.reject(new Error('boom')) }));
+    expect(await screen.findByText('The Gateway could not check your sign-in.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
+  });
+
+  it('keeps the public pages open without a session', async () => {
+    renderAt('/sign-up', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Create your account' })).toBeTruthy();
+    expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();
+  });
+});
+
+describe('navigation by role', () => {
+  it('hides Accounts from staff', async () => {
+    renderAt('/theme');
+    await screen.findByRole('heading', { level: 1, name: 'Theme' });
+    expect(screen.queryByRole('link', { name: 'Accounts' })).toBeNull();
+  });
+
+  it('shows Accounts to an admin', async () => {
+    renderAt('/theme', fakeAccountsGateway({ me: async () => account({ isAdmin: true }) }));
+    await screen.findByRole('heading', { level: 1, name: 'Theme' });
+    expect(screen.getAllByRole('link', { name: 'Accounts' }).length).toBeGreaterThan(0);
+  });
+
+  it('opens Accounts for an admin', async () => {
+    renderAt('/accounts', fakeAccountsGateway({ me: async () => account({ isAdmin: true }) }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Accounts' })).toBeTruthy();
+  });
+
+  it('sends staff away from /accounts to Theme', async () => {
+    const listAccounts = vi.fn<AccountsGateway['listAccounts']>();
+    const router = renderAt('/accounts', fakeAccountsGateway({ listAccounts }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Theme' })).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/theme');
+    expect(listAccounts).not.toHaveBeenCalled();
   });
 });
