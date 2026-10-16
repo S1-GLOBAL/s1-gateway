@@ -25,6 +25,10 @@ one that failed, and setting staging up again from nothing. The reasoning is
 
 From merge to both halves live takes about five minutes.
 
+A green **Deploy staging** run means only that Render accepted the deploy
+hook. Whether the new version went live is on Render → `s1-gateway-staging-api`
+→ **Events**. Until it does, the previous version keeps answering.
+
 ## Follow a deploy
 
 | To see | Go to |
@@ -41,7 +45,7 @@ From merge to both halves live takes about five minutes.
 | **Deploy staging** did not run | CI failed or was cancelled on that commit; a newer push cancels an older CI run | Fix CI. A newer commit deploys everything before it |
 | **Migrate the staging database** | The migration is wrong for the data, or the database is unreachable | Read the step's log. Unreachable: check the Supabase project is not paused (Supabase → project → **Restore**). A bad migration: fix it in a new pull request — never edit one that has shipped ([ADR 0005](../decisions/0005-migrations-over-db-push.md)) |
 | **Deploy the API on Render** | The deploy hook was refused | The hook was regenerated or the service deleted. Update the secret (below) and re-run the job |
-| Render's build or health check | The code does not start with staging's settings | Render keeps the previous version live. Read **Logs**; a missing or invalid variable is named there |
+| Render's build or health check | The code does not start with staging's settings. The API still answers, from the previous version, so a route the new commit added answers 404 "No route for …" | Render keeps the previous version live. Read **Logs**; a missing or invalid variable is named there. Set it on Render → **Environment**, then re-run the deploy |
 
 **Re-run a deploy:** Actions → **Deploy staging** → the run → **Re-run all
 jobs**. It is safe: a migration that already applied is skipped.
@@ -90,11 +94,16 @@ Supabase and Render.
 | Start Command | `npm start` |
 | Health Check Path | `/api/v1/health` |
 | Auto-Deploy | **Off** |
-| Environment | `NODE_ENV=production`, `LOG_LEVEL=info`, `DATABASE_URL`, `CORS_ORIGIN` = the Vercel address |
+| Environment | `NODE_ENV=production`, `LOG_LEVEL=info`, `DATABASE_URL`, `CORS_ORIGIN` = the Vercel address, `ACCOUNT_ADMIN_EMAILS` |
 
 `--include=dev` matters: with `NODE_ENV=production`, npm skips TypeScript and
 the build fails. Render sets `PORT` itself. After it is created, copy
 **Settings** → **Deploy Hook**.
+
+The full list, with what each value means, is the Staging table in
+[Environment variables](../reference/environment.md#staging). A pull request
+that adds a required variable is not live on staging until the variable is
+set on Render: set it before merging, or the deploy fails its health check.
 
 ### 3. GitHub
 
