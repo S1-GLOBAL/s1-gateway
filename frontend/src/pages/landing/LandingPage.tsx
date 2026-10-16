@@ -34,7 +34,7 @@ export function LandingPage() {
         <Logo variant="wordmark" height={40} />
       </span>
       <div className="flex max-w-md flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-semibold text-ink">Source One&apos;s staff hub.</h1>
+        <h1 className="text-2xl font-semibold text-ink">Source One&apos;s Staff Hub.</h1>
         <p className="text-base text-ink-muted">Internal tools for Source One Global staff.</p>
       </div>
       {unavailable ? (

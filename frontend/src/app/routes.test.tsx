@@ -106,7 +106,7 @@ describe('the app, signed in', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
     expect(signOut).toHaveBeenCalledTimes(1);
-    expect(await screen.findByRole('heading', { level: 1, name: "Source One's staff hub." })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: "Source One's Staff Hub." })).toBeTruthy();
   });
 });
 
@@ -154,7 +154,7 @@ describe('the sign-in gate', () => {
 
   it('shows the branded landing when signed out at /', async () => {
     const router = renderAt('/', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
-    expect(await screen.findByRole('heading', { level: 1, name: "Source One's staff hub." })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: "Source One's Staff Hub." })).toBeTruthy();
     expect(router.state.location.pathname).toBe('/');
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
     expect(screen.queryByText('Create an account')).toBeNull();
