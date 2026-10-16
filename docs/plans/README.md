@@ -63,4 +63,4 @@ does not exist yet, say so and mark the plan blocked rather than inventing it.
 | [0001](./0001-project-scaffold.md) | Project scaffold | Complete except the browser checks of the PWA and the Tools page |
 | [0002](./0002-visual-identity-and-motion.md) | Visual identity, motion and the app shell | Complete |
 | [0003](./0003-atlas-spec-ids.md) | Atlas: read, build and save S1 Spec IDs | In progress |
-| [0004](./0004-atlas-library-and-editable-spec-ids.md) | Atlas: a library, one workspace, and editable Spec IDs with History | Ready |
+| [0004](./0004-atlas-library-and-editable-spec-ids.md) | Atlas: a library, one workspace, and editable Spec IDs with History | In progress |

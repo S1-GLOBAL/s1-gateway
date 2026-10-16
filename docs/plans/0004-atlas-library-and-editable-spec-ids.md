@@ -1,6 +1,6 @@
 # 0004. Atlas: a library, one workspace, and editable Spec IDs with History
 
-- **Status:** Ready
+- **Status:** In progress
 - **Owner:** Rey Denzo
 - **Related:** [#16](https://github.com/S1-GLOBAL/s1-gateway/issues/16) ·
   [plan 0003](./0003-atlas-spec-ids.md) ·
