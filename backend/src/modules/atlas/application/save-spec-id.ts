@@ -4,6 +4,7 @@ import type { UseCase } from '../../../shared/application/use-case.js';
 import { err, ok, type Result } from '../../../shared/domain/result.js';
 import type { DictionaryRepository } from '../domain/dictionary-repository.js';
 import { checkName, SavedSpecId } from '../domain/saved-spec-id.js';
+import { SpecIdChange } from '../domain/spec-id-change.js';
 import { CURRENT_RELEASE } from '../domain/slots.js';
 import { InvalidSpecIdError, SpecIdExistsError, type SpecIdIssues } from '../domain/spec-id.errors.js';
 import { SpecId } from '../domain/spec-id.js';
@@ -49,12 +50,17 @@ export class SaveSpecId implements UseCase<SaveSpecIdInput, Result<SavedSpecIdDt
     if (existing) return err(new SpecIdExistsError(toSavedSpecIdDto(existing, dictionary)));
 
     // The database decides between two simultaneous saves of one code: the loser reads the winner.
-    const added = await this.specIds.add(created.value);
+    const added = await this.specIds.add(created.value, SpecIdChange.created(created.value, this.ids.next()));
     if (!added.ok) {
       const winner = await this.specIds.findByCode(code);
       return err(winner ? new SpecIdExistsError(toSavedSpecIdDto(winner, dictionary)) : added.error);
     }
 
-    return ok(toSavedSpecIdDto({ savedSpecId: created.value, savedByName: input.savedBy.fullName }, dictionary));
+    return ok(
+      toSavedSpecIdDto(
+        { savedSpecId: created.value, savedByName: input.savedBy.fullName, updatedByName: null },
+        dictionary,
+      ),
+    );
   }
 }

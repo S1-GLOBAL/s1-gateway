@@ -21,11 +21,25 @@ export class SpecIdExistsError extends DomainError {
   }
 }
 
+/** Looked up by code, the message says so; looked up by id, it says the Spec ID does not exist. */
 export class SpecIdNotFoundError extends DomainError {
   override readonly code = 'SPEC_ID_NOT_FOUND';
 
+  constructor(lookedUpBy: 'code' | 'id' = 'code') {
+    super(
+      lookedUpBy === 'code'
+        ? 'No saved Spec ID has this code. Check it, or build and save it.'
+        : "This Spec ID doesn't exist. It may have been typed wrong.",
+    );
+  }
+}
+
+/** Someone saved a change since this one was started from: its `version` is not the current one. */
+export class SpecIdChangedError extends DomainError {
+  override readonly code = 'SPEC_ID_CHANGED';
+
   constructor() {
-    super('No saved Spec ID has this code. Check it, or build and save it.');
+    super('Someone changed this Spec ID while you were editing. Reload to see their changes, then make yours again.');
   }
 }
 

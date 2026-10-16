@@ -36,6 +36,20 @@
       "when": 1792167703066,
       "tag": "0004_create_atlas_spec_ids",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792184285056,
+      "tag": "0005_atlas_spec_ids_editable_with_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792184288438,
+      "tag": "0006_backfill_atlas_spec_id_created_changes",
+      "breakpoints": true
     }
   ]
 }

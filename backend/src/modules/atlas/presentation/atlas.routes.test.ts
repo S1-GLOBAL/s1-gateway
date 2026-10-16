@@ -7,7 +7,11 @@ import { EncodeSpecId } from '../application/encode-spec-id.js';
 import { FindSimilarSpecIds } from '../application/find-similar-spec-ids.js';
 import { FindSpecIdByCode } from '../application/find-spec-id-by-code.js';
 import { GetDictionary } from '../application/get-dictionary.js';
+import { GetSavedSpecId } from '../application/get-saved-spec-id.js';
+import { GetSpecIdHistory } from '../application/get-spec-id-history.js';
+import { ListSavedSpecIds } from '../application/list-saved-spec-ids.js';
 import { SaveSpecId } from '../application/save-spec-id.js';
+import { UpdateSpecId } from '../application/update-spec-id.js';
 import { InMemoryDictionaryRepository } from '../application/testing/in-memory-dictionary-repository.js';
 import { InMemorySpecIdRepository } from '../application/testing/in-memory-spec-id-repository.js';
 import { AtlasController } from './atlas.controller.js';
@@ -43,6 +47,17 @@ function setup() {
     new FindSpecIdByCode(dictionaries, specIds),
     new FindSimilarSpecIds(dictionaries, specIds),
     () => STAFF,
+    {
+      getSaved: new GetSavedSpecId(dictionaries, specIds),
+      update: new UpdateSpecId(
+        dictionaries,
+        specIds,
+        new FixedClock(new Date('2026-10-17T08:00:00.000Z')),
+        new SequentialIdGenerator(),
+      ),
+      history: new GetSpecIdHistory(dictionaries, specIds),
+      library: new ListSavedSpecIds(dictionaries, specIds),
+    },
   );
   // Atlas route shape only — production mounts Atlas behind the session gate.
   return createApp({
@@ -330,7 +345,7 @@ describe('GET /api/v1/atlas/spec-ids', () => {
   });
 });
 
-describe('no route changes or removes anything', () => {
+describe('nothing replaces or removes a Spec ID by its code', () => {
   it.each(['/api/v1/atlas/spec-ids', `/api/v1/atlas/spec-ids/${encodeURIComponent(ILLUSTRATIVE)}`])(
     'answers 404 NOT_FOUND to PUT, PATCH and DELETE on %s',
     async (path) => {
@@ -344,4 +359,162 @@ describe('no route changes or removes anything', () => {
       }
     },
   );
+});
+
+describe('saved Spec IDs by id', () => {
+  const ID = '00000000-0000-4000-8000-000000000001';
+  const saveOne = async (own: ReturnType<typeof setup>) => {
+    const saved = await request(own).post('/api/v1/atlas/spec-ids').send({ name: 'Illustrative lid', facts: FACTS });
+    return saved.body.data as { id: string; version: number };
+  };
+  const patch = (own: ReturnType<typeof setup>, id: string, body: object) =>
+    request(own).patch(`/api/v1/atlas/saved/${id}`).send(body);
+
+  it('answers GET /saved/:id with the Spec ID, its version and who changed it', async () => {
+    const own = setup();
+    const { id } = await saveOne(own);
+
+    const response = await request(own).get(`/api/v1/atlas/saved/${id}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data).toMatchObject({ id, code: ILLUSTRATIVE, version: 1, updatedBy: null, updatedAt: null });
+  });
+
+  it('answers PATCH /saved/:id with the changed Spec ID', async () => {
+    const own = setup();
+    const { id } = await saveOne(own);
+
+    const response = await patch(own, id, {
+      name: 'Illustrative lid',
+      facts: { ...FACTS, height: { value: '12', unit: 'mm' } },
+      version: 1,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.code).toBe(ILLUSTRATIVE.replace('.0000.', '.0012.'));
+    expect(response.body.data.version).toBe(2);
+    expect(response.body.data.updatedBy).toEqual(STAFF);
+    expect(response.body.data.updatedAt).toBe('2026-10-17T08:00:00.000Z');
+  });
+
+  it('answers 409 SPEC_ID_CHANGED to a change from an older version', async () => {
+    const own = setup();
+    const { id } = await saveOne(own);
+    await patch(own, id, { name: 'First change', facts: FACTS, version: 1 });
+
+    const response = await patch(own, id, { name: 'Second change', facts: FACTS, version: 1 });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe('SPEC_ID_CHANGED');
+    expect(response.body.error.message).toBe(
+      'Someone changed this Spec ID while you were editing. Reload to see their changes, then make yours again.',
+    );
+  });
+
+  it('answers 409 SPEC_ID_EXISTS, naming the other Spec ID, to facts that give it its code', async () => {
+    const own = setup();
+    const { id } = await saveOne(own);
+    const withHeight = { ...FACTS, height: { value: '12', unit: 'mm' } };
+    await request(own).post('/api/v1/atlas/spec-ids').send({ name: 'Lid, 12 mm', facts: withHeight });
+
+    const response = await patch(own, id, { name: 'Illustrative lid', facts: withHeight, version: 1 });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe('SPEC_ID_EXISTS');
+    expect(response.body.error.details.existing.name).toBe('Lid, 12 mm');
+  });
+
+  it('answers 400 VALIDATION_FAILED to a change without a version', async () => {
+    const own = setup();
+    const { id } = await saveOne(own);
+    const response = await patch(own, id, { name: 'Illustrative lid', facts: FACTS });
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('VALIDATION_FAILED');
+  });
+
+  it('answers GET /saved/:id/history newest first', async () => {
+    const own = setup();
+    const { id } = await saveOne(own);
+    await patch(own, id, { name: 'Clear dome lid', facts: FACTS, version: 1 });
+
+    const response = await request(own).get(`/api/v1/atlas/saved/${id}/history`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.map((entry: { kind: string }) => entry.kind)).toEqual(['updated', 'created']);
+    expect(response.body.data[0].nameBefore).toBe('Illustrative lid');
+    expect(response.body.data[0].nameAfter).toBe('Clear dome lid');
+  });
+
+  it.each(['get', 'patch'] as const)('answers 404 SPEC_ID_NOT_FOUND to %s on an id nobody saved', async (method) => {
+    const response = await request(setup())
+      [method](`/api/v1/atlas/saved/${ID}`)
+      .send({ name: 'Illustrative lid', facts: FACTS, version: 1 });
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe('SPEC_ID_NOT_FOUND');
+    expect(response.body.error.message).toBe("This Spec ID doesn't exist. It may have been typed wrong.");
+  });
+
+  it.each(['/api/v1/atlas/saved/not-a-uuid', '/api/v1/atlas/saved/not-a-uuid/history'])(
+    'answers 404 SPEC_ID_NOT_FOUND to an id that is not an id: GET %s',
+    async (path) => {
+      const response = await request(app).get(path);
+      expect(response.status).toBe(404);
+      expect(response.body.error.code).toBe('SPEC_ID_NOT_FOUND');
+    },
+  );
+
+  it('answers 404 SPEC_ID_NOT_FOUND to PATCH on an id that is not an id', async () => {
+    const response = await patch(app, 'not-a-uuid', { name: 'Illustrative lid', facts: FACTS, version: 1 });
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe('SPEC_ID_NOT_FOUND');
+  });
+
+  it('answers 404 NOT_FOUND to PUT and DELETE: a saved Spec ID is never replaced or removed', async () => {
+    for (const method of ['put', 'delete'] as const) {
+      const response = await request(app)[method](`/api/v1/atlas/saved/${ID}`).send({});
+      expect({ method, status: response.status, code: response.body.error?.code }).toEqual({
+        method,
+        status: 404,
+        code: 'NOT_FOUND',
+      });
+    }
+  });
+});
+
+describe('GET /api/v1/atlas/saved', () => {
+  it('answers a page of the library with no next cursor', async () => {
+    const own = setup();
+    await request(own).post('/api/v1/atlas/spec-ids').send({ name: 'Illustrative lid', facts: FACTS });
+
+    const response = await request(own).get('/api/v1/atlas/saved');
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.items.map((item: { name: string }) => item.name)).toEqual(['Illustrative lid']);
+    expect(response.body.data.nextCursor).toBeNull();
+  });
+
+  it('answers 400 VALIDATION_FAILED to a cursor it did not write', async () => {
+    const response = await request(app).get('/api/v1/atlas/saved?cursor=not-a-cursor');
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('VALIDATION_FAILED');
+    expect(response.body.error.details.fields.cursor).toEqual([
+      'Not a page of this list. Start again from the first page.',
+    ]);
+  });
+});
+
+describe('GET /api/v1/atlas/spec-ids/:code, as a lookup', () => {
+  it('finds a code typed in lower case, and names no former holders', async () => {
+    const own = setup();
+    await request(own).post('/api/v1/atlas/spec-ids').send({ name: 'Illustrative lid', facts: FACTS });
+
+    const response = await request(own).get(
+      `/api/v1/atlas/spec-ids/${encodeURIComponent(ILLUSTRATIVE.toLowerCase())}`,
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.name).toBe('Illustrative lid');
+    expect(response.body.data.replacedCode).toBeNull();
+    expect(response.body.data.formerHolders).toEqual([]);
+  });
 });

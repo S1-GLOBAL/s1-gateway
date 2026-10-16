@@ -44,6 +44,21 @@ describe('SaveSpecId', () => {
     expect(specIds.size).toBe(1);
   });
 
+  it('records who saved it and when as the first history entry', async () => {
+    const { specIds, save } = setup();
+    const result = await save.execute({ name: 'Illustrative lid', facts: FACTS, savedBy: SAVER });
+    if (!result.ok) throw result.error;
+
+    const history = await specIds.history(result.value.id);
+
+    expect(history).toHaveLength(1);
+    expect(history[0]?.change.kind).toBe('created');
+    expect(history[0]?.change.codeAfter).toBe(ILLUSTRATIVE);
+    expect(history[0]?.changedByName).toBe('Ada Invented');
+    expect(result.value.version).toBe(1);
+    expect(result.value.updatedBy).toBeNull();
+  });
+
   it('answers the Spec ID already saved for a duplicate, and saves nothing new', async () => {
     const { specIds, save } = setup();
     await save.execute({ name: 'First', facts: FACTS, savedBy: SAVER });
