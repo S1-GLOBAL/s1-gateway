@@ -89,6 +89,16 @@ describe('DecodePanel', () => {
     expect(screen.getAllByRole('row')).toHaveLength(19);
   });
 
+  it('announces each slot message, since it sits under no input', async () => {
+    const message = 'Top diameter: 0X90 mixes a marker with other characters.';
+    renderPanel(async () => {
+      throw new AppError('INVALID_SPEC_ID', 'The Spec ID is not valid.', { topDiameter: [message] });
+    });
+    decodeCode(ILLUSTRATIVE.replace('.0090.', '.0X90.'));
+
+    expect((await screen.findByRole('alert')).textContent).toBe(message);
+  });
+
   it('shows problems with the whole code under the input, and no table when it is not 18 parts', async () => {
     const message = 'A Spec ID is 74 characters. This one has 6.';
     renderPanel(async () => {

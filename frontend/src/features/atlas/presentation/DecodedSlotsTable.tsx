@@ -44,7 +44,7 @@ export function DecodedSlotsTable({ rows }: { rows: readonly DecodedSlotRow[] })
               <td className="px-4 py-2.5 text-ink-muted">
                 {row.meaning}
                 {row.messages?.map((message) => (
-                  <p key={message} className="text-xs text-danger">
+                  <p key={message} role="alert" className="text-xs text-danger">
                     {message}
                   </p>
                 ))}
