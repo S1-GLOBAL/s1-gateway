@@ -31,7 +31,7 @@ the issue disagree, the issue wins and this plan is corrected.
 - Removing open sign-up: the route, its use case, its rate limiter, its form and page
 - `npm run db:create-admin` for local development and tests
 - ADR 0023, partly superseding ADR 0018
-- `api.md`, `data-model.md`, `commands.md` and `constraints.md` updates
+- `api.md`, `data-model.md`, `commands.md`, `environment.md` and `constraints.md` updates
 
 **Out of scope** — and where it is handled instead
 - Emailing the invite automatically — no issue yet (no outbound mail; ADR 0018)
@@ -125,13 +125,14 @@ does whenever `first_name` and `last_name` are both empty.
 | Method | Path | Router | Answers |
 |---|---|---|---|
 | POST | `/accounts/invites` | `accounts.routes.ts` (admin) | 201, 400 `EMAIL_NOT_ALLOWED`, 409 `ACCOUNT_EXISTS` |
-| GET | `/accounts/invites` | `accounts.routes.ts` (admin) | 200 |
+| GET | `/accounts/invites` | `accounts.routes.ts` (admin) | 200, open invites newest first |
 | POST | `/accounts/invites/:id/revoke` | `accounts.routes.ts` (admin) | 200, 404 `INVITE_NOT_FOUND` |
 | GET | `/auth/invites/:token` | `createPublicAuthRouter` | 200, 404 `INVITE_INVALID` |
-| POST | `/auth/register` | `createPublicAuthRouter` | 201, 400 `VALIDATION_FAILED`, 404 `INVITE_INVALID`, 409 `ACCOUNT_EXISTS` |
+| POST | `/auth/register` | `createPublicAuthRouter` | 201 `{ data: Account }` with no session cookie, 400 `VALIDATION_FAILED`, 404 `INVITE_INVALID`, 409 `ACCOUNT_EXISTS` |
 
-`POST /accounts/invites` must be registered before `POST /:id/approve` and its
-siblings, so `invites` is never read as an `:id`.
+The invite routes cannot be read as `/:id/approve` or its siblings, whatever
+their order: `/invites` has one segment and `/invites/:id/revoke` three, where
+those have two.
 
 ### Domain and application — `backend/src/modules/accounts/`
 
@@ -139,7 +140,7 @@ siblings, so `invites` is never read as an `:id`.
 - `domain/account.ts`: `firstName`, `lastName`; `fullName` becomes `` `${firstName} ${lastName}`.trim() ``; `Account.register` takes both names; a new `Account.registerInvited` creates an approved account.
 - `domain/account-invite.ts`: `AccountInvite.create(email, tokenHash, invitedBy, id, now)` (7 days), `isUsable(now)`, `revoke(now)`; `INVITE_TTL_MS`.
 - `domain/account.errors.ts`: `InviteInvalidError` (`INVITE_INVALID`, 404 copy from #21), `InviteNotFoundError` (`INVITE_NOT_FOUND`, 404, `This invite was already used or revoked.`, decided by reyxdz on 2026-10-17), and the invite form's own wording for a bad email and an existing account (#21's copy table). Registration's mismatched passwords go under `confirmPassword`: `The passwords don't match.`
-- `domain/account-invite-repository.ts`: `add` (revokes that email's open invite in the same transaction), `findByTokenHash`, `listOpen(now)`, `revoke(id, now)`, `redeem(inviteId, account, now)`.
+- `domain/account-invite-repository.ts`: `add` (revokes that email's open invite in the same transaction), `findByTokenHash`, `listOpen(now)` (newest first), `revoke(id, now)`, `redeem(inviteId, account, now)`.
 - `application/`: `CreateInvite`, `ListInvites`, `RevokeInvite`, `GetInvite`, `RegisterWithInvite`, each with tests over in-memory fakes.
 
 ### Frontend — `frontend/src/features/accounts/` and `frontend/src/pages/`
@@ -161,7 +162,7 @@ owns the code.
 4. Revoking a used, revoked or unknown invite answers 404 `INVITE_NOT_FOUND` (Step 1.4).
 5. A registration body carrying `email` creates the account with the invite's email, not that one (Step 1.5).
 6. Two simultaneous `POST /auth/register` with one token create one account; the other answers 404 `INVITE_INVALID` (Step 1.5).
-7. `POST /auth/sign-up` answers 404 once phase 2 lands, and nothing in `backend/src` or `frontend/src` still names it except the test that proves the 404 (Step 2.4).
+7. `POST /auth/sign-up` answers 404 once phase 2 lands, and nothing in `backend/src` or `frontend/src` still names it except the test that proves the 404 (Steps 2.4 and 2.5).
 
 ---
 
@@ -192,17 +193,17 @@ form still sends a full name, which the server splits at the first space.
 
 ### Step 1.5 — The repository and the routes
 
-- [ ] **Action.** `DrizzleAccountInviteRepository` with `redeem` in one transaction; the zod schemas (shape only); the controller methods and routes above; the account mapper reads and writes both names, with the empty-names fallback above. Database tests: Review Focus 6; `add` revokes that email's open invite; an `accounts` row with both names empty reads back with them split from `full_name`. HTTP tests: every status in the routes table, Review Focus 2 and 5, the invite routes answer 403 to a signed-in non-admin and 401 without a session.
+- [ ] **Action.** `DrizzleAccountInviteRepository` with `redeem` in one transaction; the zod schemas (shape only); the controller methods and routes above; the account mapper reads and writes both names, with the empty-names fallback above. Database tests: Review Focus 6; `add` revokes that email's open invite; an `accounts` row with both names empty reads back with them split from `full_name`. HTTP tests: every status in the routes table, the invite list newest first, registering setting no session cookie, Review Focus 2 and 5, the invite routes answer 403 to a signed-in non-admin and 401 without a session.
 - [ ] **Verify.** `npm run db:up`, then `npm test` passes.
 
 ### Step 1.6 — Contracts and docs
 
-- [ ] **Action.** The contract additions above, read on the frontend with a fallback (`firstName ?? ''`, `lastName ?? ''`) so a new frontend works with the old API during a release. `docs/reference/api.md`: the five routes, the two new error codes, `firstName` and `lastName` in the `Account` table, and the `AccountInvite` shape. `docs/reference/data-model.md`: `account_invites`, the two columns, and `full_name` as `varchar(81)`.
+- [ ] **Action.** The contract additions above, read on the frontend with a fallback (`firstName ?? ''`, `lastName ?? ''`) so a new frontend works with the old API during a release. `docs/reference/api.md`: the five routes, the two new error codes, `firstName` and `lastName` in the `Account` table, `fullName` as 1–81 characters, and the `AccountInvite` shape. `docs/reference/data-model.md`: `account_invites`, the two columns, and `full_name` as `varchar(81)`.
 - [ ] **Verify.** `npm run typecheck && npm run docs:check` exits 0; `npm --prefix frontend run build` exits 0.
 
 ### Step 1.7 — Open the pull request
 
-- [ ] **Action.** Open "Part of #21" with the template; Database (two migrations, additive, with a backfill of every account), API and Rollout filled in.
+- [ ] **Action.** Open "Part of #21" with the template; Database (two migrations: additive apart from widening `full_name` to `varchar(81)`, with a backfill of every account), API and Rollout filled in.
 - [ ] **Verify.** CI and `pr-audit` pass. After merge, on staging, signed in as reyxdz: `GET /api/v1/auth/me` answers `firstName` and `lastName` split from the existing name, and `GET /api/v1/accounts/invites` answers an empty list.
 
 ---
@@ -228,13 +229,13 @@ One pull request, "Closes #21".
 
 ### Step 2.4 — Close open sign-up
 
-- [ ] **Action.** Remove `POST /auth/sign-up`, `SignUp`, the `SignUpRateLimiter` port and `SlidingWindowSignUpRateLimiter`, `SignUpForm`, `useSignUp` and the gateway's `signUp`, and `domain/full-name.ts`, its test and `InvalidFullNameError`, which only `SignUp` used. `sign-in.test.ts` and `auth.routes.test.ts` stop creating accounts through `SignUp`: they add them to `InMemoryAccountRepository` with `Account.register` (pending ones with `autoApprove: false`). `SignUpPage` becomes #21's invite-only note; the sign-in page loses its footer link. Update `docs/explanation/constraints.md` and `docs/reference/api.md` (remove the route and `SIGN_UP_RATE_LIMITED`, and describe `EMAIL_NOT_ALLOWED` as an invite's email, not a sign-up's).
-- [ ] **Verify.** Review Focus 7: `git grep -n -i "sign-up\|signUp" -- backend/src frontend/src` prints only the `/sign-up` route and `SignUpPage` (in `routes.tsx`, `SignUpPage.tsx`, `next-path.ts` and their tests) and the HTTP test that proves `POST /api/v1/auth/sign-up` answers 404.
+- [ ] **Action.** Remove `POST /auth/sign-up`, `SignUp`, the `SignUpRateLimiter` port and `SlidingWindowSignUpRateLimiter`, `SignUpForm`, `useSignUp` and the gateway's `signUp`, and `domain/full-name.ts`, its test and `InvalidFullNameError`, which only `SignUp` used. Remove with them `sign-up.test.ts`, `application/testing/in-memory-sign-up-rate-limiter.ts`, `sliding-window-sign-up-rate-limiter.test.ts`, `SignUpRateLimitedError` in `account.errors.ts`, `signUpRequestSchema` in `auth.schemas.ts`, `SignUpRequest` in `backend/src/contracts/accounts.ts`, and `signUp` in `frontend/src/test/fake-accounts-gateway.ts`. `sign-in.test.ts` and `auth.routes.test.ts` stop creating accounts through `SignUp`: they add them to `InMemoryAccountRepository` with `Account.register` (pending ones with `autoApprove: false`). `SignUpPage` becomes #21's invite-only note; the sign-in page loses its footer link. Update `docs/explanation/constraints.md` and `docs/reference/api.md` (remove the route and `SIGN_UP_RATE_LIMITED`, and describe `EMAIL_NOT_ALLOWED` as an invite's email, not a sign-up's).
+- [ ] **Verify.** Review Focus 7: `git grep -n -i "sign-up\|signUp" -- backend/src frontend/src` prints only the `/sign-up` route and `SignUpPage` (in `routes.tsx`, `SignUpPage.tsx`, `next-path.ts` and their tests) and the HTTP test that proves `POST /api/v1/auth/sign-up` answers 404, plus `backend/src/atlas.db.test.ts` and `backend/src/compose.db.test.ts`, which Step 2.5 changes. `npm run typecheck` exits 0.
 
 ### Step 2.5 — The create-admin command
 
-- [ ] **Action.** `backend/src/scripts/create-admin.ts` (exporting `createAdmin(db, input)` for tests): it takes `--email`, `--first-name` and `--last-name`, and reads the password from `ADMIN_PASSWORD` for that one run. `"db:create-admin": "tsx src/scripts/create-admin.ts"` in `backend/package.json` and `"db:create-admin": "npm --prefix backend run db:create-admin --"` in the root `package.json`. `backend/src/compose.db.test.ts` and `backend/src/atlas.db.test.ts` create their admin with `createAdmin` instead of signing up, then sign in as before. Document it in `docs/reference/commands.md`, and `ADMIN_PASSWORD` in `docs/reference/environment.md` and, commented out, in `backend/.env.example`.
-- [ ] **Verify.** Tests: `createAdmin` refuses with `NODE_ENV=production` and refuses an email not in `ACCOUNT_ADMIN_EMAILS`. `npm test` passes with the database running.
+- [ ] **Action.** `backend/src/scripts/create-admin.ts` (exporting `createAdmin(db, input)` for tests): it takes `--email`, `--first-name` and `--last-name`, and reads the password from `ADMIN_PASSWORD` for that one run. `"db:create-admin": "tsx src/scripts/create-admin.ts"` in `backend/package.json` and `"db:create-admin": "npm --prefix backend run db:create-admin --"` in the root `package.json`. `backend/src/compose.db.test.ts` and `backend/src/atlas.db.test.ts` create their admin with `createAdmin` instead of signing up, then sign in as before; the comment above `atlas.db.test.ts`'s sign-in loses `sign-ups are limited to 5 per hour`. Document it in `docs/reference/commands.md`, and `ADMIN_PASSWORD` in `docs/reference/environment.md` and, commented out, in `backend/.env.example`.
+- [ ] **Verify.** Tests: `createAdmin` refuses with `NODE_ENV=production` and refuses an email not in `ACCOUNT_ADMIN_EMAILS`. `npm test` passes with the database running. Review Focus 7's grep from Step 2.4 no longer prints `atlas.db.test.ts` or `compose.db.test.ts`.
 
 ### Step 2.6 — Check it in a browser
 
