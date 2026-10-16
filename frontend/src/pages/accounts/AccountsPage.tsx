@@ -5,7 +5,7 @@ import { PageHeader } from '@/shared/ui/PageHeader';
 export function AccountsPage() {
   const { data: me } = useMe();
   // Never ask the API for the lists: it would only answer 403.
-  if (!me.isAdmin) return <Navigate to="/theme" replace />;
+  if (!me.isAdmin) return <Navigate to="/atlas" replace />;
 
   return (
     <div className="flex flex-col gap-10">
