@@ -28,7 +28,7 @@ function renderPage(overrides: Partial<AccountsGateway>) {
           </RouteBoundary>
         ),
       },
-      { path: '/theme', element: <p>theme page</p> },
+      { path: '/atlas', element: <p>atlas page</p> },
     ],
     { initialEntries: ['/accounts'] },
   );
@@ -59,11 +59,11 @@ describe('AccountsPage', () => {
     expect(screen.getByText('No disabled accounts.')).toBeTruthy();
   });
 
-  it('sends someone who is not an admin to Theme, without asking for the lists', async () => {
+  it('sends someone who is not an admin to Atlas, without asking for the lists', async () => {
     const listAccounts = vi.fn<AccountsGateway['listAccounts']>();
     const router = renderPage({ me: async () => account({ isAdmin: false }), listAccounts });
-    expect(await screen.findByText('theme page')).toBeTruthy();
-    expect(router.state.location.pathname).toBe('/theme');
+    expect(await screen.findByText('atlas page')).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/atlas');
     expect(listAccounts).not.toHaveBeenCalled();
   });
 

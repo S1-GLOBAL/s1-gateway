@@ -12,13 +12,14 @@ export interface NavItem {
 }
 
 /**
- * Every place in the app, in the order the sidebar shows them. Tools is
- * parked: its API stays, but it has no page or link for now.
+ * Every place in the app, in the order the sidebar shows them. Theme, the
+ * design showcase, is always last. Tools is parked: its API stays, but it has
+ * no page or link for now.
  */
 export const NAV_ITEMS: readonly NavItem[] = [
-  { path: '/theme', label: 'Theme', icon: ThemeIcon },
   { path: '/atlas', label: 'Atlas', icon: AtlasIcon },
   { path: '/accounts', label: 'Accounts', icon: AccountsIcon, adminOnly: true },
+  { path: '/theme', label: 'Theme', icon: ThemeIcon },
 ];
 
 /** The places this person may go: Accounts only for an admin. */

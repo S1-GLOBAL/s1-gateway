@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountsGatewayProvider, type AccountsGateway } from '@/features/accounts';
+import { AtlasGatewayProvider, type AtlasGateway } from '@/features/atlas';
 import { ThemeProvider, type ThemeDocument, type ThemePreferenceStore } from '@/features/appearance';
 import { AppError } from '@/shared/application/app-error';
 import { account, fakeAccountsGateway, SIGNED_OUT } from '@/test/fake-accounts-gateway';
@@ -17,6 +18,17 @@ vi.mock('virtual:pwa-register/react', () => ({
   }),
 }));
 
+/** Atlas, where signed-in staff land: an empty dictionary and no saved Spec IDs. */
+const pending = () => new Promise<never>(() => undefined);
+const atlasGateway: AtlasGateway = {
+  dictionary: async () => ({ release: 'S1 0.1.0', approvedOn: '2026-10-16', slots: [], rules: [] }),
+  decode: pending,
+  encode: pending,
+  save: pending,
+  findByCode: pending,
+  findSimilar: async () => ({ fits: [], mightFit: [] }),
+};
+
 function renderAt(path: string, gateway: AccountsGateway = fakeAccountsGateway()) {
   const store: ThemePreferenceStore = { read: () => 'light', write: () => undefined };
   const document: ThemeDocument = {
@@ -30,7 +42,9 @@ function renderAt(path: string, gateway: AccountsGateway = fakeAccountsGateway()
     <ThemeProvider store={store} document={document}>
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
         <AccountsGatewayProvider gateway={gateway}>
-          <RouterProvider router={router} />
+          <AtlasGatewayProvider gateway={atlasGateway}>
+            <RouterProvider router={router} />
+          </AtlasGatewayProvider>
         </AccountsGatewayProvider>
       </QueryClientProvider>
     </ThemeProvider>,
@@ -44,12 +58,12 @@ beforeEach(() => {
 
 describe('the app, signed in', () => {
   it(
-    'opens on Theme, inside the shell',
+    'opens on Atlas, inside the shell',
     async () => {
       const router = renderAt('/');
-      // Signed-in `/` hops through the landing Navigate before Theme loads.
-      expect(await screen.findByRole('heading', { level: 1, name: 'Theme' }, { timeout: 15_000 })).toBeTruthy();
-      expect(router.state.location.pathname).toBe('/theme');
+      // Signed-in `/` hops through the landing Navigate before Atlas loads.
+      expect(await screen.findByRole('heading', { level: 1, name: 'Atlas' }, { timeout: 15_000 })).toBeTruthy();
+      expect(router.state.location.pathname).toBe('/atlas');
       expect(screen.getAllByRole('navigation', { name: 'Main' }).length).toBeGreaterThan(0);
       expect(screen.getByRole('radiogroup', { name: 'Theme' })).toBeTruthy();
     },
@@ -83,9 +97,11 @@ describe('the app, signed in', () => {
     expect(router.state.location.pathname).toBe('/theme');
   });
 
-  it('says plainly when an address does not exist', async () => {
+  it('says plainly when an address does not exist, and offers Atlas', async () => {
     renderAt('/nowhere');
     expect(await screen.findByRole('heading', { level: 1, name: 'There is nothing at this address.' })).toBeTruthy();
+    const note = screen.getByText(/It may have moved\./);
+    expect(within(note).getByRole('link', { name: 'Atlas' }).getAttribute('href')).toBe('/atlas');
   });
 
   it('shows the signed-in name and Sign out in the top bar', async () => {
@@ -192,11 +208,25 @@ describe('navigation by role', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Accounts' })).toBeTruthy();
   });
 
-  it('sends staff away from /accounts to Theme', async () => {
+  it('sends staff away from /accounts to Atlas', async () => {
     const listAccounts = vi.fn<AccountsGateway['listAccounts']>();
     const router = renderAt('/accounts', fakeAccountsGateway({ listAccounts }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Theme' })).toBeTruthy();
-    expect(router.state.location.pathname).toBe('/theme');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Atlas' })).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/atlas');
     expect(listAccounts).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['staff', false, ['Atlas', 'Theme']],
+    ['an admin', true, ['Atlas', 'Accounts', 'Theme']],
+  ] as const)('lists the places in order for %s, with Theme last', async (_who, isAdmin, labels) => {
+    renderAt('/theme', fakeAccountsGateway({ me: async () => account({ isAdmin }) }));
+    await screen.findByRole('heading', { level: 1, name: 'Theme' });
+    // The sidebar's name is on its <aside>; the bottom bar's is on its <nav>.
+    const sidebar = within(screen.getByRole('complementary', { name: 'Main' })).getByRole('navigation');
+    const bottomBar = screen.getByRole('navigation', { name: 'Main' });
+    for (const nav of [sidebar, bottomBar]) {
+      expect(within(nav).getAllByRole('link').map((link) => link.textContent?.trim())).toEqual(labels);
+    }
   });
 });
