@@ -14,7 +14,7 @@ export function TopBar() {
   const here = navItemFor(pathname)?.label ?? 'Not found';
 
   function leave() {
-    signOut.mutate(undefined, { onSuccess: () => navigate('/sign-in', { replace: true }) });
+    signOut.mutate(undefined, { onSuccess: () => navigate('/', { replace: true }) });
   }
 
   return (

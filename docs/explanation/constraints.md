@@ -25,10 +25,11 @@ or being disabled ends it at once
 **That is why a public staging deployment is acceptable.** Anyone can load the
 app shell, because it is static and cached
 ([ADR 0010](../decisions/0010-the-app-shell-is-cached-api-responses-never-are.md)),
-but every request for data answers 401 without a session, and the shell sends
-a signed-out visitor to `/sign-in`. Keep it that way: a new route is behind
-sign-in unless it is deliberately made public, and nothing a staff member
-should not see belongs in the shell itself.
+but every request for data answers 401 without a session. A signed-out visitor
+who opens `/` sees the public landing (brand and Sign in); deep links to
+signed-in pages still send them to `/sign-in` with a return path. Keep it that
+way: a new route is behind sign-in unless it is deliberately made public, and
+nothing a staff member should not see belongs in the shell itself.
 
 Sign-in is not a substitute for care: the repository is public, so no Source
 One data goes in it (§6), and there is no email, so an admin gives a password

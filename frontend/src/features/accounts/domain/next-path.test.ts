@@ -20,7 +20,8 @@ describe('safeNextPath', () => {
     expect(safeNextPath('theme')).toBe('/');
   });
 
-  it('never returns to a signed-out page', () => {
+  it('maps public paths to the home path', () => {
+    expect(safeNextPath('/')).toBe('/');
     expect(safeNextPath('/sign-in')).toBe('/');
     expect(safeNextPath('/sign-in?next=%2Ftheme')).toBe('/');
     expect(safeNextPath('/reset-password?token=abc')).toBe('/');

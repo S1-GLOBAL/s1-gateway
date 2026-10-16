@@ -11,4 +11,4 @@ export function safeNextPath(next: string | null | undefined): string {
   return next;
 }
 
-const PUBLIC_PATHS = ['/sign-in', '/sign-up', '/reset-password'];
+const PUBLIC_PATHS = ['/', '/sign-in', '/sign-up', '/reset-password'];
