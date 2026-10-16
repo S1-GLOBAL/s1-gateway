@@ -71,6 +71,59 @@ export interface DecodedSpecId {
   slots: DecodedSlot[];
 }
 
+/** A measured value as typed, never a number: `{ value: "1.375", unit: "in" }`. */
+export interface MeasurementFact {
+  value: string;
+  /** `mm`, `cm` or `in` for dimensions; `g` for unit weight; `gsm`; `um` for thickness. */
+  unit: string;
+}
+
+export interface CapacityFact {
+  /** A capacity unit letter from the dictionary. */
+  unit: string;
+  /** A whole number, 1–9999. */
+  value: string;
+}
+
+/** What is known about a product. A slot left out has no value: the server writes `X` or `0` for it. */
+export interface SpecIdFacts {
+  productType: string;
+  material?: string;
+  coating?: string;
+  colourClarity?: string;
+  shape?: string;
+  profile?: string;
+  capacity?: CapacityFact;
+  topDiameter?: MeasurementFact;
+  bottomDiameter?: MeasurementFact;
+  height?: MeasurementFact;
+  length?: MeasurementFact;
+  width?: MeasurementFact;
+  gusset?: MeasurementFact;
+  unitWeight?: MeasurementFact;
+  basisWeight?: MeasurementFact;
+  thickness?: MeasurementFact;
+}
+
+/** A Spec ID someone named and saved. */
+export interface SavedSpecId extends DecodedSpecId {
+  /** 1–120 characters. */
+  name: string;
+  savedBy: { id: string; fullName: string };
+  savedAt: Date;
+}
+
+/** The slots a lookup asks about, each with a raw slot value (`topDiameter: "0090"`). */
+export type SimilarCriteria = Partial<Record<SlotKey, string>>;
+
+/** Saved Spec IDs, each group newest first. */
+export interface SimilarSpecIds {
+  /** Every chosen slot is equal. */
+  fits: SavedSpecId[];
+  /** The chosen slots are equal, or not known yet. */
+  mightFit: SavedSpecId[];
+}
+
 /**
  * Every slot's name, in code order, exactly as the server names them. The page
  * needs them to show a code the server refused, part by part.

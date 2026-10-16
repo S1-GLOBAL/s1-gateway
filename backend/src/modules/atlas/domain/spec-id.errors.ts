@@ -11,3 +11,29 @@ export class InvalidSpecIdError extends DomainError {
     super('The Spec ID is not valid.', { fields: issues });
   }
 }
+
+/** The code is already saved. `existing` is the saved Spec ID, when the caller has it. */
+export class SpecIdExistsError extends DomainError {
+  override readonly code = 'SPEC_ID_EXISTS';
+
+  constructor(readonly existing?: object) {
+    super('This Spec ID already exists. Nothing new was saved.', existing === undefined ? undefined : { existing });
+  }
+}
+
+export class SpecIdNotFoundError extends DomainError {
+  override readonly code = 'SPEC_ID_NOT_FOUND';
+
+  constructor() {
+    super('No saved Spec ID has this code. Check it, or build and save it.');
+  }
+}
+
+/** A similar lookup asked about something that is not a slot, or a value a slot cannot hold. Issues are keyed as asked. */
+export class InvalidLookupError extends DomainError {
+  override readonly code = 'VALIDATION_FAILED';
+
+  constructor(readonly issues: Readonly<Record<string, string[]>>) {
+    super('The lookup is not valid.', { fields: issues });
+  }
+}

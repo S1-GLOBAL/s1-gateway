@@ -17,9 +17,17 @@ const dictionary: AtlasDictionary = {
   rules: [{ productType: 'BLD', slot: 'topDiameter', rule: 'round_only' }],
 };
 
-function renderPage(load: AtlasGateway['dictionary']) {
+function renderPage(load: AtlasGateway['dictionary'], findSimilar?: AtlasGateway['findSimilar']) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const gateway: AtlasGateway = { dictionary: load, decode: () => new Promise(() => undefined) };
+  const pending = () => new Promise<never>(() => undefined);
+  const gateway: AtlasGateway = {
+    dictionary: load,
+    decode: pending,
+    encode: pending,
+    save: pending,
+    findByCode: pending,
+    findSimilar: findSimilar ?? pending,
+  };
   render(
     <QueryClientProvider client={queryClient}>
       <AtlasGatewayProvider gateway={gateway}>
@@ -44,11 +52,21 @@ describe('AtlasPage', () => {
       screen.getByText('Read, build and save S1 Spec IDs: one code for what a product physically is.'),
     ).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Decode' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Build' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Look up' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Dictionary' })).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Decode' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Build' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Look up' })).toBeTruthy();
     expect(screen.getByLabelText('Spec ID')).toBeTruthy();
+    expect(screen.getByLabelText('Exact code')).toBeTruthy();
     expect(screen.getByRole('article', { name: 'Shape' })).toBeTruthy();
     expect(screen.getByText('Round only')).toBeTruthy();
+  });
+
+  it('says no Spec IDs are saved yet when the first lookup finds none', async () => {
+    renderPage(async () => dictionary, async () => ({ fits: [], mightFit: [] }));
+    expect(await screen.findByText('No Spec IDs saved yet. Build one above and save it.')).toBeTruthy();
   });
 
   it('shows the reason it failed, and tries again on request', async () => {

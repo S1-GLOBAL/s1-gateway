@@ -4,6 +4,7 @@ import type {
   DecodeSpecIdRequest,
   EncodeSpecIdRequest,
   MeasurementFact,
+  SaveSpecIdRequest,
   SpecIdFacts,
 } from '../../../contracts/atlas.js';
 
@@ -45,3 +46,8 @@ export const decodeSpecIdRequestSchema = z.object({
 export const encodeSpecIdRequestSchema = z.object({
   facts: specIdFactsSchema,
 }) satisfies z.ZodType<EncodeSpecIdRequest>;
+
+export const saveSpecIdRequestSchema = z.object({
+  name: z.string(),
+  facts: specIdFactsSchema,
+}) satisfies z.ZodType<SaveSpecIdRequest>;

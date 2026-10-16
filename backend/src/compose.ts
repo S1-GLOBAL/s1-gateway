@@ -41,7 +41,7 @@ export function composeApp(deps: AppDependencies): Express {
       buildHealthModule(),
       ...accounts.modules,
       buildToolsModule({ db: deps.db, clock: deps.clock, ids: deps.ids }),
-      buildAtlasModule({ db: deps.db }),
+      buildAtlasModule({ db: deps.db, clock: deps.clock, ids: deps.ids }),
     ],
   });
 }

@@ -206,6 +206,11 @@ export class SpecId {
     return ok(new SpecId(values));
   }
 
+  /** Rebuilds a Spec ID that was valid when it was stored. For persistence only. */
+  static restore(values: SlotValues): SpecId {
+    return new SpecId(values);
+  }
+
   get code(): string {
     return SLOTS.map((slot) => this.values[slot.key]).join('.');
   }

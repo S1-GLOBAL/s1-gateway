@@ -3,6 +3,7 @@ import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { CheckIcon, PlusIcon, ToolsIcon } from '@/shared/ui/icons';
 import { SegmentedControl } from '@/shared/ui/SegmentedControl';
+import { SelectField } from '@/shared/ui/SelectField';
 import { TextField } from '@/shared/ui/TextField';
 import { ShowcaseSection } from '../ShowcaseSection';
 
@@ -48,6 +49,15 @@ export function ControlsSection() {
         <div className="grid gap-5 sm:grid-cols-2">
           <TextField label="Name" placeholder="Payroll" hint="As staff will see it in the list." />
           <TextField label="URL" defaultValue="payroll" errors={['URL must be a full http:// or https:// address.']} />
+          <SelectField
+            label="Shape"
+            defaultValue=""
+            options={[
+              { value: '', label: 'Not known' },
+              { value: 'RD', label: 'RD — Round' },
+            ]}
+          />
+          <SelectField label="Gusset" disabled options={[{ value: 'X', label: "Doesn't apply" }]} />
         </div>
         <Row label="Badges">
           <Badge>Neutral</Badge>
