@@ -8,7 +8,11 @@ import { EncodeSpecId } from './application/encode-spec-id.js';
 import { FindSimilarSpecIds } from './application/find-similar-spec-ids.js';
 import { FindSpecIdByCode } from './application/find-spec-id-by-code.js';
 import { GetDictionary } from './application/get-dictionary.js';
+import { GetSavedSpecId } from './application/get-saved-spec-id.js';
+import { GetSpecIdHistory } from './application/get-spec-id-history.js';
+import { ListSavedSpecIds } from './application/list-saved-spec-ids.js';
 import { SaveSpecId } from './application/save-spec-id.js';
+import { UpdateSpecId } from './application/update-spec-id.js';
 import { DrizzleDictionaryRepository } from './infrastructure/drizzle-dictionary-repository.js';
 import { DrizzleSpecIdRepository } from './infrastructure/drizzle-spec-id-repository.js';
 import { AtlasController } from './presentation/atlas.controller.js';
@@ -34,6 +38,12 @@ export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule {
     (req) => {
       const { account } = requireAuth(req);
       return { id: account.id, fullName: account.fullName };
+    },
+    {
+      getSaved: new GetSavedSpecId(dictionaries, specIds),
+      update: new UpdateSpecId(dictionaries, specIds, deps.clock, deps.ids),
+      history: new GetSpecIdHistory(dictionaries, specIds),
+      library: new ListSavedSpecIds(dictionaries, specIds),
     },
   );
   return { path: '/atlas', router: createAtlasRouter(controller), access: 'session' };

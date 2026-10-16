@@ -211,6 +211,12 @@ export class SpecId {
     return new SpecId(values);
   }
 
+  /** Rebuilds a stored code, written out, that was valid when it was stored. For persistence only. */
+  static restoreCode(code: string): SpecId {
+    const parts = code.split('.');
+    return new SpecId(Object.fromEntries(SLOTS.map((slot, index) => [slot.key, parts[index] ?? ''])) as SlotValues);
+  }
+
   get code(): string {
     return SLOTS.map((slot) => this.values[slot.key]).join('.');
   }

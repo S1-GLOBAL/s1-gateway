@@ -14,3 +14,4 @@ export {
   atlasSlotRules,
 } from './modules/atlas/infrastructure/atlas-dictionary.table.js';
 export { atlasSpecIds } from './modules/atlas/infrastructure/atlas-spec-ids.table.js';
+export { atlasSpecIdChanges } from './modules/atlas/infrastructure/atlas-spec-id-changes.table.js';

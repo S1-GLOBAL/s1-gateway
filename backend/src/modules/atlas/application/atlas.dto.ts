@@ -1,6 +1,6 @@
 import type { Dictionary } from '../domain/dictionary.js';
 import type { SlotState, SpecId, SpecIdFactsInput } from '../domain/spec-id.js';
-import type { SavedSpecIdRecord } from '../domain/spec-id-repository.js';
+import type { FormerHolderRecord, SavedSpecIdRecord } from '../domain/spec-id-repository.js';
 import { DICTIONARY_SLOTS, slotDefinition, type SlotKey, type SlotRule } from '../domain/slots.js';
 
 /** The dictionary as the application hands it outward. */
@@ -84,12 +84,61 @@ export function toDecodedSpecIdDto(specId: SpecId, dictionary: Dictionary): Deco
   };
 }
 
+/** Who saved or changed a Spec ID. */
+export interface StaffDto {
+  id: string;
+  fullName: string;
+}
+
 /** A Spec ID someone saved, with its name and who saved it when. */
 export interface SavedSpecIdDto extends DecodedSpecIdDto {
+  id: string;
   name: string;
-  savedBy: { id: string; fullName: string };
+  savedBy: StaffDto;
   /** ISO 8601. */
   savedAt: string;
+  version: number;
+  updatedBy: StaffDto | null;
+  /** ISO 8601. */
+  updatedAt: string | null;
+}
+
+export interface SpecIdLibraryPageDto {
+  items: SavedSpecIdDto[];
+  nextCursor: string | null;
+}
+
+export interface SlotChangeDto {
+  key: SlotKey;
+  name: string;
+  before: string;
+  after: string;
+  corrected: boolean;
+}
+
+export interface SpecIdChangeDto {
+  kind: 'created' | 'updated';
+  changedBy: StaffDto;
+  /** ISO 8601. */
+  changedAt: string;
+  codeBefore: string | null;
+  codeAfter: string;
+  nameBefore: string | null;
+  nameAfter: string;
+  slots: SlotChangeDto[];
+}
+
+export interface FormerHolderDto {
+  id: string;
+  name: string;
+  code: string;
+  /** ISO 8601. */
+  until: string;
+}
+
+export interface SpecIdLookupDto extends SavedSpecIdDto {
+  replacedCode: string | null;
+  formerHolders: FormerHolderDto[];
 }
 
 export interface SimilarSpecIdsDto {
@@ -100,8 +149,24 @@ export interface SimilarSpecIdsDto {
 export interface SaveSpecIdInput {
   name: string;
   facts: SpecIdFactsInput;
-  savedBy: { id: string; fullName: string };
+  savedBy: StaffDto;
 }
+
+export interface UpdateSpecIdInput {
+  id: string;
+  name: string;
+  facts: SpecIdFactsInput;
+  /** The version the change was started from. */
+  version: number;
+  updatedBy: StaffDto;
+}
+
+export interface SavedSpecIdIdInput {
+  id: string;
+}
+
+/** The library's query string, as the transport read it. */
+export type ListSavedSpecIdsInput = Readonly<Record<string, unknown>>;
 
 export interface FindSpecIdByCodeInput {
   code: string;
@@ -115,12 +180,26 @@ export type FindSimilarSpecIdsInput = Readonly<Record<string, unknown>>;
  * releases (ADR 0021), so the current dictionary reads every saved code.
  */
 export function toSavedSpecIdDto(record: SavedSpecIdRecord, dictionary: Dictionary): SavedSpecIdDto {
-  const { savedSpecId, savedByName } = record;
+  const { savedSpecId, savedByName, updatedByName } = record;
+  const { updatedBy, updatedAt } = savedSpecId;
   return {
     ...toDecodedSpecIdDto(savedSpecId.specId, dictionary),
     dictionaryRelease: savedSpecId.dictionaryRelease,
+    id: savedSpecId.id,
     name: savedSpecId.name,
     savedBy: { id: savedSpecId.savedBy, fullName: savedByName },
     savedAt: savedSpecId.savedAt.toISOString(),
+    version: savedSpecId.version,
+    updatedBy: updatedBy === null ? null : { id: updatedBy, fullName: updatedByName ?? '' },
+    updatedAt: updatedAt === null ? null : updatedAt.toISOString(),
+  };
+}
+
+export function toFormerHolderDto({ record, until }: FormerHolderRecord): FormerHolderDto {
+  return {
+    id: record.savedSpecId.id,
+    name: record.savedSpecId.name,
+    code: record.savedSpecId.specId.code,
+    until: until.toISOString(),
   };
 }

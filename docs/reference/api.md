@@ -49,8 +49,12 @@ Request bodies are JSON, at most **100 kB**.
 | POST | `/atlas/spec-ids/decode` | session | 200 `{ data: DecodedSpecId }` | 401, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED` |
 | POST | `/atlas/spec-ids/encode` | session | 200 `{ data: DecodedSpecId }`; nothing is saved | 401, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED` |
 | POST | `/atlas/spec-ids` | session | 201 `{ data: SavedSpecId }` | 401 `SIGN_IN_REQUIRED`, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED`, 409 `SPEC_ID_EXISTS` |
-| GET | `/atlas/spec-ids/:code` | session | 200 `{ data: SavedSpecId }` | 401, 404 `SPEC_ID_NOT_FOUND` |
+| GET | `/atlas/spec-ids/:code` | session | 200 `{ data: SpecIdLookup }` | 401, 404 `SPEC_ID_NOT_FOUND` |
 | GET | `/atlas/spec-ids?<slot>=<value>…` | session | 200 `{ data: SimilarSpecIds }` | 401, 400 `VALIDATION_FAILED` |
+| GET | `/atlas/saved?q=&productType=&cursor=` | session | 200 `{ data: SpecIdLibraryPage }` | 401, 400 `VALIDATION_FAILED` |
+| GET | `/atlas/saved/:id` | session | 200 `{ data: SavedSpecId }` | 401, 404 `SPEC_ID_NOT_FOUND` |
+| PATCH | `/atlas/saved/:id` | session | 200 `{ data: SavedSpecId }` | 401, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED`, 404 `SPEC_ID_NOT_FOUND`, 409 `SPEC_ID_CHANGED`, 409 `SPEC_ID_EXISTS` |
+| GET | `/atlas/saved/:id/history` | session | 200 `{ data: SpecIdChange[] }`, newest first | 401, 404 `SPEC_ID_NOT_FOUND` |
 
 When `mustChangePassword` is true, every session route except
 `GET /auth/me`, `POST /auth/sign-out` and `POST /auth/change-password`
@@ -130,8 +134,10 @@ number:
 slot. A problem with the whole code (its length or its number of parts) is
 under `code`.
 
-`SavedSpecId` is a `DecodedSpecId` plus `name` (1–120 characters),
-`savedBy: { id, fullName }` and `savedAt` (ISO 8601).
+`SavedSpecId` is a `DecodedSpecId` plus its permanent `id`, `name` (1–120
+characters), `savedBy: { id, fullName }`, `savedAt` (ISO 8601), `version` (1
+when saved, raised by 1 on every change), and `updatedBy` and `updatedAt`
+(null until the first change).
 
 `POST /atlas/spec-ids` takes `{ name, facts }`. It encodes the facts, as
 `/encode` does, and saves the Spec ID under the signed-in account. Surrounding
@@ -154,8 +160,42 @@ With no slot chosen, every saved Spec ID is in `fits`. An unknown key, or a
 value that is not a valid slot value, answers 400 `VALIDATION_FAILED` with
 `details.fields` keyed by that slot.
 
-Nothing updates or deletes a saved Spec ID: `PUT` and `DELETE` on any Atlas
-path answer 404 ([ADR 0021](../decisions/0021-the-atlas-dictionary-changes-only-by-migration.md)).
+`GET /atlas/spec-ids/:code` answers a `SpecIdLookup`: a `SavedSpecId` plus
+`replacedCode` and `formerHolders`. The code is matched in capitals, so one
+typed in lower case is found. When a Spec ID has the code now, it answers that
+one with `replacedCode: null`, and `formerHolders` lists every other Spec ID
+that once had it (`{ id, name, code, until }`, `code` being its code now),
+newest first. When none has it now but one once did, it answers the last one
+that did, with `replacedCode` set to the code asked for. It answers 404 only
+when no Spec ID has or had the code.
+
+`GET /atlas/saved` is the library: `{ items, nextCursor }`, 20 Spec IDs per
+page, newest change first. `q` matches part of the name, ignoring case and
+surrounding spaces (`%` and `_` mean themselves; at most 120 characters).
+`productType` is a product type code. Pass `nextCursor` back as `cursor` for
+the next page; it is null on the last page. An unknown key, a repeated key, a
+product type not in the dictionary or a cursor the server did not write
+answers 400 `VALIDATION_FAILED` with `details.fields` keyed as asked.
+
+`PATCH /atlas/saved/:id` takes `{ name, facts, version }`, where `version` is
+the one the change was started from. It rebuilds the code from the facts, as
+`/encode` does, and saves the change as the signed-in account, recording it
+in the history. A change that alters neither the code nor the name answers 200
+with what is saved and records nothing. It answers 409 `SPEC_ID_CHANGED` when
+`version` is no longer the current one, and 409 `SPEC_ID_EXISTS` with
+`details.existing` when the new code is another saved Spec ID's. Nothing is
+saved on any 4xx. An `:id` that is not an id answers 404 `SPEC_ID_NOT_FOUND`.
+
+`GET /atlas/saved/:id/history` answers every `SpecIdChange`, newest first,
+its creation last: `kind` (`created` or `updated`), `changedBy`,
+`changedAt`, `codeBefore` and `nameBefore` (null for `created`), `codeAfter`,
+`nameAfter`, and `slots`, every slot the change altered as
+`{ key, name, before, after, corrected }`, with meanings as people read them
+("Not known", "Doesn't apply", "62 mm"). `corrected` is true when a known
+value was replaced.
+
+Nothing replaces or deletes a saved Spec ID: `PUT` and `DELETE` on any Atlas
+path answer 404 ([ADR 0022](../decisions/0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md)).
 
 ## Error codes
 
@@ -181,6 +221,7 @@ path answer 404 ([ADR 0021](../decisions/0021-the-atlas-dictionary-changes-only-
 | `TOOL_NAME_TAKEN` | 409 | Another tool already has this name, ignoring case |
 | `INVALID_SPEC_ID` | 400 | A Spec ID, or the facts to build one, break a rule of ADR 0019. `details.fields` holds every problem, keyed by slot (`code` for the whole code) |
 | `SPEC_ID_EXISTS` | 409 | That Spec ID is already saved. `details.existing` is the saved Spec ID; nothing new was saved |
-| `SPEC_ID_NOT_FOUND` | 404 | No saved Spec ID has this code |
+| `SPEC_ID_NOT_FOUND` | 404 | No saved Spec ID has, or had, this code; or none has this id |
+| `SPEC_ID_CHANGED` | 409 | The Spec ID changed since the `version` the change was started from; nothing was saved |
 | `NOT_FOUND` | 404 | No route matches the method and path |
 | `INTERNAL_ERROR` | 500 | An unexpected failure. Logged in full on the server; the response says nothing more |

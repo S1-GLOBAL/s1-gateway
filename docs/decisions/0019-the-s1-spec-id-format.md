@@ -1,6 +1,7 @@
 # 0019. The S1 Spec ID format
 
-- **Status:** Accepted
+- **Status:** Accepted; partly superseded by [0022](./0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md):
+  "A code is permanent once issued" no longer holds for saved Spec IDs, whose code follows their facts
 - **Date:** 2026-10-16
 - **Related:** [Issue #4](https://github.com/S1-GLOBAL/s1-gateway/issues/4) ·
   [Plan 0003](../plans/0003-atlas-spec-ids.md) ·

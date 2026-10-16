@@ -1,12 +1,13 @@
-import { foreignKey, index, pgTable, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { foreignKey, index, integer, pgTable, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { accountsTable } from '../../accounts/index.js';
 import { atlasDictionaryReleases } from './atlas-dictionary.table.js';
 
 /*
  * Saved Spec IDs. Each slot after the format version is its own column,
  * holding the slot's raw text so `0` and `X` keep their meaning, and is
- * indexed for the similar lookup. Nothing in the application updates or
- * deletes a row (ADR 0021).
+ * indexed for the similar lookup. A row is updated when its facts or name
+ * change, with `version` raised and a row in `atlas_spec_id_changes`; nothing
+ * deletes one (ADR 0022).
  */
 export const atlasSpecIds = pgTable(
   'atlas_spec_ids',
@@ -34,6 +35,10 @@ export const atlasSpecIds = pgTable(
     dictionaryRelease: varchar('dictionary_release', { length: 16 }).notNull(),
     savedBy: uuid('saved_by').notNull(),
     savedAt: timestamp('saved_at', { withTimezone: true }).notNull(),
+    /** 1 when saved; raised by 1 on every saved change. */
+    version: integer('version').notNull().default(1),
+    updatedBy: uuid('updated_by'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }),
   },
   (table) => [
     // One product, one code. Only the database can enforce that against two
@@ -45,6 +50,7 @@ export const atlasSpecIds = pgTable(
       foreignColumns: [atlasDictionaryReleases.release],
     }),
     foreignKey({ name: 'atlas_spec_ids_saved_by_fk', columns: [table.savedBy], foreignColumns: [accountsTable.id] }),
+    foreignKey({ name: 'atlas_spec_ids_updated_by_fk', columns: [table.updatedBy], foreignColumns: [accountsTable.id] }),
     index('atlas_spec_ids_saved_at_idx').on(table.savedAt),
     index('atlas_spec_ids_product_type_idx').on(table.productType),
     index('atlas_spec_ids_material_idx').on(table.material),

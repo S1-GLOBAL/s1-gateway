@@ -1,5 +1,13 @@
 import type { Request, Response } from 'express';
-import type { AtlasDictionary, DecodedSpecId, SavedSpecId, SimilarSpecIds } from '../../../contracts/atlas.js';
+import type {
+  AtlasDictionary,
+  DecodedSpecId,
+  SavedSpecId,
+  SimilarSpecIds,
+  SpecIdChange,
+  SpecIdLibraryPage,
+  SpecIdLookup,
+} from '../../../contracts/atlas.js';
 import type { UseCase } from '../../../shared/application/use-case.js';
 import type { Result } from '../../../shared/domain/result.js';
 import { HttpError } from '../../../shared/presentation/http/http-error.js';
@@ -12,35 +20,65 @@ import type {
   EncodeSpecIdInput,
   FindSimilarSpecIdsInput,
   FindSpecIdByCodeInput,
+  ListSavedSpecIdsInput,
   SaveSpecIdInput,
   SavedSpecIdDto,
+  SavedSpecIdIdInput,
   SimilarSpecIdsDto,
+  SpecIdChangeDto,
+  SpecIdLibraryPageDto,
+  SpecIdLookupDto,
+  UpdateSpecIdInput,
 } from '../application/atlas.dto.js';
-import type {
-  InvalidLookupError,
-  InvalidSpecIdError,
-  SpecIdExistsError,
+import {
   SpecIdNotFoundError,
+  type InvalidLookupError,
+  type InvalidSpecIdError,
+  type SpecIdChangedError,
+  type SpecIdExistsError,
 } from '../domain/spec-id.errors.js';
-import { decodeSpecIdRequestSchema, encodeSpecIdRequestSchema, saveSpecIdRequestSchema } from './atlas.schemas.js';
+import {
+  decodeSpecIdRequestSchema,
+  encodeSpecIdRequestSchema,
+  saveSpecIdRequestSchema,
+  savedSpecIdIdSchema,
+  updateSpecIdRequestSchema,
+} from './atlas.schemas.js';
 
 type SpecIdResult = Result<DecodedSpecIdDto, InvalidSpecIdError>;
 type SaveResult = Result<SavedSpecIdDto, InvalidSpecIdError | SpecIdExistsError>;
-type FindResult = Result<SavedSpecIdDto, SpecIdNotFoundError>;
+type FindResult = Result<SpecIdLookupDto, SpecIdNotFoundError>;
 type SimilarResult = Result<SimilarSpecIdsDto, InvalidLookupError>;
+type GetResult = Result<SavedSpecIdDto, SpecIdNotFoundError>;
+type UpdateResult = Result<
+  SavedSpecIdDto,
+  InvalidSpecIdError | SpecIdNotFoundError | SpecIdChangedError | SpecIdExistsError
+>;
+type HistoryResult = Result<SpecIdChangeDto[], SpecIdNotFoundError>;
+type LibraryResult = Result<SpecIdLibraryPageDto, InvalidLookupError>;
 
 type AtlasErrorCode =
   | InvalidSpecIdError['code']
   | SpecIdExistsError['code']
   | SpecIdNotFoundError['code']
+  | SpecIdChangedError['code']
   | InvalidLookupError['code'];
 
 const STATUS_BY_CODE: Record<AtlasErrorCode, number> = {
   INVALID_SPEC_ID: 400,
   SPEC_ID_EXISTS: 409,
   SPEC_ID_NOT_FOUND: 404,
+  SPEC_ID_CHANGED: 409,
   VALIDATION_FAILED: 400,
 };
+
+/** The use cases behind the saved Spec ID routes: one by id, a change, its history, the library. */
+export interface SavedSpecIdUseCases {
+  getSaved: UseCase<SavedSpecIdIdInput, GetResult>;
+  update: UseCase<UpdateSpecIdInput, UpdateResult>;
+  history: UseCase<SavedSpecIdIdInput, HistoryResult>;
+  library: UseCase<ListSavedSpecIdsInput, LibraryResult>;
+}
 
 /** The signed-in staff member a request comes from: who a saved Spec ID is saved by. */
 export type SignedInStaff = (req: Request) => { id: string; fullName: string };
@@ -55,6 +93,7 @@ export class AtlasController {
     private readonly findSpecIdByCode: UseCase<FindSpecIdByCodeInput, FindResult>,
     private readonly findSimilarSpecIds: UseCase<FindSimilarSpecIdsInput, SimilarResult>,
     private readonly signedInStaff: SignedInStaff,
+    private readonly saved: SavedSpecIdUseCases,
   ) {}
 
   dictionary = async (_req: Request, res: Response): Promise<void> => {
@@ -83,8 +122,38 @@ export class AtlasController {
   findByCode = async (req: Request, res: Response): Promise<void> => {
     const result = await this.findSpecIdByCode.execute({ code: String(req.params.code) });
     if (!result.ok) throw toHttpError(result.error);
+    const lookup: SpecIdLookup = result.value;
+    sendData(res, 200, lookup);
+  };
+
+  library = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.saved.library.execute({ ...req.query });
+    if (!result.ok) throw toHttpError(result.error);
+    const page: SpecIdLibraryPage = result.value;
+    sendData(res, 200, page);
+  };
+
+  getSaved = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.saved.getSaved.execute({ id: savedSpecIdOf(req) });
+    if (!result.ok) throw toHttpError(result.error);
     const saved: SavedSpecId = result.value;
     sendData(res, 200, saved);
+  };
+
+  update = async (req: Request, res: Response): Promise<void> => {
+    const id = savedSpecIdOf(req);
+    const input = parseBody(updateSpecIdRequestSchema, req.body);
+    const result = await this.saved.update.execute({ ...input, id, updatedBy: this.signedInStaff(req) });
+    if (!result.ok) throw toHttpError(result.error);
+    const saved: SavedSpecId = result.value;
+    sendData(res, 200, saved);
+  };
+
+  history = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.saved.history.execute({ id: savedSpecIdOf(req) });
+    if (!result.ok) throw toHttpError(result.error);
+    const history: SpecIdChange[] = result.value;
+    sendData(res, 200, history);
   };
 
   findSimilar = async (req: Request, res: Response): Promise<void> => {
@@ -99,6 +168,13 @@ function sendDecoded(res: Response, result: SpecIdResult): void {
   if (!result.ok) throw toHttpError(result.error);
   const decoded: DecodedSpecId = result.value;
   sendData(res, 200, decoded);
+}
+
+/** The `:id` of a saved Spec ID route. Anything that is not an id names no Spec ID: 404, before any query. */
+function savedSpecIdOf(req: Request): string {
+  const parsed = savedSpecIdIdSchema.safeParse(req.params.id);
+  if (!parsed.success) throw toHttpError(new SpecIdNotFoundError('id'));
+  return parsed.data;
 }
 
 function toHttpError(error: { code: AtlasErrorCode; message: string; details?: Record<string, unknown> | undefined }) {

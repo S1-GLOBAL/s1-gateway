@@ -12,9 +12,25 @@ export interface SavedSpecIdProps {
   /** The saving account's id. */
   readonly savedBy: string;
   readonly savedAt: Date;
+  /** 1 when saved; raised by 1 on every saved change. Left out, it is 1. */
+  readonly version?: number;
+  /** Who last changed it, and when; null until the first change. */
+  readonly updatedBy?: string | null;
+  readonly updatedAt?: Date | null;
 }
 
-/** A Spec ID someone named and saved. Nothing updates or deletes one (ADR 0021). */
+/** What one change to a saved Spec ID sets. */
+export interface SavedSpecIdRevision {
+  readonly specId: SpecId;
+  readonly name: string;
+  /** The release the new code was built with. */
+  readonly dictionaryRelease: string;
+  /** The changing account's id. */
+  readonly by: string;
+  readonly at: Date;
+}
+
+/** A Spec ID someone named and saved. Its facts and name may change; nothing deletes one (ADR 0022). */
 export class SavedSpecId {
   private constructor(private readonly props: SavedSpecIdProps) {}
 
@@ -27,6 +43,23 @@ export class SavedSpecId {
   /** Rebuilds a Spec ID that was valid when it was stored. For persistence only. */
   static restore(props: SavedSpecIdProps): SavedSpecId {
     return new SavedSpecId(props);
+  }
+
+  /** The same Spec ID with new facts or a new name: the next version, changed by `by` at `at`. */
+  revise(revision: SavedSpecIdRevision): Result<SavedSpecId, InvalidSpecIdError> {
+    const issues = checkName(revision.name);
+    if (issues.length > 0) return err(new InvalidSpecIdError({ name: issues }));
+    return ok(
+      new SavedSpecId({
+        ...this.props,
+        specId: revision.specId,
+        name: revision.name.trim(),
+        dictionaryRelease: revision.dictionaryRelease,
+        version: this.version + 1,
+        updatedBy: revision.by,
+        updatedAt: revision.at,
+      }),
+    );
   }
 
   get id(): string {
@@ -51,6 +84,23 @@ export class SavedSpecId {
 
   get savedAt(): Date {
     return new Date(this.props.savedAt);
+  }
+
+  get version(): number {
+    return this.props.version ?? 1;
+  }
+
+  get updatedBy(): string | null {
+    return this.props.updatedBy ?? null;
+  }
+
+  get updatedAt(): Date | null {
+    return this.props.updatedAt ? new Date(this.props.updatedAt) : null;
+  }
+
+  /** When it was saved or last changed: the library lists by this, newest first. */
+  get lastChangedAt(): Date {
+    return this.updatedAt ?? this.savedAt;
   }
 }
 

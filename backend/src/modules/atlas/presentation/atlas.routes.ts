@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import type { AtlasController } from './atlas.controller.js';
 
-/** Saving and reading only: no route updates or deletes a dictionary value or a saved Spec ID (ADR 0021). */
+/**
+ * The dictionary is only read (ADR 0021). A saved Spec ID is created, read and
+ * changed, never deleted (ADR 0022): there is no PUT and no DELETE.
+ */
 export function createAtlasRouter(controller: AtlasController): Router {
   const router = Router();
   router.get('/dictionary', controller.dictionary);
@@ -10,5 +13,9 @@ export function createAtlasRouter(controller: AtlasController): Router {
   router.post('/spec-ids', controller.save);
   router.get('/spec-ids', controller.findSimilar);
   router.get('/spec-ids/:code', controller.findByCode);
+  router.get('/saved', controller.library);
+  router.get('/saved/:id', controller.getSaved);
+  router.patch('/saved/:id', controller.update);
+  router.get('/saved/:id/history', controller.history);
   return router;
 }
