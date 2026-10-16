@@ -28,7 +28,7 @@ the issue disagree, the issue wins and this plan is corrected.
 **In scope**
 - Editable saved Spec IDs: `version`, who last changed one and when, and a change row for every save
 - The library API (search, product-type filter, 20 per page), one Spec ID by id, its history, and old codes that still find their product
-- ADR 0022, superseding the "never updated" lines of ADR 0019 and ADR 0021
+- ADR 0022, superseding "A code is permanent once issued" in ADR 0019 and "or a saved Spec ID" in ADR 0021's decision
 - The workspace at `/atlas/new` and `/atlas/:id`, and the History sheet
 - The library at `/atlas`, paste-a-code, and the Dictionary sheet; removing the Decode, Build and Look up sections
 - `api.md` and `data-model.md` updates
@@ -71,7 +71,7 @@ request, stopping for the owner after each.
 | First | How | Why this way |
 |---|---|---|
 | Database transaction | Inside the repository adapter: `add` and `update` each write the Spec ID and its change row in one `db.transaction`. No unit-of-work port | Atomicity belongs to one aggregate's save; a port for it would serve one caller |
-| Paged list | Keyset cursor: base64url of `<lastChangedAt ISO>|<id>`, ordered by `coalesce(updated_at, saved_at) desc, id desc`, 20 per page | Stable while rows are added; offset paging skips rows when someone saves |
+| Paged list | Keyset cursor: base64url of `<lastChangedAt ISO>\|<id>`, ordered by `coalesce(updated_at, saved_at) desc, id desc`, 20 per page | Stable while rows are added; offset paging skips rows when someone saves |
 | Route with a parameter | `/atlas/:id` in `frontend/src/app/routes.tsx`, read with `useParams` | Spec IDs are addressed by their permanent `id`, never their code, which changes |
 
 ### Data model
@@ -101,8 +101,9 @@ New table `atlas_spec_id_changes`, defined in
 
 Indexes: `atlas_spec_id_changes_spec_id_changed_at_idx` on
 `(spec_id, changed_at)`, `atlas_spec_id_changes_code_before_idx` on
-`code_before`. Foreign keys are named explicitly: Drizzle's generated names pass
-Postgres's 63-character limit.
+`code_before`. Foreign keys are named explicitly, as the other Atlas tables'
+are (`atlas_spec_ids_saved_by_fk`); the new one on `atlas_spec_ids.updated_by`
+is `atlas_spec_ids_updated_by_fk`.
 
 A second, custom migration
 (`npm --prefix backend run db:generate -- --custom --name backfill_atlas_spec_id_created_changes`)
@@ -174,7 +175,7 @@ known". The search box waits 250 ms after the last keystroke before asking.
 Inputs #16 implies but does not spell out. Each has its test in the step that
 owns the code.
 
-1. `/atlas/saved/not-a-uuid` and `/atlas/not-a-uuid` — 404 and the "doesn't exist" page, never a 500 (Step 1.4, Step 2.3).
+1. `/atlas/saved/not-a-uuid` and `/atlas/not-a-uuid` — 404 and the "doesn't exist" page, never a 500 (Step 1.5, Step 2.3).
 2. A name search containing `%` or `_` matches those characters literally (Step 1.5).
 3. A tampered or foreign `cursor` answers 400 `VALIDATION_FAILED` (Step 1.5).
 4. A pasted code in lower case (`s1.bld.aps…`) finds the same Spec ID (Step 1.5, Step 3.3).
@@ -193,7 +194,7 @@ One pull request, "Part of #16".
 
 ### Step 1.2 — Columns, the change table, and the backfill
 
-- [ ] **Action.** Add the three columns to `atlas-spec-ids.table.ts` and the new table file, export it from `backend/src/database-schema.ts`, run `npm --prefix backend run db:generate -- --name atlas_spec_ids_editable_with_history`, then the custom backfill migration above. Extend `resetTables`.
+- [ ] **Action.** Add the three columns to `atlas-spec-ids.table.ts` and the new table file, export it from `backend/src/database-schema.ts`, run `npm --prefix backend run db:generate -- --name atlas_spec_ids_editable_with_history`, then the custom backfill migration above. Extend `resetTables`, and in `backend/src/atlas.db.test.ts` change the `beforeEach` truncate to `truncate table atlas_spec_id_changes, atlas_spec_ids`: Postgres refuses to truncate a table another table's foreign key points at.
 - [ ] **Verify.** `npm run db:migrate` applies both; the generated SQL only adds (no `DROP`, no `ALTER COLUMN … TYPE`); a second `db:generate` prints "No schema changes"; a `*.db.test.ts` proves every Spec ID existing before the backfill has exactly one `created` row.
 
 ### Step 1.3 — The domain: revise, change, diff
@@ -208,7 +209,7 @@ One pull request, "Part of #16".
 
 ### Step 1.5 — The repository, the library query and the routes
 
-- [ ] **Action.** Implement the port in `drizzle-spec-id-repository.ts` (transactions, the conditional `UPDATE … WHERE id = ? AND version = ?`, the keyset cursor, `ilike` with `%` and `_` escaped). Add the zod schemas (`version` a positive integer; `:id` a UUID or 404; `cursor` decodable or 400), controller methods and routes. Database tests: two concurrent `update`s with one `version` leave one change; the library pages 21 Spec IDs as 20 + 1; `%` matches only a literal `%`; a garbage cursor → 400; a lower-case pasted code is found. HTTP tests: every #16 status, `PATCH` without a session → 401, `PUT`/`DELETE` on every Atlas path → 404.
+- [ ] **Action.** Implement the port in `drizzle-spec-id-repository.ts` (transactions, the conditional `UPDATE … WHERE id = ? AND version = ?`, the keyset cursor, `ilike` with `%` and `_` escaped). Add the zod schemas (`version` a positive integer; `:id` a UUID or 404; `cursor` decodable or 400), controller methods and routes. Database tests: two concurrent `update`s with one `version` leave one change; the library pages 21 Spec IDs as 20 + 1; `%` matches only a literal `%`; a garbage cursor → 400; a lower-case pasted code is found. HTTP tests: every #16 status, a non-UUID `:id` on each `/saved/:id` route → 404 `SPEC_ID_NOT_FOUND`, `PATCH` without a session → 401, `PUT`/`DELETE` on every Atlas path → 404.
 - [ ] **Verify.** `npm run db:up`, then `npm test` passes, including `backend/src/atlas.db.test.ts`.
 
 ### Step 1.6 — Contracts and API docs
@@ -219,7 +220,7 @@ One pull request, "Part of #16".
 ### Step 1.7 — Open the pull request
 
 - [ ] **Action.** Open "Part of #16" with the template; Database, API and Rollout filled in (the migrations are additive; the backfill inserts one row per existing Spec ID).
-- [ ] **Verify.** CI and `pr-audit` pass. After merge, on staging: the existing illustrative lid answers `GET /api/v1/atlas/saved/<its id>/history` with one `created` entry.
+- [ ] **Verify.** CI and `pr-audit` pass. After merge, on staging: a Spec ID saved before the release answers `GET /api/v1/atlas/saved/<its id>/history` with exactly one `created` entry.
 
 ---
 
@@ -235,7 +236,7 @@ pages are reached by URL until phase 3.
 
 ### Step 2.2 — The workspace
 
-- [ ] **Action.** `SpecIdWorkspace`, `FactGroups`, `CodePanel`, `MatchPanel` with #16's copy. Tests: a bowl lid renders no capacity, bottom diameter or gusset field, and the note names them; a pouch renders no shape; top diameter shows "Not known" disabled until a shape is chosen; an exact match disables **Save Spec ID** and shows "This code is already saved. Open it to add or correct facts instead."; on a saved Spec ID its own code is never shown as a match; similar Spec IDs stay folded; **Copy** reads "Copied" and returns after 2 seconds.
+- [ ] **Action.** `SpecIdWorkspace`, `FactGroups`, `CodePanel`, `MatchPanel` with #16's copy. Tests, one per product type, with shape and material not known: the slots its rules mark `never` are not rendered and the note names them (bowl lid and cup lid: nominal capacity, bottom diameter, gusset; bowl: profile, gusset; stand-up pouch: shape, profile, top diameter, bottom diameter, length); top diameter shows "Not known" disabled until a shape is chosen; an exact match disables **Save Spec ID** and shows "This code is already saved. Open it to add or correct facts instead."; on a saved Spec ID its own code is never shown as a match; similar Spec IDs stay folded; **Copy** reads "Copied" and returns after 2 seconds.
 - [ ] **Verify.** The tests pass; `npm run design:check` prints "Design tokens only."
 
 ### Step 2.3 — `/atlas/new` and `/atlas/:id`
@@ -281,7 +282,7 @@ One pull request, "Closes #16".
 
 ### Step 3.4 — Remove what the library replaces
 
-- [ ] **Action.** Delete `BuildPanel`, `LookupPanel`, `DecodePanel`, `SavedSpecIdList`, `SavedSpecIdCard`, `lookup-criteria.ts`, `to-slot-text.ts`, `use-similar-spec-ids.ts` only if nothing still imports it, and their tests; drop their exports from `features/atlas/index.ts`. Search for each name with `git grep -n` before deleting.
+- [ ] **Action.** Delete `BuildPanel`, `LookupPanel`, `DecodePanel`, `SavedSpecIdList`, `SavedSpecIdCard`, `lookup-criteria.ts` and `to-slot-text.ts`, and their tests; drop their exports from `features/atlas/index.ts`. Keep `use-similar-spec-ids.ts`: `MatchPanel` uses it. Search for each name with `git grep -n` before deleting.
 - [ ] **Verify.** `npm run typecheck && npm run lint && npm run arch:check && npm run test:unit && npm run build` exits 0; `git grep -n "BuildPanel\|LookupPanel\|DecodePanel" frontend/src` prints nothing.
 
 ### Step 3.5 — Docs, screenshots, then staging
