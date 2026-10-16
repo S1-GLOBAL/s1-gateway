@@ -1,11 +1,30 @@
-import { pino, type Logger as PinoInstance } from 'pino';
+import { pino, type DestinationStream, type Logger as PinoInstance, type LoggerOptions } from 'pino';
 import type { Logger } from '../../application/ports/logger.js';
 
-export function createPino(options: { level: string; pretty: boolean }): PinoInstance {
-  return pino({
+/**
+ * Credentials a request or response carries in its headers, as the request
+ * logger writes them. Never logged: the session token in a cookie lets anyone
+ * who reads the logs act as that staff member, and the database keeps only
+ * its hash for that reason. Client IPs stay, for tracing and debugging.
+ */
+const CREDENTIAL_PATHS = [
+  'req.headers.cookie',
+  'req.headers.authorization',
+  'req.headers["x-vercel-proxy-signature"]',
+  'res.headers["set-cookie"]',
+];
+
+/** `destination` is for tests; the API writes to stdout. */
+export function createPino(
+  options: { level: string; pretty: boolean },
+  destination?: DestinationStream,
+): PinoInstance {
+  const settings: LoggerOptions = {
     level: options.level,
+    redact: { paths: CREDENTIAL_PATHS, censor: '[Redacted]' },
     ...(options.pretty ? { transport: { target: 'pino-pretty' } } : {}),
-  });
+  };
+  return destination ? pino(settings, destination) : pino(settings);
 }
 
 /** Adapts Pino to the application's Logger port. */

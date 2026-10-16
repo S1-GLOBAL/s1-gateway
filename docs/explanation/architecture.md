@@ -83,7 +83,8 @@ All of it is checked by `npm run arch:check`
 
 1. **Middleware** in `createApp`, in order — `helmet`, `cors` (one allowed
    origin), `compression`, JSON parsing (100 kB limit), `pino-http` (one log
-   line per request).
+   line per request, with the `cookie`, `set-cookie`, `authorization` and
+   `x-vercel-proxy-signature` headers written as `[Redacted]`).
 2. **Router** — `/api/v1` → the `tools` module's router → `controller.create`.
 3. **Controller** — `parseBody` checks the body's *shape* against a zod
    schema typed by the contract. A wrong shape throws `HttpError` 400.
