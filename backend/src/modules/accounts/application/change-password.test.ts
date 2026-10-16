@@ -31,6 +31,7 @@ async function setup() {
   if (!result.ok) throw new Error('setup failed');
   await accounts.add(result.value);
   await sessions.add(Session.create(result.value.id, 'hash(token-1)', 'session-1', NOW));
+  await sessions.add(Session.create(result.value.id, 'hash(token-other)', 'session-2', NOW));
 
   const changePassword = new ChangePassword(
     accounts,
@@ -55,6 +56,17 @@ describe('ChangePassword', () => {
     const [account] = await accounts.list();
     expect(account?.mustChangePassword).toBe(false);
     expect(await new FakePasswordHasher().verify('new-password-456', account!.passwordHash)).toBe(true);
+  });
+
+  it('keeps the current session and ends every other session', async () => {
+    const { sessions, changePassword } = await setup();
+    await changePassword.execute({
+      sessionToken: 'token-1',
+      currentPassword: 'old-password-123',
+      newPassword: 'new-password-456',
+    });
+    expect(await sessions.findByTokenHash('hash(token-1)')).not.toBeNull();
+    expect(await sessions.findByTokenHash('hash(token-other)')).toBeNull();
   });
 
   it('rejects the wrong current password and changes nothing', async () => {

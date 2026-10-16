@@ -10,6 +10,6 @@ export interface SessionRepository {
 
   deleteByTokenHash(tokenHash: string): Promise<void>;
 
-  /** Ends every open session for an account — on disable, and on a new reset link. */
+  /** Ends every open session for an account — on disable, password change, reset link, and reset redeem. */
   deleteByAccountId(accountId: string): Promise<void>;
 }

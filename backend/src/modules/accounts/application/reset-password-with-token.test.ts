@@ -4,8 +4,10 @@ import { Account } from '../domain/account.js';
 import { ResetTokenInvalidError } from '../domain/account.errors.js';
 import { InvalidPasswordError } from '../domain/password.js';
 import { PasswordResetToken, RESET_TOKEN_TTL_MS } from '../domain/password-reset-token.js';
+import { Session } from '../domain/session.js';
 import { InMemoryAccountRepository } from './testing/in-memory-account-repository.js';
 import { InMemoryPasswordResetTokenRepository } from './testing/in-memory-password-reset-token-repository.js';
+import { InMemorySessionRepository } from './testing/in-memory-session-repository.js';
 import { FakePasswordHasher } from './testing/fake-password-hasher.js';
 import { FakeTokenGenerator } from './testing/fake-token-generator.js';
 import { ResetPasswordWithToken } from './reset-password-with-token.js';
@@ -15,6 +17,7 @@ const CREATED_AT = new Date('2026-10-16T00:00:00.000Z');
 async function setup(now: Date, options?: { used?: boolean }) {
   const accounts = new InMemoryAccountRepository();
   const resetTokens = new InMemoryPasswordResetTokenRepository();
+  const sessions = new InMemorySessionRepository();
   const passwordHasher = new FakePasswordHasher();
 
   const registered = Account.register(
@@ -24,6 +27,7 @@ async function setup(now: Date, options?: { used?: boolean }) {
   );
   if (!registered.ok) throw new Error('setup failed');
   await accounts.add(registered.value);
+  await sessions.add(Session.create('account-1', 'hash(open-session)', 'session-1', CREATED_AT));
 
   let resetToken = PasswordResetToken.create('account-1', 'hash(token-1)', 'reset-1', CREATED_AT);
   if (options?.used) resetToken = resetToken.use(CREATED_AT);
@@ -32,11 +36,12 @@ async function setup(now: Date, options?: { used?: boolean }) {
   const useCase = new ResetPasswordWithToken(
     accounts,
     resetTokens,
+    sessions,
     passwordHasher,
     new FakeTokenGenerator(),
     new FixedClock(now),
   );
-  return { accounts, resetTokens, useCase };
+  return { accounts, resetTokens, sessions, useCase };
 }
 
 describe('ResetPasswordWithToken', () => {
@@ -48,6 +53,12 @@ describe('ResetPasswordWithToken', () => {
     const [account] = await accounts.list();
     expect(account?.mustChangePassword).toBe(false);
     expect(await new FakePasswordHasher().verify('new-password-456', account!.passwordHash)).toBe(true);
+  });
+
+  it('ends every open session for the account', async () => {
+    const { sessions, useCase } = await setup(CREATED_AT);
+    await useCase.execute({ token: 'token-1', newPassword: 'new-password-456' });
+    expect(await sessions.findByTokenHash('hash(open-session)')).toBeNull();
   });
 
   it('consumes the token so a second use fails', async () => {

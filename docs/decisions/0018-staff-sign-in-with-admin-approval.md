@@ -25,7 +25,8 @@ honestly sit outside the internal network.
 - **Password reset** is a public one-time link (24 hours). An admin copies
   the URL from the Accounts page and gives it in person. Creating a new
   reset invalidates prior unused tokens for that account and ends all
-  sessions.
+  sessions; redeeming the link ends sessions again so a sign-in with the
+  old password cannot outlive the change.
 - **Lockout:** five wrong passwords lock the account for 15 minutes.
   Sign-up is limited to five successful creates per client IP per hour.
 

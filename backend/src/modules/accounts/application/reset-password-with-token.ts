@@ -6,6 +6,7 @@ import { ResetTokenInvalidError } from '../domain/account.errors.js';
 import { InvalidPasswordError, validatePassword } from '../domain/password.js';
 import type { PasswordHasher } from '../domain/password-hasher.js';
 import type { PasswordResetTokenRepository } from '../domain/password-reset-token-repository.js';
+import type { SessionRepository } from '../domain/session-repository.js';
 import type { TokenGenerator } from '../domain/token-generator.js';
 
 export interface ResetPasswordWithTokenInput {
@@ -22,6 +23,7 @@ export class ResetPasswordWithToken
   constructor(
     private readonly accounts: AccountRepository,
     private readonly resetTokens: PasswordResetTokenRepository,
+    private readonly sessions: SessionRepository,
     private readonly passwordHasher: PasswordHasher,
     private readonly tokens: TokenGenerator,
     private readonly clock: Clock,
@@ -43,6 +45,9 @@ export class ResetPasswordWithToken
     const passwordHash = await this.passwordHasher.hash(newPassword.value);
     await this.accounts.save(account.withPasswordHash(passwordHash, { clearMustChange: true }));
     await this.resetTokens.save(resetToken.use(now));
+    // Anyone who signed in with the old password after the link was created
+    // must lose access the moment the new password lands.
+    await this.sessions.deleteByAccountId(account.id);
 
     return ok(undefined);
   }

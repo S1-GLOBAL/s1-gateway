@@ -54,7 +54,7 @@ function setup() {
     new SignOut(sessions, tokens),
     new GetMe(accounts, sessions, tokens, clock),
     new ChangePassword(accounts, sessions, hasher, tokens, clock),
-    new ResetPasswordWithToken(accounts, resetTokens, hasher, tokens, clock),
+    new ResetPasswordWithToken(accounts, resetTokens, sessions, hasher, tokens, clock),
     adminEmails,
     false,
   );
@@ -81,6 +81,7 @@ function setup() {
     hashToken: (token: string) => tokens.hash(token),
     clock,
     accountAdminEmails: adminEmails,
+    cookieSecure: false,
   };
 
   const app = createApp({
@@ -130,6 +131,10 @@ describe('auth and accounts HTTP', () => {
     const me = await agent.get('/api/v1/auth/me');
     expect(me.status).toBe(200);
     expect(me.body.data.isAdmin).toBe(true);
+    const renewedCookie = me.headers['set-cookie'];
+    const renewedHeader = Array.isArray(renewedCookie) ? renewedCookie.join(';') : (renewedCookie ?? '');
+    expect(renewedHeader).toContain(SESSION_COOKIE);
+    expect(renewedHeader.toLowerCase()).toContain('max-age=');
 
     expect((await agent.get('/api/v1/tools')).status).toBe(200);
   });

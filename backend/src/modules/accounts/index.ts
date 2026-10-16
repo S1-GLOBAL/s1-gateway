@@ -54,7 +54,7 @@ export function buildAccountsModule(deps: AccountsModuleDependencies): AccountsH
     new SignOut(sessions, tokens),
     new GetMe(accounts, sessions, tokens, deps.clock),
     new ChangePassword(accounts, sessions, passwordHasher, tokens, deps.clock),
-    new ResetPasswordWithToken(accounts, resetTokens, passwordHasher, tokens, deps.clock),
+    new ResetPasswordWithToken(accounts, resetTokens, sessions, passwordHasher, tokens, deps.clock),
     deps.accountAdminEmails,
     deps.cookieSecure,
   );
@@ -75,6 +75,7 @@ export function buildAccountsModule(deps: AccountsModuleDependencies): AccountsH
     hashToken: (token) => tokens.hash(token),
     clock: deps.clock,
     accountAdminEmails: deps.accountAdminEmails,
+    cookieSecure: deps.cookieSecure,
   };
 
   return {

@@ -42,7 +42,9 @@ export class ChangePassword implements UseCase<ChangePasswordInput, Result<void,
 
     const passwordHash = await this.passwordHasher.hash(newPassword.value);
     await this.accounts.save(account.withPasswordHash(passwordHash, { clearMustChange: true }));
-    await this.sessions.save(session.renew(now));
+    // Drop every other device; keep this session so the person stays signed in.
+    await this.sessions.deleteByAccountId(account.id);
+    await this.sessions.add(session.renew(now));
 
     return ok(undefined);
   }
