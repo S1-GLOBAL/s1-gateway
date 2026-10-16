@@ -20,7 +20,7 @@ async function setup() {
   const result = Account.register(
     {
       email: 'staff@sourceone.global',
-      fullName: 'Staff Member',
+      firstName: 'Staff', lastName: 'Member',
       passwordHash: await passwordHasher.hash('old-password-123'),
       autoApprove: true,
       mustChangePassword: true,

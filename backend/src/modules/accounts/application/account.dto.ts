@@ -4,6 +4,9 @@ import type { Account, AccountStatus } from '../domain/account.js';
 export interface AccountDto {
   id: string;
   email: string;
+  firstName: string;
+  lastName: string;
+  /** "First Last". */
   fullName: string;
   status: AccountStatus;
   mustChangePassword: boolean;
@@ -14,6 +17,8 @@ export function toAccountDto(account: Account): AccountDto {
   return {
     id: account.id,
     email: account.email,
+    firstName: account.firstName,
+    lastName: account.lastName,
     fullName: account.fullName,
     status: account.status,
     mustChangePassword: account.mustChangePassword,

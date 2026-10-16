@@ -21,7 +21,7 @@ async function setup(now: Date, options?: { used?: boolean }) {
   const passwordHasher = new FakePasswordHasher();
 
   const registered = Account.register(
-    { email: 'staff@sourceone.global', fullName: 'Staff Member', passwordHash: 'old-hash', autoApprove: true },
+    { email: 'staff@sourceone.global', firstName: 'Staff', lastName: 'Member', passwordHash: 'old-hash', autoApprove: true },
     'account-1',
     CREATED_AT,
   );

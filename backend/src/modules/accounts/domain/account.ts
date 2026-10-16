@@ -6,7 +6,8 @@ export const LOCKOUT_MINUTES = 15;
 export interface AccountProps {
   readonly id: string;
   readonly email: string;
-  readonly fullName: string;
+  readonly firstName: string;
+  readonly lastName: string;
   readonly passwordHash: string;
   readonly mustChangePassword: boolean;
   readonly status: AccountStatus;
@@ -19,10 +20,21 @@ export interface AccountProps {
 
 export interface RegisterAccountInput {
   email: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   passwordHash: string;
   autoApprove: boolean;
   mustChangePassword?: boolean;
+}
+
+export interface RegisterInvitedAccountInput {
+  /** The invite's email, never one from the request. */
+  email: string;
+  firstName: string;
+  lastName: string;
+  passwordHash: string;
+  /** The admin whose invite this is: the invite is the approval. */
+  invitedBy: string;
 }
 
 /** A staff member who may use the Gateway once approved. */
@@ -36,7 +48,8 @@ export class Account {
       value: new Account({
         id,
         email: input.email,
-        fullName: input.fullName,
+        firstName: input.firstName,
+        lastName: input.lastName,
         passwordHash: input.passwordHash,
         mustChangePassword: input.mustChangePassword ?? false,
         status: approved ? 'approved' : 'pending',
@@ -47,6 +60,24 @@ export class Account {
         approvedAt: approved ? createdAt : null,
       }),
     };
+  }
+
+  /** Someone an admin invited: approved at once, by that admin (ADR 0023). */
+  static registerInvited(input: RegisterInvitedAccountInput, id: string, createdAt: Date): Account {
+    return new Account({
+      id,
+      email: input.email,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      passwordHash: input.passwordHash,
+      mustChangePassword: false,
+      status: 'approved',
+      failedSignInCount: 0,
+      lockedUntil: null,
+      createdAt,
+      approvedBy: input.invitedBy,
+      approvedAt: createdAt,
+    });
   }
 
   /** Rebuilds an account that was valid when it was stored. For persistence only. */
@@ -62,8 +93,17 @@ export class Account {
     return this.props.email;
   }
 
+  get firstName(): string {
+    return this.props.firstName;
+  }
+
+  get lastName(): string {
+    return this.props.lastName;
+  }
+
+  /** "First Last", or just the first name when there is no last name. */
   get fullName(): string {
-    return this.props.fullName;
+    return `${this.props.firstName} ${this.props.lastName}`.trim();
   }
 
   get passwordHash(): string {

@@ -3,6 +3,7 @@
  * infrastructure layer; this composition-level file only gathers them.
  */
 export {
+  accountInvites,
   accounts,
   passwordResetTokens,
   sessions,

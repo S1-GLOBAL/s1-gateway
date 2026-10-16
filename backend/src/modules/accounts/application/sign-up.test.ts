@@ -36,12 +36,38 @@ describe('SignUp', () => {
       value: {
         id: '00000000-0000-4000-8000-000000000001',
         email: 'staff@sourceone.global',
+        firstName: 'Staff',
+        lastName: 'Member',
         fullName: 'Staff Member',
         status: 'pending',
         mustChangePassword: false,
         createdAt: NOW.toISOString(),
       },
     });
+  });
+
+  it('splits the full name at the first space into first and last name', async () => {
+    const { accounts, signUp } = setup();
+    await signUp.execute({ ...input, fullName: '  Ada King Lovelace  ' });
+    const [stored] = await accounts.list();
+    expect(stored?.firstName).toBe('Ada');
+    expect(stored?.lastName).toBe('King Lovelace');
+    expect(stored?.fullName).toBe('Ada King Lovelace');
+  });
+
+  it('keeps a one-word name as the first name, with an empty last name', async () => {
+    const { accounts, signUp } = setup();
+    await signUp.execute({ ...input, fullName: 'Admin' });
+    const [stored] = await accounts.list();
+    expect([stored?.firstName, stored?.lastName, stored?.fullName]).toEqual(['Admin', '', 'Admin']);
+  });
+
+  it('cuts each part of the name to 40 characters', async () => {
+    const { accounts, signUp } = setup();
+    await signUp.execute({ ...input, fullName: `${'A'.repeat(41)} ${'B'.repeat(38)}` });
+    const [stored] = await accounts.list();
+    expect(stored?.firstName).toBe('A'.repeat(40));
+    expect(stored?.lastName).toBe('B'.repeat(38));
   });
 
   it('auto-approves an admin email', async () => {
