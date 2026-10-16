@@ -3,6 +3,9 @@ export type AccountStatus = 'pending' | 'approved' | 'disabled';
 export interface Account {
   id: string;
   email: string;
+  firstName: string;
+  lastName: string;
+  /** "First Last". */
   fullName: string;
   status: AccountStatus;
   mustChangePassword: boolean;

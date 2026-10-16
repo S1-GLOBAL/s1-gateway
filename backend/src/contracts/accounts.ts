@@ -6,7 +6,7 @@ export interface Account {
   id: string;
   email: string;
   firstName: string;
-  /** Empty for an account whose name was one word before names were split. */
+  /** Empty when a one-word full name was split into first and last. */
   lastName: string;
   /** "First Last". */
   fullName: string;
