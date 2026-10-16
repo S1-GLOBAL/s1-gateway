@@ -88,7 +88,11 @@ New table `account_invites`, in `backend/src/modules/accounts/infrastructure/acc
 
 `accounts` gains `first_name varchar(40) not null default ''` and
 `last_name varchar(40) not null default ''`. `full_name` stays, and every write
-sets it to the trimmed `"First Last"`. The backfill is a custom migration:
+sets it to the trimmed `"First Last"`. Two 40-character names make 81
+characters, so `full_name` widens from `varchar(80)` to `varchar(81)`; Postgres
+widens a `varchar` without rewriting the table, and the running code is
+unaffected (decided by reyxdz on 2026-10-17). The backfill is a custom
+migration:
 
 ```sql
 UPDATE accounts SET
@@ -134,7 +138,7 @@ siblings, so `invites` is never read as an `:id`.
 - `domain/person-name.ts`: `normalizeFirstName`, `normalizeLastName` (trim; empty → `Enter your first name.` / `Enter your last name.`; over 40 → `Use at most 40 characters.`), errors under `firstName` and `lastName`.
 - `domain/account.ts`: `firstName`, `lastName`; `fullName` becomes `` `${firstName} ${lastName}`.trim() ``; `Account.register` takes both names; a new `Account.registerInvited` creates an approved account.
 - `domain/account-invite.ts`: `AccountInvite.create(email, tokenHash, invitedBy, id, now)` (7 days), `isUsable(now)`, `revoke(now)`; `INVITE_TTL_MS`.
-- `domain/account.errors.ts`: `InviteInvalidError` (`INVITE_INVALID`, 404 copy from #21), `InviteNotFoundError`, and the invite form's own wording for a bad email and an existing account (#21's copy table). Registration's mismatched passwords go under `confirmPassword`: `The passwords don't match.`
+- `domain/account.errors.ts`: `InviteInvalidError` (`INVITE_INVALID`, 404 copy from #21), `InviteNotFoundError` (`INVITE_NOT_FOUND`, 404, `This invite was already used or revoked.`, decided by reyxdz on 2026-10-17), and the invite form's own wording for a bad email and an existing account (#21's copy table). Registration's mismatched passwords go under `confirmPassword`: `The passwords don't match.`
 - `domain/account-invite-repository.ts`: `add` (revokes that email's open invite in the same transaction), `findByTokenHash`, `listOpen(now)`, `revoke(id, now)`, `redeem(inviteId, account, now)`.
 - `application/`: `CreateInvite`, `ListInvites`, `RevokeInvite`, `GetInvite`, `RegisterWithInvite`, each with tests over in-memory fakes.
 
@@ -174,7 +178,7 @@ form still sends a full name, which the server splits at the first space.
 ### Step 1.2 — The table, the name columns and the backfill
 
 - [ ] **Action.** Add `accountInvites` and the two columns to `accounts.table.ts`, export the table from `backend/src/database-schema.ts`, run `npm --prefix backend run db:generate -- --name account_invites_and_person_names`, then `npm --prefix backend run db:generate -- --custom --name backfill_person_names` and paste the backfill SQL above into it. Add `account_invites` to the front of the `truncate` in `backend/src/test/database.ts`.
-- [ ] **Verify.** `npm run db:migrate` applies both; the generated SQL only adds (no `DROP`, no `ALTER COLUMN … TYPE`); a second `db:generate` prints "No schema changes"; a `*.db.test.ts` proves #21's three backfill cases.
+- [ ] **Verify.** `npm run db:migrate` applies both; the generated SQL only adds, apart from widening `full_name` (no `DROP`; the only `ALTER COLUMN … TYPE` sets `full_name` to `varchar(81)`); a test registers 40-character first and last names; a second `db:generate` prints "No schema changes"; a `*.db.test.ts` proves #21's three backfill cases.
 
 ### Step 1.3 — The domain: names and invites
 
@@ -193,7 +197,7 @@ form still sends a full name, which the server splits at the first space.
 
 ### Step 1.6 — Contracts and docs
 
-- [ ] **Action.** The contract additions above, read on the frontend with a fallback (`firstName ?? ''`, `lastName ?? ''`) so a new frontend works with the old API during a release. `docs/reference/api.md`: the five routes, the two new error codes, `firstName` and `lastName` in the `Account` table, and the `AccountInvite` shape. `docs/reference/data-model.md`: `account_invites` and the two columns.
+- [ ] **Action.** The contract additions above, read on the frontend with a fallback (`firstName ?? ''`, `lastName ?? ''`) so a new frontend works with the old API during a release. `docs/reference/api.md`: the five routes, the two new error codes, `firstName` and `lastName` in the `Account` table, and the `AccountInvite` shape. `docs/reference/data-model.md`: `account_invites`, the two columns, and `full_name` as `varchar(81)`.
 - [ ] **Verify.** `npm run typecheck && npm run docs:check` exits 0; `npm --prefix frontend run build` exits 0.
 
 ### Step 1.7 — Open the pull request
