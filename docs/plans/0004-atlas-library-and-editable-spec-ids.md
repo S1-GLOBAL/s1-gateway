@@ -58,7 +58,7 @@ request, stopping for the owner after each.
 
 | Phase | Steps | Status |
 |---|---|---|
-| 1. Server: editable Spec IDs, history, library API | 6 / 7 | In progress — step 1.7's staging check remains after merge |
+| 1. Server: editable Spec IDs, history, library API | 7 / 7 | Done — staging had no Spec IDs before the release, so the backfill had nothing to fill; see #16 |
 | 2. Workspace and History | 0 / 6 | Not started |
 | 3. Library | 0 / 5 | Not started |
 
@@ -219,8 +219,8 @@ One pull request, "Part of #16".
 
 ### Step 1.7 — Open the pull request
 
-- [ ] **Action.** Open "Part of #16" with the template; Database, API and Rollout filled in (the migrations are additive; the backfill inserts one row per existing Spec ID).
-- [ ] **Verify.** CI and `pr-audit` pass. After merge, on staging: a Spec ID saved before the release answers `GET /api/v1/atlas/saved/<its id>/history` with exactly one `created` entry.
+- [x] **Action.** Open "Part of #16" with the template; Database, API and Rollout filled in (the migrations are additive; the backfill inserts one row per existing Spec ID).
+- [x] **Verify.** CI and `pr-audit` pass. After merge, on staging: a Spec ID saved before the release answers `GET /api/v1/atlas/saved/<its id>/history` with exactly one `created` entry.
 
 ---
 
