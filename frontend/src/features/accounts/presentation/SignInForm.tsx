@@ -5,8 +5,14 @@ import { useSignIn } from '../application/use-sign-in';
 import { fieldErrors, formMessage } from './form-errors';
 import { FormAlert } from './FormAlert';
 
-export function SignInForm({ onSignedIn }: { onSignedIn(): void }) {
-  const [email, setEmail] = useState('');
+export interface SignInFormProps {
+  /** The email to start with: the account just registered. */
+  defaultEmail?: string;
+  onSignedIn(): void;
+}
+
+export function SignInForm({ defaultEmail = '', onSignedIn }: SignInFormProps) {
+  const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState('');
   const signIn = useSignIn();
   const error = signIn.error;

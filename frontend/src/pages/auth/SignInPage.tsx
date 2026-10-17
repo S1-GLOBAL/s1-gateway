@@ -2,12 +2,22 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { SignInForm, safeNextPath } from '@/features/accounts';
 import { AUTH_LINK, AuthLayout } from './AuthLayout';
 
+/** What another page hands over when it sends someone here. */
+interface SignInState {
+  sessionEnded?: boolean;
+  /** Set by the registration page, with the new account's email. */
+  registered?: boolean;
+  email?: string;
+}
+
 export function SignInPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const location = useLocation();
   const next = safeNextPath(params.get('next'));
-  const sessionEnded = (location.state as { sessionEnded?: boolean } | null)?.sessionEnded === true;
+  const state = location.state as SignInState | null;
+  const sessionEnded = state?.sessionEnded === true;
+  const registered = state?.registered === true;
 
   return (
     <AuthLayout
@@ -27,7 +37,15 @@ export function SignInPage() {
           Your session ended. Sign in again.
         </p>
       )}
-      <SignInForm onSignedIn={() => navigate(next, { replace: true })} />
+      {registered && (
+        <p role="status" className="rounded-control bg-success-soft px-3 py-2 text-sm text-success">
+          Your account is ready. Sign in.
+        </p>
+      )}
+      <SignInForm
+        defaultEmail={registered ? state?.email : undefined}
+        onSignedIn={() => navigate(next, { replace: true })}
+      />
     </AuthLayout>
   );
 }

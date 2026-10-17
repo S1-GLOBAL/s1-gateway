@@ -6,6 +6,7 @@ import { AccountsGatewayProvider, type AccountsGateway } from '@/features/accoun
 import { AppError } from '@/shared/application/app-error';
 import { account, fakeAccountsGateway } from '@/test/fake-accounts-gateway';
 import { ChangePasswordPage } from './ChangePasswordPage';
+import { RegisterPage } from './RegisterPage';
 import { ResetPasswordPage } from './ResetPasswordPage';
 import { SignInPage } from './SignInPage';
 import { SignUpPage } from './SignUpPage';
@@ -109,6 +110,129 @@ describe('SignUpPage', () => {
     renderPage('/sign-up', <SignUpPage />, '/sign-up', fakeAccountsGateway({ signUp }));
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
     expect((await screen.findByRole('alert')).textContent).toBe(message);
+  });
+});
+
+describe('RegisterPage', () => {
+  const INVITED = 'ada@sourceone.global';
+  const PASSWORD = 'a long enough password';
+
+  /** The register page and the real sign-in page, so registering can be followed to where it lands. */
+  function renderRegister(path: string, gateway: AccountsGateway) {
+    const router = createMemoryRouter(
+      [
+        { path: '/register', element: <RegisterPage /> },
+        { path: '/sign-in', element: <SignInPage /> },
+      ],
+      { initialEntries: [path] },
+    );
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <AccountsGatewayProvider gateway={gateway}>
+          <RouterProvider router={router} />
+        </AccountsGatewayProvider>
+      </QueryClientProvider>,
+    );
+    return router;
+  }
+
+  function fillIn(confirmPassword = PASSWORD) {
+    type('First name', 'Ada');
+    type('Last name', 'Lovelace');
+    type('Password', PASSWORD);
+    type('Confirm password', confirmPassword);
+  }
+
+  it("shows the invite's email as text, not an input, and asks for four fields", async () => {
+    const getInvite = vi
+      .fn<AccountsGateway['getInvite']>()
+      .mockResolvedValue({ email: INVITED, expiresAt: new Date('2026-10-23T08:00:00Z') });
+    renderRegister('/register?token=tok', fakeAccountsGateway({ getInvite }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Create your account' })).toBeTruthy();
+    expect(screen.getByText('You were invited to the Source One Gateway.')).toBeTruthy();
+    expect(getInvite).toHaveBeenCalledWith('tok');
+    expect(screen.getByText('Email')).toBeTruthy();
+    expect(screen.getByText(INVITED).tagName).not.toBe('INPUT');
+    expect(screen.queryByLabelText('Email')).toBeNull();
+    expect(screen.queryByDisplayValue(INVITED)).toBeNull();
+    for (const label of ['First name', 'Last name', 'Password', 'Confirm password']) {
+      expect(screen.getByLabelText(label).tagName).toBe('INPUT');
+    }
+    expect(screen.getByText('At least 12 characters.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeTruthy();
+  });
+
+  it("says the passwords don't match, under Confirm password, and sends nothing", async () => {
+    const register = vi.fn<AccountsGateway['register']>();
+    renderRegister('/register?token=tok', fakeAccountsGateway({ register }));
+    await screen.findByLabelText('First name');
+
+    fillIn('a different password');
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(screen.getByText("The passwords don't match.")).toBeTruthy();
+    expect(screen.getByLabelText('Confirm password').getAttribute('aria-invalid')).toBe('true');
+    expect(register).not.toHaveBeenCalled();
+  });
+
+  it("still shows the server's answer beside its input", async () => {
+    const register = vi.fn<AccountsGateway['register']>().mockRejectedValue(
+      new AppError('VALIDATION_FAILED', 'Use at most 40 characters.', { lastName: ['Use at most 40 characters.'] }),
+    );
+    renderRegister('/register?token=tok', fakeAccountsGateway({ register }));
+    await screen.findByLabelText('First name');
+
+    fillIn();
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+
+    await waitFor(() => expect(screen.getByLabelText('Last name').getAttribute('aria-invalid')).toBe('true'));
+    expect(screen.getByText('Use at most 40 characters.')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('says the link no longer works when the API answers 404 for its token', async () => {
+    const getInvite = vi
+      .fn<AccountsGateway['getInvite']>()
+      .mockRejectedValue(new AppError('INVITE_INVALID', 'This invite link no longer works.'));
+    renderRegister('/register?token=old', fakeAccountsGateway({ getInvite }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'This invite link no longer works.' }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText('It may have expired, been used or been revoked. Ask a Gateway admin for a new one.'),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText('First name')).toBeNull();
+  });
+
+  it('says the link no longer works when it has no token', async () => {
+    const getInvite = vi.fn<AccountsGateway['getInvite']>();
+    renderRegister('/register', fakeAccountsGateway({ getInvite }));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'This invite link no longer works.' }),
+    ).toBeTruthy();
+    expect(getInvite).not.toHaveBeenCalled();
+  });
+
+  it('registers, then lands on sign-in with "Your account is ready. Sign in." and the email filled in', async () => {
+    const register = vi.fn<AccountsGateway['register']>().mockResolvedValue(account({ email: INVITED }));
+    const router = renderRegister('/register?token=tok', fakeAccountsGateway({ register }));
+    await screen.findByLabelText('First name');
+
+    fillIn();
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/sign-in'));
+    expect(register).toHaveBeenCalledWith({
+      token: 'tok',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      password: PASSWORD,
+      confirmPassword: PASSWORD,
+    });
+    expect((await screen.findByRole('status')).textContent).toBe('Your account is ready. Sign in.');
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(INVITED);
   });
 });
 

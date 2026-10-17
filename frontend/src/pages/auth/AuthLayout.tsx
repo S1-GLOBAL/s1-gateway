@@ -5,7 +5,8 @@ import { Logo } from '@/shared/ui/Logo';
 export interface AuthLayoutProps {
   title: string;
   description?: string;
-  children: ReactNode;
+  /** Left out when the title and description say everything, as on the invite-only note. */
+  children?: ReactNode;
   /** Links under the card: the other places a signed-out person might mean to go. */
   footer?: ReactNode;
 }

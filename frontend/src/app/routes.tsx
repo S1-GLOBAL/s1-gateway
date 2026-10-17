@@ -22,6 +22,9 @@ const LandingPage = lazy(() =>
 );
 const SignInPage = lazy(() => import('@/pages/auth/SignInPage').then((module) => ({ default: module.SignInPage })));
 const SignUpPage = lazy(() => import('@/pages/auth/SignUpPage').then((module) => ({ default: module.SignUpPage })));
+const RegisterPage = lazy(() =>
+  import('@/pages/auth/RegisterPage').then((module) => ({ default: module.RegisterPage })),
+);
 const ResetPasswordPage = lazy(() =>
   import('@/pages/auth/ResetPasswordPage').then((module) => ({ default: module.ResetPasswordPage })),
 );
@@ -52,6 +55,14 @@ export const routes: RouteObject[] = [
     element: (
       <RouteBoundary skeleton={<AuthPageSkeleton />}>
         <SignUpPage />
+      </RouteBoundary>
+    ),
+  },
+  {
+    path: 'register',
+    element: (
+      <RouteBoundary skeleton={<AuthPageSkeleton />}>
+        <RegisterPage />
       </RouteBoundary>
     ),
   },
