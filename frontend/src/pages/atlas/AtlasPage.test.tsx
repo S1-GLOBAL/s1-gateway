@@ -27,6 +27,9 @@ function renderPage(load: AtlasGateway['dictionary'], findSimilar?: AtlasGateway
     save: pending,
     findByCode: pending,
     findSimilar: findSimilar ?? pending,
+    getSaved: pending,
+    update: pending,
+    history: pending,
   };
   render(
     <QueryClientProvider client={queryClient}>
