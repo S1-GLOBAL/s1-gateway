@@ -150,7 +150,10 @@ export function readCode(code: string): DecodedSpecId {
   };
 }
 
-/** The S1 0.1.0 product types, shapes and rules, as `0003_seed_atlas_dictionary_s1_0_1_0.sql` seeds them. */
+/**
+ * The S1 0.1.0 product types and rules, as `0003_seed_atlas_dictionary_s1_0_1_0.sql`
+ * seeds them, with only some of its materials, shapes, profiles and capacity units.
+ */
 export const s1Dictionary: AtlasDictionary = {
   release: 'S1 0.1.0',
   approvedOn: '2026-10-16',
