@@ -16,7 +16,7 @@ A missing or invalid value stops the process with the variable's name.
 | `LOG_LEVEL` | `info` | Pino level: `fatal`, `error`, `warn`, `info`, `debug`, `trace` or `silent` |
 | `DATABASE_URL` | — (required) | `postgres://` or `postgresql://` URL. Locally `postgres://s1gateway:s1gateway@localhost:5436/s1_gateway` |
 | `CORS_ORIGIN` | `http://localhost:5173` | The SPA's origin, allowed by CORS |
-| `ACCOUNT_ADMIN_EMAILS` | — (required) | Comma-separated `@sourceone.global` addresses that may approve, disable and reset accounts. Trimmed and lower-cased at boot. Every entry must match `/^[^@]+@sourceone\.global$/` or the API refuses to start |
+| `ACCOUNT_ADMIN_EMAILS` | — (required) | Comma-separated `@sourceone.global` addresses that may invite staff, and approve, disable and reset accounts. `npm run db:create-admin` accepts only these. Trimmed and lower-cased at boot. Every entry must match `/^[^@]+@sourceone\.global$/` or the API refuses to start |
 
 ### `npm run db:create-admin` only
 
