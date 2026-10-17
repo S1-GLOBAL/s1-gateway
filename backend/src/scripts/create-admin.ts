@@ -2,8 +2,8 @@
  * `npm run db:create-admin -- --email <address> --first-name <name> --last-name <name>`,
  * with the password in `ADMIN_PASSWORD` for that one run.
  *
- * Creates an approved admin for local development and tests. With open
- * sign-up gone (ADR 0023) it is the only way into an empty database. It uses
+ * Creates an approved admin for local development and tests. With accounts
+ * created only by invite (ADR 0023) it is the only way into an empty database. It uses
  * the accounts module's own rules, repository and hasher, and never starts
  * the HTTP app. It refuses to run with `NODE_ENV=production`, and refuses an
  * address that is not in `ACCOUNT_ADMIN_EMAILS`.
