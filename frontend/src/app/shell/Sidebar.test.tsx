@@ -26,6 +26,12 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Theme' }).getAttribute('aria-current')).toBe('page');
   });
 
+  it('marks Atlas current on a page inside it', () => {
+    renderAt('/atlas/new');
+    expect(screen.getByRole('link', { name: 'Atlas' }).getAttribute('aria-current')).toBe('page');
+    expect(screen.getByRole('link', { name: 'Theme' }).getAttribute('aria-current')).toBeNull();
+  });
+
   it('offers Accounts to an admin only', () => {
     renderAt('/theme');
     expect(screen.queryByRole('link', { name: 'Accounts' })).toBeNull();

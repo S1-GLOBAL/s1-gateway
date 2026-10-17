@@ -27,7 +27,12 @@ export function navItemsFor(isAdmin: boolean): readonly NavItem[] {
   return NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
 }
 
+/** Whether a path is this place or a page inside it: `/atlas/new` is in Atlas. */
+export function isInPlace(item: NavItem, pathname: string): boolean {
+  return pathname === item.path || pathname.startsWith(`${item.path}/`);
+}
+
 /** The nav item a path belongs to, if any. */
 export function navItemFor(pathname: string): NavItem | undefined {
-  return NAV_ITEMS.find((item) => item.path === pathname);
+  return NAV_ITEMS.find((item) => isInPlace(item, pathname));
 }

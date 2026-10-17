@@ -59,7 +59,7 @@ request, stopping for the owner after each.
 | Phase | Steps | Status |
 |---|---|---|
 | 1. Server: editable Spec IDs, history, library API | 7 / 7 | Done — staging had no Spec IDs before the release, so the backfill had nothing to fill; see #16 |
-| 2. Workspace and History | 0 / 6 | Not started |
+| 2. Workspace and History | 5 / 6 | In progress — step 2.6's staging check remains after merge |
 | 3. Library | 0 / 5 | Not started |
 
 ---
@@ -159,7 +159,9 @@ pasted code before asking.
 | `toBuildForm` | `domain/to-build-form.ts` | `DecodedSpecId` → `BuildForm`: `0090` → `{ value: '90', unit: 'mm' }`, `0033` → `'3.3'` g, `Z0016` → unit `Z`, `'16'`; `0`/`X` → `''` |
 | `isFormChanged` | `domain/build-facts.ts` | `(a: BuildForm, b: BuildForm, rules) => boolean`, comparing `toFacts` of each — drives **Save changes** |
 | `useSavedSpecId`, `useUpdateSpecId`, `useSpecIdHistory`, `useExactMatch`, `useSpecIdLibrary`, `useCodeLookup` | `application/` | `useSpecIdHistory` runs only while the sheet is open; `useSpecIdLibrary` is `useInfiniteQuery`; `useExactMatch(code)` treats 404 as no match |
-| `SpecIdWorkspace` | `presentation/workspace/SpecIdWorkspace.tsx` | the two columns; props `{ dictionary; initial: BuildForm; saved?: SavedSpecId }` |
+| `useSpecIdDraft` | `application/use-spec-id-draft.ts` | the form, its facts, the code built from them and any exact match, for both pages |
+| `SpecIdWorkspace` | `presentation/workspace/SpecIdWorkspace.tsx` | the two columns; props `{ dictionary; form; onChange; decoded; codeError?; fields; match; ownId?; side; timeZone? }`, the state held by `useSpecIdDraft` |
+| `NewSpecIdForm`, `SpecIdEditor` | `presentation/` | the workspace with its name and Save Spec ID; with its header, History and Save changes |
 | `FactGroups`, `CodePanel`, `MatchPanel` | `presentation/workspace/` | the five groups; the coded parts, legend, Copy and summary; Already saved and the folded similar list |
 | `HistorySheet` | `presentation/HistorySheet.tsx` | the `Sheet`, filters, timeline |
 | `LibraryList`, `PastedCodeResult`, `DictionarySheet` | `presentation/library/` | phase 3 |
@@ -231,28 +233,28 @@ pages are reached by URL until phase 3.
 
 ### Step 2.1 — Gateway, hooks and form helpers
 
-- [ ] **Action.** Extend `AtlasGateway` and `HttpAtlasGateway` (`getSaved`, `update`, `history`, `findByCode` now answering `SpecIdLookup`); `SpecIdChangedError` beside `SpecIdExistsError` in `application/`; the hooks above; `toBuildForm` and `isFormChanged`. Tests: `toBuildForm` round-trips the illustrative code through `toFacts` to the same facts; `isFormChanged` is false after a change and its undo; the gateway maps 409 `SPEC_ID_CHANGED` to `SpecIdChangedError`.
-- [ ] **Verify.** `npm --prefix frontend run test -- --no-file-parallelism src/features/atlas` passes.
+- [x] **Action.** Extend `AtlasGateway` and `HttpAtlasGateway` (`getSaved`, `update`, `history`, `findByCode` now answering `SpecIdLookup`); `SpecIdChangedError` beside `SpecIdExistsError` in `application/`; the hooks above; `toBuildForm` and `isFormChanged`. Tests: `toBuildForm` round-trips the illustrative code through `toFacts` to the same facts; `isFormChanged` is false after a change and its undo; the gateway maps 409 `SPEC_ID_CHANGED` to `SpecIdChangedError`.
+- [x] **Verify.** `npm --prefix frontend run test -- --no-file-parallelism src/features/atlas` passes.
 
 ### Step 2.2 — The workspace
 
-- [ ] **Action.** `SpecIdWorkspace`, `FactGroups`, `CodePanel`, `MatchPanel` with #16's copy. Tests, one per product type, with shape and material not known: the slots its rules mark `never` are not rendered and the note names them (bowl lid and cup lid: nominal capacity, bottom diameter, gusset; bowl: profile, gusset; stand-up pouch: shape, profile, top diameter, bottom diameter, length); top diameter shows "Not known" disabled until a shape is chosen; an exact match disables **Save Spec ID** and shows "This code is already saved. Open it to add or correct facts instead."; on a saved Spec ID its own code is never shown as a match; similar Spec IDs stay folded; **Copy** reads "Copied" and returns after 2 seconds.
-- [ ] **Verify.** The tests pass; `npm run design:check` prints "Design tokens only."
+- [x] **Action.** `SpecIdWorkspace`, `FactGroups`, `CodePanel`, `MatchPanel` with #16's copy. Tests, one per product type, with shape and material not known: the slots its rules mark `never` are not rendered and the note names them (bowl lid and cup lid: nominal capacity, bottom diameter, gusset; bowl: profile, gusset; stand-up pouch: shape, profile, top diameter, bottom diameter, length); top diameter shows "Not known" disabled until a shape is chosen; an exact match disables **Save Spec ID** and shows "This code is already saved. Open it to add or correct facts instead."; on a saved Spec ID its own code is never shown as a match; similar Spec IDs stay folded; **Copy** reads "Copied" and returns after 2 seconds.
+- [x] **Verify.** The tests pass; `npm run design:check` prints "Design tokens only."
 
 ### Step 2.3 — `/atlas/new` and `/atlas/:id`
 
-- [ ] **Action.** `NewSpecIdPage`, `SpecIdPage` and their skeletons; the two routes in `routes.tsx` (`atlas/new` before `atlas/:id`). `/atlas/new?code=<code>` seeds the form from that code. `SpecIdPage`'s header: **Atlas** (back), the name, the not-known badge, "Last updated by {who} on {date} · created by {who} on {date}", the History icon button and **Save changes**; the name is an editable `TextField` in the side column. Saving a new Spec ID navigates to `/atlas/<id>` with its saved message; **Save changes** shows "Saved." or "Saved. The code is now {code}."; `SpecIdExistsError` shows the other-product message with **Open**; `SpecIdChangedError` shows the reload message with **Reload**; an unknown or non-UUID id shows "This Spec ID doesn't exist. It may have been typed wrong." with **Back to Atlas**.
-- [ ] **Verify.** Route and page tests pass, including each message above.
+- [x] **Action.** `NewSpecIdPage`, `SpecIdPage` and their skeletons; the two routes in `routes.tsx` (`atlas/new` before `atlas/:id`). `/atlas/new?code=<code>` seeds the form from that code. `SpecIdPage`'s header: **Atlas** (back), the name, the not-known badge, "Last updated by {who} on {date} · created by {who} on {date}", the History icon button and **Save changes**; the name is an editable `TextField` in the side column. Saving a new Spec ID navigates to `/atlas/<id>` with its saved message; **Save changes** shows "Saved." or "Saved. The code is now {code}."; `SpecIdExistsError` shows the other-product message with **Open**; `SpecIdChangedError` shows the reload message with **Reload**; an unknown or non-UUID id shows "This Spec ID doesn't exist. It may have been typed wrong." with **Back to Atlas**.
+- [x] **Verify.** Route and page tests pass, including each message above.
 
 ### Step 2.4 — The History sheet
 
-- [ ] **Action.** The header's History icon button (`aria-label="History"`) opens `HistorySheet`: filters All, Facts, Name with counts; entries newest first with #16's sentences, old → new per slot, the code before and after, "Corrected" badges; "created" last. Tests: entries are newest first; "Corrected" appears only on a replaced known value; Facts hides a rename-only entry; **Save changes** stays disabled after a change and its undo.
-- [ ] **Verify.** The tests pass; `npm run typecheck && npm run lint && npm run arch:check` exits 0.
+- [x] **Action.** The header's History icon button (`aria-label="History"`) opens `HistorySheet`: filters All, Facts, Name with counts; entries newest first with #16's sentences, old → new per slot, the code before and after, "Corrected" badges; "created" last. Tests: entries are newest first; "Corrected" appears only on a replaced known value; Facts hides a rename-only entry; **Save changes** stays disabled after a change and its undo.
+- [x] **Verify.** The tests pass; `npm run typecheck && npm run lint && npm run arch:check` exits 0.
 
 ### Step 2.5 — Check it in a browser
 
-- [ ] **Action.** With the database, API and web app running locally, open `/atlas/new`, build and save the illustrative lid, add the height, correct the unit weight, save, and open History. Repeat in light and dark at 1280 px and at 390 px with the sidebar folded and reduced motion on. Take `atlas-workspace-light.png`, `atlas-workspace-dark.png` and `atlas-workspace-phone-light.png` with `scripts/screenshot.mjs` into `.github/readme/`. Stop everything started.
-- [ ] **Verify.** Nothing overflows at 390 px (no horizontal scroll); every control is reached by Tab with the focus ring; the three screenshots exist.
+- [x] **Action.** With the database, API and web app running locally, open `/atlas/new`, build and save the illustrative lid, add the height, correct the unit weight, save, and open History. Repeat in light and dark at 1280 px and at 390 px with the sidebar folded and reduced motion on. Take `atlas-workspace-light.png`, `atlas-workspace-dark.png` and `atlas-workspace-phone-light.png` with `scripts/screenshot.mjs` into `.github/readme/`. Stop everything started.
+- [x] **Verify.** Nothing overflows at 390 px (no horizontal scroll); every control is reached by Tab with the focus ring; the three screenshots exist.
 
 ### Step 2.6 — Open the pull request
 

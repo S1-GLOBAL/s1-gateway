@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { testDictionary } from '../application/testing/atlas-fixtures';
-import { initialBuildForm, toFacts, type BuildForm } from './build-facts';
+import { initialBuildForm, isFormChanged, toFacts, type BuildForm } from './build-facts';
 
 const { rules } = testDictionary;
 
@@ -81,5 +81,25 @@ describe('toFacts', () => {
   it('sends a capacity unit without an amount, for the server to name', () => {
     const facts = toFacts(form({ productType: 'BWL', capacityUnit: 'Z' }), rules);
     expect(facts.capacity).toEqual({ unit: 'Z', value: '' });
+  });
+});
+
+describe('isFormChanged', () => {
+  it('is false for the form as it was', () => {
+    expect(isFormChanged(form(), form(), rules)).toBe(false);
+  });
+
+  it('is true once a fact changes', () => {
+    expect(isFormChanged(form(), form({}, { material: 'APS' }), rules)).toBe(true);
+  });
+
+  it('is false after a change and its undo', () => {
+    const changed = form({}, { material: 'APS' });
+    const undone = { ...changed, codes: { ...changed.codes, material: '' } };
+    expect(isFormChanged(form(), undone, rules)).toBe(false);
+  });
+
+  it('is false for a value typed into a slot that does not apply', () => {
+    expect(isFormChanged(form(), form({ capacityUnit: 'Z', capacityValue: '16' }), rules)).toBe(false);
   });
 });

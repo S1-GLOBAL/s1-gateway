@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/shared/application/app-error';
 import type { AtlasGateway } from '../application/atlas-gateway';
 import { AtlasGatewayProvider } from '../application/atlas-gateway-context';
-import { gatewayWith, ILLUSTRATIVE, savedFor, testDictionary } from '../application/testing/atlas-fixtures';
+import { gatewayWith, ILLUSTRATIVE, lookupFor, testDictionary } from '../application/testing/atlas-fixtures';
 import { LookupPanel } from './LookupPanel';
 
 const NO_FITS = { fits: [], mightFit: [] };
@@ -28,7 +28,7 @@ const select = (label: string) => screen.getByLabelText(label) as HTMLSelectElem
 
 describe('LookupPanel, exact code', () => {
   it('opens the saved Spec ID with its saver, date and 18 slots', async () => {
-    const findByCode = vi.fn(async () => savedFor(ILLUSTRATIVE, 'Illustrative lid'));
+    const findByCode = vi.fn(async () => lookupFor(ILLUSTRATIVE, 'Illustrative lid'));
     renderPanel({ findByCode });
     set('Exact code', ` ${ILLUSTRATIVE} `);
     press('Find');
@@ -58,7 +58,7 @@ describe('LookupPanel, exact code', () => {
     const findByCode = vi
       .fn<AtlasGateway['findByCode']>()
       .mockRejectedValueOnce(new AppError('NETWORK', 'Cannot reach the server. Check your connection and try again.'))
-      .mockResolvedValue(savedFor(ILLUSTRATIVE, 'Illustrative lid'));
+      .mockResolvedValue(lookupFor(ILLUSTRATIVE, 'Illustrative lid'));
     renderPanel({ findByCode });
     set('Exact code', ILLUSTRATIVE);
     press('Find');
@@ -120,8 +120,8 @@ describe('LookupPanel, similar', () => {
   });
 
   it('sends the slots chosen as raw slot text, and lists what fits apart from what might', async () => {
-    const fits = savedFor(ILLUSTRATIVE, 'Rim 90');
-    const might = savedFor(ILLUSTRATIVE.replace('.0090.', '.0000.'), 'Unstated rim');
+    const fits = lookupFor(ILLUSTRATIVE, 'Rim 90');
+    const might = lookupFor(ILLUSTRATIVE.replace('.0090.', '.0000.'), 'Unstated rim');
     const findSimilar = vi
       .fn<AtlasGateway['findSimilar']>()
       .mockResolvedValueOnce(NO_FITS)

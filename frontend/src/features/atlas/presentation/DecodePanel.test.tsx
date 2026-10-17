@@ -50,6 +50,9 @@ function renderPanel(decode: AtlasGateway['decode']) {
     save: pending,
     findByCode: pending,
     findSimilar: pending,
+    getSaved: pending,
+    update: pending,
+    history: pending,
   };
   render(
     <QueryClientProvider client={queryClient}>

@@ -6,13 +6,17 @@ import type {
   SavedSpecId as SavedSpecIdContract,
   SaveSpecIdRequest,
   SimilarSpecIds as SimilarSpecIdsContract,
+  SpecIdChange as SpecIdChangeContract,
   SpecIdExistsDetails,
+  SpecIdLookup as SpecIdLookupContract,
+  UpdateSpecIdRequest,
 } from '@contracts/atlas';
 import type { ApiErrorBody, DataEnvelope } from '@contracts/envelope';
 import { isAxiosError, type AxiosInstance } from 'axios';
 import type { AppError } from '@/shared/application/app-error';
 import { toAppError } from '@/shared/infrastructure/to-app-error';
 import type { AtlasGateway } from '../application/atlas-gateway';
+import { SpecIdChangedError } from '../application/spec-id-changed-error';
 import { SpecIdExistsError } from '../application/spec-id-exists-error';
 import type {
   AtlasDictionary,
@@ -20,7 +24,9 @@ import type {
   SavedSpecId,
   SimilarCriteria,
   SimilarSpecIds,
+  SpecIdChange,
   SpecIdFacts,
+  SpecIdLookup,
 } from '../domain/atlas';
 
 /** The AtlasGateway port over the HTTP API. The only file in the feature that knows the wire format. */
@@ -70,12 +76,12 @@ export class HttpAtlasGateway implements AtlasGateway {
     }
   }
 
-  async findByCode(code: string): Promise<SavedSpecId> {
+  async findByCode(code: string): Promise<SpecIdLookup> {
     try {
-      const response = await this.http.get<DataEnvelope<SavedSpecIdContract>>(
+      const response = await this.http.get<DataEnvelope<SpecIdLookupContract>>(
         `/atlas/spec-ids/${encodeURIComponent(code)}`,
       );
-      return toSavedSpecId(response.data.data);
+      return toSpecIdLookup(response.data.data);
     } catch (error) {
       throw toAppError(error);
     }
@@ -92,9 +98,46 @@ export class HttpAtlasGateway implements AtlasGateway {
       throw toAppError(error);
     }
   }
+
+  async getSaved(id: string): Promise<SavedSpecId> {
+    try {
+      const response = await this.http.get<DataEnvelope<SavedSpecIdContract>>(`/atlas/saved/${encodeURIComponent(id)}`);
+      return toSavedSpecId(response.data.data);
+    } catch (error) {
+      throw toAppError(error);
+    }
+  }
+
+  async update(id: string, input: { name: string; facts: SpecIdFacts; version: number }): Promise<SavedSpecId> {
+    const body: UpdateSpecIdRequest = { name: input.name, facts: input.facts, version: input.version };
+    try {
+      const response = await this.http.patch<DataEnvelope<SavedSpecIdContract>>(
+        `/atlas/saved/${encodeURIComponent(id)}`,
+        body,
+      );
+      return toSavedSpecId(response.data.data);
+    } catch (error) {
+      throw toSaveError(error);
+    }
+  }
+
+  async history(id: string): Promise<SpecIdChange[]> {
+    try {
+      const response = await this.http.get<DataEnvelope<SpecIdChangeContract[]>>(
+        `/atlas/saved/${encodeURIComponent(id)}/history`,
+      );
+      return response.data.data.map(toSpecIdChange);
+    } catch (error) {
+      throw toAppError(error);
+    }
+  }
 }
 
-/** A 409 carries the Spec ID already saved: it is read before the error is flattened to an AppError. */
+/**
+ * A 409 says which conflict it is: the Spec ID already saved under the code,
+ * read before the error is flattened to an AppError, or a change someone saved
+ * first.
+ */
 function toSaveError(error: unknown): AppError {
   if (isAxiosError(error) && error.response?.status === 409) {
     const body = error.response.data as Partial<ApiErrorBody> | undefined;
@@ -102,6 +145,7 @@ function toSaveError(error: unknown): AppError {
     if (body?.error?.code === 'SPEC_ID_EXISTS' && details?.existing) {
       return new SpecIdExistsError(toSavedSpecId(details.existing), body.error.message);
     }
+    if (body?.error?.code === 'SPEC_ID_CHANGED') return new SpecIdChangedError(body.error.message);
   }
   return toAppError(error);
 }
@@ -130,8 +174,33 @@ function toDecodedSpecId(contract: DecodedSpecIdContract): DecodedSpecId {
 function toSavedSpecId(contract: SavedSpecIdContract): SavedSpecId {
   return {
     ...toDecodedSpecId(contract),
+    id: contract.id,
     name: contract.name,
     savedBy: { id: contract.savedBy.id, fullName: contract.savedBy.fullName },
     savedAt: new Date(contract.savedAt),
+    version: contract.version,
+    updatedBy: contract.updatedBy ? { id: contract.updatedBy.id, fullName: contract.updatedBy.fullName } : null,
+    updatedAt: contract.updatedAt ? new Date(contract.updatedAt) : null,
+  };
+}
+
+function toSpecIdLookup(contract: SpecIdLookupContract): SpecIdLookup {
+  return {
+    ...toSavedSpecId(contract),
+    replacedCode: contract.replacedCode,
+    formerHolders: contract.formerHolders.map(({ id, name, code, until }) => ({ id, name, code, until: new Date(until) })),
+  };
+}
+
+function toSpecIdChange(contract: SpecIdChangeContract): SpecIdChange {
+  return {
+    kind: contract.kind,
+    changedBy: { id: contract.changedBy.id, fullName: contract.changedBy.fullName },
+    changedAt: new Date(contract.changedAt),
+    codeBefore: contract.codeBefore,
+    codeAfter: contract.codeAfter,
+    nameBefore: contract.nameBefore,
+    nameAfter: contract.nameAfter,
+    slots: contract.slots.map(({ key, name, before, after, corrected }) => ({ key, name, before, after, corrected })),
   };
 }

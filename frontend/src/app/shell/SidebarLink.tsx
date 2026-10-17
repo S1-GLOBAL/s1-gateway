@@ -1,7 +1,7 @@
 import * as m from 'motion/react-m';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/shared/ui/cn';
-import type { NavItem } from '../nav';
+import { isInPlace, type NavItem } from '../nav';
 
 const MotionLink = m.create(Link);
 
@@ -12,7 +12,7 @@ const MotionLink = m.create(Link);
  */
 export function SidebarLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   const { pathname } = useLocation();
-  const current = pathname === item.path;
+  const current = isInPlace(item, pathname);
   const Icon = item.icon;
 
   return (

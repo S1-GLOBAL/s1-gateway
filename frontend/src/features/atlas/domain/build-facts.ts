@@ -48,3 +48,12 @@ export function toFacts(form: BuildForm, rules: readonly SlotRuleEntry[]): SpecI
   }
   return facts;
 }
+
+/**
+ * Whether `next` would save anything different from `saved`: compared as the
+ * facts each sends, so a value changed and changed back is no change, and a
+ * value typed into a slot that does not apply is none either.
+ */
+export function isFormChanged(saved: BuildForm, next: BuildForm, rules: readonly SlotRuleEntry[]): boolean {
+  return JSON.stringify(toFacts(saved, rules)) !== JSON.stringify(toFacts(next, rules));
+}

@@ -105,12 +105,69 @@ export interface SpecIdFacts {
   thickness?: MeasurementFact;
 }
 
+/** Who saved or changed a Spec ID. */
+export interface Staff {
+  id: string;
+  fullName: string;
+}
+
 /** A Spec ID someone named and saved. */
 export interface SavedSpecId extends DecodedSpecId {
+  /** Permanent: it never changes, though the code does. */
+  id: string;
   /** 1–120 characters. */
   name: string;
-  savedBy: { id: string; fullName: string };
+  savedBy: Staff;
   savedAt: Date;
+  /** 1 when saved; raised by 1 on every change. A change sends back the one it started from. */
+  version: number;
+  /** Null until the first change. */
+  updatedBy: Staff | null;
+  updatedAt: Date | null;
+}
+
+/** A Spec ID that once had a code. */
+export interface FormerHolder {
+  id: string;
+  name: string;
+  /** Its code now. */
+  code: string;
+  /** When it stopped having the code. */
+  until: Date;
+}
+
+/** A saved Spec ID found by a code: the one that has it now, or the last one that did. */
+export interface SpecIdLookup extends SavedSpecId {
+  /** The code asked for, when no Spec ID has it now and this one once did; otherwise null. */
+  replacedCode: string | null;
+  /** Every other Spec ID that once had the code, newest first. */
+  formerHolders: FormerHolder[];
+}
+
+/** One slot a change altered, in plain words. */
+export interface SlotChange {
+  key: SlotKey;
+  name: string;
+  /** "Not known", "Doesn't apply", "62 mm". */
+  before: string;
+  after: string;
+  /** A known value was replaced. */
+  corrected: boolean;
+}
+
+/** One entry in a saved Spec ID's history. */
+export interface SpecIdChange {
+  kind: 'created' | 'updated';
+  changedBy: Staff;
+  changedAt: Date;
+  /** Null for `created`. */
+  codeBefore: string | null;
+  codeAfter: string;
+  /** Null for `created`. */
+  nameBefore: string | null;
+  nameAfter: string;
+  /** Empty for `created`, and for a change of name only. */
+  slots: SlotChange[];
 }
 
 /** The slots a lookup asks about, each with a raw slot value (`topDiameter: "0090"`). */

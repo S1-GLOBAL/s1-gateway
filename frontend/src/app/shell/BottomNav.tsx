@@ -1,7 +1,7 @@
 import * as m from 'motion/react-m';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/shared/ui/cn';
-import type { NavItem } from '../nav';
+import { isInPlace, type NavItem } from '../nav';
 
 const MotionLink = m.create(Link);
 
@@ -16,7 +16,7 @@ export function BottomNav({ items }: { items: readonly NavItem[] }) {
     >
       <ul className="grid" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
         {items.map((item) => {
-          const current = pathname === item.path;
+          const current = isInPlace(item, pathname);
           const Icon = item.icon;
           return (
             <li key={item.path}>
