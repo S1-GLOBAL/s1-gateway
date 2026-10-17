@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { RouteBoundary } from '@/app/shell/RouteBoundary';
 import { AtlasGatewayProvider, type AtlasDictionary, type AtlasGateway } from '@/features/atlas';
+import { AppError } from '@/shared/application/app-error';
 import { AtlasPage } from './AtlasPage';
 import { AtlasPageSkeleton } from './AtlasPageSkeleton';
 
@@ -86,5 +87,19 @@ describe('AtlasPage', () => {
     expect(screen.queryByRole('dialog', { name: 'Dictionary' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Dictionary' }));
     expect(screen.getByRole('dialog', { name: 'Dictionary' })).toBeTruthy();
+  });
+
+  it('shows the reason it failed, and tries again on request', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const load = vi
+      .fn<AtlasGateway['dictionary']>()
+      .mockRejectedValueOnce(new AppError('NETWORK', 'Cannot reach the server. Check your connection and try again.'))
+      .mockResolvedValue(dictionary);
+    renderPage(load);
+
+    expect(await screen.findByText('Cannot reach the server. Check your connection and try again.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Atlas' })).toBeTruthy();
+    expect(load).toHaveBeenCalledTimes(2);
   });
 });
