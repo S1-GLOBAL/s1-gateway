@@ -5,6 +5,8 @@ export function account(overrides: Partial<Account> = {}): Account {
   return {
     id: 'a1',
     email: 'ada@sourceone.global',
+    firstName: 'Ada',
+    lastName: 'Lovelace',
     fullName: 'Ada Lovelace',
     status: 'approved',
     mustChangePassword: false,

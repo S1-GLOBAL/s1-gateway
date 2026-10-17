@@ -1,10 +1,9 @@
 import 'dotenv/config';
-import { pinoHttp } from 'pino-http';
 import { composeApp } from './compose.js';
 import { parseEnv } from './shared/infrastructure/config/env.js';
 import { CryptoIdGenerator } from './shared/infrastructure/crypto-id-generator.js';
 import { connectDatabase } from './shared/infrastructure/database/connection.js';
-import { createPino, PinoLogger } from './shared/infrastructure/logging/pino-logger.js';
+import { createPino, createRequestLogger, PinoLogger } from './shared/infrastructure/logging/pino-logger.js';
 import { SystemClock } from './shared/infrastructure/system-clock.js';
 
 const parsed = parseEnv(process.env);
@@ -27,7 +26,7 @@ const app = composeApp({
   corsOrigin: env.CORS_ORIGIN,
   accountAdminEmails: env.accountAdminEmails,
   cookieSecure: env.NODE_ENV === 'production',
-  requestLogger: pinoHttp({ logger: pino }),
+  requestLogger: createRequestLogger(pino),
 });
 
 const server = app.listen(env.PORT, () => {

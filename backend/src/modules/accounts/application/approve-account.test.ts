@@ -12,7 +12,7 @@ describe('ApproveAccount', () => {
   it('approves a pending account', async () => {
     const accounts = new InMemoryAccountRepository();
     const registered = Account.register(
-      { email: 'staff@sourceone.global', fullName: 'Staff Member', passwordHash: 'hash', autoApprove: false },
+      { email: 'staff@sourceone.global', firstName: 'Staff', lastName: 'Member', passwordHash: 'hash', autoApprove: false },
       'account-1',
       CREATED_AT,
     );

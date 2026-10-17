@@ -39,10 +39,15 @@ Request bodies are JSON, at most **100 kB**.
 | GET | `/auth/me` | session | 200 `{ data: Account }` (`isAdmin` set) | 401 `SIGN_IN_REQUIRED` |
 | POST | `/auth/change-password` | session | 204 | 400 `VALIDATION_FAILED`, 401 |
 | POST | `/auth/reset-password` | public | 204 | 400 `RESET_TOKEN_INVALID`, 400 `VALIDATION_FAILED` |
+| GET | `/auth/invites/:token` | public | 200 `{ data: { email, expiresAt } }` | 404 `INVITE_INVALID` |
+| POST | `/auth/register` | public | 201 `{ data: Account }`, approved (no cookie) | 400 `VALIDATION_FAILED`, 404 `INVITE_INVALID`, 409 `ACCOUNT_EXISTS` |
 | GET | `/accounts` | admin | 200 `{ data: { pending, approved, disabled } }` | 401, 403 `NOT_ALLOWED` |
 | POST | `/accounts/:id/approve` | admin | 200 `{ data: Account }` | 404 `ACCOUNT_NOT_FOUND`, 401, 403 |
 | POST | `/accounts/:id/disable` | admin | 200 `{ data: Account }`; sessions ended | 404, 401, 403 |
 | POST | `/accounts/:id/reset-password` | admin | 200 `{ data: { resetUrl, expiresAt } }` | 404, 401, 403 |
+| POST | `/accounts/invites` | admin | 201 `{ data: { invite: AccountInvite, inviteUrl } }` | 400 `EMAIL_NOT_ALLOWED`, 400 `VALIDATION_FAILED`, 409 `ACCOUNT_EXISTS`, 401, 403 |
+| GET | `/accounts/invites` | admin | 200 `{ data: AccountInvite[] }`: unused, unrevoked and unexpired, newest first | 401, 403 |
+| POST | `/accounts/invites/:id/revoke` | admin | 200 `{ data: AccountInvite }` | 404 `INVITE_NOT_FOUND`, 401, 403 |
 | GET | `/tools` | session | 200 `{ data: Tool[] }` | 401 `SIGN_IN_REQUIRED` |
 | POST | `/tools` | session | 201 `{ data: Tool }` | 401, 400 `VALIDATION_FAILED`, 400 `MALFORMED_JSON`, 409 `TOOL_NAME_TAKEN`, 413, 415 |
 | GET | `/atlas/dictionary` | session | 200 `{ data: AtlasDictionary }` | 401 `SIGN_IN_REQUIRED` |
@@ -66,11 +71,41 @@ returns 403 `MUST_CHANGE_PASSWORD`.
 |---|---|---|
 | `id` | string | UUID |
 | `email` | string | Lower-cased `@sourceone.global` |
-| `fullName` | string | 1–80 characters |
+| `firstName` | string | 1–40 characters |
+| `lastName` | string | 0–40 characters. Registering requires one; it is empty when a one-word full name was split (by migration, or at sign-up) |
+| `fullName` | string | 1–81 characters: `"First Last"`, or the first name alone when the last is empty |
 | `status` | string | `pending`, `approved` or `disabled` |
 | `mustChangePassword` | boolean | |
 | `createdAt` | string | ISO 8601 |
 | `isAdmin` | boolean | Present on `/auth/me` (and account lists); true when the email is in `ACCOUNT_ADMIN_EMAILS` |
+
+### Invites
+
+An admin invites someone by email; the link works once, for 7 days
+([ADR 0023](../decisions/0023-accounts-are-created-by-invite-only.md)).
+
+`AccountInvite` is `{ id, email, expiresAt }`: a UUID, the lower-cased
+`@sourceone.global` address, and an ISO 8601 time. Neither the token nor its
+hash is ever returned.
+
+- `POST /accounts/invites` takes `{ email }`. `inviteUrl` is
+  `{CORS_ORIGIN}/register?token=…`, shown once. Inviting an email again
+  revokes its unused invite, so the old link stops working.
+  `EMAIL_NOT_ALLOWED` and `ACCOUNT_EXISTS` carry their message under
+  `details.fields.email`.
+- `POST /accounts/invites/:id/revoke` answers `INVITE_NOT_FOUND` for an
+  invite already used or revoked, or an id that names none.
+- `GET /auth/invites/:token` and `POST /auth/register` answer the same 404
+  `INVITE_INVALID` for a token that is expired, used, revoked or unknown, so a
+  token's state can't be probed.
+- `POST /auth/register` takes `{ token, firstName, lastName, password,
+  confirmPassword }`. The account gets the invite's email; an `email` in the
+  body is ignored. Names are trimmed and must be 1–40 characters, the password
+  at least 12, and `confirmPassword` must equal `password` (else 400 under
+  `details.fields.confirmPassword`). The account is approved at once and the
+  invite marked used in one transaction: of two registrations on one token,
+  one creates the account and the other answers `INVITE_INVALID`. It does not
+  sign in.
 
 ### `Tool`
 
@@ -206,7 +241,7 @@ path answer 404 ([ADR 0022](../decisions/0022-saved-spec-ids-can-be-edited-and-e
 | `PAYLOAD_TOO_LARGE` | 413 | The body is over 100 kB |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | The body's character set or content encoding is one the server does not accept |
 | `BAD_REQUEST` | 4xx | Any other body the server could not read, with the status the body parser chose |
-| `EMAIL_NOT_ALLOWED` | 400 | Sign-up email is not an `@sourceone.global` mailbox |
+| `EMAIL_NOT_ALLOWED` | 400 | A sign-up or invite email is not an `@sourceone.global` mailbox |
 | `ACCOUNT_EXISTS` | 409 | That email is already registered |
 | `SIGN_UP_RATE_LIMITED` | 429 | More than five successful sign-ups from this IP in an hour |
 | `SIGN_IN_FAILED` | 401 | Email and password do not match |
@@ -218,6 +253,8 @@ path answer 404 ([ADR 0022](../decisions/0022-saved-spec-ids-can-be-edited-and-e
 | `NOT_ALLOWED` | 403 | Signed in but not an admin |
 | `RESET_TOKEN_INVALID` | 400 | Reset link is missing, used, or expired |
 | `ACCOUNT_NOT_FOUND` | 404 | No account with that id |
+| `INVITE_INVALID` | 404 | Invite link is expired, used, revoked or unknown — all answered alike |
+| `INVITE_NOT_FOUND` | 404 | The invite to revoke was already used or revoked, or there is none with that id |
 | `TOOL_NAME_TAKEN` | 409 | Another tool already has this name, ignoring case |
 | `INVALID_SPEC_ID` | 400 | A Spec ID, or the facts to build one, break a rule of ADR 0019. `details.fields` holds every problem, keyed by slot (`code` for the whole code) |
 | `SPEC_ID_EXISTS` | 409 | That Spec ID is already saved. `details.existing` is the saved Spec ID; nothing new was saved |

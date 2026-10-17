@@ -12,7 +12,7 @@ async function setup() {
   const accounts = new InMemoryAccountRepository();
   const sessions = new InMemorySessionRepository();
   const registered = Account.register(
-    { email: 'staff@sourceone.global', fullName: 'Staff Member', passwordHash: 'hash', autoApprove: true },
+    { email: 'staff@sourceone.global', firstName: 'Staff', lastName: 'Member', passwordHash: 'hash', autoApprove: true },
     'account-1',
     CREATED_AT,
   );

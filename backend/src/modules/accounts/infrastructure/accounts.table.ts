@@ -3,6 +3,7 @@ import {
   type AnyPgColumn,
   boolean,
   check,
+  index,
   integer,
   pgTable,
   text,
@@ -17,7 +18,10 @@ export const accounts = pgTable(
   {
     id: uuid('id').primaryKey(),
     email: varchar('email', { length: 320 }).notNull(),
-    fullName: varchar('full_name', { length: 80 }).notNull(),
+    /** Always "First Last", kept for code that still reads one name. 81 fits two 40-character names. */
+    fullName: varchar('full_name', { length: 81 }).notNull(),
+    firstName: varchar('first_name', { length: 40 }).notNull().default(''),
+    lastName: varchar('last_name', { length: 40 }).notNull().default(''),
     passwordHash: text('password_hash').notNull(),
     mustChangePassword: boolean('must_change_password').notNull().default(false),
     status: text('status').notNull(),
@@ -61,4 +65,24 @@ export const passwordResetTokens = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (table) => [uniqueIndex('password_reset_tokens_token_hash_unique').on(table.tokenHash)],
+);
+
+export const accountInvites = pgTable(
+  'account_invites',
+  {
+    id: uuid('id').primaryKey(),
+    email: varchar('email', { length: 320 }).notNull(),
+    tokenHash: text('token_hash').notNull(),
+    invitedBy: uuid('invited_by')
+      .notNull()
+      .references(() => accounts.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('account_invites_token_hash_unique').on(table.tokenHash),
+    index('account_invites_email_idx').on(table.email),
+  ],
 );

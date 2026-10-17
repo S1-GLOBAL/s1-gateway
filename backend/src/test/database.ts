@@ -14,6 +14,6 @@ export function connectTestDatabase(): DatabaseConnection {
 /** Empties every table. Add each new table here. */
 export async function resetTables(db: Database): Promise<void> {
   await db.execute(
-    sql`truncate table atlas_spec_id_changes, atlas_spec_ids, password_reset_tokens, sessions, accounts, tools restart identity cascade`,
+    sql`truncate table account_invites, atlas_spec_id_changes, atlas_spec_ids, password_reset_tokens, sessions, accounts, tools restart identity cascade`,
   );
 }

@@ -1,6 +1,6 @@
 # 0005. Accounts by invite: a one-time registration link, and first and last names
 
-- **Status:** Ready
+- **Status:** In progress
 - **Owner:** Rey Denzo
 - **Related:** [#21](https://github.com/S1-GLOBAL/s1-gateway/issues/21) ·
   [ADR 0003](../decisions/0003-clean-architecture-with-layers-inside-modules.md) ·
@@ -56,7 +56,7 @@ Built one phase per pull request, stopping for the owner after each.
 
 | Phase | Steps | Status |
 |---|---|---|
-| 1. Server: invites, names, registration | 0 / 7 | Not started |
+| 1. Server: invites, names, registration | 6 / 7 | In progress — step 1.7's staging check remains after merge |
 | 2. Invite and register pages, invite-only | 0 / 7 | Not started |
 
 ---
@@ -173,33 +173,33 @@ form still sends a full name, which the server splits at the first space.
 
 ### Step 1.1 — Record the decision
 
-- [ ] **Action.** Write `docs/decisions/0023-accounts-are-created-by-invite-only.md` from `_template.md`, Accepted, dated the day it is written: an admin's invite is the only way to create an account, invited accounts are approved at once, an invite works once for 7 days and inviting again replaces it, names are stored as first and last. Alternatives: keep open sign-up with the new fields (rejected by reyxdz on 2026-10-17); invited accounts still pending (rejected, same date); one joined name column (rejected, same date). Add "Partly superseded by 0023" to ADR 0018's status line, linked, with a sentence saying open sign-up, its pending queue and its rate limit no longer hold. Add 0023 to `docs/decisions/README.md`.
-- [ ] **Verify.** `npm run docs:check` exits 0.
+- [x] **Action.** Write `docs/decisions/0023-accounts-are-created-by-invite-only.md` from `_template.md`, Accepted, dated the day it is written: an admin's invite is the only way to create an account, invited accounts are approved at once, an invite works once for 7 days and inviting again replaces it, names are stored as first and last. Alternatives: keep open sign-up with the new fields (rejected by reyxdz on 2026-10-17); invited accounts still pending (rejected, same date); one joined name column (rejected, same date). Add "Partly superseded by 0023" to ADR 0018's status line, linked, with a sentence saying open sign-up, its pending queue and its rate limit no longer hold. Add 0023 to `docs/decisions/README.md`.
+- [x] **Verify.** `npm run docs:check` exits 0.
 
 ### Step 1.2 — The table, the name columns and the backfill
 
-- [ ] **Action.** Add `accountInvites` and the two columns to `accounts.table.ts`, export the table from `backend/src/database-schema.ts`, run `npm --prefix backend run db:generate -- --name account_invites_and_person_names`, then `npm --prefix backend run db:generate -- --custom --name backfill_person_names` and paste the backfill SQL above into it. Add `account_invites` to the front of the `truncate` in `backend/src/test/database.ts`.
-- [ ] **Verify.** `npm run db:migrate` applies both; the generated SQL only adds, apart from widening `full_name` (no `DROP`; the only `ALTER COLUMN … TYPE` sets `full_name` to `varchar(81)`); a test registers 40-character first and last names; a second `db:generate` prints "No schema changes"; a `*.db.test.ts` proves #21's three backfill cases.
+- [x] **Action.** Add `accountInvites` and the two columns to `accounts.table.ts`, export the table from `backend/src/database-schema.ts`, run `npm --prefix backend run db:generate -- --name account_invites_and_person_names`, then `npm --prefix backend run db:generate -- --custom --name backfill_person_names` and paste the backfill SQL above into it. Add `account_invites` to the front of the `truncate` in `backend/src/test/database.ts`.
+- [x] **Verify.** `npm run db:migrate` applies both; the generated SQL only adds, apart from widening `full_name` (no `DROP`; the only `ALTER COLUMN … TYPE` sets `full_name` to `varchar(81)`); a test registers 40-character first and last names; a second `db:generate` prints "No schema changes"; a `*.db.test.ts` proves #21's three backfill cases.
 
 ### Step 1.3 — The domain: names and invites
 
-- [ ] **Action.** Tests first, then `person-name.ts`, the `Account` changes, `account-invite.ts` and the new errors. Tests: 40-character names pass and 41 fail; `"  "` is empty; `fullName` of (`Admin`, `''`) is `Admin`; an invite is usable before `expires_at` and not at or after it, nor once used or revoked.
-- [ ] **Verify.** `npm --prefix backend run test:unit -- accounts` passes; `npm run arch:check` exits 0.
+- [x] **Action.** Tests first, then `person-name.ts`, the `Account` changes, `account-invite.ts` and the new errors. Tests: 40-character names pass and 41 fail; `"  "` is empty; `fullName` of (`Admin`, `''`) is `Admin`; an invite is usable before `expires_at` and not at or after it, nor once used or revoked.
+- [x] **Verify.** `npm --prefix backend run test:unit -- accounts` passes; `npm run arch:check` exits 0.
 
 ### Step 1.4 — Use cases
 
-- [ ] **Action.** Add the repository port and its in-memory fake, then `CreateInvite`, `ListInvites`, `RevokeInvite`, `GetInvite` and `RegisterWithInvite`. `SignUp` splits its full name at the first space into the two names, each cut to 40 characters, as the backfill does. Tests over the fakes: Review Focus 1, 3 and 4; a second invite to one email revokes the first; an expired, used or revoked token → `InviteInvalidError`; mismatched passwords → 400 under `confirmPassword` and nothing written; a registered account is approved and its `fullName` is "First Last".
-- [ ] **Verify.** `npm --prefix backend run test:unit -- accounts` passes.
+- [x] **Action.** Add the repository port and its in-memory fake, then `CreateInvite`, `ListInvites`, `RevokeInvite`, `GetInvite` and `RegisterWithInvite`. `SignUp` splits its full name at the first space into the two names, each cut to 40 characters, as the backfill does. Tests over the fakes: Review Focus 1, 3 and 4; a second invite to one email revokes the first; an expired, used or revoked token → `InviteInvalidError`; mismatched passwords → 400 under `confirmPassword` and nothing written; a registered account is approved and its `fullName` is "First Last".
+- [x] **Verify.** `npm --prefix backend run test:unit -- accounts` passes.
 
 ### Step 1.5 — The repository and the routes
 
-- [ ] **Action.** `DrizzleAccountInviteRepository` with `redeem` in one transaction; the zod schemas (shape only); the controller methods and routes above; the account mapper reads and writes both names, with the empty-names fallback above. Database tests: Review Focus 6; `add` revokes that email's open invite; an `accounts` row with both names empty reads back with them split from `full_name`. HTTP tests: every status in the routes table, the invite list newest first, registering setting no session cookie, Review Focus 2 and 5, the invite routes answer 403 to a signed-in non-admin and 401 without a session.
-- [ ] **Verify.** `npm run db:up`, then `npm test` passes.
+- [x] **Action.** `DrizzleAccountInviteRepository` with `redeem` in one transaction; the zod schemas (shape only); the controller methods and routes above; the account mapper reads and writes both names, with the empty-names fallback above. Database tests: Review Focus 6; `add` revokes that email's open invite; an `accounts` row with both names empty reads back with them split from `full_name`. HTTP tests: every status in the routes table, the invite list newest first, registering setting no session cookie, Review Focus 2 and 5, the invite routes answer 403 to a signed-in non-admin and 401 without a session.
+- [x] **Verify.** `npm run db:up`, then `npm test` passes.
 
 ### Step 1.6 — Contracts and docs
 
-- [ ] **Action.** The contract additions above, read on the frontend with a fallback (`firstName ?? ''`, `lastName ?? ''`) so a new frontend works with the old API during a release. `docs/reference/api.md`: the five routes, the two new error codes, `firstName` and `lastName` in the `Account` table, `fullName` as 1–81 characters, and the `AccountInvite` shape. `docs/reference/data-model.md`: `account_invites`, the two columns, and `full_name` as `varchar(81)`.
-- [ ] **Verify.** `npm run typecheck && npm run docs:check` exits 0; `npm --prefix frontend run build` exits 0.
+- [x] **Action.** The contract additions above, read on the frontend with a fallback (`firstName ?? ''`, `lastName ?? ''`) so a new frontend works with the old API during a release. `docs/reference/api.md`: the five routes, the two new error codes, `firstName` and `lastName` in the `Account` table, `fullName` as 1–81 characters, and the `AccountInvite` shape. `docs/reference/data-model.md`: `account_invites`, the two columns, and `full_name` as `varchar(81)`.
+- [x] **Verify.** `npm run typecheck && npm run docs:check` exits 0; `npm --prefix frontend run build` exits 0.
 
 ### Step 1.7 — Open the pull request
 

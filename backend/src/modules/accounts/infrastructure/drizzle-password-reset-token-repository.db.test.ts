@@ -12,7 +12,7 @@ const CREATED_AT = new Date('2026-10-16T08:00:00.000Z');
 
 async function seedAccount(id: string): Promise<void> {
   const result = Account.register(
-    { email: `${id}@sourceone.global`, fullName: 'Staff Member', passwordHash: 'hash', autoApprove: true },
+    { email: `${id}@sourceone.global`, firstName: 'Staff', lastName: 'Member', passwordHash: 'hash', autoApprove: true },
     id,
     CREATED_AT,
   );

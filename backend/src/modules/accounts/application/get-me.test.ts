@@ -12,7 +12,7 @@ const CREATED_AT = new Date('2026-10-16T00:00:00.000Z');
 
 function approvedAccount() {
   const result = Account.register(
-    { email: 'staff@sourceone.global', fullName: 'Staff Member', passwordHash: 'hash', autoApprove: true },
+    { email: 'staff@sourceone.global', firstName: 'Staff', lastName: 'Member', passwordHash: 'hash', autoApprove: true },
     'account-1',
     CREATED_AT,
   );
