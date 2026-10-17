@@ -8,6 +8,7 @@ import type {
   SimilarSpecIds as SimilarSpecIdsContract,
   SpecIdChange as SpecIdChangeContract,
   SpecIdExistsDetails,
+  SpecIdLibraryPage as SpecIdLibraryPageContract,
   SpecIdLookup as SpecIdLookupContract,
   UpdateSpecIdRequest,
 } from '@contracts/atlas';
@@ -21,11 +22,13 @@ import { SpecIdExistsError } from '../application/spec-id-exists-error';
 import type {
   AtlasDictionary,
   DecodedSpecId,
+  LibraryQuery,
   SavedSpecId,
   SimilarCriteria,
   SimilarSpecIds,
   SpecIdChange,
   SpecIdFacts,
+  SpecIdLibraryPage,
   SpecIdLookup,
 } from '../domain/atlas';
 
@@ -127,6 +130,18 @@ export class HttpAtlasGateway implements AtlasGateway {
         `/atlas/saved/${encodeURIComponent(id)}/history`,
       );
       return response.data.data.map(toSpecIdChange);
+    } catch (error) {
+      throw toAppError(error);
+    }
+  }
+
+  async library(query: LibraryQuery): Promise<SpecIdLibraryPage> {
+    // Only what was asked: the server refuses an unknown key, and an empty cursor.
+    const params = Object.fromEntries(Object.entries(query).filter(([, value]) => value !== undefined && value !== ''));
+    try {
+      const response = await this.http.get<DataEnvelope<SpecIdLibraryPageContract>>('/atlas/saved', { params });
+      const { items, nextCursor } = response.data.data;
+      return { items: items.map(toSavedSpecId), nextCursor };
     } catch (error) {
       throw toAppError(error);
     }

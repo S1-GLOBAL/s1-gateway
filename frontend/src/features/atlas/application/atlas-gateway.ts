@@ -1,11 +1,13 @@
 import type {
   AtlasDictionary,
   DecodedSpecId,
+  LibraryQuery,
   SavedSpecId,
   SimilarCriteria,
   SimilarSpecIds,
   SpecIdChange,
   SpecIdFacts,
+  SpecIdLibraryPage,
   SpecIdLookup,
 } from '../domain/atlas';
 
@@ -31,4 +33,6 @@ export interface AtlasGateway {
   update(id: string, input: { name: string; facts: SpecIdFacts; version: number }): Promise<SavedSpecId>;
   /** Every change to a saved Spec ID, newest first. */
   history(id: string): Promise<SpecIdChange[]>;
+  /** One page of saved Spec IDs, newest change first. */
+  library(query: LibraryQuery): Promise<SpecIdLibraryPage>;
 }

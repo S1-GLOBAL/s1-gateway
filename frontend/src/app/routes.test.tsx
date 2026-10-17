@@ -30,6 +30,7 @@ const atlasGateway: AtlasGateway = {
   getSaved: async () => Promise.reject(new AppError('SPEC_ID_NOT_FOUND', "This Spec ID doesn't exist.")),
   update: pending,
   history: pending,
+  library: async () => ({ items: [], nextCursor: null }),
 };
 
 function renderAt(path: string, gateway: AccountsGateway = fakeAccountsGateway()) {

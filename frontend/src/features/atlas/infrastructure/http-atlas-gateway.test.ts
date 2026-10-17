@@ -294,3 +294,37 @@ describe('HttpAtlasGateway, changing a saved Spec ID', () => {
     expect(history).toEqual([{ ...wire, changedAt: new Date('2026-10-17T14:32:00.000Z') }]);
   });
 });
+
+describe('HttpAtlasGateway, the library', () => {
+  it('asks only for what was given, and returns the page with its cursor', async () => {
+    const sent: Sent[] = [];
+    const page = await gatewayAnswering(200, { data: { items: [wireSaved], nextCursor: 'next' } }, sent).library({
+      q: 'lid',
+      productType: '',
+      cursor: undefined,
+    });
+    expect(sent).toEqual([{ method: 'get', url: '/atlas/saved', body: undefined, params: { q: 'lid' } }]);
+    expect(page.items[0]?.savedAt).toEqual(new Date('2026-10-16T08:00:00.000Z'));
+    expect(page.nextCursor).toBe('next');
+  });
+
+  it('passes the product type and the cursor for the next page', async () => {
+    const sent: Sent[] = [];
+    await gatewayAnswering(200, { data: { items: [], nextCursor: null } }, sent).library({
+      q: '',
+      productType: 'BLD',
+      cursor: 'next',
+    });
+    expect(sent[0]?.params).toEqual({ productType: 'BLD', cursor: 'next' });
+  });
+
+  it('rejects a refused search with an AppError whose fields name the key', async () => {
+    const fields = { q: ['Search text must be at most 120 characters.'] };
+    const gateway = gatewayAnswering(400, {
+      error: { code: 'VALIDATION_FAILED', message: 'The lookup is not valid.', details: { fields } },
+    });
+    const failure = await gateway.library({ q: 'x'.repeat(121) }).catch((error: unknown) => error);
+    expect((failure as AppError).code).toBe('VALIDATION_FAILED');
+    expect((failure as AppError).fields).toEqual(fields);
+  });
+});

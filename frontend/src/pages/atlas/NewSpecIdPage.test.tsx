@@ -47,6 +47,7 @@ function renderAt(path: string, overrides: Partial<AtlasGateway> = {}) {
     getSaved: pending,
     update: pending,
     history: pending,
+    library: pending,
     ...overrides,
   };
   const router = createMemoryRouter(
