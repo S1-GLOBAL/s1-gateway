@@ -10,7 +10,7 @@ type LibraryFilter = { q: string; productType: string };
  * The library, 20 Spec IDs a page, newest change first: those whose name has
  * `q`, of `productType` when one is chosen (`''` for every type). The list
  * shown stays while the next search is asked for. Asked for only while
- * `enabled`; a refused search is not asked again, its message belongs beside the box.
+ * `enabled`; a refused search is not asked again: its message belongs beside the box.
  */
 export function useSpecIdLibrary(filter: LibraryFilter, enabled: boolean) {
   const gateway = useAtlasGateway();
