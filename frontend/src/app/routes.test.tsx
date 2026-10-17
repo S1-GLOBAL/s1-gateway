@@ -27,6 +27,9 @@ const atlasGateway: AtlasGateway = {
   save: pending,
   findByCode: pending,
   findSimilar: async () => ({ fits: [], mightFit: [] }),
+  getSaved: async () => Promise.reject(new AppError('SPEC_ID_NOT_FOUND', "This Spec ID doesn't exist.")),
+  update: pending,
+  history: pending,
 };
 
 function renderAt(path: string, gateway: AccountsGateway = fakeAccountsGateway()) {
@@ -103,6 +106,26 @@ describe('the app, signed in', () => {
     const note = screen.getByText(/It may have moved\./);
     expect(within(note).getByRole('link', { name: 'Atlas' }).getAttribute('href')).toBe('/atlas');
   });
+
+  it(
+    'opens the workspace for a new Spec ID at /atlas/new, never as an id',
+    async () => {
+      renderAt('/atlas/new');
+      expect(await screen.findByRole('heading', { level: 1, name: 'New Spec ID' }, { timeout: 15_000 })).toBeTruthy();
+    },
+    20_000,
+  );
+
+  it(
+    'says a Spec ID address that is not one does not exist, never a failure',
+    async () => {
+      renderAt('/atlas/not-a-uuid');
+      const sentence = "This Spec ID doesn't exist. It may have been typed wrong.";
+      expect(await screen.findByRole('heading', { level: 1, name: sentence }, { timeout: 15_000 })).toBeTruthy();
+      expect(screen.getByRole('link', { name: 'Back to Atlas' }).getAttribute('href')).toBe('/atlas');
+    },
+    20_000,
+  );
 
   it('shows the signed-in name and Sign out in the top bar', async () => {
     renderAt('/theme');

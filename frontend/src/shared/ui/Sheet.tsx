@@ -49,12 +49,12 @@ export function Sheet({ open, onClose, title, description, children, className }
     >
       <div className="flex h-full flex-col">
         <header className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 flex-col gap-1">
             <h2 id={titleId} className="text-lg font-semibold">
               {title}
             </h2>
             {description && (
-              <p id={descriptionId} className="text-sm text-ink-muted">
+              <p id={descriptionId} className="text-sm break-words text-ink-muted">
                 {description}
               </p>
             )}

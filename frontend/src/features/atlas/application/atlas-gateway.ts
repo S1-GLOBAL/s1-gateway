@@ -4,14 +4,17 @@ import type {
   SavedSpecId,
   SimilarCriteria,
   SimilarSpecIds,
+  SpecIdChange,
   SpecIdFacts,
+  SpecIdLookup,
 } from '../domain/atlas';
 
 /**
- * Where the Atlas feature reads the dictionary, decodes, builds, saves and
- * looks up Spec IDs. The application owns this port; infrastructure
- * implements it over HTTP. Every method rejects with an AppError; `save`
- * rejects with a SpecIdExistsError when the code is already saved.
+ * Where the Atlas feature reads the dictionary, decodes, builds, saves, changes
+ * and looks up Spec IDs. The application owns this port; infrastructure
+ * implements it over HTTP. Every method rejects with an AppError; `save` and
+ * `update` reject with a SpecIdExistsError when the code is another saved Spec
+ * ID's, and `update` with a SpecIdChangedError when someone saved first.
  */
 export interface AtlasGateway {
   dictionary(): Promise<AtlasDictionary>;
@@ -19,6 +22,13 @@ export interface AtlasGateway {
   /** Builds the code for the facts. Nothing is saved. */
   encode(facts: SpecIdFacts): Promise<DecodedSpecId>;
   save(input: { name: string; facts: SpecIdFacts }): Promise<SavedSpecId>;
-  findByCode(code: string): Promise<SavedSpecId>;
+  /** The Spec ID that has a code now, or the last one that did. */
+  findByCode(code: string): Promise<SpecIdLookup>;
   findSimilar(criteria: SimilarCriteria): Promise<SimilarSpecIds>;
+  /** One saved Spec ID by its permanent id. */
+  getSaved(id: string): Promise<SavedSpecId>;
+  /** Changes a saved Spec ID, from the `version` the change was started from. */
+  update(id: string, input: { name: string; facts: SpecIdFacts; version: number }): Promise<SavedSpecId>;
+  /** Every change to a saved Spec ID, newest first. */
+  history(id: string): Promise<SpecIdChange[]>;
 }
