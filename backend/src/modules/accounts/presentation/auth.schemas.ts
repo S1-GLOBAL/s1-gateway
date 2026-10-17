@@ -4,14 +4,7 @@ import type {
   RegisterRequest,
   ResetPasswordRequest,
   SignInRequest,
-  SignUpRequest,
 } from '../../../contracts/accounts.js';
-
-export const signUpRequestSchema = z.object({
-  email: z.string(),
-  fullName: z.string(),
-  password: z.string(),
-}) satisfies z.ZodType<SignUpRequest>;
 
 export const signInRequestSchema = z.object({
   email: z.string(),

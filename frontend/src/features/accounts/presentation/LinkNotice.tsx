@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { Button } from '@/shared/ui/Button';
 
-export interface ResetLinkNoticeProps {
-  name: string;
+export interface LinkNoticeProps {
+  /** What the link is and for whom, before the colon: `Invite link for ada@sourceone.global`. */
+  lead: string;
   url: string;
+  /** The sentence after the link: how to send it, and how long it works. */
+  instructions: string;
   onDismiss(): void;
 }
 
-/** The reset link, in the exact words the admin reads out, with the URL copyable. Shown once. */
-export function ResetLinkNotice({ name, url, onDismiss }: ResetLinkNoticeProps) {
+/** A one-time link, in the exact words the admin passes on, with the URL copyable. Shown once. */
+export function LinkNotice({ lead, url, instructions, onDismiss }: LinkNoticeProps) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -27,8 +30,7 @@ export function ResetLinkNotice({ name, url, onDismiss }: ResetLinkNoticeProps) 
       className="flex flex-col gap-3 rounded-surface border border-border bg-accent-soft p-5 text-sm text-ink shadow-sm"
     >
       <p className="break-words">
-        Password reset link for {name}: <span className="font-mono text-xs break-all select-all">{url}</span>. Give it to
-        them in person; it works once and expires in 24 hours.
+        {lead}: <span className="font-mono text-xs break-all select-all">{url}</span>. {instructions}
       </p>
       <div className="flex items-center gap-2">
         <Button size="sm" onClick={copy}>

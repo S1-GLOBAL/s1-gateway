@@ -112,6 +112,8 @@ You need Node 22 or 24, Docker Desktop and npm.
 npm run setup        # env files, git hooks, dependencies for both services
 npm run db:up        # Postgres 17 in Docker, on host port 5436
 npm run db:migrate   # create the tables
+ADMIN_PASSWORD='…' npm run db:create-admin -- --email admin@sourceone.global \
+  --first-name Ada --last-name Admin   # your admin: there is no sign-up
 
 npm run dev:api      # http://localhost:4000
 npm run dev:web      # http://localhost:5173   (in a second terminal)
@@ -200,8 +202,9 @@ New here? Read [Operating constraints](./docs/explanation/constraints.md), then
 - [x] An installable PWA: offline shell, update prompt, a kill switch
 - [x] The design system: themes, shell, motion, icons, skeletons
 - [x] CI: typecheck, lint, architecture, every test against Postgres, build, docs
-- [x] **Staff sign-in.** `@sourceone.global` email and password, approved by an
-  admin, with an Accounts page and public one-time password-reset links. Every
+- [x] **Staff sign-in, by invite.** An admin invites a `@sourceone.global`
+  address with a one-time registration link; the Accounts page also lists open
+  invites and gives public one-time password-reset links. Every
   API route except `/health` and `/auth/*` needs a session
   ([constraints](./docs/explanation/constraints.md)).
 

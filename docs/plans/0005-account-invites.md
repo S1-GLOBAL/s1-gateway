@@ -57,7 +57,7 @@ Built one phase per pull request, stopping for the owner after each.
 | Phase | Steps | Status |
 |---|---|---|
 | 1. Server: invites, names, registration | 6 / 7 | In progress — step 1.7's staging check remains after merge |
-| 2. Invite and register pages, invite-only | 0 / 7 | Not started |
+| 2. Invite and register pages, invite-only | 6 / 7 | In progress — step 2.7's staging check remains after merge |
 
 ---
 
@@ -162,7 +162,7 @@ owns the code.
 4. Revoking a used, revoked or unknown invite answers 404 `INVITE_NOT_FOUND` (Step 1.4).
 5. A registration body carrying `email` creates the account with the invite's email, not that one (Step 1.5).
 6. Two simultaneous `POST /auth/register` with one token create one account; the other answers 404 `INVITE_INVALID` (Step 1.5).
-7. `POST /auth/sign-up` answers 404 once phase 2 lands, and nothing in `backend/src` or `frontend/src` still names it except the test that proves the 404 (Steps 2.4 and 2.5).
+7. `POST /auth/sign-up` answers 404 signed in and 401 signed out once phase 2 lands, creating no account either way (decided by reyxdz on 2026-10-17), and nothing in `backend/src` or `frontend/src` still names it except the test that proves the 404 (Steps 2.4 and 2.5).
 
 ---
 
@@ -214,33 +214,33 @@ One pull request, "Closes #21".
 
 ### Step 2.1 — Gateway and hooks
 
-- [ ] **Action.** The five gateway methods with their HTTP adapter and tests; hooks `useCreateInvite` and `useRevokeInvite` (each invalidating `accountsKeys.all`), `useInvites` (keyed under `accountsKeys.all`), `useInvite(token)` and `useRegister`.
-- [ ] **Verify.** `npm --prefix frontend run test -- --no-file-parallelism accounts` passes.
+- [x] **Action.** The five gateway methods with their HTTP adapter and tests; hooks `useCreateInvite` and `useRevokeInvite` (each invalidating `accountsKeys.all`), `useInvites` (keyed under `accountsKeys.all`), `useInvite(token)` and `useRegister`.
+- [x] **Verify.** `npm --prefix frontend run test -- --no-file-parallelism accounts` passes.
 
 ### Step 2.2 — The Accounts page
 
-- [ ] **Action.** `LinkNotice` (with `ResetLinkNotice`'s callers moved to it), `InviteForm` and `InvitedSection` on the Accounts page, with #21's copy. Tests: creating an invite shows the link notice with its exact sentence; the Invited section lists email and `Expires 16 October 2026` (fixed time zone in the test); Revoke shows `The invite for {email} no longer works.`; each server error shows its #21 message under Email.
-- [ ] **Verify.** `npm --prefix frontend run test -- --no-file-parallelism accounts` passes; `npm run design:check` prints `Design tokens only.`
+- [x] **Action.** `LinkNotice` (with `ResetLinkNotice`'s callers moved to it), `InviteForm` and `InvitedSection` on the Accounts page, with #21's copy. Tests: creating an invite shows the link notice with its exact sentence; the Invited section lists email and `Expires 16 October 2026` (fixed time zone in the test); Revoke shows `The invite for {email} no longer works.`; each server error shows its #21 message under Email.
+- [x] **Verify.** `npm --prefix frontend run test -- --no-file-parallelism accounts` passes; `npm run design:check` prints `Design tokens only.`
 
 ### Step 2.3 — The register page
 
-- [ ] **Action.** `RegisterForm`, `RegisterPage` at `/register` in `frontend/src/app/routes.tsx` (public, outside the session gate), and the sign-in page's notice and filled-in email. Tests: the email is shown and is not an input; mismatched passwords show `The passwords don't match.` and nothing is sent; a 404 on the token shows `This invite link no longer works.`; success lands on `/sign-in` with `Your account is ready. Sign in.`
-- [ ] **Verify.** `npm --prefix frontend run test -- --no-file-parallelism` passes.
+- [x] **Action.** `RegisterForm`, `RegisterPage` at `/register` in `frontend/src/app/routes.tsx` (public, outside the session gate), and the sign-in page's notice and filled-in email. Tests: the email is shown and is not an input; mismatched passwords show `The passwords don't match.` and nothing is sent; a 404 on the token shows `This invite link no longer works.`; success lands on `/sign-in` with `Your account is ready. Sign in.`
+- [x] **Verify.** `npm --prefix frontend run test -- --no-file-parallelism` passes.
 
 ### Step 2.4 — Close open sign-up
 
-- [ ] **Action.** Remove `POST /auth/sign-up`, `SignUp`, the `SignUpRateLimiter` port and `SlidingWindowSignUpRateLimiter`, `SignUpForm`, `useSignUp` and the gateway's `signUp`, and `domain/full-name.ts`, its test and `InvalidFullNameError`, which only `SignUp` used. Remove with them `sign-up.test.ts`, `application/testing/in-memory-sign-up-rate-limiter.ts`, `sliding-window-sign-up-rate-limiter.test.ts`, `SignUpRateLimitedError` in `account.errors.ts`, `signUpRequestSchema` in `auth.schemas.ts`, `SignUpRequest` in `backend/src/contracts/accounts.ts`, and `signUp` in `frontend/src/test/fake-accounts-gateway.ts`. `sign-in.test.ts` and `auth.routes.test.ts` stop creating accounts through `SignUp`: they add them to `InMemoryAccountRepository` with `Account.register` (pending ones with `autoApprove: false`). `SignUpPage` becomes #21's invite-only note; the sign-in page loses its footer link. Update `docs/explanation/constraints.md` and `docs/reference/api.md` (remove the route and `SIGN_UP_RATE_LIMITED`, and describe `EMAIL_NOT_ALLOWED` as an invite's email, not a sign-up's).
-- [ ] **Verify.** Review Focus 7: `git grep -n -i "sign-up\|signUp" -- backend/src frontend/src` prints only the `/sign-up` route and `SignUpPage` (in `routes.tsx`, `SignUpPage.tsx`, `next-path.ts` and their tests) and the HTTP test that proves `POST /api/v1/auth/sign-up` answers 404, plus `backend/src/atlas.db.test.ts` and `backend/src/compose.db.test.ts`, which Step 2.5 changes. `npm run typecheck` exits 0.
+- [x] **Action.** Remove `POST /auth/sign-up`, `SignUp`, the `SignUpRateLimiter` port and `SlidingWindowSignUpRateLimiter`, `SignUpForm`, `useSignUp` and the gateway's `signUp`, and `domain/full-name.ts`, its test and `InvalidFullNameError`, which only `SignUp` used. Remove with them `sign-up.test.ts`, `application/testing/in-memory-sign-up-rate-limiter.ts`, `sliding-window-sign-up-rate-limiter.test.ts`, `SignUpRateLimitedError` in `account.errors.ts`, `signUpRequestSchema` in `auth.schemas.ts`, `SignUpRequest` in `backend/src/contracts/accounts.ts`, and `signUp` in `frontend/src/test/fake-accounts-gateway.ts`. `sign-in.test.ts` and `auth.routes.test.ts` stop creating accounts through `SignUp`: they add them to `InMemoryAccountRepository` with `Account.register` (pending ones with `autoApprove: false`). `SignUpPage` becomes #21's invite-only note; the sign-in page loses its footer link. Update `docs/explanation/constraints.md` and `docs/reference/api.md` (remove the route and `SIGN_UP_RATE_LIMITED`, and describe `EMAIL_NOT_ALLOWED` as an invite's email, not a sign-up's).
+- [x] **Verify.** Review Focus 7: `git grep -n -i "sign-up\|signUp" -- backend/src frontend/src` prints only the `/sign-up` route and `SignUpPage` (in `routes.tsx`, `SignUpPage.tsx`, `next-path.ts` and their tests) and the HTTP test that proves `POST /api/v1/auth/sign-up` answers 404 signed in and 401 signed out, plus `backend/src/atlas.db.test.ts` and `backend/src/compose.db.test.ts`, which Step 2.5 changes. `npm run typecheck` exits 0.
 
 ### Step 2.5 — The create-admin command
 
-- [ ] **Action.** `backend/src/scripts/create-admin.ts` (exporting `createAdmin(db, input)` for tests): it takes `--email`, `--first-name` and `--last-name`, and reads the password from `ADMIN_PASSWORD` for that one run. `"db:create-admin": "tsx src/scripts/create-admin.ts"` in `backend/package.json` and `"db:create-admin": "npm --prefix backend run db:create-admin --"` in the root `package.json`. `backend/src/compose.db.test.ts` and `backend/src/atlas.db.test.ts` create their admin with `createAdmin` instead of signing up, then sign in as before; the comment above `atlas.db.test.ts`'s sign-in loses `sign-ups are limited to 5 per hour`. Document it in `docs/reference/commands.md`, and `ADMIN_PASSWORD` in `docs/reference/environment.md` and, commented out, in `backend/.env.example`.
-- [ ] **Verify.** Tests: `createAdmin` refuses with `NODE_ENV=production` and refuses an email not in `ACCOUNT_ADMIN_EMAILS`. `npm test` passes with the database running. Review Focus 7's grep from Step 2.4 no longer prints `atlas.db.test.ts` or `compose.db.test.ts`.
+- [x] **Action.** `backend/src/scripts/create-admin.ts` (exporting `createAdmin(db, input)` for tests): it takes `--email`, `--first-name` and `--last-name`, and reads the password from `ADMIN_PASSWORD` for that one run. `"db:create-admin": "tsx src/scripts/create-admin.ts"` in `backend/package.json` and `"db:create-admin": "npm --prefix backend run db:create-admin --"` in the root `package.json`. `backend/src/compose.db.test.ts` and `backend/src/atlas.db.test.ts` create their admin with `createAdmin` instead of signing up, then sign in as before; the comment above `atlas.db.test.ts`'s sign-in loses `sign-ups are limited to 5 per hour`. Document it in `docs/reference/commands.md`, and `ADMIN_PASSWORD` in `docs/reference/environment.md` and, commented out, in `backend/.env.example`.
+- [x] **Verify.** Tests: `createAdmin` refuses with `NODE_ENV=production` and refuses an email not in `ACCOUNT_ADMIN_EMAILS`. `npm test` passes with the database running. Review Focus 7's grep from Step 2.4 no longer prints `atlas.db.test.ts` or `compose.db.test.ts`.
 
 ### Step 2.6 — Check it in a browser
 
-- [ ] **Action.** Locally, with `npm run db:create-admin`: invite an address, open the link in a fresh browser profile, register, and sign in; check light and dark, 390 px, the folded sidebar and keyboard-only use on `/accounts` and `/register`. Take `accounts-invite-light.png`, `accounts-invite-dark.png` and `register-phone-light.png` under `.github/readme/`.
-- [ ] **Verify.** Every "States checked" line of the pull request template is checked or marked n/a with a reason.
+- [x] **Action.** Locally, with `npm run db:create-admin`: invite an address, open the link in a fresh browser profile, register, and sign in; check light and dark, 390 px, the folded sidebar and keyboard-only use on `/accounts` and `/register`. Take `accounts-invite-light.png`, `accounts-invite-dark.png` and `register-phone-light.png` under `.github/readme/`.
+- [x] **Verify.** Every "States checked" line of the pull request template is checked or marked n/a with a reason.
 
 ### Step 2.7 — Open the pull request, then staging
 

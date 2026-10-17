@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FixedClock, SequentialIdGenerator } from '../../../shared/application/testing/fakes.js';
+import { Account } from '../domain/account.js';
 import {
   AccountDisabledError,
   AccountLockedError,
@@ -10,13 +11,33 @@ import { InMemoryAccountRepository } from './testing/in-memory-account-repositor
 import { InMemorySessionRepository } from './testing/in-memory-session-repository.js';
 import { FakePasswordHasher } from './testing/fake-password-hasher.js';
 import { FakeTokenGenerator } from './testing/fake-token-generator.js';
-import { SignUp } from './sign-up.js';
-import { InMemorySignUpRateLimiter } from './testing/in-memory-sign-up-rate-limiter.js';
 import { SignIn } from './sign-in.js';
 
 const NOW = new Date('2026-10-16T08:00:00.000Z');
 const EMAIL = 'staff@sourceone.global';
 const PASSWORD = '123456789012';
+
+/** One staff account, added straight to the repository: approved unless asked otherwise. */
+async function addStaff(
+  accounts: InMemoryAccountRepository,
+  passwordHasher: FakePasswordHasher,
+  ids: SequentialIdGenerator,
+  createdAt: Date,
+  approve = true,
+): Promise<void> {
+  const { value: account } = Account.register(
+    {
+      email: EMAIL,
+      firstName: 'Staff',
+      lastName: 'Member',
+      passwordHash: await passwordHasher.hash(PASSWORD),
+      autoApprove: approve,
+    },
+    ids.next(),
+    createdAt,
+  );
+  await accounts.add(account);
+}
 
 async function setup(options?: { approve?: boolean }) {
   const accounts = new InMemoryAccountRepository();
@@ -25,15 +46,7 @@ async function setup(options?: { approve?: boolean }) {
   const clock = new FixedClock(NOW);
   const ids = new SequentialIdGenerator();
 
-  const signUp = new SignUp(
-    accounts,
-    new InMemorySignUpRateLimiter(),
-    passwordHasher,
-    clock,
-    ids,
-    options?.approve === false ? [] : [EMAIL],
-  );
-  await signUp.execute({ email: EMAIL, fullName: 'Staff Member', password: PASSWORD, clientIp: '1.1.1.1' });
+  await addStaff(accounts, passwordHasher, ids, NOW, options?.approve !== false);
 
   const signIn = new SignIn(accounts, sessions, passwordHasher, new FakeTokenGenerator(), clock, ids);
   return { accounts, sessions, signIn, clock };
@@ -101,14 +114,7 @@ describe('SignIn', () => {
     const lockedAt = NOW;
     const afterLock = new Date(NOW.getTime() + 15 * 60_000);
 
-    await new SignUp(
-      accounts,
-      new InMemorySignUpRateLimiter(),
-      passwordHasher,
-      new FixedClock(lockedAt),
-      ids,
-      [EMAIL],
-    ).execute({ email: EMAIL, fullName: 'Staff Member', password: PASSWORD, clientIp: '1.1.1.1' });
+    await addStaff(accounts, passwordHasher, ids, lockedAt);
 
     const lockedSignIn = new SignIn(
       accounts,

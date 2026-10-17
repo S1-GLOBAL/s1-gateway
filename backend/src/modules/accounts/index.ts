@@ -16,14 +16,12 @@ import { ResetPasswordWithToken } from './application/reset-password-with-token.
 import { RevokeInvite } from './application/revoke-invite.js';
 import { SignIn } from './application/sign-in.js';
 import { SignOut } from './application/sign-out.js';
-import { SignUp } from './application/sign-up.js';
 import { DrizzleAccountInviteRepository } from './infrastructure/drizzle-account-invite-repository.js';
 import { DrizzleAccountRepository } from './infrastructure/drizzle-account-repository.js';
 import { DrizzlePasswordResetTokenRepository } from './infrastructure/drizzle-password-reset-token-repository.js';
 import { DrizzleSessionRepository } from './infrastructure/drizzle-session-repository.js';
 import { RandomTokenGenerator } from './infrastructure/random-token-generator.js';
 import { ScryptPasswordHasher } from './infrastructure/scrypt-password-hasher.js';
-import { SlidingWindowSignUpRateLimiter } from './infrastructure/sliding-window-sign-up-rate-limiter.js';
 import { AccountsController } from './presentation/accounts.controller.js';
 import { createAccountsRouter } from './presentation/accounts.routes.js';
 import { AuthController } from './presentation/auth.controller.js';
@@ -53,10 +51,8 @@ export function buildAccountsModule(deps: AccountsModuleDependencies): AccountsH
   const invites = new DrizzleAccountInviteRepository(deps.db);
   const passwordHasher = new ScryptPasswordHasher();
   const tokens = new RandomTokenGenerator();
-  const rateLimiter = new SlidingWindowSignUpRateLimiter();
 
   const authController = new AuthController(
-    new SignUp(accounts, rateLimiter, passwordHasher, deps.clock, deps.ids, deps.accountAdminEmails),
     new SignIn(accounts, sessions, passwordHasher, tokens, deps.clock, deps.ids),
     new SignOut(sessions, tokens),
     new GetMe(accounts, sessions, tokens, deps.clock),

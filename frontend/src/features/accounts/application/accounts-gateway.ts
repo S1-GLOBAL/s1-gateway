@@ -1,4 +1,12 @@
-import type { Account, AccountLists, PasswordResetLink } from '../domain/account';
+import type {
+  Account,
+  AccountInvite,
+  AccountLists,
+  CreatedInvite,
+  InviteDetails,
+  PasswordResetLink,
+  Registration,
+} from '../domain/account';
 
 /**
  * Where the accounts feature talks to the API. The application owns this
@@ -6,7 +14,6 @@ import type { Account, AccountLists, PasswordResetLink } from '../domain/account
  * AppError.
  */
 export interface AccountsGateway {
-  signUp(input: { email: string; fullName: string; password: string }): Promise<Account>;
   signIn(input: { email: string; password: string }): Promise<Account>;
   signOut(): Promise<void>;
   me(): Promise<Account>;
@@ -16,4 +23,11 @@ export interface AccountsGateway {
   approveAccount(id: string): Promise<Account>;
   disableAccount(id: string): Promise<Account>;
   createPasswordResetLink(id: string): Promise<PasswordResetLink>;
+  createInvite(email: string): Promise<CreatedInvite>;
+  listInvites(): Promise<AccountInvite[]>;
+  revokeInvite(id: string): Promise<AccountInvite>;
+  /** Public: rejects with INVITE_INVALID when the link no longer works. */
+  getInvite(token: string): Promise<InviteDetails>;
+  /** Public: creates an approved account, but signs nobody in. */
+  register(input: Registration): Promise<Account>;
 }

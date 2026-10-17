@@ -16,10 +16,12 @@ matter, and a client-rendered SPA is enough
 ## 2. The Gateway requires sign-in
 
 **Every route of the API except `/health` and `/auth/*` needs a session.**
-Staff sign up with an `@sourceone.global` email, full name and password, then
-wait for an admin (the addresses in `ACCOUNT_ADMIN_EMAILS`) to approve the
-account; only then can they sign in. A session lasts 7 days, and signing out
-or being disabled ends it at once
+There is no open sign-up: an admin (an address in `ACCOUNT_ADMIN_EMAILS`)
+invites a staff member by their `@sourceone.global` email, and the link works
+once, for 7 days. The person gives a first name, a last name and a password,
+and can sign in at once — the invite is the approval
+([ADR 0023](../decisions/0023-accounts-are-created-by-invite-only.md)). A
+session lasts 7 days, and signing out or being disabled ends it at once
 ([ADR 0018](../decisions/0018-staff-sign-in-with-admin-approval.md)).
 
 **That is why a public staging deployment is acceptable.** Anyone can load the
@@ -32,8 +34,8 @@ way: a new route is behind sign-in unless it is deliberately made public, and
 nothing a staff member should not see belongs in the shell itself.
 
 Sign-in is not a substitute for care: the repository is public, so no Source
-One data goes in it (§6), and there is no email, so an admin gives a password
-reset link to a person in person.
+One data goes in it (§6), and there is no email, so an admin sends each invite
+link and gives each password reset link to the person themselves.
 
 ## 3. Staff use laptops on office networks — and install it
 

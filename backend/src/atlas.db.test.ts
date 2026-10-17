@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { composeApp } from './compose.js';
+import { createAdmin } from './scripts/create-admin.js';
 import { FixedClock, SequentialIdGenerator, silentLogger } from './shared/application/testing/fakes.js';
 import { connectTestDatabase, resetTables } from './test/database.js';
 
@@ -33,14 +34,22 @@ const app = composeApp({
   cookieSecure: false,
 });
 
-// One sign-in for the whole file: sign-ups are limited to 5 per hour, and every test shares this app.
+// One sign-in for the whole file: every test shares this app.
 // Only the saved Spec IDs are emptied between tests, so the signed-in account survives them.
 let agent: ReturnType<typeof request.agent>;
 
 beforeAll(async () => {
   await resetTables(connection.db);
+  const created = await createAdmin(connection.db, {
+    email: ADMIN,
+    firstName: 'Admin',
+    lastName: 'User',
+    password: PASSWORD,
+    nodeEnv: 'test',
+    accountAdminEmails: [ADMIN],
+  });
+  if (!created.ok) throw new Error(created.error);
   agent = request.agent(app);
-  await agent.post('/api/v1/auth/sign-up').send({ email: ADMIN, fullName: 'Admin', password: PASSWORD });
   await agent.post('/api/v1/auth/sign-in').send({ email: ADMIN, password: PASSWORD });
 });
 beforeEach(async () => {
@@ -97,7 +106,7 @@ describe('Atlas, composed over Postgres', () => {
     expect(response.status).toBe(201);
     expect(response.body.data.code).toBe(ILLUSTRATIVE);
     expect(response.body.data.name).toBe('Illustrative lid');
-    expect(response.body.data.savedBy.fullName).toBe('Admin');
+    expect(response.body.data.savedBy.fullName).toBe('Admin User');
     expect(response.body.data.savedAt).toBe('2026-10-14T08:00:00.000Z');
     expect(await savedCount()).toBe(1);
   });
@@ -111,7 +120,7 @@ describe('Atlas, composed over Postgres', () => {
     expect(again.body.error.code).toBe('SPEC_ID_EXISTS');
     expect(again.body.error.details.existing.name).toBe('First');
     expect(again.body.error.details.existing.code).toBe(ILLUSTRATIVE);
-    expect(again.body.error.details.existing.savedBy.fullName).toBe('Admin');
+    expect(again.body.error.details.existing.savedBy.fullName).toBe('Admin User');
     expect(await savedCount()).toBe(1);
   });
 
@@ -214,7 +223,7 @@ describe('Atlas, composed over Postgres', () => {
 
     expect(changed.status).toBe(200);
     expect(changed.body.data.version).toBe(2);
-    expect(changed.body.data.updatedBy.fullName).toBe('Admin');
+    expect(changed.body.data.updatedBy.fullName).toBe('Admin User');
     expect(history.body.data.map((entry: { kind: string }) => entry.kind)).toEqual(['updated', 'created']);
     expect(history.body.data[0].slots).toEqual([
       { key: 'height', name: 'Height', before: 'Not known', after: '12 mm', corrected: false },

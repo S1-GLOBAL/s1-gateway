@@ -208,7 +208,15 @@ describe('the sign-in gate', () => {
 
   it('keeps the public pages open without a session', async () => {
     renderAt('/sign-up', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'The Gateway is invite-only.' })).toBeTruthy();
+    expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();
+  });
+
+  it('opens an invite link without a session, outside the shell', async () => {
+    const router = renderAt('/register?token=tok', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Create your account' })).toBeTruthy();
+    expect(screen.getByText('ada@sourceone.global')).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/register');
     expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();
   });
 });

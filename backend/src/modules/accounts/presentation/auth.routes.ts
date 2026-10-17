@@ -3,7 +3,6 @@ import type { AuthController } from './auth.controller.js';
 
 export function createPublicAuthRouter(controller: AuthController): Router {
   const router = Router();
-  router.post('/sign-up', controller.signUpHandler);
   router.post('/sign-in', controller.signInHandler);
   router.post('/reset-password', controller.resetPasswordHandler);
   router.get('/invites/:token', controller.getInviteHandler);

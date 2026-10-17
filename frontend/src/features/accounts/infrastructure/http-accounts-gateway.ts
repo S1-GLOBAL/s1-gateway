@@ -1,13 +1,26 @@
 import type { DataEnvelope } from '@contracts/envelope';
 import type {
   Account as AccountContract,
+  AccountInvite as AccountInviteContract,
   AccountLists as AccountListsContract,
+  CreateInviteRequest,
+  CreateInviteResponse,
+  InviteDetails as InviteDetailsContract,
   PasswordResetLink as PasswordResetLinkContract,
+  RegisterRequest,
 } from '@contracts/accounts';
 import type { AxiosInstance } from 'axios';
 import { toAppError } from '@/shared/infrastructure/to-app-error';
 import type { AccountsGateway } from '../application/accounts-gateway';
-import type { Account, AccountLists, PasswordResetLink } from '../domain/account';
+import type {
+  Account,
+  AccountInvite,
+  AccountLists,
+  CreatedInvite,
+  InviteDetails,
+  PasswordResetLink,
+  Registration,
+} from '../domain/account';
 
 /** The AccountsGateway port over the HTTP API. The only file in the feature that knows the wire format. */
 export class HttpAccountsGateway implements AccountsGateway {
@@ -15,15 +28,6 @@ export class HttpAccountsGateway implements AccountsGateway {
 
   constructor(http: AxiosInstance) {
     this.http = http;
-  }
-
-  async signUp(input: { email: string; fullName: string; password: string }): Promise<Account> {
-    try {
-      const response = await this.http.post<DataEnvelope<AccountContract>>('/auth/sign-up', input);
-      return toAccount(response.data.data);
-    } catch (error) {
-      throw toAppError(error);
-    }
   }
 
   async signIn(input: { email: string; password: string }): Promise<Account> {
@@ -111,6 +115,61 @@ export class HttpAccountsGateway implements AccountsGateway {
       throw toAppError(error);
     }
   }
+
+  async createInvite(email: string): Promise<CreatedInvite> {
+    try {
+      const body: CreateInviteRequest = { email };
+      const response = await this.http.post<DataEnvelope<CreateInviteResponse>>('/accounts/invites', body);
+      const { invite, inviteUrl } = response.data.data;
+      return { invite: toInvite(invite), inviteUrl };
+    } catch (error) {
+      throw toAppError(error);
+    }
+  }
+
+  async listInvites(): Promise<AccountInvite[]> {
+    try {
+      const response = await this.http.get<DataEnvelope<AccountInviteContract[]>>('/accounts/invites');
+      return response.data.data.map(toInvite);
+    } catch (error) {
+      throw toAppError(error);
+    }
+  }
+
+  async revokeInvite(id: string): Promise<AccountInvite> {
+    try {
+      const response = await this.http.post<DataEnvelope<AccountInviteContract>>(`/accounts/invites/${id}/revoke`);
+      return toInvite(response.data.data);
+    } catch (error) {
+      throw toAppError(error);
+    }
+  }
+
+  async getInvite(token: string): Promise<InviteDetails> {
+    try {
+      const response = await this.http.get<DataEnvelope<InviteDetailsContract>>(
+        `/auth/invites/${encodeURIComponent(token)}`,
+      );
+      const { email, expiresAt } = response.data.data;
+      return { email, expiresAt: new Date(expiresAt) };
+    } catch (error) {
+      throw toAppError(error);
+    }
+  }
+
+  async register(input: Registration): Promise<Account> {
+    try {
+      const body: RegisterRequest = input;
+      const response = await this.http.post<DataEnvelope<AccountContract>>('/auth/register', body);
+      return toAccount(response.data.data);
+    } catch (error) {
+      throw toAppError(error);
+    }
+  }
+}
+
+function toInvite(contract: AccountInviteContract): AccountInvite {
+  return { id: contract.id, email: contract.email, expiresAt: new Date(contract.expiresAt) };
 }
 
 function toAccount(contract: AccountContract): Account {
