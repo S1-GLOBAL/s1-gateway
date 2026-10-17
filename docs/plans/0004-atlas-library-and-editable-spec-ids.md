@@ -60,7 +60,7 @@ request, stopping for the owner after each.
 |---|---|---|
 | 1. Server: editable Spec IDs, history, library API | 7 / 7 | Done — staging had no Spec IDs before the release, so the backfill had nothing to fill; see #16 |
 | 2. Workspace and History | 5 / 6 | In progress — step 2.6's staging check remains after merge |
-| 3. Library | 0 / 5 | Not started |
+| 3. Library | 4 / 5 | In progress — step 3.5's staging check remains after merge |
 
 ---
 
@@ -164,7 +164,7 @@ pasted code before asking.
 | `NewSpecIdForm`, `SpecIdEditor` | `presentation/` | the workspace with its name and Save Spec ID; with its header, History and Save changes |
 | `FactGroups`, `CodePanel`, `MatchPanel` | `presentation/workspace/` | the five groups; the coded parts, legend, Copy and summary; Already saved and the folded similar list |
 | `HistorySheet` | `presentation/HistorySheet.tsx` | the `Sheet`, filters, timeline |
-| `LibraryList`, `PastedCodeResult`, `DictionarySheet` | `presentation/library/` | phase 3 |
+| `AtlasLibrary`, `LibraryList`, `PastedCodeResult`, `SpecIdSummary`, `NewSpecIdLink`, `DictionarySheet` | `presentation/library/` | the search box and filter; the cards and Show more; what a pasted code is; one card's contents; the primary link; the dictionary in a `Sheet` |
 | `NewSpecIdPage`, `SpecIdPage` (+ skeletons) | `pages/atlas/` | phase 2; `AtlasPage` is rewritten in phase 3 |
 
 Product type and shape are `SegmentedControl`s that wrap at phone width
@@ -269,23 +269,23 @@ One pull request, "Closes #16".
 
 ### Step 3.1 — The library list
 
-- [ ] **Action.** `AtlasPage` rewritten: `PageHeader` with **Dictionary** and **New Spec ID**; the search `TextField` (label "Search"); the product-type `SegmentedControl`; `LibraryList` cards (name, code, summary, "{n} not known" or "Complete", who and when) linking to `/atlas/<id>`; **Show more**; the empty and no-match states from #16's copy table. `AtlasPageSkeleton` redrawn to match.
-- [ ] **Verify.** Tests: 20 cards then **Show more** loads the rest; a search waits 250 ms; the empty library shows the `EmptyState`; a search with no match shows its sentence.
+- [x] **Action.** `AtlasPage` rewritten: `PageHeader` with **Dictionary** and **New Spec ID**; the search `TextField` (label "Search"); the product-type `SegmentedControl`; `LibraryList` cards (name, code, summary, "{n} not known" or "Complete", who and when) linking to `/atlas/<id>`; **Show more**; the empty and no-match states from #16's copy table. `AtlasPageSkeleton` redrawn to match.
+- [x] **Verify.** Tests: 20 cards then **Show more** loads the rest; a search waits 250 ms; the empty library shows the `EmptyState`; a search with no match shows its sentence.
 
 ### Step 3.2 — The Dictionary sheet
 
-- [ ] **Action.** `DictionarySheet` wraps the existing `DictionaryBrowser` in a `Sheet` titled "Dictionary" with "S1 {release}, approved {date}. It changes only by migration."
-- [ ] **Verify.** A test opens and closes it with the button and with Escape.
+- [x] **Action.** `DictionarySheet` wraps the existing `DictionaryBrowser` in a `Sheet` titled "Dictionary" with "S1 {release}, approved {date}. It changes only by migration."
+- [x] **Verify.** A test opens and closes it with the button and with Escape.
 
 ### Step 3.3 — Paste a code
 
-- [ ] **Action.** Input starting with `S1.` in any case is upper-cased and looked up: current holder card with a note per former holder; "This code was updated. It's now {code}."; "This Spec ID isn't saved yet." with the slots in plain words (doesn't-apply folded) and **Start a Spec ID from it** → `/atlas/new?code=…`; an invalid code shows the decoder's messages.
-- [ ] **Verify.** One test per branch, including a lower-case paste.
+- [x] **Action.** Input starting with `S1.` in any case is upper-cased and looked up: current holder card with a note per former holder; "This code was updated. It's now {code}."; "This Spec ID isn't saved yet." with the slots in plain words (doesn't-apply folded) and **Start a Spec ID from it** → `/atlas/new?code=…`; an invalid code shows the decoder's messages.
+- [x] **Verify.** One test per branch, including a lower-case paste.
 
 ### Step 3.4 — Remove what the library replaces
 
-- [ ] **Action.** Delete `BuildPanel`, `LookupPanel`, `DecodePanel`, `SavedSpecIdList`, `SavedSpecIdCard`, `lookup-criteria.ts` and `to-slot-text.ts`, and their tests; drop their exports from `features/atlas/index.ts`. Keep `use-similar-spec-ids.ts`: `MatchPanel` uses it. Search for each name with `git grep -n` before deleting.
-- [ ] **Verify.** `npm run typecheck && npm run lint && npm run arch:check && npm run test:unit && npm run build` exits 0; `git grep -n "BuildPanel\|LookupPanel\|DecodePanel" frontend/src` prints nothing.
+- [x] **Action.** Delete `BuildPanel`, `LookupPanel`, `DecodePanel`, `SavedSpecIdList`, `SavedSpecIdCard`, `lookup-criteria.ts` and `to-slot-text.ts`, and their tests, and the two hooks only they used, `use-find-spec-id.ts` and `use-decode-spec-id.ts`; drop their exports from `features/atlas/index.ts`. Keep `use-similar-spec-ids.ts`: `MatchPanel` uses it. Search for each name with `git grep -n` before deleting.
+- [x] **Verify.** `npm run typecheck && npm run lint && npm run arch:check && npm run test:unit && npm run build` exits 0; `git grep -n "BuildPanel\|LookupPanel\|DecodePanel" frontend/src` prints nothing.
 
 ### Step 3.5 — Docs, screenshots, then staging
 

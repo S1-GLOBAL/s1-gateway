@@ -173,6 +173,23 @@ export interface SpecIdChange {
 /** The slots a lookup asks about, each with a raw slot value (`topDiameter: "0090"`). */
 export type SimilarCriteria = Partial<Record<SlotKey, string>>;
 
+/** What the library is asked for. Each is optional; `cursor` is the last page's `nextCursor`. */
+export interface LibraryQuery {
+  /** Part of a name, ignoring case. */
+  q?: string;
+  /** A product type's code. */
+  productType?: string;
+  cursor?: string;
+}
+
+/** One page of the library, newest change first. */
+export interface SpecIdLibraryPage {
+  /** At most 20. */
+  items: SavedSpecId[];
+  /** The next page's cursor; null on the last page. */
+  nextCursor: string | null;
+}
+
 /** Saved Spec IDs, each group newest first. */
 export interface SimilarSpecIds {
   /** Every chosen slot is equal. */

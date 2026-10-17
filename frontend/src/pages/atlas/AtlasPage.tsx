@@ -1,43 +1,31 @@
-import { BuildPanel, DecodePanel, DictionaryBrowser, LookupPanel, useDictionary } from '@/features/atlas';
+import { BookOpen } from 'lucide-react';
+import { useState } from 'react';
+import { AtlasLibrary, DictionarySheet, NewSpecIdLink, useDictionary } from '@/features/atlas';
+import { Button } from '@/shared/ui/Button';
 import { PageHeader } from '@/shared/ui/PageHeader';
 
+/** `/atlas`: the library of saved Spec IDs, one search box, and the dictionary. */
 export function AtlasPage() {
   const { data: dictionary } = useDictionary();
+  const [dictionaryOpen, setDictionaryOpen] = useState(false);
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Atlas"
-        description="Read, build and save S1 Spec IDs: one code for what a product physically is."
+        description="One code for what a product physically is. Find a product, or describe a new one."
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" onClick={() => setDictionaryOpen(true)}>
+              <BookOpen size={16} strokeWidth={1.75} aria-hidden="true" />
+              Dictionary
+            </Button>
+            <NewSpecIdLink />
+          </div>
+        }
       />
-
-      <section aria-labelledby="atlas-decode" className="flex flex-col gap-4">
-        <h2 id="atlas-decode" className="text-lg font-semibold text-ink">
-          Decode
-        </h2>
-        <DecodePanel />
-      </section>
-
-      <section aria-labelledby="atlas-build" className="flex flex-col gap-4">
-        <h2 id="atlas-build" className="text-lg font-semibold text-ink">
-          Build
-        </h2>
-        <BuildPanel dictionary={dictionary} />
-      </section>
-
-      <section aria-labelledby="atlas-lookup" className="flex flex-col gap-4">
-        <h2 id="atlas-lookup" className="text-lg font-semibold text-ink">
-          Look up
-        </h2>
-        <LookupPanel dictionary={dictionary} />
-      </section>
-
-      <section aria-labelledby="atlas-dictionary" className="flex flex-col gap-4">
-        <h2 id="atlas-dictionary" className="text-lg font-semibold text-ink">
-          Dictionary
-        </h2>
-        <DictionaryBrowser dictionary={dictionary} />
-      </section>
+      <AtlasLibrary dictionary={dictionary} />
+      <DictionarySheet dictionary={dictionary} open={dictionaryOpen} onClose={() => setDictionaryOpen(false)} />
     </div>
   );
 }

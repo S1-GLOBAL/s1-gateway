@@ -1,0 +1,232 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AppError } from '@/shared/application/app-error';
+import type { AtlasGateway } from '../../application/atlas-gateway';
+import { AtlasGatewayProvider } from '../../application/atlas-gateway-context';
+import {
+  gatewayWith,
+  ILLUSTRATIVE,
+  lookupFor,
+  readCode,
+  s1Dictionary,
+  savedFor,
+} from '../../application/testing/atlas-fixtures';
+import type { SavedSpecId } from '../../domain/atlas';
+import { AtlasLibrary, SEARCH_WAIT_MS } from './AtlasLibrary';
+
+const EMPTY = { items: [], nextCursor: null };
+const NOT_FOUND = new AppError('SPEC_ID_NOT_FOUND', 'No saved Spec ID has this code. Check it, or build and save it.');
+
+/** A saved Spec ID as the library answers it: three slots not known. */
+function saved(index: number, overrides: Partial<SavedSpecId> = {}): SavedSpecId {
+  const id = `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`;
+  return { ...savedFor(ILLUSTRATIVE, `Lid ${index}`, { id }), slots: readCode(ILLUSTRATIVE).slots, ...overrides };
+}
+
+function renderLibrary(overrides: Partial<AtlasGateway> = {}) {
+  const gateway = gatewayWith({ library: vi.fn(async () => EMPTY), ...overrides });
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={queryClient}>
+      <AtlasGatewayProvider gateway={gateway}>
+        <MemoryRouter>
+          <AtlasLibrary dictionary={s1Dictionary} timeZone="UTC" />
+        </MemoryRouter>
+      </AtlasGatewayProvider>
+    </QueryClientProvider>,
+  );
+  return gateway;
+}
+
+const search = (text: string) => fireEvent.change(screen.getByLabelText('Search'), { target: { value: text } });
+const cards = () => within(screen.getByRole('list')).getAllByRole('link');
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe('AtlasLibrary, the list', () => {
+  it('shows 20 cards, and Show more loads the next page', async () => {
+    const first = Array.from({ length: 20 }, (_, index) => saved(index + 1));
+    const library = vi.fn<AtlasGateway['library']>(async ({ cursor }) =>
+      cursor === 'page-2' ? { items: [saved(21)], nextCursor: null } : { items: first, nextCursor: 'page-2' },
+    );
+    renderLibrary({ library });
+
+    await waitFor(() => expect(cards()).toHaveLength(20));
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+
+    await waitFor(() => expect(cards()).toHaveLength(21));
+    expect(library).toHaveBeenLastCalledWith({ q: '', productType: '', cursor: 'page-2' });
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
+
+  it('shows each Spec ID with its code, its facts in plain words, what is missing and its last change', async () => {
+    const ben = { id: '00000000-0000-4000-8000-0000000000bb', fullName: 'Ben Invented' };
+    const lid = saved(1, { updatedBy: ben, updatedAt: new Date('2026-10-17T14:32:00Z') });
+    renderLibrary({ library: async () => ({ items: [lid], nextCursor: null }) });
+
+    const [card] = await waitFor(() => cards());
+    expect(card?.getAttribute('href')).toBe(`/atlas/${lid.id}`);
+    expect(within(card!).getByText('Lid 1')).toBeTruthy();
+    expect(within(card!).getByText(ILLUSTRATIVE)).toBeTruthy();
+    expect(within(card!).getByText('Bowl lid · APS · CL · RD · DM · 0090 · 0033')).toBeTruthy();
+    expect(within(card!).getByText('3 not known')).toBeTruthy();
+    expect(within(card!).getByText('Last updated by Ben Invented on 17 October 2026')).toBeTruthy();
+  });
+
+  it('marks a Spec ID with nothing missing as Complete', async () => {
+    const complete = ILLUSTRATIVE.replace('.00.', '.PE.').replace('.0000.', '.0062.').replace('.000.', '.030.');
+    renderLibrary({ library: async () => ({ items: [saved(1, { code: complete, slots: readCode(complete).slots })], nextCursor: null }) });
+    expect(await screen.findByText('Complete')).toBeTruthy();
+  });
+
+  it('waits 250 ms after the last keystroke before it searches', async () => {
+    const library = vi.fn<AtlasGateway['library']>(async () => EMPTY);
+    renderLibrary({ library });
+    await waitFor(() => expect(library).toHaveBeenCalledTimes(1));
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    search('li');
+    act(() => vi.advanceTimersByTime(SEARCH_WAIT_MS - 50));
+    search('lid');
+    act(() => vi.advanceTimersByTime(SEARCH_WAIT_MS - 1));
+    expect(library).toHaveBeenCalledTimes(1);
+    act(() => vi.advanceTimersByTime(1));
+    vi.useRealTimers();
+
+    await waitFor(() => expect(library).toHaveBeenLastCalledWith({ q: 'lid', productType: '', cursor: undefined }));
+    expect(library).toHaveBeenCalledTimes(2);
+    expect(SEARCH_WAIT_MS).toBe(250);
+  });
+
+  it('says so when no Spec ID matches the search', async () => {
+    renderLibrary();
+    search('  zebra ');
+    expect(await screen.findByText('No Spec IDs match "zebra". Check the spelling, or paste the full code.')).toBeTruthy();
+  });
+
+  it('says nothing about a search until its own answer arrives', async () => {
+    let answer: (page: typeof EMPTY) => void = () => undefined;
+    renderLibrary({
+      library: ({ q }) => (q ? new Promise((resolve) => (answer = resolve)) : Promise.resolve(EMPTY)),
+    });
+    await screen.findByText('No Spec IDs yet');
+
+    search('zebra');
+    await waitFor(() => expect(screen.queryByText('No Spec IDs yet')).toBeNull());
+    expect(screen.queryByText(/No Spec IDs match/)).toBeNull();
+
+    act(() => answer(EMPTY));
+    expect(await screen.findByText('No Spec IDs match "zebra". Check the spelling, or paste the full code.')).toBeTruthy();
+  });
+
+  it('filters by product type, and names the type when none is saved yet', async () => {
+    const library = vi.fn<AtlasGateway['library']>(async () => EMPTY);
+    renderLibrary({ library });
+    await screen.findByText('No Spec IDs yet');
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Bowl lid' }));
+
+    expect(await screen.findByText('No bowl lid Spec IDs yet.')).toBeTruthy();
+    expect(library).toHaveBeenLastCalledWith({ q: '', productType: 'BLD', cursor: undefined });
+    expect(screen.getByRole('radio', { name: 'All' })).toBeTruthy();
+  });
+
+  it('invites the first Spec ID when none is saved at all', async () => {
+    renderLibrary();
+    expect(await screen.findByText('No Spec IDs yet')).toBeTruthy();
+    expect(screen.getByText('Describe a product to give it its first code.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'New Spec ID' }).getAttribute('href')).toBe('/atlas/new');
+  });
+
+  it('puts a refused search beside the box', async () => {
+    const message = 'Search text must be at most 120 characters.';
+    renderLibrary({
+      library: async ({ q }) => {
+        if (q) throw new AppError('VALIDATION_FAILED', 'The lookup is not valid.', { q: [message] });
+        return EMPTY;
+      },
+    });
+    search('x'.repeat(121));
+    expect(await screen.findByText(message)).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('shows any other failure with Try again', async () => {
+    const library = vi
+      .fn<AtlasGateway['library']>()
+      .mockRejectedValueOnce(new AppError('NETWORK', 'Cannot reach the server. Check your connection and try again.'))
+      .mockResolvedValue({ items: [saved(1)], nextCursor: null });
+    renderLibrary({ library });
+
+    expect(await screen.findByText('Cannot reach the server. Check your connection and try again.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByText('Lid 1')).toBeTruthy();
+  });
+});
+
+describe('AtlasLibrary, a pasted code', () => {
+  it('finds a code pasted in lower case, with a note for each Spec ID that had it before', async () => {
+    const until = new Date('2026-10-17T09:30:00Z');
+    const findByCode = vi.fn<AtlasGateway['findByCode']>(async () =>
+      lookupFor(ILLUSTRATIVE, 'Illustrative lid', {
+        formerHolders: [{ id: '00000000-0000-4000-8000-000000000002', name: 'Old lid', code: 'S1.OTHER', until }],
+      }),
+    );
+    renderLibrary({ findByCode });
+
+    search(` ${ILLUSTRATIVE.toLowerCase()} `);
+
+    expect(await screen.findByText('Saved as "Illustrative lid".')).toBeTruthy();
+    expect(findByCode).toHaveBeenCalledWith(ILLUSTRATIVE);
+    expect(screen.getAllByRole('link', { name: 'Open' }).map((link) => link.getAttribute('href'))).toEqual([
+      '/atlas/00000000-0000-4000-8000-000000000001',
+      '/atlas/00000000-0000-4000-8000-000000000002',
+    ]);
+    expect(screen.getByText('This code also belonged to "Old lid" until 17 October 2026. It\'s now S1.OTHER.')).toBeTruthy();
+    expect(screen.queryByRole('radiogroup', { name: 'Product type' })).toBeNull();
+  });
+
+  it('finds the Spec ID a replaced code became', async () => {
+    const now = ILLUSTRATIVE.replace('.0000.', '.0062.');
+    renderLibrary({ findByCode: async () => lookupFor(now, 'Illustrative lid', { replacedCode: ILLUSTRATIVE }) });
+
+    search(ILLUSTRATIVE);
+
+    expect(await screen.findByText(`This code was updated. It's now ${now}.`)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Open' }).getAttribute('href')).toBe('/atlas/00000000-0000-4000-8000-000000000001');
+  });
+
+  it('reads a code nobody saved slot by slot, with the slots that do not apply folded, and the way to start one', async () => {
+    renderLibrary({ findByCode: async () => Promise.reject(NOT_FOUND), decode: async (code) => readCode(code) });
+
+    search(ILLUSTRATIVE);
+
+    expect(await screen.findByText("This Spec ID isn't saved yet.")).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Start a Spec ID from it' }).getAttribute('href')).toBe(
+      `/atlas/new?code=${encodeURIComponent(ILLUSTRATIVE)}`,
+    );
+    const fold = screen.getByText("7 slots don't apply").closest('details') as HTMLDetailsElement;
+    expect(fold.open).toBe(false);
+    const [shown] = screen.getAllByRole('table');
+    // The header row, then the 11 slots that apply.
+    expect(within(shown!).getAllByRole('row')).toHaveLength(12);
+  });
+
+  it("shows the decoder's messages for a code it cannot read", async () => {
+    const fields = { code: ['A Spec ID has 18 parts separated by dots; this has 3.'] };
+    renderLibrary({
+      findByCode: async () => Promise.reject(NOT_FOUND),
+      decode: async () => Promise.reject(new AppError('INVALID_SPEC_ID', 'The Spec ID is not valid.', fields)),
+    });
+
+    search('S1.BLD.APS');
+
+    expect(await screen.findByText('A Spec ID has 18 parts separated by dots; this has 3.')).toBeTruthy();
+    expect(screen.queryByRole('table')).toBeNull();
+  });
+});
