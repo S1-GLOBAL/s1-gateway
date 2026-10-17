@@ -24,6 +24,22 @@ export class InvalidFullNameError extends DomainError {
   }
 }
 
+export class InvalidPersonNameError extends DomainError {
+  override readonly code = 'VALIDATION_FAILED';
+
+  constructor(field: 'firstName' | 'lastName', message: string) {
+    super(message, { fields: { [field]: [message] } });
+  }
+}
+
+export class PasswordsDontMatchError extends DomainError {
+  override readonly code = 'VALIDATION_FAILED';
+
+  constructor() {
+    super("The passwords don't match.", { fields: { confirmPassword: ["The passwords don't match."] } });
+  }
+}
+
 export class AccountExistsError extends DomainError {
   override readonly code = 'ACCOUNT_EXISTS';
 
@@ -119,5 +135,43 @@ export class AccountNotFoundError extends DomainError {
 
   constructor() {
     super('Account not found.');
+  }
+}
+
+/** The invite form's own wording: the admin is typing someone else's address. */
+export class InviteEmailNotAllowedError extends DomainError {
+  override readonly code = 'EMAIL_NOT_ALLOWED';
+
+  constructor() {
+    super('Use a @sourceone.global email address.', {
+      fields: { email: ['Use a @sourceone.global email address.'] },
+    });
+  }
+}
+
+export class InviteAccountExistsError extends DomainError {
+  override readonly code = 'ACCOUNT_EXISTS';
+
+  constructor() {
+    super('An account already exists for that email.', {
+      fields: { email: ['An account already exists for that email.'] },
+    });
+  }
+}
+
+/** Expired, used, revoked and unknown all read the same, so a token's state can't be probed. */
+export class InviteInvalidError extends DomainError {
+  override readonly code = 'INVITE_INVALID';
+
+  constructor() {
+    super('This invite link no longer works.');
+  }
+}
+
+export class InviteNotFoundError extends DomainError {
+  override readonly code = 'INVITE_NOT_FOUND';
+
+  constructor() {
+    super('This invite was already used or revoked.');
   }
 }

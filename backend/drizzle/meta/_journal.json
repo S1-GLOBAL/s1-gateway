@@ -50,6 +50,20 @@
       "when": 1792184288438,
       "tag": "0006_backfill_atlas_spec_id_created_changes",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792189580098,
+      "tag": "0007_account_invites_and_person_names",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792189598095,
+      "tag": "0008_backfill_person_names",
+      "breakpoints": true
     }
   ]
 }

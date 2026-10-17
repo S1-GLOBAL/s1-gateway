@@ -8,6 +8,7 @@ import type { AccountRepository } from '../domain/account-repository.js';
 import { EmailNotAllowedError, normalizeCompanyEmail } from '../domain/email.js';
 import { InvalidFullNameError, normalizeFullName } from '../domain/full-name.js';
 import { InvalidPasswordError, validatePassword } from '../domain/password.js';
+import { splitFullName } from '../domain/person-name.js';
 import type { PasswordHasher } from '../domain/password-hasher.js';
 import type { SignUpRateLimiter } from '../domain/sign-up-rate-limiter.js';
 import { toAccountDto, type AccountDto } from './account.dto.js';
@@ -57,8 +58,10 @@ export class SignUp implements UseCase<SignUpInput, Result<AccountDto, SignUpErr
 
     const passwordHash = await this.passwordHasher.hash(password.value);
     const autoApprove = this.adminEmails.includes(email.value);
+    // The sign-up form still sends one name until it closes (ADR 0023).
+    const { firstName, lastName } = splitFullName(fullName.value);
     const { value: account } = Account.register(
-      { email: email.value, fullName: fullName.value, passwordHash, autoApprove },
+      { email: email.value, firstName, lastName, passwordHash, autoApprove },
       this.ids.next(),
       now,
     );

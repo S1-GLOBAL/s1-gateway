@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { connectTestDatabase, resetTables } from '../../../test/database.js';
 import { Account } from '../domain/account.js';
 import { AccountExistsError } from '../domain/account.errors.js';
+import { accounts } from './accounts.table.js';
 import { DrizzleAccountRepository } from './drizzle-account-repository.js';
 
 const connection = connectTestDatabase();
@@ -10,7 +11,7 @@ const CREATED_AT = new Date('2026-10-16T08:00:00.000Z');
 
 function account(id: string, email: string, autoApprove = false) {
   const result = Account.register(
-    { email, fullName: 'Staff Member', passwordHash: 'hash', autoApprove },
+    { email, firstName: 'Staff', lastName: 'Member', passwordHash: 'hash', autoApprove },
     id,
     CREATED_AT,
   );
@@ -35,6 +36,48 @@ describe('DrizzleAccountRepository', () => {
     expect(stored?.createdAt.toISOString()).toBe(CREATED_AT.toISOString());
     expect(stored?.approvedBy).toBe('11111111-1111-4111-8111-111111111111');
     expect(stored?.approvedAt?.toISOString()).toBe(CREATED_AT.toISOString());
+    expect(stored?.firstName).toBe('Staff');
+    expect(stored?.lastName).toBe('Member');
+  });
+
+  it('writes full_name as "First Last"', async () => {
+    await repository.add(account('11111111-1111-4111-8111-111111111111', 'staff@sourceone.global'));
+    const [row] = await connection.db.select({ fullName: accounts.fullName }).from(accounts);
+    expect(row?.fullName).toBe('Staff Member');
+  });
+
+  it('stores 40-character first and last names, an 81-character full name', async () => {
+    const first = 'A'.repeat(40);
+    const last = 'B'.repeat(40);
+    const registered = Account.register(
+      { email: 'long@sourceone.global', firstName: first, lastName: last, passwordHash: 'hash', autoApprove: true },
+      '99999999-9999-4999-8999-999999999999',
+      CREATED_AT,
+    );
+    expect((await repository.add(registered.value)).ok).toBe(true);
+
+    const stored = await repository.findByEmail('long@sourceone.global');
+    expect(stored?.firstName).toBe(first);
+    expect(stored?.lastName).toBe(last);
+    expect(stored?.fullName).toBe(`${first} ${last}`);
+    expect(stored?.fullName).toHaveLength(81);
+  });
+
+  it('reads a row with both names empty with them split from full_name, as migration 0008 does', async () => {
+    // What the previous release writes during a deploy: no first or last name.
+    await connection.db.insert(accounts).values({
+      id: '12121212-1212-4121-8121-121212121212',
+      email: 'old@sourceone.global',
+      fullName: 'Ada King Lovelace',
+      passwordHash: 'hash',
+      status: 'approved',
+      createdAt: CREATED_AT,
+    });
+
+    const stored = await repository.findByEmail('old@sourceone.global');
+    expect(stored?.firstName).toBe('Ada');
+    expect(stored?.lastName).toBe('King Lovelace');
+    expect(stored?.fullName).toBe('Ada King Lovelace');
   });
 
   it('finds by id', async () => {

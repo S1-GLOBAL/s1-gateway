@@ -117,6 +117,9 @@ function toAccount(contract: AccountContract): Account {
   return {
     id: contract.id,
     email: contract.email,
+    // An API from before names were split omits both, during a release.
+    firstName: contract.firstName ?? '',
+    lastName: contract.lastName ?? '',
     fullName: contract.fullName,
     status: contract.status,
     mustChangePassword: contract.mustChangePassword,

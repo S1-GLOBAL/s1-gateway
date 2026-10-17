@@ -1,13 +1,16 @@
-import type { Request, Response } from 'express';
-import type { Account as AccountContract } from '../../../contracts/accounts.js';
+import type { ErrorRequestHandler, Request, Response } from 'express';
+import type { Account as AccountContract, InviteDetails } from '../../../contracts/accounts.js';
 import type { UseCase } from '../../../shared/application/use-case.js';
 import type { Result } from '../../../shared/domain/result.js';
 import { HttpError } from '../../../shared/presentation/http/http-error.js';
 import { parseBody } from '../../../shared/presentation/http/parse-body.js';
 import { sendData } from '../../../shared/presentation/http/respond.js';
 import type { AccountDto } from '../application/account.dto.js';
+import type { InviteDetailsDto } from '../application/account-invite.dto.js';
 import type { ChangePasswordError, ChangePasswordInput } from '../application/change-password.js';
+import type { GetInviteInput } from '../application/get-invite.js';
 import type { GetMeInput } from '../application/get-me.js';
+import type { RegisterWithInviteError, RegisterWithInviteInput } from '../application/register-with-invite.js';
 import type {
   ResetPasswordWithTokenError,
   ResetPasswordWithTokenInput,
@@ -15,10 +18,11 @@ import type {
 import type { SignInError, SignInInput, SignInOutput } from '../application/sign-in.js';
 import type { SignOutInput } from '../application/sign-out.js';
 import type { SignUpError, SignUpInput } from '../application/sign-up.js';
-import { SignInRequiredError } from '../domain/account.errors.js';
+import { InviteInvalidError, SignInRequiredError } from '../domain/account.errors.js';
 import { clearSessionCookie, setSessionCookie } from './cookies.js';
 import {
   changePasswordRequestSchema,
+  registerRequestSchema,
   resetPasswordRequestSchema,
   signInRequestSchema,
   signUpRequestSchema,
@@ -48,6 +52,18 @@ const RESET_STATUS: Record<ResetPasswordWithTokenError['code'], number> = {
   RESET_TOKEN_INVALID: 400,
   VALIDATION_FAILED: 400,
 };
+
+const REGISTER_STATUS: Record<RegisterWithInviteError['code'], number> = {
+  INVITE_INVALID: 404,
+  VALIDATION_FAILED: 400,
+  ACCOUNT_EXISTS: 409,
+};
+
+/** The use cases behind the public invite routes: reading an invite, and registering with it. */
+export interface PublicInviteUseCases {
+  get: UseCase<GetInviteInput, Result<InviteDetailsDto, InviteInvalidError>>;
+  register: UseCase<RegisterWithInviteInput, Result<AccountDto, RegisterWithInviteError>>;
+}
 
 function readCookie(req: Request, name: string): string | undefined {
   const header = req.headers.cookie;
@@ -79,6 +95,7 @@ export class AuthController {
     >,
     private readonly adminEmails: readonly string[],
     private readonly cookieSecure: boolean,
+    private readonly invites: PublicInviteUseCases,
   ) {}
 
   signUpHandler = async (req: Request, res: Response): Promise<void> => {
@@ -147,5 +164,39 @@ export class AuthController {
       throw new HttpError(RESET_STATUS[error.code], error.code, error.message, error.details);
     }
     res.status(204).end();
+  };
+
+  getInviteHandler = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.invites.get.execute({ token: String(req.params.token) });
+    if (!result.ok) {
+      throw new HttpError(404, result.error.code, result.error.message, result.error.details);
+    }
+    const details: InviteDetails = { email: result.value.email, expiresAt: result.value.expiresAt };
+    sendData(res, 200, details);
+  };
+
+  /**
+   * A token that is not even valid percent-encoding fails in Express's own
+   * decoding, before any handler, as a URIError. It is just another unknown
+   * token: the same 404, never a 400 or a 500.
+   */
+  undecodableInviteHandler: ErrorRequestHandler = (error, _req, _res, next) => {
+    if (!(error instanceof URIError)) {
+      next(error);
+      return;
+    }
+    const invalid = new InviteInvalidError();
+    next(new HttpError(404, invalid.code, invalid.message));
+  };
+
+  /** Creates the account but signs nobody in: no session cookie, as with sign-up. */
+  registerHandler = async (req: Request, res: Response): Promise<void> => {
+    const body = parseBody(registerRequestSchema, req.body);
+    const result = await this.invites.register.execute(body);
+    if (!result.ok) {
+      const { error } = result;
+      throw new HttpError(REGISTER_STATUS[error.code], error.code, error.message, error.details);
+    }
+    sendData(res, 201, toContract(result.value, this.adminEmails.includes(result.value.email)));
   };
 }

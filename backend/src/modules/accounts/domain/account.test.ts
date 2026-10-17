@@ -9,7 +9,8 @@ function pendingAccount() {
   const result = Account.register(
     {
       email: 'staff@sourceone.global',
-      fullName: 'Staff Member',
+      firstName: 'Staff',
+      lastName: 'Member',
       passwordHash: 'hash',
       autoApprove: false,
     },
@@ -32,7 +33,8 @@ describe('Account', () => {
     const result = Account.register(
       {
         email: 'admin@sourceone.global',
-        fullName: 'Admin',
+        firstName: 'Admin',
+        lastName: '',
         passwordHash: 'hash',
         autoApprove: true,
       },
@@ -42,6 +44,40 @@ describe('Account', () => {
     expect(result.ok && result.value.status).toBe('approved');
     expect(result.ok && result.value.approvedBy).toBe(id);
     expect(result.ok && result.value.approvedAt?.toISOString()).toBe(createdAt.toISOString());
+  });
+
+  it('shows its name as "First Last"', () => {
+    expect(pendingAccount().fullName).toBe('Staff Member');
+  });
+
+  it('shows a name with no last name without a trailing space', () => {
+    const result = Account.register(
+      { email: 'admin@sourceone.global', firstName: 'Admin', lastName: '', passwordHash: 'hash', autoApprove: true },
+      id,
+      createdAt,
+    );
+    expect(result.value.fullName).toBe('Admin');
+  });
+
+  it('registers an invited account as approved by whoever invited it', () => {
+    const account = Account.registerInvited(
+      {
+        email: 'ada@sourceone.global',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        passwordHash: 'hash',
+        invitedBy: '00000000-0000-4000-8000-0000000000aa',
+      },
+      id,
+      createdAt,
+    );
+    expect(account.status).toBe('approved');
+    expect(account.approvedBy).toBe('00000000-0000-4000-8000-0000000000aa');
+    expect(account.approvedAt?.toISOString()).toBe(createdAt.toISOString());
+    expect(account.mustChangePassword).toBe(false);
+    expect(account.firstName).toBe('Ada');
+    expect(account.lastName).toBe('Lovelace');
+    expect(account.fullName).toBe('Ada Lovelace');
   });
 
   it('locks after the fifth failed sign-in', () => {
