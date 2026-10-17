@@ -1,4 +1,13 @@
-export type { Account, AccountLists, AccountStatus, PasswordResetLink } from './domain/account';
+export type {
+  Account,
+  AccountInvite,
+  AccountLists,
+  AccountStatus,
+  CreatedInvite,
+  InviteDetails,
+  PasswordResetLink,
+  Registration,
+} from './domain/account';
 export type { AccountsGateway } from './application/accounts-gateway';
 export { AccountsGatewayProvider, useAccountsGateway } from './application/accounts-gateway-context';
 export { accountsKeys } from './application/accounts.keys';

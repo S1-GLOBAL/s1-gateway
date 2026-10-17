@@ -1,4 +1,4 @@
-import type { Account, AccountLists, AccountsGateway } from '@/features/accounts';
+import type { Account, AccountInvite, AccountLists, AccountsGateway } from '@/features/accounts';
 import { AppError } from '@/shared/application/app-error';
 
 export function account(overrides: Partial<Account> = {}): Account {
@@ -12,6 +12,15 @@ export function account(overrides: Partial<Account> = {}): Account {
     mustChangePassword: false,
     createdAt: new Date(0),
     isAdmin: false,
+    ...overrides,
+  };
+}
+
+export function invite(overrides: Partial<AccountInvite> = {}): AccountInvite {
+  return {
+    id: 'i1',
+    email: 'grace@sourceone.global',
+    expiresAt: new Date('2026-10-16T08:00:00.000Z'),
     ...overrides,
   };
 }
@@ -35,6 +44,14 @@ export function fakeAccountsGateway(overrides: Partial<AccountsGateway> = {}): A
       resetUrl: 'https://gateway.example/reset-password?token=abc',
       expiresAt: new Date(0),
     }),
+    createInvite: async (email) => ({
+      invite: invite({ email }),
+      inviteUrl: 'https://gateway.example/register?token=abc',
+    }),
+    listInvites: async () => [],
+    revokeInvite: async (id) => invite({ id }),
+    getInvite: async () => ({ email: 'ada@sourceone.global', expiresAt: new Date('2026-10-23T08:00:00.000Z') }),
+    register: async () => account(),
     ...overrides,
   };
 }
