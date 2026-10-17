@@ -87,6 +87,17 @@ describe('HistorySheet', () => {
     expect(within(corrected!).getByText('S1.CODE.B')).toBeTruthy();
   });
 
+  it('reads each change as old "to" new, with the arrow hidden as every icon is', async () => {
+    renderSheet();
+    await screen.findByText('Ben Invented updated 2 facts');
+    const [, corrected] = entries();
+    const change = within(corrected!).getByText('3.5 g').closest('dd') as HTMLElement;
+
+    expect(change.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(change.querySelector('svg')?.hasAttribute('aria-label')).toBe(false);
+    expect(within(change).getByText('to').className).toContain('sr-only');
+  });
+
   it('counts each filter, and Facts hides a rename alone', async () => {
     renderSheet();
     await screen.findByText('Ben Invented renamed it');

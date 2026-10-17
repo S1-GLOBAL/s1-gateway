@@ -96,7 +96,8 @@ function Change({ name, before, after, corrected = false }: { name: string; befo
       </dt>
       <dd className="flex flex-wrap items-center gap-1.5 text-ink">
         <span className="min-w-0 break-words text-ink-muted line-through">{before}</span>
-        <ArrowRight size={14} strokeWidth={1.75} aria-label="to" className="text-ink-subtle" />
+        <ArrowRight size={14} strokeWidth={1.75} aria-hidden="true" className="text-ink-subtle" />
+        <span className="sr-only">to</span>
         <span className="min-w-0 break-words">{after}</span>
       </dd>
     </div>
