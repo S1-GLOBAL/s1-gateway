@@ -12,7 +12,7 @@ Under [ADR 0018](./0018-staff-sign-in-with-admin-approval.md) anyone can open
 `/sign-up`, create an account with any `@sourceone.global` address, and wait
 as `pending` until an admin approves it. Admins approve people they did not
 choose, from a queue anyone can add to, and sign-up needs its own per-IP rate
-limit because it is the only route that writes without a session. The form
+limit because anyone can create accounts with it without signing in. The form
 also takes one Full name, so a person's first and last names cannot be told
 apart later. reyxdz decided on 2026-10-17 that every account should start from
 an admin's decision.
@@ -57,8 +57,9 @@ which part is the first name and which the last cannot be recovered reliably.
 
 Nobody can join without an admin, so a new starter waits for one, and an admin
 must send each link by hand until outbound mail exists. With sign-up gone, the
-only public routes that write need a reset or invite token that cannot be
-guessed, so neither has a rate limit. Local development and tests need another
+only public routes that create an account or set a password, registration and
+reset, each need a token that cannot be guessed, so neither has a rate limit.
+Local development and tests need another
 way to create the first admin (a command). Existing accounts get their first
 and last names by splitting `full_name` at its first space, which is wrong for
 some names; nobody can correct a name yet. The `pending` status stays for
