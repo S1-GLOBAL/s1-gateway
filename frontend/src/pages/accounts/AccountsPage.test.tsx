@@ -181,7 +181,8 @@ describe('AccountsPage invites', () => {
       `Invite link for grace@sourceone.global: ${INVITE_URL}. Send it to them; it works once and expires in 7 days.`,
     );
     expect(createInvite).toHaveBeenCalledWith('Grace@SourceOne.Global');
-    expect(screen.queryByRole('dialog', { name: 'Invite' })).toBeNull();
+    // The sheet closes in an effect, which may land just after the notice.
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Invite' })).toBeNull());
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy link' }));
     expect(await screen.findByRole('button', { name: 'Copied' })).toBeTruthy();

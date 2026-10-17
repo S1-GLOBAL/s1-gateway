@@ -31,7 +31,6 @@ export const SIGNED_OUT = new AppError('SIGN_IN_REQUIRED', 'Your session ended. 
 export function fakeAccountsGateway(overrides: Partial<AccountsGateway> = {}): AccountsGateway {
   const empty: AccountLists = { pending: [], approved: [], disabled: [] };
   return {
-    signUp: async () => account({ status: 'pending' }),
     signIn: async () => account(),
     signOut: async () => undefined,
     me: async () => account(),

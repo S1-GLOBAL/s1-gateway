@@ -21,14 +21,12 @@ import { ResetPasswordWithToken } from '../application/reset-password-with-token
 import { RevokeInvite } from '../application/revoke-invite.js';
 import { SignIn } from '../application/sign-in.js';
 import { SignOut } from '../application/sign-out.js';
-import { SignUp } from '../application/sign-up.js';
 import { FakePasswordHasher } from '../application/testing/fake-password-hasher.js';
 import { FakeTokenGenerator } from '../application/testing/fake-token-generator.js';
 import { InMemoryAccountInviteRepository } from '../application/testing/in-memory-account-invite-repository.js';
 import { InMemoryAccountRepository } from '../application/testing/in-memory-account-repository.js';
 import { InMemoryPasswordResetTokenRepository } from '../application/testing/in-memory-password-reset-token-repository.js';
 import { InMemorySessionRepository } from '../application/testing/in-memory-session-repository.js';
-import { InMemorySignUpRateLimiter } from '../application/testing/in-memory-sign-up-rate-limiter.js';
 import { Account } from '../domain/account.js';
 import { AccountInvite, INVITE_TTL_MS } from '../domain/account-invite.js';
 import { CreateTool } from '../../tools/application/create-tool.js';
@@ -58,7 +56,6 @@ function setup() {
   const adminEmails = [ADMIN];
 
   const authController = new AuthController(
-    new SignUp(accounts, new InMemorySignUpRateLimiter(), hasher, clock, ids, adminEmails),
     new SignIn(accounts, sessions, hasher, tokens, clock, ids),
     new SignOut(sessions, tokens),
     new GetMe(accounts, sessions, tokens, clock),
@@ -120,6 +117,28 @@ function setup() {
   return { app, accounts, invites, hasher, clock, logger };
 }
 
+type TestApp = ReturnType<typeof setup>;
+
+/** An account added straight to the repository: no route creates one without an invite. */
+async function seedAccount(
+  context: TestApp,
+  email: string,
+  options: { approved?: boolean; firstName?: string; lastName?: string } = {},
+): Promise<void> {
+  const registered = Account.register(
+    {
+      email,
+      firstName: options.firstName ?? 'Seeded',
+      lastName: options.lastName ?? 'Person',
+      passwordHash: await context.hasher.hash(PASSWORD),
+      autoApprove: options.approved ?? true,
+    },
+    `00000000-0000-4000-8000-${String((await context.accounts.list()).length + 900).padStart(12, '0')}`,
+    context.clock.now(),
+  );
+  await context.accounts.add(registered.value);
+}
+
 describe('auth and accounts HTTP', () => {
   it('keeps health public and tools behind a session', async () => {
     const { app } = setup();
@@ -129,15 +148,10 @@ describe('auth and accounts HTTP', () => {
     expect(tools.body.error.code).toBe('SIGN_IN_REQUIRED');
   });
 
-  it('signs up an admin (auto-approved), signs in, and reaches tools', async () => {
-    const { app } = setup();
-    const agent = request.agent(app);
-    const signedUp = await agent
-      .post('/api/v1/auth/sign-up')
-      .send({ email: ADMIN, fullName: 'Admin User', password: PASSWORD });
-    expect(signedUp.status).toBe(201);
-    expect(signedUp.body.data.status).toBe('approved');
-    expect(signedUp.headers['set-cookie']).toBeUndefined();
+  it('signs in an admin, renews the session cookie, and reaches tools', async () => {
+    const context = setup();
+    await seedAccount(context, ADMIN);
+    const agent = request.agent(context.app);
 
     const signedIn = await agent
       .post('/api/v1/auth/sign-in')
@@ -158,17 +172,32 @@ describe('auth and accounts HTTP', () => {
     expect((await agent.get('/api/v1/tools')).status).toBe(200);
   });
 
-  it('keeps a pending staff account from signing in until approved', async () => {
-    const { app } = setup();
-    const agent = request.agent(app);
-    await agent.post('/api/v1/auth/sign-up').send({ email: ADMIN, fullName: 'Admin', password: PASSWORD });
+  it('no longer creates an account at POST /auth/sign-up: 404 when signed in, 401 when not', async () => {
+    const context = setup();
+    await seedAccount(context, ADMIN);
+    const agent = request.agent(context.app);
     await agent.post('/api/v1/auth/sign-in').send({ email: ADMIN, password: PASSWORD });
+    const body = { email: STAFF, fullName: 'Staff Member', password: PASSWORD };
 
-    const pending = await agent
-      .post('/api/v1/auth/sign-up')
-      .send({ email: STAFF, fullName: 'Staff Member', password: PASSWORD });
-    expect(pending.status).toBe(201);
-    expect(pending.body.data.status).toBe('pending');
+    const signedIn = await agent.post('/api/v1/auth/sign-up').send(body);
+    expect(signedIn.status).toBe(404);
+    expect(signedIn.body.error.code).toBe('NOT_FOUND');
+
+    // Signed out it meets the session gate first, as every unknown path does.
+    const signedOut = await request(context.app).post('/api/v1/auth/sign-up').send(body);
+    expect(signedOut.status).toBe(401);
+    expect(signedOut.body.error.code).toBe('SIGN_IN_REQUIRED');
+
+    expect(await context.accounts.findByEmail(STAFF)).toBeNull();
+  });
+
+  it('keeps a pending staff account from signing in until approved', async () => {
+    const context = setup();
+    const { app } = context;
+    await seedAccount(context, ADMIN);
+    await seedAccount(context, STAFF, { approved: false, firstName: 'Staff', lastName: 'Member' });
+    const agent = request.agent(app);
+    await agent.post('/api/v1/auth/sign-in').send({ email: ADMIN, password: PASSWORD });
 
     const blocked = await request(app)
       .post('/api/v1/auth/sign-in')
@@ -179,6 +208,7 @@ describe('auth and accounts HTTP', () => {
 
     const listed = await agent.get('/api/v1/accounts');
     expect(listed.status).toBe(200);
+    expect(listed.body.data.pending[0].fullName).toBe('Staff Member');
     const id = listed.body.data.pending[0].id as string;
     await agent.post(`/api/v1/accounts/${id}/approve`);
 
@@ -194,14 +224,13 @@ describe('auth and accounts HTTP', () => {
   });
 
   it('creates a public reset link and accepts it once', async () => {
-    const { app } = setup();
+    const context = setup();
+    const { app } = context;
+    await seedAccount(context, ADMIN);
+    await seedAccount(context, STAFF);
     const agent = request.agent(app);
-    await agent.post('/api/v1/auth/sign-up').send({ email: ADMIN, fullName: 'Admin', password: PASSWORD });
     await agent.post('/api/v1/auth/sign-in').send({ email: ADMIN, password: PASSWORD });
-    await agent.post('/api/v1/auth/sign-up').send({ email: STAFF, fullName: 'Staff', password: PASSWORD });
-    const listed = await agent.get('/api/v1/accounts');
-    const id = listed.body.data.pending[0].id as string;
-    await agent.post(`/api/v1/accounts/${id}/approve`);
+    const id = (await context.accounts.findByEmail(STAFF))!.id;
 
     const reset = await agent.post(`/api/v1/accounts/${id}/reset-password`);
     expect(reset.status).toBe(200);
@@ -231,24 +260,7 @@ describe('invite and register HTTP', () => {
     confirmPassword: 'a-long-password',
   };
 
-  type TestApp = ReturnType<typeof setup>;
   type Client = ReturnType<typeof request.agent> | ReturnType<typeof request>;
-
-  /** An account added straight to the repository, so these tests need no sign-up route. */
-  async function seedAccount(context: TestApp, email: string): Promise<void> {
-    const registered = Account.register(
-      {
-        email,
-        firstName: 'Seeded',
-        lastName: 'Person',
-        passwordHash: await context.hasher.hash(PASSWORD),
-        autoApprove: true,
-      },
-      `00000000-0000-4000-8000-${String((await context.accounts.list()).length + 900).padStart(12, '0')}`,
-      NOW,
-    );
-    await context.accounts.add(registered.value);
-  }
 
   async function signedIn(context: TestApp, email: string) {
     const agent = request.agent(context.app);

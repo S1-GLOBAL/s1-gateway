@@ -16,14 +16,6 @@ export class InvalidPasswordError extends DomainError {
   }
 }
 
-export class InvalidFullNameError extends DomainError {
-  override readonly code = 'VALIDATION_FAILED';
-
-  constructor(message: string) {
-    super(message, { fields: { fullName: [message] } });
-  }
-}
-
 export class InvalidPersonNameError extends DomainError {
   override readonly code = 'VALIDATION_FAILED';
 
@@ -111,14 +103,6 @@ export class ResetTokenInvalidError extends DomainError {
 
   constructor() {
     super('This link is invalid or has expired. Ask reyxdz for a new one.');
-  }
-}
-
-export class SignUpRateLimitedError extends DomainError {
-  override readonly code = 'SIGN_UP_RATE_LIMITED';
-
-  constructor() {
-    super('Too many accounts were created from here. Try again in an hour.');
   }
 }
 

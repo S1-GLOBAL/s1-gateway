@@ -18,12 +18,6 @@ export interface Account {
   isAdmin?: boolean;
 }
 
-export interface SignUpRequest {
-  email: string;
-  fullName: string;
-  password: string;
-}
-
 export interface SignInRequest {
   email: string;
   password: string;

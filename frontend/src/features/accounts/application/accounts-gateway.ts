@@ -14,7 +14,6 @@ import type {
  * AppError.
  */
 export interface AccountsGateway {
-  signUp(input: { email: string; fullName: string; password: string }): Promise<Account>;
   signIn(input: { email: string; password: string }): Promise<Account>;
   signOut(): Promise<void>;
   me(): Promise<Account>;

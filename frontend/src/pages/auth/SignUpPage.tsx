@@ -1,42 +1,6 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { SignUpForm } from '@/features/accounts';
-import { AUTH_LINK, AuthLayout } from './AuthLayout';
+import { AuthLayout } from './AuthLayout';
 
+/** `/sign-up` stays, so an old link or bookmark says why there is no form (ADR 0023). */
 export function SignUpPage() {
-  const [created, setCreated] = useState(false);
-
-  if (created) {
-    return (
-      <AuthLayout
-        title="Account created"
-        footer={
-          <Link to="/sign-in" className={AUTH_LINK}>
-            Back to sign in
-          </Link>
-        }
-      >
-        <p role="status" className="rounded-control bg-success-soft px-3 py-2 text-sm text-success">
-          Account created. reyxdz needs to approve it before you can sign in.
-        </p>
-      </AuthLayout>
-    );
-  }
-
-  return (
-    <AuthLayout
-      title="Create your account"
-      description="Use your @sourceone.global email. An admin approves it before you can sign in."
-      footer={
-        <>
-          Already have an account?{' '}
-          <Link to="/sign-in" className={AUTH_LINK}>
-            Sign in
-          </Link>
-        </>
-      }
-    >
-      <SignUpForm onSignedUp={() => setCreated(true)} />
-    </AuthLayout>
-  );
+  return <AuthLayout title="The Gateway is invite-only." description="Ask a Gateway admin for an invite link." />;
 }

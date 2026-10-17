@@ -30,15 +30,6 @@ export class HttpAccountsGateway implements AccountsGateway {
     this.http = http;
   }
 
-  async signUp(input: { email: string; fullName: string; password: string }): Promise<Account> {
-    try {
-      const response = await this.http.post<DataEnvelope<AccountContract>>('/auth/sign-up', input);
-      return toAccount(response.data.data);
-    } catch (error) {
-      throw toAppError(error);
-    }
-  }
-
   async signIn(input: { email: string; password: string }): Promise<Account> {
     try {
       const response = await this.http.post<DataEnvelope<AccountContract>>('/auth/sign-in', input);

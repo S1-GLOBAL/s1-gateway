@@ -39,6 +39,12 @@ describe('SignInPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeTruthy();
   });
 
+  it('offers no way to create an account', () => {
+    renderPage('/sign-in', <SignInPage />, '/sign-in', fakeAccountsGateway());
+    expect(screen.queryByText(/New here?/)).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Create an account' })).toBeNull();
+  });
+
   it('goes to the page it was asked for after signing in', async () => {
     const signIn = vi.fn<AccountsGateway['signIn']>().mockResolvedValue(account());
     const router = renderPage('/sign-in?next=%2Faccounts', <SignInPage />, '/sign-in', fakeAccountsGateway({ signIn }));
@@ -75,41 +81,13 @@ describe('SignInPage', () => {
 });
 
 describe('SignUpPage', () => {
-  it('says the account waits for approval', async () => {
-    const signUp = vi.fn<AccountsGateway['signUp']>().mockResolvedValue(account({ status: 'pending' }));
-    renderPage('/sign-up', <SignUpPage />, '/sign-up', fakeAccountsGateway({ signUp }));
-    type('Email', 'ada@sourceone.global');
-    type('Full name', 'Ada Lovelace');
-    type('Password', 'a long enough password');
-    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
-    expect(
-      await screen.findByText('Account created. reyxdz needs to approve it before you can sign in.'),
-    ).toBeTruthy();
-    expect(signUp).toHaveBeenCalledWith({
-      email: 'ada@sourceone.global',
-      fullName: 'Ada Lovelace',
-      password: 'a long enough password',
-    });
-  });
-
-  it('puts a field error beside its input', async () => {
-    const signUp = vi.fn<AccountsGateway['signUp']>().mockRejectedValue(
-      new AppError('VALIDATION_FAILED', 'Use at least 12 characters.', { password: ['Use at least 12 characters.'] }),
-    );
-    renderPage('/sign-up', <SignUpPage />, '/sign-up', fakeAccountsGateway({ signUp }));
-    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
-    await waitFor(() => expect(screen.getByLabelText('Password').getAttribute('aria-invalid')).toBe('true'));
-    expect(screen.getByText('Use at least 12 characters.')).toBeTruthy();
-    // Said once, beside the input: not repeated in an alert.
-    expect(screen.queryByRole('alert')).toBeNull();
-  });
-
-  it('shows an error that belongs to no field as an alert', async () => {
-    const message = 'Too many accounts were created from here. Try again in an hour.';
-    const signUp = vi.fn<AccountsGateway['signUp']>().mockRejectedValue(new AppError('SIGN_UP_RATE_LIMITED', message));
-    renderPage('/sign-up', <SignUpPage />, '/sign-up', fakeAccountsGateway({ signUp }));
-    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
-    expect((await screen.findByRole('alert')).textContent).toBe(message);
+  it('says only that the Gateway is invite-only: no form, no link onward', () => {
+    renderPage('/sign-up', <SignUpPage />, '/sign-up', fakeAccountsGateway());
+    expect(screen.getByRole('heading', { level: 1, name: 'The Gateway is invite-only.' })).toBeTruthy();
+    expect(screen.getByText('Ask a Gateway admin for an invite link.')).toBeTruthy();
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.queryByRole('link')).toBeNull();
   });
 });
 
@@ -189,6 +167,18 @@ describe('RegisterPage', () => {
     await waitFor(() => expect(screen.getByLabelText('Last name').getAttribute('aria-invalid')).toBe('true'));
     expect(screen.getByText('Use at most 40 characters.')).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('shows an error that belongs to no field as an alert', async () => {
+    const message = 'This invite link no longer works.';
+    const register = vi.fn<AccountsGateway['register']>().mockRejectedValue(new AppError('INVITE_INVALID', message));
+    renderRegister('/register?token=tok', fakeAccountsGateway({ register }));
+    await screen.findByLabelText('First name');
+
+    fillIn();
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe(message);
   });
 
   it('says the link no longer works when the API answers 404 for its token', async () => {

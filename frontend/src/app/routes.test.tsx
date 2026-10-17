@@ -185,7 +185,7 @@ describe('the sign-in gate', () => {
 
   it('keeps the public pages open without a session', async () => {
     renderAt('/sign-up', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Create your account' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'The Gateway is invite-only.' })).toBeTruthy();
     expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();
   });
 

@@ -25,4 +25,3 @@ export { ChangePasswordForm } from './presentation/ChangePasswordForm';
 export { RegisterForm } from './presentation/RegisterForm';
 export { ResetPasswordForm } from './presentation/ResetPasswordForm';
 export { SignInForm } from './presentation/SignInForm';
-export { SignUpForm } from './presentation/SignUpForm';

@@ -33,7 +33,6 @@ Request bodies are JSON, at most **100 kB**.
 | Method | Path | Access | Success | Errors |
 |---|---|---|---|---|
 | GET | `/health` | public | 200 `{ data: { status: "ok" } }` | — |
-| POST | `/auth/sign-up` | public | 201 `{ data: Account }` (no cookie) | 400 `EMAIL_NOT_ALLOWED`, 400 `VALIDATION_FAILED`, 409 `ACCOUNT_EXISTS`, 429 `SIGN_UP_RATE_LIMITED` |
 | POST | `/auth/sign-in` | public | 200 `{ data: Account }` + session cookie | 401 `SIGN_IN_FAILED`, 403 `ACCOUNT_PENDING`, 403 `ACCOUNT_DISABLED`, 423 `ACCOUNT_LOCKED` |
 | POST | `/auth/sign-out` | session (missing session → 204) | 204, clear cookie | — |
 | GET | `/auth/me` | session | 200 `{ data: Account }` (`isAdmin` set) | 401 `SIGN_IN_REQUIRED` |
@@ -72,7 +71,7 @@ returns 403 `MUST_CHANGE_PASSWORD`.
 | `id` | string | UUID |
 | `email` | string | Lower-cased `@sourceone.global` |
 | `firstName` | string | 1–40 characters |
-| `lastName` | string | 0–40 characters. Registering requires one; it is empty when a one-word full name was split (by migration, or at sign-up) |
+| `lastName` | string | 0–40 characters. Registering requires one; it is empty only for an account from before names were split whose full name was one word |
 | `fullName` | string | 1–81 characters: `"First Last"`, or the first name alone when the last is empty |
 | `status` | string | `pending`, `approved` or `disabled` |
 | `mustChangePassword` | boolean | |
@@ -83,6 +82,9 @@ returns 403 `MUST_CHANGE_PASSWORD`.
 
 An admin invites someone by email; the link works once, for 7 days
 ([ADR 0023](../decisions/0023-accounts-are-created-by-invite-only.md)).
+The API creates an account only from an invite: there is no open sign-up, and
+`POST /auth/sign-up` is gone (404 with a session; 401 without one, as for
+any path the API does not have).
 
 `AccountInvite` is `{ id, email, expiresAt }`: a UUID, the lower-cased
 `@sourceone.global` address, and an ISO 8601 time. Neither the token nor its
@@ -241,11 +243,10 @@ path answer 404 ([ADR 0022](../decisions/0022-saved-spec-ids-can-be-edited-and-e
 | `PAYLOAD_TOO_LARGE` | 413 | The body is over 100 kB |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | The body's character set or content encoding is one the server does not accept |
 | `BAD_REQUEST` | 4xx | Any other body the server could not read, with the status the body parser chose |
-| `EMAIL_NOT_ALLOWED` | 400 | A sign-up or invite email is not an `@sourceone.global` mailbox |
+| `EMAIL_NOT_ALLOWED` | 400 | An invite's email is not an `@sourceone.global` mailbox |
 | `ACCOUNT_EXISTS` | 409 | That email is already registered |
-| `SIGN_UP_RATE_LIMITED` | 429 | More than five successful sign-ups from this IP in an hour |
 | `SIGN_IN_FAILED` | 401 | Email and password do not match |
-| `ACCOUNT_PENDING` | 403 | Account is waiting for admin approval |
+| `ACCOUNT_PENDING` | 403 | Account is waiting for admin approval. Only an account from before invites can be pending |
 | `ACCOUNT_DISABLED` | 403 | Account has been disabled |
 | `ACCOUNT_LOCKED` | 423 | Too many wrong passwords; try again in 15 minutes |
 | `SIGN_IN_REQUIRED` | 401 | No valid session cookie |

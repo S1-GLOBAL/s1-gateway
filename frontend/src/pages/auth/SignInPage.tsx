@@ -1,6 +1,6 @@
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { SignInForm, safeNextPath } from '@/features/accounts';
-import { AUTH_LINK, AuthLayout } from './AuthLayout';
+import { AuthLayout } from './AuthLayout';
 
 /** What another page hands over when it sends someone here. */
 interface SignInState {
@@ -20,18 +20,7 @@ export function SignInPage() {
   const registered = state?.registered === true;
 
   return (
-    <AuthLayout
-      title="Sign in"
-      description="Use your Source One email and password."
-      footer={
-        <>
-          New here?{' '}
-          <Link to="/sign-up" className={AUTH_LINK}>
-            Create an account
-          </Link>
-        </>
-      }
-    >
+    <AuthLayout title="Sign in" description="Use your Source One email and password.">
       {sessionEnded && (
         <p role="status" className="rounded-control bg-info-soft px-3 py-2 text-sm text-info">
           Your session ended. Sign in again.

@@ -17,7 +17,6 @@ import type {
 } from '../application/reset-password-with-token.js';
 import type { SignInError, SignInInput, SignInOutput } from '../application/sign-in.js';
 import type { SignOutInput } from '../application/sign-out.js';
-import type { SignUpError, SignUpInput } from '../application/sign-up.js';
 import { InviteInvalidError, SignInRequiredError } from '../domain/account.errors.js';
 import { clearSessionCookie, setSessionCookie } from './cookies.js';
 import {
@@ -25,16 +24,8 @@ import {
   registerRequestSchema,
   resetPasswordRequestSchema,
   signInRequestSchema,
-  signUpRequestSchema,
 } from './auth.schemas.js';
 import { requireAuth, SESSION_COOKIE } from './session-gate.js';
-
-const SIGN_UP_STATUS: Record<SignUpError['code'], number> = {
-  EMAIL_NOT_ALLOWED: 400,
-  VALIDATION_FAILED: 400,
-  ACCOUNT_EXISTS: 409,
-  SIGN_UP_RATE_LIMITED: 429,
-};
 
 const SIGN_IN_STATUS: Record<SignInError['code'], number> = {
   SIGN_IN_FAILED: 401,
@@ -81,7 +72,6 @@ function toContract(account: AccountDto, isAdmin: boolean): AccountContract {
 
 export class AuthController {
   constructor(
-    private readonly signUp: UseCase<SignUpInput, Result<AccountDto, SignUpError>>,
     private readonly signIn: UseCase<SignInInput, Result<SignInOutput, SignInError>>,
     private readonly signOut: UseCase<SignOutInput, void>,
     private readonly getMe: UseCase<GetMeInput, Result<AccountDto, SignInRequiredError>>,
@@ -97,19 +87,6 @@ export class AuthController {
     private readonly cookieSecure: boolean,
     private readonly invites: PublicInviteUseCases,
   ) {}
-
-  signUpHandler = async (req: Request, res: Response): Promise<void> => {
-    const body = parseBody(signUpRequestSchema, req.body);
-    const result = await this.signUp.execute({
-      ...body,
-      clientIp: req.ip ?? 'unknown',
-    });
-    if (!result.ok) {
-      const { error } = result;
-      throw new HttpError(SIGN_UP_STATUS[error.code], error.code, error.message, error.details);
-    }
-    sendData(res, 201, toContract(result.value, this.adminEmails.includes(result.value.email)));
-  };
 
   signInHandler = async (req: Request, res: Response): Promise<void> => {
     const body = parseBody(signInRequestSchema, req.body);
@@ -189,7 +166,7 @@ export class AuthController {
     next(new HttpError(404, invalid.code, invalid.message));
   };
 
-  /** Creates the account but signs nobody in: no session cookie, as with sign-up. */
+  /** Creates the account but signs nobody in: no session cookie. The person signs in next. */
   registerHandler = async (req: Request, res: Response): Promise<void> => {
     const body = parseBody(registerRequestSchema, req.body);
     const result = await this.invites.register.execute(body);
