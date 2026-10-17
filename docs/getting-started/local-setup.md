@@ -30,6 +30,16 @@ npm run dev:web      # http://localhost:5173
 `npm run setup` never overwrites an existing `.env`. If you already have one,
 compare it with `.env.example` yourself.
 
+There is no sign-up page: accounts are created by invite. Create yourself an
+admin first, with an address listed in `ACCOUNT_ADMIN_EMAILS` in
+`backend/.env` and a password of at least 12 characters:
+
+```bash
+ADMIN_PASSWORD='…' npm run db:create-admin -- --email admin@sourceone.global --first-name Ada --last-name Admin
+```
+
+Sign in with it, then invite anyone else from the Accounts page.
+
 ## Check it works
 
 ```bash

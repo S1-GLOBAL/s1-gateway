@@ -18,6 +18,12 @@ A missing or invalid value stops the process with the variable's name.
 | `CORS_ORIGIN` | `http://localhost:5173` | The SPA's origin, allowed by CORS |
 | `ACCOUNT_ADMIN_EMAILS` | — (required) | Comma-separated `@sourceone.global` addresses that may approve, disable and reset accounts. Trimmed and lower-cased at boot. Every entry must match `/^[^@]+@sourceone\.global$/` or the API refuses to start |
 
+### `npm run db:create-admin` only
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `ADMIN_PASSWORD` | — (required by the command) | The new admin's password, at least 12 characters. Set it for that one run (`ADMIN_PASSWORD=… npm run db:create-admin -- …`); never leave it in `.env`. The API never reads it |
+
 ### Tests only
 
 | Variable | Default | Meaning |

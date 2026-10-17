@@ -12,6 +12,7 @@ Run from the repository root unless noted.
 | `npm run db:reset` | Stops it and deletes the data | yes |
 | `npm run db:generate` | Writes a migration from the table definitions. Add `-- --name <what_changed>` | no |
 | `npm run db:migrate` | Applies pending migrations | yes |
+| `ADMIN_PASSWORD=… npm run db:create-admin -- --email <address> --first-name <name> --last-name <name>` | Creates an approved admin, for local development: with sign-up gone it is the way into an empty database. The email must be in `ACCOUNT_ADMIN_EMAILS`; the password is read from `ADMIN_PASSWORD` for that one run. Refuses to run with `NODE_ENV=production` | yes |
 | `npm run dev:api` | API with reload on change, http://localhost:4000 | yes, for anything that reads data |
 | `npm run dev:web` | SPA with hot reload, http://localhost:5173. No service worker | no |
 | `npm run build` | Builds both services: `backend/dist/` and `frontend/dist/` (with `sw.js`) | no |

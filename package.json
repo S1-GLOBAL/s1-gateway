@@ -12,6 +12,7 @@
     "db:reset": "docker compose down -v && docker compose up -d",
     "db:generate": "npm --prefix backend run db:generate",
     "db:migrate": "npm --prefix backend run db:migrate",
+    "db:create-admin": "npm --prefix backend run db:create-admin --",
     "dev:api": "npm --prefix backend run dev",
     "dev:web": "npm --prefix frontend run dev",
     "build": "npm --prefix backend run build && npm --prefix frontend run build",
