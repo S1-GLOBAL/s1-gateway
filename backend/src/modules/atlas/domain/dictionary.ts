@@ -12,7 +12,7 @@ export interface SlotRuleEntry {
   readonly rule: SlotRule;
 }
 
-/** One release of the S1 dictionary: every code's meaning, and which slots apply to each product type. */
+/** One release of the Atlas dictionary: every code's meaning, and which slots apply to each product type. */
 export class Dictionary {
   private readonly meanings = new Map<string, string>();
   private readonly rules = new Map<string, SlotRule>();

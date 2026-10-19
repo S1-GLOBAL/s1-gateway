@@ -2,11 +2,13 @@ import { err, ok, type Result } from '../../../shared/domain/result.js';
 import { expectedFill, isDoesNotApply, isNotKnown } from './applicability.js';
 import type { Dictionary } from './dictionary.js';
 import { multiply, readDecimal, roundHalfUp } from './measurement.js';
+import { fromS1, S1_ADDED_SLOTS, S1_LENGTH, S1_PARTS } from './s1-code.js';
 import { InvalidSpecIdError, type SpecIdIssues } from './spec-id.errors.js';
 import { specIdMessages as messages } from './spec-id.messages.js';
 import {
   CAPACITY_MAX,
   CAPACITY_UNIT_LABELS,
+  COUNTS,
   doesNotApplyMarker,
   FORMAT_VERSION,
   MEASURES,
@@ -18,6 +20,7 @@ import {
   SLOTS,
   SPEC_ID_LENGTH,
   UNIT_LABELS,
+  type CountSlotKey,
   type DictionarySlotKey,
   type MeasureSlotKey,
   type RuledSlotKey,
@@ -58,6 +61,16 @@ export interface SpecIdFactsInput {
   readonly unitWeight?: MeasurementInput | null | undefined;
   readonly basisWeight?: MeasurementInput | null | undefined;
   readonly thickness?: MeasurementInput | null | undefined;
+  readonly wall?: string | null | undefined;
+  readonly print?: string | null | undefined;
+  /** A whole number as text, 1–12. */
+  readonly compartments?: string | null | undefined;
+  /** A whole number as text, 1–4. */
+  readonly plies?: string | null | undefined;
+  readonly lidOpening?: string | null | undefined;
+  readonly handle?: string | null | undefined;
+  readonly wrap?: string | null | undefined;
+  readonly window?: string | null | undefined;
 }
 
 export type SlotState = 'value' | 'not-known' | 'does-not-apply';
@@ -79,7 +92,21 @@ type SlotValues = Readonly<Record<SlotKey, string>>;
 const DIGITS = /^\d+$/;
 
 /** The dictionary slots that hold a code as they are, without a number after it. */
-const CODE_SLOTS = ['material', 'coating', 'colourClarity', 'shape', 'profile'] as const;
+const CODE_SLOTS = [
+  'material',
+  'coating',
+  'colourClarity',
+  'shape',
+  'profile',
+  'wall',
+  'print',
+  'lidOpening',
+  'handle',
+  'wrap',
+  'window',
+] as const;
+
+const COUNT_SLOTS: readonly CountSlotKey[] = ['compartments', 'plies'];
 
 const MEASURE_SLOTS: readonly MeasureSlotKey[] = [
   'topDiameter',
@@ -97,8 +124,8 @@ const MEASURE_SLOTS: readonly MeasureSlotKey[] = [
 type Reading = { readonly raw: string; readonly problem?: undefined } | { readonly problem: string };
 
 /**
- * An S1 Spec ID (ADR 0019): 18 dot-separated slots, 74 characters, saying
- * what a product physically is. Every instance is valid against the
+ * An S2 Spec ID (ADR 0019, ADR 0024): 26 dot-separated slots, 97 characters,
+ * saying what a product physically is. Every instance is valid against the
  * dictionary it was read or built with.
  */
 export class SpecId {
@@ -106,11 +133,15 @@ export class SpecId {
 
   /**
    * Reads a code, reporting every problem at once with at most one message
-   * per slot, so the page can show each beside the slot it concerns.
+   * per slot, so the page can show each beside the slot it concerns. An S1
+   * code is read as the S2 code it converts to (ADR 0024).
    */
   static parse(input: string, dictionary: Dictionary): Result<SpecId, InvalidSpecIdError> {
-    const code = input.trim();
-    if (code.length === 0) return err(new InvalidSpecIdError({ code: [messages.empty()] }));
+    const trimmed = input.trim();
+    if (trimmed.length === 0) return err(new InvalidSpecIdError({ code: [messages.empty()] }));
+    const s1 = readS1(trimmed);
+    if (s1 && !s1.ok) return err(s1.error);
+    const code = s1 ? s1.value : trimmed;
 
     const issues: SpecIdIssues = {};
     const codeIssues: string[] = [];
@@ -179,6 +210,10 @@ export class SpecId {
       const fact = facts[key];
       if (fact != null) record(key, readMeasurement(key, fact));
     }
+    for (const key of COUNT_SLOTS) {
+      const fact = facts[key];
+      if (fact != null) record(key, readCount(key, fact));
+    }
 
     const values: Record<SlotKey, string> = Object.fromEntries(
       SLOTS.map((slot) => [slot.key, given.get(slot.key) ?? notKnownMarker(slot.key)]),
@@ -226,7 +261,7 @@ export class SpecId {
     return this.values[key];
   }
 
-  /** The 18 slots in order, each read in plain words. */
+  /** The 26 slots in order, each read in plain words. */
   describe(dictionary: Dictionary): DescribedSlot[] {
     return SLOTS.map((slot) => {
       const raw = this.values[slot.key];
@@ -245,7 +280,7 @@ export class SpecId {
  */
 export function checkSlotValue(key: SlotKey, raw: string, dictionary: Dictionary): string | undefined {
   const { name, width, kind } = slotDefinition(key);
-  if (kind === 'version') return raw === FORMAT_VERSION ? undefined : messages.notS1(raw);
+  if (kind === 'version') return raw === FORMAT_VERSION ? undefined : messages.notS2(raw);
   if (raw.length !== width) return messages.wrongWidth(name, raw, width);
   if (raw.includes('X') && !isDoesNotApply(raw)) return messages.mixedMarker(name, raw);
 
@@ -269,6 +304,13 @@ export function checkSlotValue(key: SlotKey, raw: string, dictionary: Dictionary
     }
     case 'measure':
       return isNotKnown(raw) || isDoesNotApply(raw) || DIGITS.test(raw) ? undefined : messages.notANumber(name, raw);
+    case 'count': {
+      if (isNotKnown(raw) || isDoesNotApply(raw)) return undefined;
+      if (!DIGITS.test(raw)) return messages.notANumber(name, raw);
+      const { max } = COUNTS[key as CountSlotKey];
+      const count = Number.parseInt(raw, 10);
+      return count > max ? messages.outOfRange(name, String(count), `1–${max}`) : undefined;
+    }
     case 'variant':
       return raw === NO_VARIANT ? undefined : messages.notInDictionary(name, raw);
   }
@@ -350,6 +392,35 @@ function readMeasurement(key: MeasureSlotKey, fact: MeasurementInput): Reading {
   return { raw: steps.toString().padStart(width, '0') };
 }
 
+/** A whole number of things, 1 to the slot's most, padded to its width. */
+function readCount(key: CountSlotKey, value: string): Reading {
+  const { name, width } = slotDefinition(key);
+  const { max } = COUNTS[key];
+  const text = value.trim();
+  if (!DIGITS.test(text)) return { problem: messages.notANumber(name, value) };
+  const count = Number.parseInt(text, 10);
+  if (count < 1 || count > max) return { problem: messages.outOfRange(name, String(count), `1–${max}`) };
+  return { raw: count.toString().padStart(width, '0') };
+}
+
+/**
+ * An S1 code, converted to S2; null when the text is not meant as one (it
+ * does not start `S1.`). An S1 code that cannot be converted says why.
+ */
+function readS1(code: string): Result<string, InvalidSpecIdError> | null {
+  if (!code.startsWith('S1.')) return null;
+  const parts = code.split('.');
+  if (code.length !== S1_LENGTH || parts.length !== S1_PARTS) {
+    return err(new InvalidSpecIdError({ code: [messages.malformedS1(code.length, parts.length)] }));
+  }
+  const productType = parts[1] ?? '';
+  if (S1_ADDED_SLOTS[productType] === undefined) {
+    return err(new InvalidSpecIdError({ productType: [messages.notInDictionary('Product type', productType)] }));
+  }
+  const converted = fromS1(code);
+  return converted === null ? null : ok(converted);
+}
+
 function capacityLabel(letter: string): string {
   return CAPACITY_UNIT_LABELS[letter] ?? letter;
 }
@@ -368,6 +439,11 @@ function meaningOf(slot: SlotDefinition, raw: string, dictionary: Dictionary): s
       return dictionary.meaningOf(slot.key as DictionarySlotKey, raw) ?? raw;
     case 'capacity':
       return `${Number.parseInt(raw.slice(1), 10)} ${capacityLabel(raw.slice(0, 1))}`;
+    case 'count': {
+      const count = Number.parseInt(raw, 10);
+      const { one, many } = COUNTS[slot.key as CountSlotKey];
+      return `${count} ${count === 1 ? one : many}`;
+    }
     case 'measure': {
       const steps = Number.parseInt(raw, 10);
       switch (slot.key) {

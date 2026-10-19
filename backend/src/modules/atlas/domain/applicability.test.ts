@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { expectedFill, type ExpectedFill } from './applicability.js';
 import { RULED_SLOTS } from './slots.js';
-import { s1Dictionary } from './testing/s1-dictionary.js';
+import { s2Dictionary } from './testing/s2-dictionary.js';
 
-const dictionary = s1Dictionary();
+const dictionary = s2Dictionary();
 
 /** `A` any, `X` doesn't apply, `0` not known: one letter per ruled slot, in slot order. */
 function fills(productType: string, shape: string, material: string): string {
@@ -35,19 +35,20 @@ describe('expectedFill', () => {
 
   describe('for each product type', () => {
     //                          coating colour shape profile capacity top bottom height length width gusset unit basis thick
+    //                          wall print compartments plies lid-opening handle wrap window
     it.each([
-      ['BLD', 'RD', 'APS', 'A A A A X A X A X X X A X A'],
-      ['BLD', 'SQ', 'BKR', 'A A A A X X X A A A X A A A'],
-      ['BLD', '00', '000', 'A A A A X 0 X A 0 0 X A 0 A'],
-      ['CLD', 'RD', 'APS', 'A A A A X A X A X X X A X A'],
-      ['CLD', 'OV', 'B00', 'A A A A X X X A A A X A A A'],
-      ['CLD', '00', '000', 'A A A A X 0 X A 0 0 X A 0 A'],
-      ['BWL', 'RD', 'APT', 'A A A X A A A A X X X A X A'],
-      ['BWL', 'RC', 'BKR', 'A A A X A X X A A A X A A A'],
-      ['BWL', '00', '000', 'A A A X A 0 0 A 0 0 X A 0 A'],
-      ['SUP', 'XX', 'APS', 'A A X X A X X A X A A A A A'],
-      ['SUP', 'XX', 'BKR', 'A A X X A X X A X A A A A A'],
-      ['SUP', 'XX', '000', 'A A X X A X X A X A A A A A'],
+      ['BLD', 'RD', 'APS', 'A A A A X A X A X X X A X A X A X X X X X X'],
+      ['BLD', 'SQ', 'BKR', 'A A A A X X X A A A X A A A X A X X X X X X'],
+      ['BLD', '00', '000', 'A A A A X 0 X A 0 0 X A 0 A X A X X X X X X'],
+      ['CLD', 'RD', 'APS', 'A A A A X A X A X X X A X A X A X X A X X X'],
+      ['CLD', 'OV', 'B00', 'A A A A X X X A A A X A A A X A X X A X X X'],
+      ['CLD', '00', '000', 'A A A A X 0 X A 0 0 X A 0 A X A X X A X X X'],
+      ['BWL', 'RD', 'APT', 'A A A X A A A A X X X A X A A A A X X X X X'],
+      ['BWL', 'RC', 'BKR', 'A A A X A X X A A A X A A A A A A X X X X X'],
+      ['BWL', '00', '000', 'A A A X A 0 0 A 0 0 X A 0 A A A A X X X X X'],
+      ['SUP', 'XX', 'APS', 'A A X X A X X A X A A A A A X A X X X X X A'],
+      ['SUP', 'XX', 'BKR', 'A A X X A X X A X A A A A A X A X X X X X A'],
+      ['SUP', 'XX', '000', 'A A X X A X X A X A A A A A X A X X X X X A'],
     ])('%s with shape %s and material %s', (productType, shape, material, expected) => {
       expect(fills(productType, shape, material)).toBe(expected);
     });

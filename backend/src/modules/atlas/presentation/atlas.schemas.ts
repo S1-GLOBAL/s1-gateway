@@ -38,6 +38,15 @@ export const specIdFactsSchema = z.object({
   unitWeight: optionalMeasurement,
   basisWeight: optionalMeasurement,
   thickness: optionalMeasurement,
+  wall: optionalCode,
+  print: optionalCode,
+  // Counts are text the domain reads, so a bad one is refused beside its slot.
+  compartments: optionalCode,
+  plies: optionalCode,
+  lidOpening: optionalCode,
+  handle: optionalCode,
+  wrap: optionalCode,
+  window: optionalCode,
 }) satisfies z.ZodType<SpecIdFacts>;
 
 export const decodeSpecIdRequestSchema = z.object({

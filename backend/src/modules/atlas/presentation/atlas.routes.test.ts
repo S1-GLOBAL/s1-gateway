@@ -17,7 +17,7 @@ import { InMemorySpecIdRepository } from '../application/testing/in-memory-spec-
 import { AtlasController } from './atlas.controller.js';
 import { createAtlasRouter } from './atlas.routes.js';
 
-const ILLUSTRATIVE = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX';
+const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
 const FACTS = {
   productType: 'BLD',
   material: 'APS',
@@ -75,10 +75,10 @@ describe('GET /api/v1/atlas/dictionary', () => {
   it('answers the current release with its values and rules', async () => {
     const response = await request(app).get('/api/v1/atlas/dictionary');
     expect(response.status).toBe(200);
-    expect(response.body.data.release).toBe('S1 0.1.0');
-    expect(response.body.data.approvedOn).toBe('2026-10-16');
-    expect(response.body.data.slots).toHaveLength(7);
-    expect(response.body.data.rules).toHaveLength(56);
+    expect(response.body.data.release).toBe('S2 0.1.0');
+    expect(response.body.data.approvedOn).toBe('2026-10-19');
+    expect(response.body.data.slots).toHaveLength(13);
+    expect(response.body.data.rules).toHaveLength(682);
   });
 });
 
@@ -87,8 +87,8 @@ describe('POST /api/v1/atlas/spec-ids/decode', () => {
     const response = await decode(ILLUSTRATIVE);
     expect(response.status).toBe(200);
     expect(response.body.data.code).toBe(ILLUSTRATIVE);
-    expect(response.body.data.dictionaryRelease).toBe('S1 0.1.0');
-    expect(response.body.data.slots).toHaveLength(18);
+    expect(response.body.data.dictionaryRelease).toBe('S2 0.1.0');
+    expect(response.body.data.slots).toHaveLength(26);
     expect(response.body.data.slots[1]).toEqual({
       number: 2,
       key: 'productType',
@@ -108,21 +108,22 @@ describe('POST /api/v1/atlas/spec-ids/decode', () => {
 
   it.each<[string, string, Record<string, string[]>]>([
     [
-      'S1.BLD',
-      'S1.BLD',
+      'S2.BLD',
+      'S2.BLD',
       {
-        code: ['A Spec ID is 74 characters. This one has 6.', 'A Spec ID has 18 parts separated by dots. This one has 2.'],
+        code: ['A Spec ID is 97 characters. This one has 6.', 'A Spec ID has 26 parts separated by dots. This one has 2.'],
       },
     ],
+    ['S1.BLD', 'S1.BLD', { code: ['An S1 Spec ID is 74 characters in 18 parts. This one has 6 characters in 2 parts.'] }],
     [
       'the last dot replaced by a dash',
       ILLUSTRATIVE.replace(/\.(?=XX$)/, '-'),
-      { code: ['A Spec ID has 18 parts separated by dots. This one has 17.'] },
+      { code: ['A Spec ID has 26 parts separated by dots. This one has 25.'] },
     ],
     [
-      'S2',
-      ILLUSTRATIVE.replace('S1.', 'S2.'),
-      { formatVersion: ['Only S1 codes can be read here. This code starts with S2.'] },
+      'S3',
+      ILLUSTRATIVE.replace('S2.', 'S3.'),
+      { formatVersion: ['A Spec ID starts with S2, or S1 for codes given out before. This code starts with S3.'] },
     ],
     ['QQQ', ILLUSTRATIVE.replace('.APS.', '.QQQ.'), { material: ['Material: QQQ is not in the dictionary.'] }],
     [
@@ -159,7 +160,7 @@ describe('POST /api/v1/atlas/spec-ids/decode', () => {
       '090',
       ILLUSTRATIVE.replace('.0090.', '.090.'),
       {
-        code: ['A Spec ID is 74 characters. This one has 73.'],
+        code: ['A Spec ID is 97 characters. This one has 96.'],
         topDiameter: ['Top diameter: 090 must be 4 characters.'],
       },
     ],
@@ -178,7 +179,7 @@ describe('POST /api/v1/atlas/spec-ids/encode', () => {
     const response = await encode(FACTS);
     expect(response.status).toBe(200);
     expect(response.body.data.code).toBe(ILLUSTRATIVE);
-    expect(response.body.data.slots).toHaveLength(18);
+    expect(response.body.data.slots).toHaveLength(26);
   });
 
   it('answers 400 VALIDATION_FAILED for a body without facts', async () => {
@@ -248,7 +249,7 @@ describe('POST /api/v1/atlas/spec-ids', () => {
     expect(response.body.data.name).toBe('Illustrative lid');
     expect(response.body.data.savedBy).toEqual(STAFF);
     expect(response.body.data.savedAt).toBe('2026-10-16T08:00:00.000Z');
-    expect(response.body.data.slots).toHaveLength(18);
+    expect(response.body.data.slots).toHaveLength(26);
   });
 
   it('answers 409 SPEC_ID_EXISTS with the Spec ID already saved, for a second save', async () => {
@@ -516,5 +517,51 @@ describe('GET /api/v1/atlas/spec-ids/:code, as a lookup', () => {
     expect(response.body.data.name).toBe('Illustrative lid');
     expect(response.body.data.replacedCode).toBeNull();
     expect(response.body.data.formerHolders).toEqual([]);
+  });
+});
+
+describe('S2 codes and S1 codes', () => {
+  /** The illustrative bowl lid as S1 wrote it, before ADR 0024. */
+  const ILLUSTRATIVE_S1 = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX';
+
+  it.each([
+    ['wall and print', { productType: 'CUP', wall: 'DW', print: '02' }, { wall: 'DW', print: '02' }],
+    ['compartments', { productType: 'CTN', compartments: '3' }, { compartments: '03' }],
+    ['plies', { productType: 'NPK', plies: '2' }, { plies: '2' }],
+    ['a lid opening', { productType: 'CLD', lidOpening: 'SP' }, { lidOpening: 'SP' }],
+    ['a handle and a window', { productType: 'BAG', handle: 'TW', window: 'WN' }, { handle: 'TW', window: 'WN' }],
+    ['an individual wrap', { productType: 'STW', wrap: 'PW' }, { wrap: 'PW' }],
+  ])('encodes %s into their slots', async (_case, facts, raws) => {
+    const response = await encode(facts);
+    expect(response.status).toBe(200);
+    expect(response.body.data.code).toHaveLength(97);
+    const slots = response.body.data.slots as { key: string; raw: string }[];
+    for (const [key, raw] of Object.entries(raws)) expect(slots.find((slot) => slot.key === key)?.raw).toBe(raw);
+  });
+
+  it('answers 400 INVALID_SPEC_ID for 13 compartments, beside the slot', async () => {
+    const response = await encode({ productType: 'CTN', compartments: '13' });
+    expect(response.status).toBe(400);
+    expect(response.body.error.details.fields).toEqual({ compartments: ['Compartments: 13 is outside 1–12.'] });
+  });
+
+  it('decodes an S1 code as the S2 code it converts to', async () => {
+    const response = await decode(ILLUSTRATIVE_S1);
+    expect(response.status).toBe(200);
+    expect(response.body.data.code).toBe(ILLUSTRATIVE);
+    expect(response.body.data.slots).toHaveLength(26);
+  });
+
+  it('finds a saved Spec ID by its S1 code, typed in lower case with spaces around it', async () => {
+    const own = setup();
+    await request(own).post('/api/v1/atlas/spec-ids').send({ name: 'Illustrative lid', facts: FACTS });
+
+    const response = await request(own).get(
+      `/api/v1/atlas/spec-ids/${encodeURIComponent(` ${ILLUSTRATIVE_S1.toLowerCase()} `)}`,
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.code).toBe(ILLUSTRATIVE);
+    expect(response.body.data.replacedCode).toBeNull();
   });
 });

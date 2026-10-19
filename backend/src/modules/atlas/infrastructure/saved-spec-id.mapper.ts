@@ -1,6 +1,7 @@
+import { fromS1, S1_ADDED_SLOTS } from '../domain/s1-code.js';
 import { SavedSpecId } from '../domain/saved-spec-id.js';
 import { SpecIdChange, type SpecIdChangeKind } from '../domain/spec-id-change.js';
-import { FORMAT_VERSION, SLOTS } from '../domain/slots.js';
+import { FORMAT_VERSION, notKnownMarker, SLOTS, type SlotKey } from '../domain/slots.js';
 import { SpecId } from '../domain/spec-id.js';
 import type { atlasSpecIdChanges } from './atlas-spec-id-changes.table.js';
 import type { atlasSpecIds } from './atlas-spec-ids.table.js';
@@ -10,11 +11,30 @@ type NewSpecIdRow = typeof atlasSpecIds.$inferInsert;
 type ChangeRow = typeof atlasSpecIdChanges.$inferSelect;
 type NewChangeRow = typeof atlasSpecIdChanges.$inferInsert;
 
-/** Every slot's raw text, as the row holds it. The format version is not stored: it is always S1. */
+/** The eight slots S2 added, in code order. */
+const ADDED_SLOTS = ['wall', 'print', 'compartments', 'plies', 'lidOpening', 'handle', 'wrap', 'window'] as const;
+
+/**
+ * Every slot's raw text, as the row holds it. The format version is not
+ * stored: it is always the current one. A row an older API saved during a
+ * deploy has no added slots: they are read as its S1 code converts.
+ */
 function slotValues(row: SpecIdRow) {
-  return Object.fromEntries(
-    SLOTS.map((slot) => [slot.key, slot.key === 'formatVersion' ? FORMAT_VERSION : row[slot.key]]),
-  ) as Parameters<typeof SpecId.restore>[0];
+  const added = (S1_ADDED_SLOTS[row.productType] ?? '').split('.');
+  const valueOf = (key: SlotKey): string => {
+    if (key === 'formatVersion') return FORMAT_VERSION;
+    const index = (ADDED_SLOTS as readonly string[]).indexOf(key);
+    if (index === -1) return row[key as Exclude<SlotKey, 'formatVersion' | (typeof ADDED_SLOTS)[number]>];
+    return row[ADDED_SLOTS[index] as (typeof ADDED_SLOTS)[number]] ?? added[index] ?? notKnownMarker(key);
+  };
+  return Object.fromEntries(SLOTS.map((slot) => [slot.key, valueOf(slot.key)])) as Parameters<
+    typeof SpecId.restore
+  >[0];
+}
+
+/** A stored code in S2 form: one an older API wrote during a deploy is converted. */
+function inS2(code: string): string {
+  return fromS1(code) ?? code;
 }
 
 export function toDomain(row: SpecIdRow): SavedSpecId {
@@ -52,6 +72,14 @@ export function toRow(saved: SavedSpecId): NewSpecIdRow {
     unitWeight: specId.slot('unitWeight'),
     basisWeight: specId.slot('basisWeight'),
     thickness: specId.slot('thickness'),
+    wall: specId.slot('wall'),
+    print: specId.slot('print'),
+    compartments: specId.slot('compartments'),
+    plies: specId.slot('plies'),
+    lidOpening: specId.slot('lidOpening'),
+    handle: specId.slot('handle'),
+    wrap: specId.slot('wrap'),
+    window: specId.slot('window'),
     variant: specId.slot('variant'),
     name: saved.name,
     dictionaryRelease: saved.dictionaryRelease,
@@ -70,8 +98,8 @@ export function toChange(row: ChangeRow): SpecIdChange {
     kind: row.kind as SpecIdChangeKind,
     changedBy: row.changedBy,
     changedAt: row.changedAt,
-    codeBefore: row.codeBefore,
-    codeAfter: row.codeAfter,
+    codeBefore: row.codeBefore === null ? null : inS2(row.codeBefore),
+    codeAfter: inS2(row.codeAfter),
     nameBefore: row.nameBefore,
     nameAfter: row.nameAfter,
   });

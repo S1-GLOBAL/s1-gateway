@@ -1,4 +1,4 @@
-/** The 18 slots of an S1 Spec ID, as the API names them (ADR 0019). */
+/** The 26 slots of an S2 Spec ID, as the API names them (ADR 0019, ADR 0024). */
 export type SlotKey =
   | 'formatVersion'
   | 'productType'
@@ -17,6 +17,14 @@ export type SlotKey =
   | 'unitWeight'
   | 'basisWeight'
   | 'thickness'
+  | 'wall'
+  | 'print'
+  | 'compartments'
+  | 'plies'
+  | 'lidOpening'
+  | 'handle'
+  | 'wrap'
+  | 'window'
   | 'variant';
 
 /** Whether a slot applies to a product type, or what it depends on. */
@@ -40,19 +48,19 @@ export interface SlotRuleEntry {
   rule: SlotRule;
 }
 
-/** One release of the S1 dictionary. */
+/** One release of the Atlas dictionary. */
 export interface AtlasDictionary {
   release: string;
   /** `YYYY-MM-DD`. */
   approvedOn: string;
-  /** The seven slots whose values the dictionary holds, in code order. */
+  /** The thirteen slots whose values the dictionary holds, in code order. */
   slots: DictionarySlot[];
   /** By product type code, then slot order. */
   rules: SlotRuleEntry[];
 }
 
 export interface DecodedSlot {
-  /** 1–18. */
+  /** 1–26. */
   number: number;
   key: SlotKey;
   name: string;
@@ -67,7 +75,7 @@ export interface DecodedSlot {
 export interface DecodedSpecId {
   code: string;
   dictionaryRelease: string;
-  /** Always 18, in code order. */
+  /** Always 26, in code order. */
   slots: DecodedSlot[];
 }
 
@@ -220,5 +228,13 @@ export const SLOT_NAMES: readonly { readonly key: SlotKey; readonly name: string
   { key: 'unitWeight', name: 'Unit weight' },
   { key: 'basisWeight', name: 'Basis weight' },
   { key: 'thickness', name: 'Thickness' },
+  { key: 'wall', name: 'Wall' },
+  { key: 'print', name: 'Print' },
+  { key: 'compartments', name: 'Compartments' },
+  { key: 'plies', name: 'Plies' },
+  { key: 'lidOpening', name: 'Lid opening' },
+  { key: 'handle', name: 'Handle' },
+  { key: 'wrap', name: 'Individual wrap' },
+  { key: 'window', name: 'Window' },
   { key: 'variant', name: 'Variant number' },
 ];

@@ -1,7 +1,8 @@
 # 0021. The Atlas dictionary lives in Postgres and changes only by migration
 
 - **Status:** Accepted; partly superseded by [0022](./0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md):
-  "or a saved Spec ID" no longer holds — saved Spec IDs can be changed, and every change is recorded
+  "or a saved Spec ID" no longer holds — saved Spec IDs can be changed, and every change is recorded;
+  and by [0024](./0024-spec-ids-move-to-the-s2-format.md): one migration converts every saved code to S2
 - **Date:** 2026-10-16
 - **Related:** [Issue #4](https://github.com/S1-GLOBAL/s1-gateway/issues/4) ·
   [ADR 0005](./0005-migrations-over-db-push.md) ·

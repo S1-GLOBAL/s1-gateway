@@ -1,7 +1,7 @@
 import { isNotKnown } from './applicability.js';
 import type { SlotKey } from './slots.js';
 
-/** The slots a similar lookup can filter on: from product type to thickness. */
+/** The slots a similar lookup can filter on: every slot but the format version and the variant. */
 export const SEARCHABLE_SLOTS = [
   'productType',
   'material',
@@ -19,6 +19,14 @@ export const SEARCHABLE_SLOTS = [
   'unitWeight',
   'basisWeight',
   'thickness',
+  'wall',
+  'print',
+  'compartments',
+  'plies',
+  'lidOpening',
+  'handle',
+  'wrap',
+  'window',
 ] as const satisfies readonly SlotKey[];
 
 export type SearchableSlotKey = (typeof SEARCHABLE_SLOTS)[number];

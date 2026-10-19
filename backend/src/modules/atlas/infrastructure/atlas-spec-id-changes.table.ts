@@ -17,8 +17,8 @@ export const atlasSpecIdChanges = pgTable(
     changedBy: uuid('changed_by').notNull(),
     changedAt: timestamp('changed_at', { withTimezone: true }).notNull(),
     /** Null for `created`. */
-    codeBefore: varchar('code_before', { length: 74 }),
-    codeAfter: varchar('code_after', { length: 74 }).notNull(),
+    codeBefore: varchar('code_before', { length: 97 }),
+    codeAfter: varchar('code_after', { length: 97 }).notNull(),
     /** Null for `created`. */
     nameBefore: varchar('name_before', { length: 120 }),
     nameAfter: varchar('name_after', { length: 120 }).notNull(),

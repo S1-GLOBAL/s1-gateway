@@ -1,6 +1,6 @@
 import { fraction, type Fraction } from './measurement.js';
 
-/** The 18 slots of an S1 Spec ID, in the order they appear in the code (ADR 0019). */
+/** The 26 slots of an S2 Spec ID, in the order they appear in the code (ADR 0019, ADR 0024). */
 export type SlotKey =
   | 'formatVersion'
   | 'productType'
@@ -19,12 +19,20 @@ export type SlotKey =
   | 'unitWeight'
   | 'basisWeight'
   | 'thickness'
+  | 'wall'
+  | 'print'
+  | 'compartments'
+  | 'plies'
+  | 'lidOpening'
+  | 'handle'
+  | 'wrap'
+  | 'window'
   | 'variant';
 
-export type SlotKind = 'version' | 'dictionary' | 'capacity' | 'measure' | 'variant';
+export type SlotKind = 'version' | 'dictionary' | 'capacity' | 'measure' | 'count' | 'variant';
 
 export interface SlotDefinition {
-  /** 1–18, as the specification numbers them. */
+  /** 1–26, as the specification numbers them. */
   readonly number: number;
   readonly key: SlotKey;
   /** The name people read, in every message. */
@@ -51,12 +59,20 @@ export const SLOTS: readonly SlotDefinition[] = [
   { number: 15, key: 'unitWeight', name: 'Unit weight', width: 4, kind: 'measure' },
   { number: 16, key: 'basisWeight', name: 'Basis weight', width: 3, kind: 'measure' },
   { number: 17, key: 'thickness', name: 'Thickness', width: 3, kind: 'measure' },
-  { number: 18, key: 'variant', name: 'Variant number', width: 2, kind: 'variant' },
+  { number: 18, key: 'wall', name: 'Wall', width: 2, kind: 'dictionary' },
+  { number: 19, key: 'print', name: 'Print', width: 2, kind: 'dictionary' },
+  { number: 20, key: 'compartments', name: 'Compartments', width: 2, kind: 'count' },
+  { number: 21, key: 'plies', name: 'Plies', width: 1, kind: 'count' },
+  { number: 22, key: 'lidOpening', name: 'Lid opening', width: 2, kind: 'dictionary' },
+  { number: 23, key: 'handle', name: 'Handle', width: 2, kind: 'dictionary' },
+  { number: 24, key: 'wrap', name: 'Individual wrap', width: 2, kind: 'dictionary' },
+  { number: 25, key: 'window', name: 'Window', width: 2, kind: 'dictionary' },
+  { number: 26, key: 'variant', name: 'Variant number', width: 2, kind: 'variant' },
 ];
 
-export const SPEC_ID_LENGTH = 74;
-export const SLOT_COUNT = 18;
-export const FORMAT_VERSION = 'S1';
+export const SPEC_ID_LENGTH = 97;
+export const SLOT_COUNT = 26;
+export const FORMAT_VERSION = 'S2';
 /** Variants are out of scope: every code ends in `XX`. */
 export const NO_VARIANT = 'XX';
 /** `round_only` slots apply when the shape is this code; `non_round_only` when it is any other. */
@@ -64,10 +80,23 @@ export const ROUND_SHAPE = 'RD';
 /** `paper_only` slots apply when the material's first letter (its family) is this one. */
 export const PAPER_FAMILY = 'B';
 /** The dictionary release this build issues codes under. */
-export const CURRENT_RELEASE = 'S1 0.1.0';
+export const CURRENT_RELEASE = 'S2 0.1.0';
 
 /** Slots whose values come from the dictionary. `capacity` holds its unit letter there. */
-export type DictionarySlotKey = 'productType' | 'material' | 'coating' | 'colourClarity' | 'shape' | 'profile' | 'capacity';
+export type DictionarySlotKey =
+  | 'productType'
+  | 'material'
+  | 'coating'
+  | 'colourClarity'
+  | 'shape'
+  | 'profile'
+  | 'capacity'
+  | 'wall'
+  | 'print'
+  | 'lidOpening'
+  | 'handle'
+  | 'wrap'
+  | 'window';
 
 export const DICTIONARY_SLOTS: readonly DictionarySlotKey[] = [
   'productType',
@@ -77,6 +106,12 @@ export const DICTIONARY_SLOTS: readonly DictionarySlotKey[] = [
   'shape',
   'profile',
   'capacity',
+  'wall',
+  'print',
+  'lidOpening',
+  'handle',
+  'wrap',
+  'window',
 ];
 
 /**
@@ -100,6 +135,14 @@ export const RULED_SLOTS: readonly RuledSlotKey[] = [
   'unitWeight',
   'basisWeight',
   'thickness',
+  'wall',
+  'print',
+  'compartments',
+  'plies',
+  'lidOpening',
+  'handle',
+  'wrap',
+  'window',
 ];
 
 export type SlotRule = 'applies' | 'never' | 'round_only' | 'non_round_only' | 'paper_only';
@@ -168,6 +211,22 @@ export const CAPACITY_UNIT_LABELS: Readonly<Record<string, string>> = {
 };
 
 export const CAPACITY_MAX = 9999n;
+
+/** Slots that hold a count: a whole number, padded to the slot's width. */
+export type CountSlotKey = 'compartments' | 'plies';
+
+export interface CountDefinition {
+  /** The largest count; the smallest is always 1. */
+  readonly max: number;
+  /** One of it, and more than one, after a number: `1 compartment`, `3 compartments`. */
+  readonly one: string;
+  readonly many: string;
+}
+
+export const COUNTS: Readonly<Record<CountSlotKey, CountDefinition>> = {
+  compartments: { max: 12, one: 'compartment', many: 'compartments' },
+  plies: { max: 4, one: 'ply', many: 'plies' },
+};
 
 export function slotDefinition(key: SlotKey): SlotDefinition {
   const definition = SLOTS.find((slot) => slot.key === key);

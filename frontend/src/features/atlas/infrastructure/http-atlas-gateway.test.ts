@@ -5,10 +5,10 @@ import { SpecIdChangedError } from '../application/spec-id-changed-error';
 import { SpecIdExistsError } from '../application/spec-id-exists-error';
 import { HttpAtlasGateway } from './http-atlas-gateway';
 
-const ILLUSTRATIVE = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX';
+const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
 
 const wireDictionary = {
-  release: 'S1 0.1.0',
+  release: 'S2 0.1.0',
   approvedOn: '2026-10-16',
   slots: [{ key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid' }] }],
   rules: [{ productType: 'BLD', slot: 'capacity', rule: 'never' }],
@@ -16,7 +16,7 @@ const wireDictionary = {
 
 const wireDecoded = {
   code: ILLUSTRATIVE,
-  dictionaryRelease: 'S1 0.1.0',
+  dictionaryRelease: 'S2 0.1.0',
   slots: [{ number: 2, key: 'productType', name: 'Product type', raw: 'BLD', state: 'value', meaning: 'Bowl lid' }],
 };
 
@@ -59,7 +59,7 @@ describe('HttpAtlasGateway', () => {
 
   it("rejects an invalid code with an AppError whose fields carry each slot's messages", async () => {
     const fields = {
-      code: ['A Spec ID is 74 characters. This one has 73.'],
+      code: ['A Spec ID is 97 characters. This one has 96.'],
       topDiameter: ['Top diameter: 090 must be 4 characters.'],
     };
     const gateway = gatewayAnswering(400, {

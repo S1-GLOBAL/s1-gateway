@@ -7,7 +7,7 @@ import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-rep
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { UpdateSpecId } from './update-spec-id.js';
 
-const ILLUSTRATIVE = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX';
+const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
 const FACTS = {
   productType: 'BLD',
   material: 'APS',
@@ -39,7 +39,7 @@ describe('FindSpecIdByCode', () => {
     expect(result.value.code).toBe(ILLUSTRATIVE);
     expect(result.value.name).toBe('Illustrative lid');
     expect(result.value.savedBy).toEqual(SAVER);
-    expect(result.value.slots).toHaveLength(18);
+    expect(result.value.slots).toHaveLength(26);
   });
 
   it('answers not found for a code nobody saved', async () => {

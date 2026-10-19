@@ -9,7 +9,7 @@ import { NewSpecIdPage } from './NewSpecIdPage';
 import { NewSpecIdPageSkeleton } from './NewSpecIdPageSkeleton';
 
 const dictionary: AtlasDictionary = {
-  release: 'S1 0.1.0',
+  release: 'S2 0.1.0',
   approvedOn: '2026-10-16',
   slots: [
     { key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid' }] },
@@ -28,7 +28,7 @@ const dictionary: AtlasDictionary = {
 const CODE = 'S1.BLD.APS';
 const decoded: DecodedSpecId = {
   code: CODE,
-  dictionaryRelease: 'S1 0.1.0',
+  dictionaryRelease: 'S2 0.1.0',
   slots: [
     { number: 2, key: 'productType', name: 'Product type', raw: 'BLD', state: 'value', meaning: 'Bowl lid' },
     { number: 3, key: 'material', name: 'Material', raw: 'APS', state: 'value', meaning: 'Polymer, PS (polystyrene)' },

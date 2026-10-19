@@ -8,7 +8,7 @@ import { SpecIdChange } from '../domain/spec-id-change.js';
 import { SLOTS } from '../domain/slots.js';
 import { SpecIdChangedError, SpecIdExistsError } from '../domain/spec-id.errors.js';
 import { SpecId, type SpecIdFactsInput } from '../domain/spec-id.js';
-import { s1Dictionary } from '../domain/testing/s1-dictionary.js';
+import { s2Dictionary } from '../domain/testing/s2-dictionary.js';
 import { atlasSpecIdChanges } from './atlas-spec-id-changes.table.js';
 import { atlasSpecIds } from './atlas-spec-ids.table.js';
 import { DrizzleSpecIdRepository } from './drizzle-spec-id-repository.js';
@@ -29,13 +29,13 @@ const LID: SpecIdFactsInput = {
 /** A lid whose rim is `rim` mm, or not stated; `profile` tells two lids with the same rim apart. */
 function lid(id: string, name: string, savedAt: string, rim?: string, profile = 'DM'): SavedSpecId {
   const facts: SpecIdFactsInput = { ...LID, profile, ...(rim ? { topDiameter: { value: rim, unit: 'mm' } } : {}) };
-  const built = SpecId.build(facts, s1Dictionary());
+  const built = SpecId.build(facts, s2Dictionary());
   if (!built.ok) throw new Error(`setup failed: ${JSON.stringify(built.error.issues)}`);
   return SavedSpecId.restore({
     id,
     specId: built.value,
     name,
-    dictionaryRelease: 'S1 0.1.0',
+    dictionaryRelease: 'S2 0.1.0',
     savedBy: SAVER_ID,
     savedAt: new Date(savedAt),
   });
@@ -52,9 +52,9 @@ const EDITOR_ID = '00000000-0000-4000-8000-0000000000bb';
 /** `saved` with a new rim (or none) and name, changed by the editor at `at`. */
 function revised(saved: SavedSpecId, at: string, rim?: string, name = saved.name): SavedSpecId {
   const facts: SpecIdFactsInput = { ...LID, ...(rim ? { topDiameter: { value: rim, unit: 'mm' } } : {}) };
-  const built = SpecId.build(facts, s1Dictionary());
+  const built = SpecId.build(facts, s2Dictionary());
   if (!built.ok) throw new Error(`setup failed: ${JSON.stringify(built.error.issues)}`);
-  const result = saved.revise({ specId: built.value, name, dictionaryRelease: 'S1 0.1.0', by: EDITOR_ID, at: new Date(at) });
+  const result = saved.revise({ specId: built.value, name, dictionaryRelease: 'S2 0.1.0', by: EDITOR_ID, at: new Date(at) });
   if (!result.ok) throw result.error;
   return result.value;
 }
@@ -95,12 +95,12 @@ describe('DrizzleSpecIdRepository', () => {
     expect(record?.savedByName).toBe('Ada Invented');
     expect(record?.savedSpecId.id).toBe('00000000-0000-4000-8000-000000000001');
     expect(record?.savedSpecId.name).toBe('Illustrative lid');
-    expect(record?.savedSpecId.dictionaryRelease).toBe('S1 0.1.0');
+    expect(record?.savedSpecId.dictionaryRelease).toBe('S2 0.1.0');
     expect(record?.savedSpecId.savedBy).toBe(SAVER_ID);
     expect(record?.savedSpecId.savedAt.toISOString()).toBe('2026-10-16T08:00:00.000Z');
     for (const { key } of SLOTS) expect(record?.savedSpecId.specId.slot(key)).toBe(saved.specId.slot(key));
     expect(record?.savedSpecId.specId.code).toBe(
-      'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX',
+      'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX',
     );
   });
 
@@ -261,13 +261,13 @@ describe('DrizzleSpecIdRepository, the library', () => {
     const saved: SavedSpecId[] = [];
     for (let n = 1; n <= count; n += 1) {
       const facts: SpecIdFactsInput = { ...LID, height: { value: String(n), unit: 'mm' } };
-      const built = SpecId.build(facts, s1Dictionary());
+      const built = SpecId.build(facts, s2Dictionary());
       if (!built.ok) throw new Error('setup failed');
       const one = SavedSpecId.restore({
         id: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
         specId: built.value,
         name: `Lid ${n}`,
-        dictionaryRelease: 'S1 0.1.0',
+        dictionaryRelease: 'S2 0.1.0',
         savedBy: SAVER_ID,
         savedAt: new Date(Date.UTC(2026, 9, 17, 8, n)),
       });

@@ -1,13 +1,15 @@
 /**
  * Every message a Spec ID can fail with, worded exactly as issue #4's copy
- * table and the owner's decisions of 2026-10-16. The page shows them as they
+ * table, the owner's decisions of 2026-10-16 and issue #28's copy table. The page shows them as they
  * come; nothing else may reword them.
  */
 export const specIdMessages = {
   empty: (): string => 'Paste a Spec ID to read it.',
-  wrongLength: (length: number): string => `A Spec ID is 74 characters. This one has ${length}.`,
-  wrongPartCount: (parts: number): string => `A Spec ID has 18 parts separated by dots. This one has ${parts}.`,
-  notS1: (version: string): string => `Only S1 codes can be read here. This code starts with ${version}.`,
+  wrongLength: (length: number): string => `A Spec ID is 97 characters. This one has ${length}.`,
+  wrongPartCount: (parts: number): string => `A Spec ID has 26 parts separated by dots. This one has ${parts}.`,
+  notS2: (version: string): string => `A Spec ID starts with S2, or S1 for codes given out before. This code starts with ${version}.`,
+  malformedS1: (length: number, parts: number): string =>
+    `An S1 Spec ID is 74 characters in 18 parts. This one has ${length} characters in ${parts} parts.`,
   wrongWidth: (slot: string, value: string, width: number): string =>
     `${slot}: ${value} must be ${width} characters.`,
   notInDictionary: (slot: string, value: string): string => `${slot}: ${value} is not in the dictionary.`,

@@ -1,9 +1,10 @@
-import { and, asc, desc, eq, ilike, inArray, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, ne, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { err, ok, type Result } from '../../../shared/domain/result.js';
 import type { Database } from '../../../shared/infrastructure/database/connection.js';
 import { isUniqueViolation } from '../../../shared/infrastructure/database/postgres-errors.js';
 import { accountsTable } from '../../accounts/index.js';
+import { storedForms } from '../domain/s1-code.js';
 import type { SavedSpecId } from '../domain/saved-spec-id.js';
 import type { SimilarCriteria } from '../domain/similar-match.js';
 import { SEARCHABLE_SLOTS } from '../domain/similar-match.js';
@@ -30,6 +31,11 @@ const lastChangedAt = sql`coalesce(${atlasSpecIds.updatedAt}, ${atlasSpecIds.sav
 /** Thrown inside a transaction to roll it back when the version moved on. */
 class VersionMovedOn extends Error {}
 
+/** Thrown inside a transaction to roll it back when another Spec ID holds the code in S1 form. */
+class HeldInS1Form extends Error {}
+
+type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+
 /**
  * Inserts, updates and selects saved Spec IDs, writing each one's history
  * entry in the same transaction. It never deletes (ADR 0022).
@@ -40,12 +46,13 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
   async add(saved: SavedSpecId, created: SpecIdChange): Promise<Result<void, SpecIdExistsError>> {
     try {
       await this.db.transaction(async (tx) => {
+        if (await this.heldInS1Form(tx, saved)) throw new HeldInS1Form();
         await tx.insert(atlasSpecIds).values(toRow(saved));
         await tx.insert(atlasSpecIdChanges).values(toChangeRow(created));
       });
       return ok(undefined);
     } catch (error) {
-      if (isUniqueViolation(error)) return err(new SpecIdExistsError());
+      if (error instanceof HeldInS1Form || isUniqueViolation(error)) return err(new SpecIdExistsError());
       throw error;
     }
   }
@@ -67,12 +74,13 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
           .where(and(eq(atlasSpecIds.id, id), eq(atlasSpecIds.version, expectedVersion)))
           .returning({ id: atlasSpecIds.id });
         if (updated.length === 0) throw new VersionMovedOn();
+        if (await this.heldInS1Form(tx, saved)) throw new HeldInS1Form();
         await tx.insert(atlasSpecIdChanges).values(toChangeRow(change));
       });
       return ok(undefined);
     } catch (error) {
       if (error instanceof VersionMovedOn) return err(new SpecIdChangedError());
-      if (isUniqueViolation(error)) return err(new SpecIdExistsError());
+      if (error instanceof HeldInS1Form || isUniqueViolation(error)) return err(new SpecIdExistsError());
       throw error;
     }
   }
@@ -83,7 +91,7 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
   }
 
   async findByCode(code: string): Promise<SavedSpecIdRecord | null> {
-    const [row] = await this.selectWithNames().where(eq(atlasSpecIds.code, code));
+    const [row] = await this.selectWithNames().where(inArray(atlasSpecIds.code, storedForms(code)));
     return row ? toRecord(row) : null;
   }
 
@@ -130,7 +138,7 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
     const moves = await this.db
       .select({ specId: atlasSpecIdChanges.specId, until: atlasSpecIdChanges.changedAt })
       .from(atlasSpecIdChanges)
-      .where(eq(atlasSpecIdChanges.codeBefore, code))
+      .where(inArray(atlasSpecIdChanges.codeBefore, storedForms(code)))
       .orderBy(desc(atlasSpecIdChanges.changedAt), desc(atlasSpecIdChanges.id));
 
     const former: FormerHolderRecord[] = [];
@@ -142,6 +150,20 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
       if (record) former.push({ record, until: move.until });
     }
     return former;
+  }
+
+  /**
+   * Whether another Spec ID still holds this code in S1 form, saved by an
+   * older API during a deploy: the unique index cannot see the two forms as one.
+   */
+  private async heldInS1Form(tx: Transaction, saved: SavedSpecId): Promise<boolean> {
+    const [, s1] = storedForms(saved.specId.code);
+    if (s1 === undefined) return false;
+    const rows = await tx
+      .select({ id: atlasSpecIds.id })
+      .from(atlasSpecIds)
+      .where(and(eq(atlasSpecIds.code, s1), ne(atlasSpecIds.id, saved.id)));
+    return rows.length > 0;
   }
 
   private selectWithNames() {

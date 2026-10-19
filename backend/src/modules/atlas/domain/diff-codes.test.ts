@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { diffCodes } from './diff-codes.js';
 import { SpecId, type SpecIdFactsInput } from './spec-id.js';
-import { s1Dictionary } from './testing/s1-dictionary.js';
+import { s2Dictionary } from './testing/s2-dictionary.js';
 
 function built(facts: SpecIdFactsInput): SpecId {
-  const result = SpecId.build(facts, s1Dictionary());
+  const result = SpecId.build(facts, s2Dictionary());
   if (!result.ok) throw result.error;
   return result.value;
 }
@@ -41,6 +41,13 @@ describe('diffCodes', () => {
   it('lists the rows in code order', () => {
     const bowl = built({ ...KRAFT_BOWL, capacity: { unit: 'Z', value: '16' } });
     const lid = built({ productType: 'BLD', material: 'BKR', shape: 'RD' });
-    expect(diffCodes(bowl, lid).map((row) => row.key)).toEqual(['productType', 'profile', 'capacity', 'bottomDiameter']);
+    expect(diffCodes(bowl, lid).map((row) => row.key)).toEqual([
+      'productType',
+      'profile',
+      'capacity',
+      'bottomDiameter',
+      'wall',
+      'compartments',
+    ]);
   });
 });

@@ -13,7 +13,7 @@ import {
 /** Test doubles for the Atlas feature. Never imported by production code. */
 
 /** The specification's illustrative bowl lid. Every other value in the tests is invented. */
-export const ILLUSTRATIVE = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX';
+export const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
 
 const RULED_ORDER: readonly SlotKey[] = [
   'coating',
@@ -38,7 +38,7 @@ function rulesFor(productType: string, rules: readonly SlotRule[]): SlotRuleEntr
 
 /** A small dictionary: two product types, with the rules the illustrative lid follows. */
 export const testDictionary: AtlasDictionary = {
-  release: 'S1 0.1.0',
+  release: 'S2 0.1.0',
   approvedOn: '2026-10-16',
   slots: [
     {
@@ -113,12 +113,12 @@ export const testDictionary: AtlasDictionary = {
   ],
 };
 
-/** The 18 slots of `code`, each meaning just the raw text, except the product type. */
+/** The 26 slots of `code`, each meaning just the raw text, except the product type. */
 export function decodedFor(code: string): DecodedSpecId {
   const parts = code.split('.');
   return {
     code,
-    dictionaryRelease: 'S1 0.1.0',
+    dictionaryRelease: 'S2 0.1.0',
     slots: SLOT_NAMES.map((slot, index) => {
       const raw = parts[index] ?? '';
       return {
@@ -134,7 +134,7 @@ export function decodedFor(code: string): DecodedSpecId {
 }
 
 /**
- * The 18 slots of `code`, each in the state its text shows: all `0` not
+ * The 26 slots of `code`, each in the state its text shows: all `0` not
  * known, all `X` doesn't apply, anything else a value meaning just its text,
  * as in `decodedFor`.
  */

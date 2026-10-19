@@ -8,7 +8,7 @@ export interface DictionaryDto {
   release: string;
   /** `YYYY-MM-DD`. */
   approvedOn: string;
-  /** The seven slots whose values the dictionary holds, in code order. */
+  /** The thirteen slots whose values the dictionary holds, in code order. */
   slots: DictionarySlotDto[];
   /** By product type code, then slot order. */
   rules: SlotRuleEntryDto[];
@@ -35,7 +35,7 @@ export interface SlotRuleEntryDto {
 export interface DecodedSpecIdDto {
   code: string;
   dictionaryRelease: string;
-  /** Always 18, in code order. */
+  /** Always 26, in code order. */
   slots: DecodedSlotDto[];
 }
 

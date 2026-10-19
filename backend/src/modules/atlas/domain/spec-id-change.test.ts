@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { SavedSpecId } from './saved-spec-id.js';
 import { SpecIdChange } from './spec-id-change.js';
 import { SpecId } from './spec-id.js';
-import { s1Dictionary } from './testing/s1-dictionary.js';
+import { s2Dictionary } from './testing/s2-dictionary.js';
 
-const ILLUSTRATIVE = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX';
-const WITH_HEIGHT = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0012.XXXX.XXXX.XXXX.0033.XXX.000.XX';
+const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
+const WITH_HEIGHT = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0012.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
 const SAVER = '00000000-0000-4000-8000-0000000000aa';
 const EDITOR = '00000000-0000-4000-8000-0000000000bb';
 
 function parsed(code: string): SpecId {
-  const result = SpecId.parse(code, s1Dictionary());
+  const result = SpecId.parse(code, s2Dictionary());
   if (!result.ok) throw result.error;
   return result.value;
 }
@@ -19,7 +19,7 @@ const saved = SavedSpecId.restore({
   id: '00000000-0000-4000-8000-000000000001',
   specId: parsed(ILLUSTRATIVE),
   name: 'Illustrative lid',
-  dictionaryRelease: 'S1 0.1.0',
+  dictionaryRelease: 'S2 0.1.0',
   savedBy: SAVER,
   savedAt: new Date('2026-10-16T08:00:00.000Z'),
 });
@@ -28,7 +28,7 @@ function revised(code: string, name: string): SavedSpecId {
   const result = saved.revise({
     specId: parsed(code),
     name,
-    dictionaryRelease: 'S1 0.1.0',
+    dictionaryRelease: 'S2 0.1.0',
     by: EDITOR,
     at: new Date('2026-10-17T08:00:00.000Z'),
   });

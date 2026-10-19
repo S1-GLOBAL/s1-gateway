@@ -5,7 +5,7 @@ import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 
-const ILLUSTRATIVE = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX';
+const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
 const FACTS = {
   productType: 'BLD',
   material: 'APS',
@@ -39,8 +39,8 @@ describe('SaveSpecId', () => {
     expect(result.value.name).toBe('Illustrative lid');
     expect(result.value.savedBy).toEqual(SAVER);
     expect(result.value.savedAt).toBe('2026-10-16T08:00:00.000Z');
-    expect(result.value.dictionaryRelease).toBe('S1 0.1.0');
-    expect(result.value.slots).toHaveLength(18);
+    expect(result.value.dictionaryRelease).toBe('S2 0.1.0');
+    expect(result.value.slots).toHaveLength(26);
     expect(specIds.size).toBe(1);
   });
 

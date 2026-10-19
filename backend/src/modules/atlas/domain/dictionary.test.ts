@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { s1Dictionary } from './testing/s1-dictionary.js';
+import { s2Dictionary } from './testing/s2-dictionary.js';
 
 describe('Dictionary', () => {
-  const dictionary = s1Dictionary();
+  const dictionary = s2Dictionary();
 
-  it('holds release S1 0.1.0 with 28 values and 56 rules', () => {
-    expect(dictionary.release).toBe('S1 0.1.0');
-    expect(dictionary.values()).toHaveLength(28);
-    expect(dictionary.slotRules()).toHaveLength(56);
+  it('holds release S2 0.1.0 with 118 values and 682 rules', () => {
+    expect(dictionary.release).toBe('S2 0.1.0');
+    expect(dictionary.values()).toHaveLength(118);
+    expect(dictionary.slotRules()).toHaveLength(682);
   });
 
   it('knows each meaning, and nothing else', () => {
@@ -18,9 +18,10 @@ describe('Dictionary', () => {
   });
 
   it('orders values by code within each slot, slots in code order', () => {
-    expect(dictionary.valuesOf('productType').map((value) => value.code)).toEqual(['BLD', 'BWL', 'CLD', 'SUP']);
+    expect(dictionary.valuesOf('productType').map((value) => value.code).slice(0, 4)).toEqual(['BAG', 'BLD', 'BWL', 'CCR']);
+    expect(dictionary.valuesOf('productType')).toHaveLength(31);
     expect(dictionary.values()[0]?.slot).toBe('productType');
-    expect(dictionary.values().at(-1)?.slot).toBe('capacity');
+    expect(dictionary.values().at(-1)?.slot).toBe('window');
   });
 
   it('answers the rule for a slot of a product type', () => {
