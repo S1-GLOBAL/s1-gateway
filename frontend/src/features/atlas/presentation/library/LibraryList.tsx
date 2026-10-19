@@ -5,6 +5,7 @@ import { EmptyState } from '@/shared/ui/EmptyState';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonBlock, SkeletonRegion } from '@/shared/ui/Skeleton';
 import type { useSpecIdLibrary } from '../../application/use-spec-id-library';
+import { lowerFirst } from '../../domain/lower-first';
 import { NewSpecIdLink } from './NewSpecIdLink';
 import { SpecIdSummary } from './SpecIdSummary';
 
@@ -51,7 +52,7 @@ export function LibraryList({ library, q, productTypeName, timeZone }: LibraryLi
     if (productTypeName) {
       return (
         <p role="status" className="text-sm text-ink-muted">
-          {`No ${productTypeName.toLowerCase()} Spec IDs yet.`}
+          {`No ${lowerFirst(productTypeName)} Spec IDs yet.`}
         </p>
       );
     }

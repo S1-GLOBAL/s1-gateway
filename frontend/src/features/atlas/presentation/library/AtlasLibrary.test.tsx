@@ -11,9 +11,10 @@ import {
   lookupFor,
   readCode,
   s1Dictionary,
+  s2Dictionary,
   savedFor,
 } from '../../application/testing/atlas-fixtures';
-import type { SavedSpecId } from '../../domain/atlas';
+import type { AtlasDictionary, SavedSpecId } from '../../domain/atlas';
 import { AtlasLibrary, SEARCH_WAIT_MS } from './AtlasLibrary';
 
 const EMPTY = { items: [], nextCursor: null };
@@ -25,14 +26,14 @@ function saved(index: number, overrides: Partial<SavedSpecId> = {}): SavedSpecId
   return { ...savedFor(ILLUSTRATIVE, `Lid ${index}`, { id }), slots: readCode(ILLUSTRATIVE).slots, ...overrides };
 }
 
-function renderLibrary(overrides: Partial<AtlasGateway> = {}) {
+function renderLibrary(overrides: Partial<AtlasGateway> = {}, dictionary: AtlasDictionary = s1Dictionary) {
   const gateway = gatewayWith({ library: vi.fn(async () => EMPTY), ...overrides });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
       <AtlasGatewayProvider gateway={gateway}>
         <MemoryRouter>
-          <AtlasLibrary dictionary={s1Dictionary} timeZone="UTC" />
+          <AtlasLibrary dictionary={dictionary} timeZone="UTC" />
         </MemoryRouter>
       </AtlasGatewayProvider>
     </QueryClientProvider>,
@@ -136,6 +137,15 @@ describe('AtlasLibrary, the list', () => {
     expect(await screen.findByText('No bowl lid Spec IDs yet.')).toBeTruthy();
     expect(library).toHaveBeenLastCalledWith({ q: '', productType: 'BLD', cursor: undefined });
     expect(screen.getByRole('radio', { name: 'All' })).toBeTruthy();
+  });
+
+  it('keeps the capitals of a code in the type it names', async () => {
+    renderLibrary({}, s2Dictionary);
+    await screen.findByText('No Spec IDs yet');
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Shipping box (RSC)' }));
+
+    expect(await screen.findByText('No shipping box (RSC) Spec IDs yet.')).toBeTruthy();
   });
 
   it('invites the first Spec ID when none is saved at all', async () => {

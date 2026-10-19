@@ -69,6 +69,12 @@ describe('FactGroups, the controls', () => {
     expect((screen.getByLabelText('Product type') as HTMLSelectElement).value).toBe('BAG');
   });
 
+  it('gives Material the full width of its group, for its long names', () => {
+    renderGroups('CUP');
+    expect(screen.getByLabelText('Material').parentElement?.className).toContain('sm:col-span-2');
+    expect(screen.getByLabelText('Coating').parentElement?.className).not.toContain('sm:col-span-2');
+  });
+
   it('offers each new choice with "Not known" first', () => {
     renderGroups('CUP');
     expect(optionLabels('Wall')).toEqual(['Not known', 'DW — Double wall', 'RW — Ripple wall', 'SW — Single wall']);

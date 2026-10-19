@@ -6,6 +6,7 @@ import { TextField } from '@/shared/ui/TextField';
 import { SLOT_NAMES, type AtlasDictionary, type SlotKey } from '../../domain/atlas';
 import type { BuildForm } from '../../domain/build-facts';
 import { joinNames, leftOutSlots } from '../../domain/left-out-slots';
+import { lowerFirst } from '../../domain/lower-first';
 import {
   CODE_SLOTS,
   isCountSlot,
@@ -34,9 +35,6 @@ const GROUPS: readonly { number: string; title: string; slots: readonly SlotKey[
 
 const nameOf = (key: SlotKey) => SLOT_NAMES.find((slot) => slot.key === key)?.name ?? key;
 
-/** `Shipping box (RSC)` → `shipping box (RSC)`: only the first letter, so a code in brackets keeps its capitals. */
-const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
-
 export interface FactGroupsProps {
   dictionary: AtlasDictionary;
   form: BuildForm;
@@ -47,9 +45,10 @@ export interface FactGroupsProps {
 }
 
 /**
- * The facts, in six numbered groups. A slot that does not apply to the
- * product type, shape and material is not shown, and one note names them; a
- * slot waiting on the shape or material shows "Not known" until it is chosen.
+ * The facts, in six numbered groups; Material, whose names are long, spans its
+ * group. A slot that does not apply to the product type, shape and material is
+ * not shown, and one note names them; a slot waiting on the shape or material
+ * shows "Not known" until it is chosen.
  */
 export function FactGroups({ dictionary, form, onChange, fields, className }: FactGroupsProps) {
   const { shape, material } = form.codes;
@@ -139,6 +138,7 @@ export function FactGroups({ dictionary, form, onChange, fields, className }: Fa
         disabled={state !== 'any'}
         onChange={(event) => setCode(code, event.target.value)}
         errors={fields[key]}
+        className={code === 'material' ? 'sm:col-span-2' : undefined}
       />
     );
   }
