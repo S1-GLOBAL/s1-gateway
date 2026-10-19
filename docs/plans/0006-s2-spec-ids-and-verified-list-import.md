@@ -157,10 +157,11 @@ is 1–26. Nothing else changes shape.
 | `CsvImportReport` | `infrastructure/csv-import-report.ts` | #28's report columns, UTF-8, header row first |
 | the command | `backend/src/scripts/atlas-import.ts`; script `"atlas:import": "tsx src/scripts/atlas-import.ts"` | `--workbook`, `--spellings`, `--report`, `--as`, `--write`; refuses an unknown or disabled `--as` with #28's sentence |
 
-Item-name keywords (case-insensitive, whole words; a hit sets the fact only
-where the row's columns did not). Where two phrases for one slot match, the
-longer wins (`half dome` over `dome`, `white kraft` over `kraft`); two
-different facts left for one slot leave it not known, flagged in the report:
+Item-name keywords, also read in the Category and Material cells
+(case-insensitive, whole words; a hit sets the fact only where the row's
+columns did not). Where two phrases for one slot match, the longer wins
+(`half dome` over `dome`, `white kraft` over `kraft`); two different facts
+left for one slot leave it not known, flagged in the report:
 
 | Words | Fact |
 |---|---|
@@ -178,6 +179,7 @@ different facts left for one slot leave it not known, flagged in the report:
 | `paper wrapped` · `plastic wrapped`, `film wrapped` | wrap `PW` · `FW` |
 | `window` | window `WN` |
 | `cpet` · `pla lined` · `grease resistant` · `uncoated` | coating `CP` · `PL` · `GR` · `NC` |
+| `double pe`, `2pe`, `+2pe`, `+<n>gpe+<n>gpe` · `single pe`, `1pe`, `+1pe`, `+<n>gpe`, `pe coating` | coating `PB` · `PU` |
 
 ### Review Focus
 
