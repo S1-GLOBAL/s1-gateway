@@ -3,11 +3,11 @@ import { accountsTable } from '../../accounts/index.js';
 import { atlasDictionaryReleases } from './atlas-dictionary.table.js';
 
 /*
- * Saved Spec IDs. Each slot after the format version is its own column,
- * holding the slot's raw text so `0` and `X` keep their meaning, and is
- * indexed for the similar lookup. The eight slots S2 added are null only on a
- * row an older API saved during a deploy; it is read as its S1 code converts
- * (ADR 0024). A row is updated when its facts or name
+ * Saved Spec IDs. Each slot is its own column, holding the slot's raw text
+ * so `Y` and `X` keep their meaning, and is indexed for the similar lookup.
+ * A row an older API saved during a deploy may hold markers written wide
+ * (`0000`, `XX`), or, before S2, null in the eight slots S2 added; it is read
+ * as its old code converts (ADR 0024, ADR 0025). A row is updated when its facts or name
  * change, with `version` raised and a row in `atlas_spec_id_changes`; nothing
  * deletes one (ADR 0022).
  */

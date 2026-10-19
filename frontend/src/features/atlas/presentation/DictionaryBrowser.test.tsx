@@ -154,7 +154,7 @@ describe('DictionaryBrowser', () => {
       'Paper family only',
       'Paper family only',
       'Paper family only',
-      'Yes',
+      'Applies',
     ]);
     const length = within(table).getByRole('row', { name: /Length/ });
     expect(within(length).getAllByRole('cell')[0]?.textContent).toBe('Non-round only');

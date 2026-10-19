@@ -4,7 +4,7 @@ import { classifyMatch, isSearchableSlot } from './similar-match.js';
 
 /** A saved Spec ID reduced to the slots a lookup can ask about. */
 const slotsOf = (values: Partial<Record<SearchableSlotKey, string>>) => (key: SearchableSlotKey) =>
-  values[key] ?? '0';
+  values[key] ?? 'Y';
 
 describe('classifyMatch for a request of a 90 mm top diameter', () => {
   const criteria = { topDiameter: '0090' };
@@ -14,7 +14,7 @@ describe('classifyMatch for a request of a 90 mm top diameter', () => {
   });
 
   it('might fit a rim nobody has stated', () => {
-    expect(classifyMatch(slotsOf({ topDiameter: '0000' }), criteria)).toBe('might-fit');
+    expect(classifyMatch(slotsOf({ topDiameter: 'Y' }), criteria)).toBe('might-fit');
   });
 
   it('excludes 91 mm: nothing is compared by closeness', () => {
@@ -22,7 +22,7 @@ describe('classifyMatch for a request of a 90 mm top diameter', () => {
   });
 
   it('excludes a rim that never applies', () => {
-    expect(classifyMatch(slotsOf({ topDiameter: 'XXXX' }), criteria)).toBe('excluded');
+    expect(classifyMatch(slotsOf({ topDiameter: 'X' }), criteria)).toBe('excluded');
   });
 });
 
@@ -32,12 +32,12 @@ describe('classifyMatch', () => {
   });
 
   it('excludes when any chosen slot differs, even if another is not known', () => {
-    const slotOf = slotsOf({ topDiameter: '0000', shape: 'SQ' });
+    const slotOf = slotsOf({ topDiameter: 'Y', shape: 'SQ' });
     expect(classifyMatch(slotOf, { topDiameter: '0090', shape: 'RD' })).toBe('excluded');
   });
 
   it('might fit when one slot equals and another is not known', () => {
-    const slotOf = slotsOf({ topDiameter: '0000', shape: 'RD' });
+    const slotOf = slotsOf({ topDiameter: 'Y', shape: 'RD' });
     expect(classifyMatch(slotOf, { topDiameter: '0090', shape: 'RD' })).toBe('might-fit');
   });
 });

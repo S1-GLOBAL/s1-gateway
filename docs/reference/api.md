@@ -126,18 +126,23 @@ control character (U+0000–U+001F, U+007F).
 
 ### Atlas
 
-The Spec ID format is S2, [ADR 0024](../decisions/0024-spec-ids-move-to-the-s2-format.md),
-on the rules of [ADR 0019](../decisions/0019-the-s1-spec-id-format.md): 26
-slots and 97 characters. Slots are named by key, in code order:
-`formatVersion`, `productType`, `material`, `coating`, `colourClarity`,
+A Spec ID is written short, [ADR 0025](../decisions/0025-spec-ids-are-written-short.md),
+in the layout of [ADR 0024](../decisions/0024-spec-ids-move-to-the-s2-format.md)
+on the rules of [ADR 0019](../decisions/0019-the-s1-spec-id-format.md): 25
+slots separated by dots, product type first, with no format tag. A slot not
+known is `Y`, one that doesn't apply `X`; a known value keeps its width
+(`0045`, `Z0012`). Slots are named by key, in code order:
+`productType`, `material`, `coating`, `colourClarity`,
 `shape`, `profile`, `capacity`, `topDiameter`, `bottomDiameter`, `height`,
 `length`, `width`, `gusset`, `unitWeight`, `basisWeight`, `thickness`, `wall`,
 `print`, `compartments`, `plies`, `lidOpening`, `handle`, `wrap`, `window`,
 `variant`.
 
-Every route that takes a code also takes an S1 code (74 characters, 18 slots),
-given out before S2, and reads it as the S2 code it converts to. No route
-issues one.
+Every route that takes a code also takes a code given out before: an S1 code
+(74 characters, 18 slots) or a long S2 code (starting `S2.`, 97 characters,
+each marker as wide as its slot), and reads it as the short code it converts
+to. A marker written wide in a short code (`0000`, `XX`) is read as its letter.
+No route issues anything but short codes.
 
 `AtlasDictionary` is `{ release, approvedOn, slots, rules }`. `slots` holds the
 thirteen dictionary slots in code order (`productType` to `profile`, then
@@ -147,22 +152,22 @@ thirteen dictionary slots in code order (`productType` to `profile`, then
 slot, where `rule` is `applies`, `never`, `round_only`, `non_round_only` or
 `paper_only`.
 
-`DecodedSpecId` is `{ code, dictionaryRelease, slots }`, with all 26 slots in
+`DecodedSpecId` is `{ code, dictionaryRelease, slots }`, with all 25 slots in
 order:
 
 | Field | Type | Notes |
 |---|---|---|
-| `number` | number | 1–26 |
+| `number` | number | 1–25 |
 | `key` | string | The slot key |
 | `name` | string | As people read it, e.g. `Colour / clarity` |
 | `raw` | string | The slot's characters, exactly as in the code |
-| `state` | string | `value`, `not-known` (all `0`) or `does-not-apply` (all `X`) |
+| `state` | string | `value`, `not-known` (`Y`) or `does-not-apply` (`X`) |
 | `meaning` | string | `Bowl lid`, `90 mm`, `3.3 g`, `6 oz`, `3 compartments`, `Not known`, `Doesn't apply` |
 
 `POST /atlas/spec-ids/decode` takes `{ code }`; surrounding spaces are trimmed.
 `POST /atlas/spec-ids/encode` takes `{ facts }`. `facts.productType` is
 required; every other slot may be left out or `null`, meaning no value: the
-encoder writes `X` where the slot doesn't apply and `0` everywhere else.
+encoder writes `X` where the slot doesn't apply and `Y` everywhere else.
 Dictionary slots take a code (`"APS"`). `compartments` (1–12) and `plies`
 (1–4) take a whole number as a string (`"3"`). `capacity` is `{ unit, value }`: a
 unit letter and a whole number. Measured slots are `{ value, unit }`, where
@@ -198,8 +203,8 @@ nothing. Nothing is saved on any 4xx.
 `capacity=Z0006`, `compartments=03`). It answers `{ fits, mightFit }`, each newest first:
 
 - **fits:** every chosen slot equals the requested value;
-- **mightFit:** every chosen slot equals the requested value or is all `0`,
-  and at least one is all `0`.
+- **mightFit:** every chosen slot equals the requested value or is `Y`,
+  and at least one is `Y`.
 
 A different known value excludes a Spec ID; nothing is compared by closeness.
 With no slot chosen, every saved Spec ID is in `fits`. An unknown key, or a

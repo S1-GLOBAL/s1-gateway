@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ILLUSTRATIVE, readCode, testDictionary } from '../application/testing/atlas-fixtures';
+import { ILLUSTRATIVE, readCode, testDictionary, withSlot } from '../application/testing/atlas-fixtures';
 import { toFacts } from './build-facts';
 import { toBuildForm } from './to-build-form';
 
@@ -25,13 +25,13 @@ describe('toBuildForm', () => {
   });
 
   it('splits a capacity into its unit and its amount, without leading zeros', () => {
-    const form = toBuildForm(readCode(ILLUSTRATIVE.replace('BLD', 'BWL').replace('XXXXX', 'Z0016')));
+    const form = toBuildForm(readCode(withSlot(withSlot(ILLUSTRATIVE, 'productType', 'BWL'), 'capacity', 'Z0016')));
     expect(form.capacityUnit).toBe('Z');
     expect(form.capacityValue).toBe('16');
   });
 
-  it('fills every new slot, so that the form sends the facts an S2 code was built from', () => {
-    const code = ILLUSTRATIVE.replace('.XX.00.XX.X.XX.XX.XX.XX.XX', '.DW.02.03.2.SP.TW.PW.WN.XX');
+  it('fills every new slot, so that the form sends the facts a code was built from', () => {
+    const code = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.DW.02.03.2.SP.TW.PW.WN.X';
     expect(toFacts(toBuildForm(readCode(code)), testDictionary.rules)).toEqual({
       productType: 'BLD',
       material: 'APS',
@@ -56,7 +56,7 @@ describe('toBuildForm', () => {
   });
 
   it('reads a unit weight of whole grams without a decimal point', () => {
-    const form = toBuildForm(readCode(ILLUSTRATIVE.replace('.0033.', '.0040.')));
+    const form = toBuildForm(readCode(withSlot(ILLUSTRATIVE, 'unitWeight', '0040')));
     expect(form.measures.unitWeight.value).toBe('4');
   });
 });

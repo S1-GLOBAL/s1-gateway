@@ -7,7 +7,7 @@ export interface SlotDifference {
   readonly key: SlotKey;
   readonly before: string;
   readonly after: string;
-  /** A known value was replaced: it was neither all `0` nor all `X` before. */
+  /** A known value was replaced: it was neither `Y` nor `X` before. */
   readonly corrected: boolean;
 }
 

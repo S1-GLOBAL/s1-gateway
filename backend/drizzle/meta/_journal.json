@@ -85,6 +85,13 @@
       "when": 1792402461945,
       "tag": "0011_convert_atlas_codes_to_s2",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792429048342,
+      "tag": "0012_shorten_atlas_codes",
+      "breakpoints": true
     }
   ]
 }

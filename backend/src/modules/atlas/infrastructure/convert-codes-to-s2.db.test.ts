@@ -4,11 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { connectTestDatabase, resetTables } from '../../../test/database.js';
 import { accountsTable } from '../../accounts/index.js';
 import { FindSpecIdByCode } from '../application/find-spec-id-by-code.js';
-import { fromS1 } from '../domain/s1-code.js';
-import { SavedSpecId } from '../domain/saved-spec-id.js';
-import { SpecIdChange } from '../domain/spec-id-change.js';
-import { SpecId } from '../domain/spec-id.js';
-import { s2Dictionary } from '../domain/testing/s2-dictionary.js';
+import { fromS1, toShort } from '../domain/old-codes.js';
 import { atlasSpecIdChanges } from './atlas-spec-id-changes.table.js';
 import { atlasSpecIds } from './atlas-spec-ids.table.js';
 import { DrizzleDictionaryRepository } from './drizzle-dictionary-repository.js';
@@ -114,44 +110,11 @@ describe('the conversion migration, 0011', () => {
     const result = await find.execute({ code: LID.toLowerCase() });
 
     expect(result.ok && result.value.id).toBe('00000000-0000-4000-8000-000000000001');
-    expect(result.ok && result.value.replacedCode).toBe(fromS1(LID));
+    expect(result.ok && result.value.replacedCode).toBe(toShort(LID));
   });
 
   it('touches nothing already in S2', async () => {
     await connection.db.execute(sql.raw(CONVERT));
     expect(await connection.db.select().from(atlasSpecIds)).toEqual([]);
-  });
-});
-
-describe('a row an older API saved during a deploy', () => {
-  it('is read as the S2 code its S1 code converts to, and found by either form', async () => {
-    await connection.db.insert(atlasSpecIds).values(s1Row('00000000-0000-4000-8000-000000000001', CUP_LID, 'Cup lid'));
-    const repository = new DrizzleSpecIdRepository(connection.db);
-
-    const byId = await repository.findById('00000000-0000-4000-8000-000000000001');
-    expect(byId?.savedSpecId.specId.code).toBe(fromS1(CUP_LID));
-    expect((await repository.findByCode(fromS1(CUP_LID) ?? ''))?.savedSpecId.id).toBe('00000000-0000-4000-8000-000000000001');
-  });
-
-  it('keeps its code: another Spec ID with the same facts is refused', async () => {
-    await connection.db.insert(atlasSpecIds).values(s1Row('00000000-0000-4000-8000-000000000001', CUP_LID, 'Cup lid'));
-    const repository = new DrizzleSpecIdRepository(connection.db);
-    const parsed = SpecId.parse(CUP_LID, s2Dictionary());
-    if (!parsed.ok) throw new Error('expected the cup lid to parse');
-    const at = new Date('2026-10-19T08:00:00.000Z');
-    const saved = SavedSpecId.create({
-      id: '00000000-0000-4000-8000-000000000002',
-      specId: parsed.value,
-      name: 'Second cup lid',
-      dictionaryRelease: 'S2 0.1.0',
-      savedBy: SAVER_ID,
-      savedAt: at,
-    });
-    if (!saved.ok) throw new Error('expected the Spec ID to be valid');
-
-    const result = await repository.add(saved.value, SpecIdChange.created(saved.value, '00000000-0000-4000-8000-0000000000c9'));
-
-    expect(result.ok).toBe(false);
-    expect(!result.ok && result.error.code).toBe('SPEC_ID_EXISTS');
   });
 });

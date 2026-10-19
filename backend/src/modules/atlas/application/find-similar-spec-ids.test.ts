@@ -75,18 +75,18 @@ describe('FindSimilarSpecIds', () => {
     expect(!result.ok && result.error.message).toBe('The lookup is not valid.');
     expect(!result.ok && result.error.details).toEqual({
       fields: {
-        colour: ['Not a slot of an S1 Spec ID.'],
+        colour: ['Not a slot of a Spec ID.'],
         topDiameter: ['Choose one value.'],
         shape: ['Shape: QQ is not in the dictionary.'],
       },
     });
   });
 
-  it('refuses the format version and the variant as lookup keys', async () => {
+  it('refuses the variant, and the format version codes no longer have, as lookup keys', async () => {
     const { find } = await setup();
-    const result = await find.execute({ variant: 'XX', formatVersion: 'S1' });
+    const result = await find.execute({ variant: 'X', formatVersion: 'S2' });
     expect(!result.ok && result.error.details).toEqual({
-      fields: { variant: ['Not a slot of an S1 Spec ID.'], formatVersion: ['Not a slot of an S1 Spec ID.'] },
+      fields: { variant: ['Not a slot of a Spec ID.'], formatVersion: ['Not a slot of a Spec ID.'] },
     });
   });
 });

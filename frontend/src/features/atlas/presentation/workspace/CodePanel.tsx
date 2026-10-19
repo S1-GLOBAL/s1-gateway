@@ -17,8 +17,8 @@ const PART: Record<DecodedSlot['state'], string> = {
 
 const LEGEND: readonly { state: DecodedSlot['state']; sample: string; label: string }[] = [
   { state: 'value', sample: 'RD', label: 'Known' },
-  { state: 'not-known', sample: '00', label: 'Not known yet' },
-  { state: 'does-not-apply', sample: 'XX', label: "Doesn't apply" },
+  { state: 'not-known', sample: 'Y', label: 'Not known yet' },
+  { state: 'does-not-apply', sample: 'X', label: "Doesn't apply" },
 ];
 
 export interface CodePanelProps {

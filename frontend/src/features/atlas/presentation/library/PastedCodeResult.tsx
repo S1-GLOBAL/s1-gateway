@@ -103,7 +103,7 @@ function Unsaved({ code, decoded }: { code: string; decoded: DecodedSpecId }) {
 
 /**
  * A code the decoder refused: its messages about the whole code, then, when it
- * has all 26 parts, each part with the messages about it.
+ * has all 25 parts, each part with the messages about it.
  */
 function Refused({ code, fields }: { code: string; fields: Record<string, string[]> }) {
   const parts = code.split('.');

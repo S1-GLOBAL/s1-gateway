@@ -14,10 +14,10 @@ import { SaveSpecId } from '../application/save-spec-id.js';
 import { UpdateSpecId } from '../application/update-spec-id.js';
 import { InMemoryDictionaryRepository } from '../application/testing/in-memory-dictionary-repository.js';
 import { InMemorySpecIdRepository } from '../application/testing/in-memory-spec-id-repository.js';
+import { ILLUSTRATIVE, ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1, withSlot } from '../domain/testing/spec-id-codes.js';
 import { AtlasController } from './atlas.controller.js';
 import { createAtlasRouter } from './atlas.routes.js';
 
-const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
 const FACTS = {
   productType: 'BLD',
   material: 'APS',
@@ -88,9 +88,9 @@ describe('POST /api/v1/atlas/spec-ids/decode', () => {
     expect(response.status).toBe(200);
     expect(response.body.data.code).toBe(ILLUSTRATIVE);
     expect(response.body.data.dictionaryRelease).toBe('S2 0.1.0');
-    expect(response.body.data.slots).toHaveLength(26);
-    expect(response.body.data.slots[1]).toEqual({
-      number: 2,
+    expect(response.body.data.slots).toHaveLength(25);
+    expect(response.body.data.slots[0]).toEqual({
+      number: 1,
       key: 'productType',
       name: 'Product type',
       raw: 'BLD',
@@ -107,23 +107,17 @@ describe('POST /api/v1/atlas/spec-ids/decode', () => {
   });
 
   it.each<[string, string, Record<string, string[]>]>([
-    [
-      'S2.BLD',
-      'S2.BLD',
-      {
-        code: ['A Spec ID is 97 characters. This one has 6.', 'A Spec ID has 26 parts separated by dots. This one has 2.'],
-      },
-    ],
+    ['BLD.APS', 'BLD.APS', { code: ['A Spec ID has 25 parts separated by dots. This one has 2.'] }],
     ['S1.BLD', 'S1.BLD', { code: ['An S1 Spec ID is 74 characters in 18 parts. This one has 6 characters in 2 parts.'] }],
     [
       'the last dot replaced by a dash',
-      ILLUSTRATIVE.replace(/\.(?=XX$)/, '-'),
-      { code: ['A Spec ID has 26 parts separated by dots. This one has 25.'] },
+      ILLUSTRATIVE.replace(/\.(?=X$)/, '-'),
+      { code: ['A Spec ID has 25 parts separated by dots. This one has 24.'] },
     ],
     [
-      'S3',
-      ILLUSTRATIVE.replace('S2.', 'S3.'),
-      { formatVersion: ['A Spec ID starts with S2, or S1 for codes given out before. This code starts with S3.'] },
+      'a tag before the product type',
+      `S3.${ILLUSTRATIVE}`,
+      { code: ['A Spec ID has 25 parts separated by dots. This one has 26.'] },
     ],
     ['QQQ', ILLUSTRATIVE.replace('.APS.', '.QQQ.'), { material: ['Material: QQQ is not in the dictionary.'] }],
     [
@@ -133,37 +127,30 @@ describe('POST /api/v1/atlas/spec-ids/decode', () => {
     ],
     [
       'Z0006',
-      ILLUSTRATIVE.replace('.XXXXX.', '.Z0006.'),
-      { capacity: ['Nominal capacity must be XXXXX for a bowl lid.'] },
+      withSlot(ILLUSTRATIVE, 'capacity', 'Z0006'),
+      { capacity: ['Nominal capacity must be X for a bowl lid.'] },
     ],
     [
-      'height XXXX',
-      ILLUSTRATIVE.replace('.0000.XXXX.XXXX.XXXX.', '.XXXX.XXXX.XXXX.XXXX.'),
+      'height X',
+      withSlot(ILLUSTRATIVE, 'height', 'X'),
       { height: ['Height can\'t be "doesn\'t apply" for a bowl lid.'] },
     ],
     ['an empty box', '   ', { code: ['Paste a Spec ID to read it.'] }],
     [
-      'product type 000',
-      ILLUSTRATIVE.replace('.BLD.', '.000.'),
+      'product type Y',
+      withSlot(ILLUSTRATIVE, 'productType', 'Y'),
       { productType: ['Product type can\'t be "not known": it decides which slots apply.'] },
     ],
     [
-      'shape 00',
-      ILLUSTRATIVE.replace('.RD.', '.00.'),
+      'shape Y',
+      withSlot(ILLUSTRATIVE, 'shape', 'Y'),
       {
-        topDiameter: ['Top diameter must be 0000 while the shape is not known.'],
-        length: ['Length must be 0000 while the shape is not known.'],
-        width: ['Width must be 0000 while the shape is not known.'],
+        topDiameter: ['Top diameter must be Y while the shape is not known.'],
+        length: ['Length must be Y while the shape is not known.'],
+        width: ['Width must be Y while the shape is not known.'],
       },
     ],
-    [
-      '090',
-      ILLUSTRATIVE.replace('.0090.', '.090.'),
-      {
-        code: ['A Spec ID is 97 characters. This one has 96.'],
-        topDiameter: ['Top diameter: 090 must be 4 characters.'],
-      },
-    ],
+    ['090', withSlot(ILLUSTRATIVE, 'topDiameter', '090'), { topDiameter: ['Top diameter: 090 must be 4 characters.'] }],
     ['00A3', ILLUSTRATIVE.replace('.0033.', '.00A3.'), { unitWeight: ['Unit weight: 00A3 is not a number.'] }],
   ])('answers 400 INVALID_SPEC_ID for %s', async (_case, code, fields) => {
     const response = await decode(code);
@@ -179,7 +166,7 @@ describe('POST /api/v1/atlas/spec-ids/encode', () => {
     const response = await encode(FACTS);
     expect(response.status).toBe(200);
     expect(response.body.data.code).toBe(ILLUSTRATIVE);
-    expect(response.body.data.slots).toHaveLength(26);
+    expect(response.body.data.slots).toHaveLength(25);
   });
 
   it('answers 400 VALIDATION_FAILED for a body without facts', async () => {
@@ -222,7 +209,7 @@ describe('POST /api/v1/atlas/spec-ids/encode', () => {
     [
       'a profile on a bowl',
       { productType: 'BWL', shape: 'RD', profile: 'DM' },
-      { profile: ['Profile must be XX for a bowl.'] },
+      { profile: ['Profile must be X for a bowl.'] },
     ],
     [
       'a thickness of 0',
@@ -249,7 +236,7 @@ describe('POST /api/v1/atlas/spec-ids', () => {
     expect(response.body.data.name).toBe('Illustrative lid');
     expect(response.body.data.savedBy).toEqual(STAFF);
     expect(response.body.data.savedAt).toBe('2026-10-16T08:00:00.000Z');
-    expect(response.body.data.slots).toHaveLength(26);
+    expect(response.body.data.slots).toHaveLength(25);
   });
 
   it('answers 409 SPEC_ID_EXISTS with the Spec ID already saved, for a second save', async () => {
@@ -339,7 +326,7 @@ describe('GET /api/v1/atlas/spec-ids', () => {
     expect(response.body.error.code).toBe('VALIDATION_FAILED');
     expect(response.body.error.message).toBe('The lookup is not valid.');
     expect(response.body.error.details.fields).toEqual({
-      colour: ['Not a slot of an S1 Spec ID.'],
+      colour: ['Not a slot of a Spec ID.'],
       height: ['Choose one value.'],
       shape: ['Shape: QQ is not in the dictionary.'],
     });
@@ -392,7 +379,7 @@ describe('saved Spec IDs by id', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(response.body.data.code).toBe(ILLUSTRATIVE.replace('.0000.', '.0012.'));
+    expect(response.body.data.code).toBe(withSlot(ILLUSTRATIVE, 'height', '0012'));
     expect(response.body.data.version).toBe(2);
     expect(response.body.data.updatedBy).toEqual(STAFF);
     expect(response.body.data.updatedAt).toBe('2026-10-17T08:00:00.000Z');
@@ -520,10 +507,7 @@ describe('GET /api/v1/atlas/spec-ids/:code, as a lookup', () => {
   });
 });
 
-describe('S2 codes and S1 codes', () => {
-  /** The illustrative bowl lid as S1 wrote it, before ADR 0024. */
-  const ILLUSTRATIVE_S1 = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX';
-
+describe('the slots S2 added, and codes given out before', () => {
   it.each([
     ['wall and print', { productType: 'CUP', wall: 'DW', print: '02' }, { wall: 'DW', print: '02' }],
     ['compartments', { productType: 'CTN', compartments: '3' }, { compartments: '03' }],
@@ -534,7 +518,7 @@ describe('S2 codes and S1 codes', () => {
   ])('encodes %s into their slots', async (_case, facts, raws) => {
     const response = await encode(facts);
     expect(response.status).toBe(200);
-    expect(response.body.data.code).toHaveLength(97);
+    expect(response.body.data.code.split('.')).toHaveLength(25);
     const slots = response.body.data.slots as { key: string; raw: string }[];
     for (const [key, raw] of Object.entries(raws)) expect(slots.find((slot) => slot.key === key)?.raw).toBe(raw);
   });
@@ -545,11 +529,25 @@ describe('S2 codes and S1 codes', () => {
     expect(response.body.error.details.fields).toEqual({ compartments: ['Compartments: 13 is outside 1–12.'] });
   });
 
-  it('decodes an S1 code as the S2 code it converts to', async () => {
-    const response = await decode(ILLUSTRATIVE_S1);
+  it.each([
+    ['an S1 code', ILLUSTRATIVE_S1],
+    ['a long S2 code', ILLUSTRATIVE_LONG],
+  ])('decodes %s as the short code it converts to', async (_case, code) => {
+    const response = await decode(code);
     expect(response.status).toBe(200);
     expect(response.body.data.code).toBe(ILLUSTRATIVE);
-    expect(response.body.data.slots).toHaveLength(26);
+    expect(response.body.data.slots).toHaveLength(25);
+  });
+
+  it('finds a saved Spec ID by its long S2 code', async () => {
+    const own = setup();
+    await request(own).post('/api/v1/atlas/spec-ids').send({ name: 'Illustrative lid', facts: FACTS });
+
+    const response = await request(own).get(`/api/v1/atlas/spec-ids/${encodeURIComponent(ILLUSTRATIVE_LONG)}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.code).toBe(ILLUSTRATIVE);
+    expect(response.body.data.replacedCode).toBeNull();
   });
 
   it('finds a saved Spec ID by its S1 code, typed in lower case with spaces around it', async () => {

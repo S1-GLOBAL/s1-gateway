@@ -30,7 +30,7 @@ export class FindSimilarSpecIds
     const criteria: SimilarCriteria = {};
     for (const [key, value] of Object.entries(input)) {
       if (!isSearchableSlot(key)) {
-        issues[key] = ['Not a slot of an S1 Spec ID.'];
+        issues[key] = ['Not a slot of a Spec ID.'];
       } else if (typeof value !== 'string') {
         issues[key] = ['Choose one value.'];
       } else {

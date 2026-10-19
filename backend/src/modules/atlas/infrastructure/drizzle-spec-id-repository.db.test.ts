@@ -100,7 +100,7 @@ describe('DrizzleSpecIdRepository', () => {
     expect(record?.savedSpecId.savedAt.toISOString()).toBe('2026-10-16T08:00:00.000Z');
     for (const { key } of SLOTS) expect(record?.savedSpecId.specId.slot(key)).toBe(saved.specId.slot(key));
     expect(record?.savedSpecId.specId.code).toBe(
-      'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX',
+      'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X',
     );
   });
 
