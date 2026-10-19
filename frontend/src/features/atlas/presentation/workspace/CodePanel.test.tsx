@@ -18,6 +18,13 @@ describe('CodePanel', () => {
     expect(screen.getByText('Bowl lid · APS · CL · RD · DM · 0090 · 0033')).toBeTruthy();
   });
 
+  it('tells Y and X apart by colour alone, with no underline', () => {
+    const { container } = render(<CodePanel decoded={readCode(ILLUSTRATIVE)} />);
+    const parts = [...container.querySelectorAll('span')].filter((span) => ['Y', 'X'].includes(span.textContent ?? ''));
+    expect(parts.length).toBeGreaterThan(0);
+    for (const part of parts) expect(part.className).not.toContain('underline');
+  });
+
   it('copies the code, reads "Copied", and reads "Copy" again after 2 seconds', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const writeText = vi.fn(async () => undefined);
