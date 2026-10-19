@@ -15,6 +15,7 @@ export interface SidebarAccount {
   lastName: string;
   /** "First Last", or just the first name when there is no last name. */
   fullName: string;
+  email: string;
 }
 
 /**
@@ -40,6 +41,7 @@ export function Sidebar({
   onToggle(): void;
 }) {
   const initials = accountInitials(account.firstName, account.lastName);
+  const email = account.email.trim();
 
   return (
     <m.aside
@@ -74,7 +76,7 @@ export function Sidebar({
         <div
           className={cn(
             'group relative flex min-w-0 items-center',
-            collapsed ? 'justify-center' : 'h-9 flex-1 gap-3 overflow-hidden rounded-control px-2.5',
+            collapsed ? 'justify-center' : 'min-h-9 flex-1 gap-3 overflow-hidden rounded-control px-2.5',
           )}
         >
           {initials && (
@@ -85,15 +87,23 @@ export function Sidebar({
               {initials}
             </span>
           )}
-          <span className={cn('truncate text-sm font-medium text-ink', collapsed && 'sr-only')} title={account.fullName}>
-            {account.fullName}
+          <span className={cn('min-w-0', collapsed ? 'sr-only' : 'flex-1')}>
+            <span className="block truncate text-sm font-medium text-ink" title={account.fullName}>
+              {account.fullName}
+            </span>
+            {email && (
+              <span className="block truncate text-xs text-ink-subtle" title={email}>
+                {email}
+              </span>
+            )}
           </span>
           {collapsed && (
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute left-full z-20 ml-3 whitespace-nowrap rounded-control bg-ink px-2 py-1 text-xs font-medium text-canvas opacity-0 shadow-md transition-opacity duration-150 ease-standard group-hover:opacity-100"
+              className="pointer-events-none absolute left-full z-20 ml-3 rounded-control bg-ink px-2 py-1 text-xs text-canvas opacity-0 shadow-md transition-opacity duration-150 ease-standard group-hover:opacity-100"
             >
-              {account.fullName}
+              <span className="block whitespace-nowrap font-medium">{account.fullName}</span>
+              {email && <span className="block whitespace-nowrap font-normal">{email}</span>}
             </span>
           )}
         </div>

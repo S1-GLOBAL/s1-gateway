@@ -5,7 +5,12 @@ import { navItemsFor } from '../nav';
 import { Sidebar } from './Sidebar';
 import { SIDEBAR_STORAGE_KEY, useSidebarCollapsed } from './use-sidebar-collapsed';
 
-const ADA = { firstName: 'Ada', lastName: 'Lovelace', fullName: 'Ada Lovelace' };
+const ADA = {
+  firstName: 'Ada',
+  lastName: 'Lovelace',
+  fullName: 'Ada Lovelace',
+  email: 'ada@sourceone.global',
+};
 
 function Harness({ isAdmin }: { isAdmin: boolean }) {
   const [collapsed, toggle] = useSidebarCollapsed();
@@ -47,6 +52,7 @@ describe('Sidebar', () => {
   it('shows who is signed in beside the collapse control', () => {
     renderAt('/theme');
     expect(screen.getByText('Ada Lovelace')).toBeTruthy();
+    expect(screen.getByText('ada@sourceone.global')).toBeTruthy();
     expect(screen.getByText('AL')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toBeTruthy();
   });
@@ -56,7 +62,7 @@ describe('Sidebar', () => {
       <MemoryRouter>
         <Sidebar
           items={navItemsFor(false)}
-          account={{ firstName: 'Ada', lastName: '', fullName: 'Ada' }}
+          account={{ firstName: 'Ada', lastName: '', fullName: 'Ada', email: 'ada@sourceone.global' }}
           collapsed={false}
           onToggle={() => undefined}
         />
@@ -73,7 +79,8 @@ describe('Sidebar', () => {
     expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeTruthy();
     // Folded, the link and the signed-in name stay available to assistive technology.
     expect(screen.getByRole('link', { name: 'Theme' })).toBeTruthy();
-    expect(screen.getByTitle('Ada Lovelace').className).toContain('sr-only');
+    expect(screen.getByTitle('Ada Lovelace').parentElement?.className).toContain('sr-only');
+    expect(screen.getByTitle('ada@sourceone.global')).toBeTruthy();
     expect(screen.getByText('AL')).toBeTruthy();
   });
 
