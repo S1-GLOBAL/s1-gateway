@@ -59,7 +59,7 @@ request, stopping for the owner after each.
 | Phase | Steps | Status |
 |---|---|---|
 | 1. S2 format, S2 0.1.0 and the conversion | 7 / 7 | Done — on staging, a Spec ID saved before the release opens with its S2 code, and its old S1 code finds it; see #28 |
-| 2. Workspace and library for S2 | 0 / 4 | Not started |
+| 2. Workspace and library for S2 | 3 / 4 | In progress — step 2.4's staging check remains after merge |
 | 3. The verified-list import | 0 / 6 | Not started |
 
 ---
@@ -148,7 +148,7 @@ is 1–26. Nothing else changes shape.
 |---|---|---|
 | `SLOT_NAMES` (26), `SlotKey` | `features/atlas/domain/atlas.ts` | 1 |
 | `ILLUSTRATIVE` and fixtures as S2 codes | `features/atlas/application/testing/atlas-fixtures.ts`, page tests | 1 |
-| `CODE_SLOTS` adds the six dictionary slots; `COUNT_SLOTS` (`compartments` max 12, `plies` max 4) | `features/atlas/domain/slot-controls.ts` | 2 |
+| `CODE_SLOTS` adds the six dictionary slots; `COUNT_SLOTS` (`compartments`, `plies`: typed, and refused out of range by the server) | `features/atlas/domain/slot-controls.ts` | 2 |
 | `BuildForm.counts`; `toFacts`, `toBuildForm`, `isFormChanged` | `features/atlas/domain/build-facts.ts`, `to-build-form.ts` | 2 |
 | Group 06 "Print and features"; the groups of #28 | `features/atlas/presentation/workspace/FactGroups.tsx` | 2 |
 | Product type as a `SelectField` listing the dictionary's product types in its order (31 types do not fit a segmented row) | same | 2 |
@@ -252,18 +252,18 @@ One pull request, "Part of #28".
 
 ### Step 2.1 — Form helpers
 
-- [ ] **Action.** The frontend's S2 test dictionary for 31 types beside `s1Dictionary` in `atlas-fixtures.ts`; `slot-controls.ts`, `build-facts.ts` and `to-build-form.ts` for the six dictionary slots and the two counts. Tests: `toBuildForm` round-trips an S2 code with every new slot known; a count typed `03` sends `3`; a count left empty sends nothing.
-- [ ] **Verify.** `npm --prefix frontend run test -- --no-file-parallelism src/features/atlas/domain` passes.
+- [x] **Action.** The frontend's S2 test dictionary for 31 types beside `s1Dictionary` in `atlas-fixtures.ts`; `slot-controls.ts`, `build-facts.ts` and `to-build-form.ts` for the six dictionary slots and the two counts. Tests: `toBuildForm` round-trips an S2 code with every new slot known; a count typed `03` sends `3`; a count left empty sends nothing.
+- [x] **Verify.** `npm --prefix frontend run test -- --no-file-parallelism src/features/atlas/domain` passes.
 
 ### Step 2.2 — The workspace
 
-- [ ] **Action.** `FactGroups` with #28's six groups; product type as a `SelectField` (label "Product type"); new choices with "Not known" first; compartments and plies as number fields with placeholder "Not known". Tests: for each of the 31 product types, exactly the slots its rules apply are shown (one table-driven test); for each new slot, a value changes the code; the left-out note names the new slots that don't apply.
-- [ ] **Verify.** The tests pass; `npm run design:check` prints "Design tokens only."
+- [x] **Action.** `FactGroups` with #28's six groups; product type as a `SelectField` (label "Product type"); new choices with "Not known" first; compartments and plies as number fields with placeholder "Not known". Tests: for each of the 31 product types, exactly the slots its rules apply are shown (one table-driven test); for each new slot, a value changes the code; the left-out note names the new slots that don't apply.
+- [x] **Verify.** The tests pass; `npm run design:check` prints "Design tokens only."
 
 ### Step 2.3 — Everywhere a code is shown
 
-- [ ] **Action.** Check the code panel, History, library cards, pasted-code result and Dictionary sheet with 26 slots; fix any width or wrap problem at 390 px (`break-all` on codes).
-- [ ] **Verify.** Page tests pass; at 390 px no page scrolls sideways (browser check in Step 2.4).
+- [x] **Action.** Check the code panel, History, library cards, pasted-code result and Dictionary sheet with 26 slots; fix any width or wrap problem at 390 px (`break-all` on codes).
+- [x] **Verify.** Page tests pass; at 390 px no page scrolls sideways (browser check in Step 2.4).
 
 ### Step 2.4 — Browser check, screenshots, pull request
 

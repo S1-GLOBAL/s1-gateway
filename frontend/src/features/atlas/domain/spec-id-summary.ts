@@ -1,6 +1,6 @@
 import type { DecodedSpecId } from './atlas';
 
-/** The slots a summary leaves out: always S1, and always XX for now. */
+/** The slots a summary leaves out: always S2, and always XX for now. */
 const NOT_SUMMARISED = new Set(['formatVersion', 'variant']);
 
 /** The known facts in plain words, in code order: `Bowl lid · Polymer, PS (polystyrene) · Clear · 90 mm`. */

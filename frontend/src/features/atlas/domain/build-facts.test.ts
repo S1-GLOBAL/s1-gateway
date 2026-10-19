@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { testDictionary } from '../application/testing/atlas-fixtures';
+import { s2Dictionary, testDictionary } from '../application/testing/atlas-fixtures';
 import { initialBuildForm, isFormChanged, toFacts, type BuildForm } from './build-facts';
 
 const { rules } = testDictionary;
@@ -81,6 +81,28 @@ describe('toFacts', () => {
   it('sends a capacity unit without an amount, for the server to name', () => {
     const facts = toFacts(form({ productType: 'BWL', capacityUnit: 'Z' }), rules);
     expect(facts.capacity).toEqual({ unit: 'Z', value: '' });
+  });
+
+  it('sends a count typed 03 as 3, and nothing for a count left empty', () => {
+    const facts = toFacts(form({ counts: { compartments: ' 03 ', plies: '' } }), rules);
+    expect(facts).toEqual({ productType: 'BLD', compartments: '3' });
+  });
+
+  it('sends a count that is not a whole number as typed, for the server to name', () => {
+    expect(toFacts(form({ counts: { compartments: '', plies: '2.5' } }), rules).plies).toBe('2.5');
+  });
+
+  it('sends the new choices, and drops a count the product type never has', () => {
+    const initial = initialBuildForm('CUP');
+    const facts = toFacts(
+      {
+        ...initial,
+        codes: { ...initial.codes, wall: 'DW', print: '02' },
+        counts: { compartments: '3', plies: '' },
+      },
+      s2Dictionary.rules,
+    );
+    expect(facts).toEqual({ productType: 'CUP', wall: 'DW', print: '02' });
   });
 });
 

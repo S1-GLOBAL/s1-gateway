@@ -30,6 +30,31 @@ describe('toBuildForm', () => {
     expect(form.capacityValue).toBe('16');
   });
 
+  it('fills every new slot, so that the form sends the facts an S2 code was built from', () => {
+    const code = ILLUSTRATIVE.replace('.XX.00.XX.X.XX.XX.XX.XX.XX', '.DW.02.03.2.SP.TW.PW.WN.XX');
+    expect(toFacts(toBuildForm(readCode(code)), testDictionary.rules)).toEqual({
+      productType: 'BLD',
+      material: 'APS',
+      colourClarity: 'CL',
+      shape: 'RD',
+      profile: 'DM',
+      topDiameter: { value: '90', unit: 'mm' },
+      unitWeight: { value: '3.3', unit: 'g' },
+      wall: 'DW',
+      print: '02',
+      compartments: '3',
+      plies: '2',
+      lidOpening: 'SP',
+      handle: 'TW',
+      wrap: 'PW',
+      window: 'WN',
+    });
+  });
+
+  it('leaves a count not known or not applying empty', () => {
+    expect(toBuildForm(readCode(ILLUSTRATIVE)).counts).toEqual({ compartments: '', plies: '' });
+  });
+
   it('reads a unit weight of whole grams without a decimal point', () => {
     const form = toBuildForm(readCode(ILLUSTRATIVE.replace('.0033.', '.0040.')));
     expect(form.measures.unitWeight.value).toBe('4');

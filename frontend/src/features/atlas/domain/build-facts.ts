@@ -1,6 +1,15 @@
 import type { SlotKey, SlotRuleEntry, SpecIdFacts } from './atlas';
 import { slotStateFor } from './slot-state';
-import { CODE_SLOTS, MEASURED_SLOTS, type CodeSlotKey, type MeasuredSlotKey } from './slot-controls';
+import {
+  CODE_SLOTS,
+  COUNT_SLOTS,
+  MEASURED_SLOTS,
+  type CodeSlotKey,
+  type CountSlotKey,
+  type MeasuredSlotKey,
+} from './slot-controls';
+
+const DIGITS = /^\d+$/;
 
 /** What the Build form holds. `''` is "not known" for every choice and every typed value. */
 export interface BuildForm {
@@ -10,17 +19,20 @@ export interface BuildForm {
   capacityUnit: string;
   capacityValue: string;
   measures: Record<MeasuredSlotKey, { value: string; unit: string }>;
+  /** As typed: `03`, or anything else, for the server to refuse. */
+  counts: Record<CountSlotKey, string>;
 }
 
 export function initialBuildForm(productType: string): BuildForm {
   return {
     productType,
-    codes: { material: '', coating: '', colourClarity: '', shape: '', profile: '' },
+    codes: Object.fromEntries(CODE_SLOTS.map((key) => [key, ''])) as BuildForm['codes'],
     capacityUnit: '',
     capacityValue: '',
     measures: Object.fromEntries(
       MEASURED_SLOTS.map((slot) => [slot.key, { value: '', unit: slot.units[0]?.value ?? '' }]),
     ) as BuildForm['measures'],
+    counts: { compartments: '', plies: '' },
   };
 }
 
@@ -45,6 +57,11 @@ export function toFacts(form: BuildForm, rules: readonly SlotRuleEntry[]): SpecI
   for (const { key } of MEASURED_SLOTS) {
     const { value, unit } = form.measures[key];
     if (value.trim() !== '' && open(key)) facts[key] = { value: value.trim(), unit };
+  }
+  for (const key of COUNT_SLOTS) {
+    const count = form.counts[key].trim();
+    // `03` is sent as `3`; anything not all digits is sent as typed, for the server to name.
+    if (count !== '' && open(key)) facts[key] = DIGITS.test(count) ? count.replace(/^0+(?=\d)/, '') : count;
   }
   return facts;
 }

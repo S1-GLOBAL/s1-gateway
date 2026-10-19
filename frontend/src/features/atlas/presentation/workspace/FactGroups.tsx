@@ -6,26 +6,36 @@ import { TextField } from '@/shared/ui/TextField';
 import { SLOT_NAMES, type AtlasDictionary, type SlotKey } from '../../domain/atlas';
 import type { BuildForm } from '../../domain/build-facts';
 import { joinNames, leftOutSlots } from '../../domain/left-out-slots';
-import { CODE_SLOTS, MEASURED_SLOTS, type CodeSlotKey, type MeasuredSlot } from '../../domain/slot-controls';
+import {
+  CODE_SLOTS,
+  isCountSlot,
+  MEASURED_SLOTS,
+  type CodeSlotKey,
+  type MeasuredSlot,
+} from '../../domain/slot-controls';
 import { slotStateFor, type SlotState } from '../../domain/slot-state';
 import { dictionaryOptions } from '../dictionary-options';
 
 const NOT_KNOWN = 'Not known';
 const NOT_KNOWN_OPTION: SelectOption = { value: '', label: NOT_KNOWN };
 
-/** Groups 02 to 05, in code order. Group 01 is the product type. */
+/** Groups 02 to 06, as #28 orders them. Group 01 is the product type. */
 const GROUPS: readonly { number: string; title: string; slots: readonly SlotKey[] }[] = [
   { number: '02', title: "What it's made of", slots: ['material', 'coating', 'colourClarity'] },
-  { number: '03', title: 'Shape', slots: ['shape', 'profile'] },
+  { number: '03', title: 'Shape', slots: ['shape', 'profile', 'wall', 'lidOpening'] },
   {
     number: '04',
     title: 'Size',
-    slots: ['capacity', 'topDiameter', 'bottomDiameter', 'height', 'length', 'width', 'gusset'],
+    slots: ['capacity', 'topDiameter', 'bottomDiameter', 'height', 'length', 'width', 'gusset', 'compartments'],
   },
-  { number: '05', title: 'Weight and thickness', slots: ['unitWeight', 'basisWeight', 'thickness'] },
+  { number: '05', title: 'Weight and thickness', slots: ['unitWeight', 'basisWeight', 'thickness', 'plies'] },
+  { number: '06', title: 'Print and features', slots: ['print', 'handle', 'wrap', 'window'] },
 ];
 
 const nameOf = (key: SlotKey) => SLOT_NAMES.find((slot) => slot.key === key)?.name ?? key;
+
+/** `Shipping box (RSC)` → `shipping box (RSC)`: only the first letter, so a code in brackets keeps its capitals. */
+const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
 
 export interface FactGroupsProps {
   dictionary: AtlasDictionary;
@@ -37,7 +47,7 @@ export interface FactGroupsProps {
 }
 
 /**
- * The facts, in five numbered groups. A slot that does not apply to the
+ * The facts, in six numbered groups. A slot that does not apply to the
  * product type, shape and material is not shown, and one note names them; a
  * slot waiting on the shape or material shows "Not known" until it is chosen.
  */
@@ -87,6 +97,22 @@ export function FactGroups({ dictionary, form, onChange, fields, className }: Fa
         />
       );
     }
+    if (isCountSlot(key)) {
+      const open = state === 'any';
+      return (
+        <TextField
+          key={key}
+          label={nameOf(key)}
+          value={open ? form.counts[key] : ''}
+          onChange={(event) => onChange({ ...form, counts: { ...form.counts, [key]: event.target.value } })}
+          disabled={!open}
+          placeholder={NOT_KNOWN}
+          errors={fields[key]}
+          inputMode="numeric"
+          autoComplete="off"
+        />
+      );
+    }
     const measured = MEASURED_SLOTS.find((slot) => slot.key === key);
     if (measured) {
       return (
@@ -121,18 +147,17 @@ export function FactGroups({ dictionary, form, onChange, fields, className }: Fa
     <div className={className}>
       <div className="flex flex-col gap-4">
         <Group number="01" title="What it is">
-          <Segmented label={nameOf('productType')} errors={fields.productType} className="sm:col-span-2">
-            <SegmentedControl
-              label={nameOf('productType')}
-              value={form.productType}
-              options={productTypes.map(({ code, meaning }) => ({ value: code, label: meaning }))}
-              onChange={(productType) => onChange({ ...form, productType })}
-              className="flex-wrap"
-            />
-          </Segmented>
+          <SelectField
+            label={nameOf('productType')}
+            options={dictionaryOptions(dictionary, 'productType')}
+            value={form.productType}
+            onChange={(event) => onChange({ ...form, productType: event.target.value })}
+            errors={fields.productType}
+            className="sm:col-span-2"
+          />
           {leftOut.length > 0 && (
             <p className="text-sm text-ink-muted sm:col-span-2">
-              {`Not asked for a ${productTypeName.toLowerCase()}: ${joinNames(leftOut.map((key) => nameOf(key).toLowerCase()))}. They're written as X in the code.`}
+              {`Not asked for a ${lowerFirst(productTypeName)}: ${joinNames(leftOut.map((key) => nameOf(key).toLowerCase()))}. They're written as X in the code.`}
             </p>
           )}
         </Group>
