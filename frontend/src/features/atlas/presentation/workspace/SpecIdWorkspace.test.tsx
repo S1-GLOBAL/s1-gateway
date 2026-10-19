@@ -5,7 +5,14 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import type { AtlasGateway } from '../../application/atlas-gateway';
 import { AtlasGatewayProvider } from '../../application/atlas-gateway-context';
-import { gatewayWith, ILLUSTRATIVE, readCode, s1Dictionary, savedFor } from '../../application/testing/atlas-fixtures';
+import {
+  gatewayWith,
+  ILLUSTRATIVE,
+  readCode,
+  s1Dictionary,
+  savedFor,
+  withSlot,
+} from '../../application/testing/atlas-fixtures';
 import type { SavedSpecId } from '../../domain/atlas';
 import { initialBuildForm, type BuildForm } from '../../domain/build-facts';
 import { SpecIdWorkspace } from './SpecIdWorkspace';
@@ -103,10 +110,10 @@ describe('SpecIdWorkspace, already saved', () => {
   it('folds similar Spec IDs away, never itself, the match or one with the same code', async () => {
     const own = savedFor(ILLUSTRATIVE, 'This lid', { id: '00000000-0000-4000-8000-000000000001' });
     const sameCode = savedFor(ILLUSTRATIVE, 'Same code', { id: '00000000-0000-4000-8000-000000000003' });
-    const alike = savedFor(ILLUSTRATIVE.replace('.0033.', '.0040.'), 'Heavier lid', {
+    const alike = savedFor(withSlot(ILLUSTRATIVE, 'unitWeight', '0040'), 'Heavier lid', {
       id: '00000000-0000-4000-8000-000000000002',
     });
-    const might = savedFor(ILLUSTRATIVE.replace('.0090.', '.0000.'), 'Unmeasured lid', {
+    const might = savedFor(withSlot(ILLUSTRATIVE, 'topDiameter', 'Y'), 'Unmeasured lid', {
       id: '00000000-0000-4000-8000-000000000004',
     });
     renderWorkspace(

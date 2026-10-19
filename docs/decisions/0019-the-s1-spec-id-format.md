@@ -3,7 +3,8 @@
 - **Status:** Accepted; partly superseded by [0022](./0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md):
   "A code is permanent once issued" no longer holds for saved Spec IDs, whose code follows their facts;
   and by [0024](./0024-spec-ids-move-to-the-s2-format.md): the layout, 18 slots and 74 characters hold only
-  for S1 codes given out before S2; new codes are S2, 26 slots and 97 characters
+  for S1 codes given out before S2; and by
+  [0025](./0025-spec-ids-are-written-short.md): new codes are 25 parts with no format tag, and an empty slot is one letter, `Y` or `X`
 - **Date:** 2026-10-16
 - **Related:** [Issue #4](https://github.com/S1-GLOBAL/s1-gateway/issues/4) ·
   [Plan 0003](../plans/0003-atlas-spec-ids.md) ·

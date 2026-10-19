@@ -3,7 +3,7 @@ import { SLOT_NAMES } from '../domain/atlas';
 
 /** The specification's own words for each rule. */
 const RULE_LABELS: Record<SlotRule, string> = {
-  applies: 'Yes',
+  applies: 'Applies',
   never: 'X',
   round_only: 'Round only',
   non_round_only: 'Non-round only',

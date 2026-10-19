@@ -1,7 +1,7 @@
 import { isNotKnown } from './applicability.js';
 import type { SlotKey } from './slots.js';
 
-/** The slots a similar lookup can filter on: every slot but the format version and the variant. */
+/** The slots a similar lookup can filter on: every slot but the variant. */
 export const SEARCHABLE_SLOTS = [
   'productType',
   'material',

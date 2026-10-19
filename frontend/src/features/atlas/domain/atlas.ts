@@ -1,6 +1,5 @@
-/** The 26 slots of an S2 Spec ID, as the API names them (ADR 0019, ADR 0024). */
+/** The 25 slots of a Spec ID, as the API names them (ADR 0019, ADR 0024, ADR 0025). */
 export type SlotKey =
-  | 'formatVersion'
   | 'productType'
   | 'material'
   | 'coating'
@@ -60,7 +59,7 @@ export interface AtlasDictionary {
 }
 
 export interface DecodedSlot {
-  /** 1–26. */
+  /** 1–25. */
   number: number;
   key: SlotKey;
   name: string;
@@ -75,7 +74,7 @@ export interface DecodedSlot {
 export interface DecodedSpecId {
   code: string;
   dictionaryRelease: string;
-  /** Always 26, in code order. */
+  /** Always 25, in code order. */
   slots: DecodedSlot[];
 }
 
@@ -221,7 +220,6 @@ export interface SimilarSpecIds {
  * needs them to show a code the server refused, part by part.
  */
 export const SLOT_NAMES: readonly { readonly key: SlotKey; readonly name: string }[] = [
-  { key: 'formatVersion', name: 'Format version' },
   { key: 'productType', name: 'Product type' },
   { key: 'material', name: 'Material' },
   { key: 'coating', name: 'Coating' },

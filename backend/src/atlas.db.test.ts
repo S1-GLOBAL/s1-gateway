@@ -8,7 +8,7 @@ import { connectTestDatabase, resetTables } from './test/database.js';
 
 const ADMIN = 'admin@sourceone.global';
 const PASSWORD = 'correct-horse-battery';
-const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
+const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
 const FACTS = {
   productType: 'BLD',
   material: 'APS',
@@ -179,7 +179,7 @@ describe('Atlas, composed over Postgres', () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe('VALIDATION_FAILED');
-    expect(response.body.error.details.fields.colour).toEqual(['Not a slot of an S1 Spec ID.']);
+    expect(response.body.error.details.fields.colour).toEqual(['Not a slot of a Spec ID.']);
   });
 
   it('answers 404 to PUT and DELETE on every path when signed in: nothing replaces or deletes the dictionary or a saved Spec ID', async () => {

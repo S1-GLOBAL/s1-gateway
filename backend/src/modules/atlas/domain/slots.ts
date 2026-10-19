@@ -1,8 +1,7 @@
 import { fraction, type Fraction } from './measurement.js';
 
-/** The 26 slots of an S2 Spec ID, in the order they appear in the code (ADR 0019, ADR 0024). */
+/** The 25 slots of a Spec ID, in the order they appear in the code (ADR 0019, ADR 0024, ADR 0025). */
 export type SlotKey =
-  | 'formatVersion'
   | 'productType'
   | 'material'
   | 'coating'
@@ -29,52 +28,54 @@ export type SlotKey =
   | 'window'
   | 'variant';
 
-export type SlotKind = 'version' | 'dictionary' | 'capacity' | 'measure' | 'count' | 'variant';
+export type SlotKind = 'dictionary' | 'capacity' | 'measure' | 'count' | 'variant';
 
 export interface SlotDefinition {
-  /** 1–26, as the specification numbers them. */
+  /** 1–25, the slot's place in the code. */
   readonly number: number;
   readonly key: SlotKey;
   /** The name people read, in every message. */
   readonly name: string;
+  /** The width of a value. A marker is always one letter, `Y` or `X` (ADR 0025). */
   readonly width: number;
   readonly kind: SlotKind;
 }
 
 export const SLOTS: readonly SlotDefinition[] = [
-  { number: 1, key: 'formatVersion', name: 'Format version', width: 2, kind: 'version' },
-  { number: 2, key: 'productType', name: 'Product type', width: 3, kind: 'dictionary' },
-  { number: 3, key: 'material', name: 'Material', width: 3, kind: 'dictionary' },
-  { number: 4, key: 'coating', name: 'Coating', width: 2, kind: 'dictionary' },
-  { number: 5, key: 'colourClarity', name: 'Colour / clarity', width: 2, kind: 'dictionary' },
-  { number: 6, key: 'shape', name: 'Shape', width: 2, kind: 'dictionary' },
-  { number: 7, key: 'profile', name: 'Profile', width: 2, kind: 'dictionary' },
-  { number: 8, key: 'capacity', name: 'Nominal capacity', width: 5, kind: 'capacity' },
-  { number: 9, key: 'topDiameter', name: 'Top diameter', width: 4, kind: 'measure' },
-  { number: 10, key: 'bottomDiameter', name: 'Bottom diameter', width: 4, kind: 'measure' },
-  { number: 11, key: 'height', name: 'Height', width: 4, kind: 'measure' },
-  { number: 12, key: 'length', name: 'Length', width: 4, kind: 'measure' },
-  { number: 13, key: 'width', name: 'Width', width: 4, kind: 'measure' },
-  { number: 14, key: 'gusset', name: 'Gusset', width: 4, kind: 'measure' },
-  { number: 15, key: 'unitWeight', name: 'Unit weight', width: 4, kind: 'measure' },
-  { number: 16, key: 'basisWeight', name: 'Basis weight', width: 3, kind: 'measure' },
-  { number: 17, key: 'thickness', name: 'Thickness', width: 3, kind: 'measure' },
-  { number: 18, key: 'wall', name: 'Wall', width: 2, kind: 'dictionary' },
-  { number: 19, key: 'print', name: 'Print', width: 2, kind: 'dictionary' },
-  { number: 20, key: 'compartments', name: 'Compartments', width: 2, kind: 'count' },
-  { number: 21, key: 'plies', name: 'Plies', width: 1, kind: 'count' },
-  { number: 22, key: 'lidOpening', name: 'Lid opening', width: 2, kind: 'dictionary' },
-  { number: 23, key: 'handle', name: 'Handle', width: 2, kind: 'dictionary' },
-  { number: 24, key: 'wrap', name: 'Individual wrap', width: 2, kind: 'dictionary' },
-  { number: 25, key: 'window', name: 'Window', width: 2, kind: 'dictionary' },
-  { number: 26, key: 'variant', name: 'Variant number', width: 2, kind: 'variant' },
+  { number: 1, key: 'productType', name: 'Product type', width: 3, kind: 'dictionary' },
+  { number: 2, key: 'material', name: 'Material', width: 3, kind: 'dictionary' },
+  { number: 3, key: 'coating', name: 'Coating', width: 2, kind: 'dictionary' },
+  { number: 4, key: 'colourClarity', name: 'Colour / clarity', width: 2, kind: 'dictionary' },
+  { number: 5, key: 'shape', name: 'Shape', width: 2, kind: 'dictionary' },
+  { number: 6, key: 'profile', name: 'Profile', width: 2, kind: 'dictionary' },
+  { number: 7, key: 'capacity', name: 'Nominal capacity', width: 5, kind: 'capacity' },
+  { number: 8, key: 'topDiameter', name: 'Top diameter', width: 4, kind: 'measure' },
+  { number: 9, key: 'bottomDiameter', name: 'Bottom diameter', width: 4, kind: 'measure' },
+  { number: 10, key: 'height', name: 'Height', width: 4, kind: 'measure' },
+  { number: 11, key: 'length', name: 'Length', width: 4, kind: 'measure' },
+  { number: 12, key: 'width', name: 'Width', width: 4, kind: 'measure' },
+  { number: 13, key: 'gusset', name: 'Gusset', width: 4, kind: 'measure' },
+  { number: 14, key: 'unitWeight', name: 'Unit weight', width: 4, kind: 'measure' },
+  { number: 15, key: 'basisWeight', name: 'Basis weight', width: 3, kind: 'measure' },
+  { number: 16, key: 'thickness', name: 'Thickness', width: 3, kind: 'measure' },
+  { number: 17, key: 'wall', name: 'Wall', width: 2, kind: 'dictionary' },
+  { number: 18, key: 'print', name: 'Print', width: 2, kind: 'dictionary' },
+  { number: 19, key: 'compartments', name: 'Compartments', width: 2, kind: 'count' },
+  { number: 20, key: 'plies', name: 'Plies', width: 1, kind: 'count' },
+  { number: 21, key: 'lidOpening', name: 'Lid opening', width: 2, kind: 'dictionary' },
+  { number: 22, key: 'handle', name: 'Handle', width: 2, kind: 'dictionary' },
+  { number: 23, key: 'wrap', name: 'Individual wrap', width: 2, kind: 'dictionary' },
+  { number: 24, key: 'window', name: 'Window', width: 2, kind: 'dictionary' },
+  { number: 25, key: 'variant', name: 'Variant number', width: 2, kind: 'variant' },
 ];
 
-export const SPEC_ID_LENGTH = 97;
-export const SLOT_COUNT = 26;
-export const FORMAT_VERSION = 'S2';
-/** Variants are out of scope: every code ends in `XX`. */
-export const NO_VARIANT = 'XX';
+export const SLOT_COUNT = 25;
+/** A slot the product has, though no source states it (ADR 0025). */
+export const NOT_KNOWN = 'Y';
+/** A slot this product never has (ADR 0025). */
+export const DOES_NOT_APPLY = 'X';
+/** Variants are out of scope: every code ends in `X`. */
+export const NO_VARIANT = DOES_NOT_APPLY;
 /** `round_only` slots apply when the shape is this code; `non_round_only` when it is any other. */
 export const ROUND_SHAPE = 'RD';
 /** `paper_only` slots apply when the material's first letter (its family) is this one. */
@@ -115,10 +116,10 @@ export const DICTIONARY_SLOTS: readonly DictionarySlotKey[] = [
 ];
 
 /**
- * Slots whose applicability the dictionary decides, per product type. Format
- * version, product type, material and variant are in every code.
+ * Slots whose applicability the dictionary decides, per product type. Product
+ * type, material and variant are in every code.
  */
-export type RuledSlotKey = Exclude<SlotKey, 'formatVersion' | 'productType' | 'material' | 'variant'>;
+export type RuledSlotKey = Exclude<SlotKey, 'productType' | 'material' | 'variant'>;
 
 export const RULED_SLOTS: readonly RuledSlotKey[] = [
   'coating',
@@ -232,14 +233,4 @@ export function slotDefinition(key: SlotKey): SlotDefinition {
   const definition = SLOTS.find((slot) => slot.key === key);
   if (!definition) throw new Error(`Unknown slot ${key}`);
   return definition;
-}
-
-/** `0` filling the slot: the product has this property, but no source states it. */
-export function notKnownMarker(key: SlotKey): string {
-  return '0'.repeat(slotDefinition(key).width);
-}
-
-/** `X` filling the slot: this product never has this property. */
-export function doesNotApplyMarker(key: SlotKey): string {
-  return 'X'.repeat(slotDefinition(key).width);
 }

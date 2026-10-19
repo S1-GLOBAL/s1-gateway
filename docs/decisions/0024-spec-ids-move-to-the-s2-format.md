@@ -1,6 +1,7 @@
 # 0024. Spec IDs move to the S2 format
 
-- **Status:** Accepted
+- **Status:** Accepted; partly superseded by [0025](./0025-spec-ids-are-written-short.md): new codes have no
+  `S2.` tag and no fixed length, 25 parts with an empty slot written `Y` or `X`
 - **Date:** 2026-10-19
 - **Related:** [Issue #28](https://github.com/S1-GLOBAL/s1-gateway/issues/28) ·
   [Plan 0006](../plans/0006-s2-spec-ids-and-verified-list-import.md) ·
