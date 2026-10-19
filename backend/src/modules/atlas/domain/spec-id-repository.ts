@@ -60,8 +60,9 @@ export interface SpecIdRepository {
   findById(id: string): Promise<SavedSpecIdRecord | null>;
   findByCode(code: string): Promise<SavedSpecIdRecord | null>;
   /**
-   * Every saved Spec ID where each chosen slot equals the value or is all `0`,
-   * newest first, then by code. With no slot chosen, every one.
+   * Every saved Spec ID where each chosen slot equals the value or is not known
+   * (`Y`, or all `0` from an older API), newest first, then by code. With no
+   * slot chosen, every one.
    */
   findCandidates(criteria: SimilarCriteria): Promise<SavedSpecIdRecord[]>;
   /** At most `limit` Spec IDs, newest change first, then by id descending. */

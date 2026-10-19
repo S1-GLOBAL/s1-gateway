@@ -13,9 +13,8 @@
 
 ## Goal
 
-At the end of this plan every Spec ID is an S2 code: S1's 18 slots plus Wall,
-Print, Compartments, Plies, Lid opening, Handle, Individual wrap and Window,
-97 characters long. Codes come from release S2 0.1.0, whose 31 product types,
+At the end of this plan every Spec ID is a short code (ADR 0025): 25 parts,
+product type first, an empty slot `Y` or `X`. Codes come from release S2 0.1.0, whose 31 product types,
 30 materials and other lists come from the verified list. Every Spec ID saved
 before the release, and its History, is converted, and every S1 code ever
 given out still finds its product. The workspace offers all of it, and

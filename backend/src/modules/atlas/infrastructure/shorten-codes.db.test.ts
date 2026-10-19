@@ -76,7 +76,7 @@ beforeEach(async () => {
 afterAll(() => connection.close());
 
 describe('the shortening migration, 0012', () => {
-  it('converts every saved code and its slot columns exactly as toShort does, and no fact', async () => {
+  it('converts every saved code and its slot columns exactly as toShort does, and changes no fact', async () => {
     const codes = [ILLUSTRATIVE_LONG, fromS1(CUP_LID_S1) ?? '', CUP, CONTAINER];
     await connection.db
       .insert(atlasSpecIds)

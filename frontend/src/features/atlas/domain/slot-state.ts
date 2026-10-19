@@ -3,7 +3,7 @@ import type { SlotKey, SlotRuleEntry } from './atlas';
 /**
  * What a slot must hold, given the product type and the shape and material
  * chosen so far (ADR 0019, "Which slots apply"): a value or not known, `X`
- * because it never applies, or `0` because the shape or material it depends
+ * because it never applies, or `Y` because the shape or material it depends
  * on is not known yet.
  */
 export type SlotState = 'any' | 'does-not-apply' | 'not-known';

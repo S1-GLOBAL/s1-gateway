@@ -15,7 +15,7 @@ import {
 /**
  * Opens a saved Spec ID by a code: the one that has it now, with every Spec ID
  * that had it before; or, when none has it now, the last one that did. Codes
- * are written in capitals, so a code typed in lower case is found too, and an
+ * are written in capitals, so a code typed in lower case is found too, and a
  * code given out before, S1 or long, is looked up as the short code it converts to (ADR 0025).
  */
 export class FindSpecIdByCode

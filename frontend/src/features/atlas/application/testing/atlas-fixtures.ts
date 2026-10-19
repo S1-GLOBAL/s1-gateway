@@ -142,7 +142,7 @@ export function decodedFor(code: string): DecodedSpecId {
 
 /**
  * The 25 slots of `code`, each in the state its text shows: `Y` not
- * known, all `X` doesn't apply, anything else a value meaning just its text,
+ * known, `X` doesn't apply, anything else a value meaning just its text,
  * as in `decodedFor`.
  */
 export function readCode(code: string): DecodedSpecId {
