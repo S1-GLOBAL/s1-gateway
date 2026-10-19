@@ -65,3 +65,4 @@ does not exist yet, say so and mark the plan blocked rather than inventing it.
 | [0003](./0003-atlas-spec-ids.md) | Atlas: read, build and save S1 Spec IDs | In progress |
 | [0004](./0004-atlas-library-and-editable-spec-ids.md) | Atlas: a library, one workspace, and editable Spec IDs with History | In progress |
 | [0005](./0005-account-invites.md) | Accounts by invite: a one-time registration link, and first and last names | In progress |
+| [0006](./0006-s2-spec-ids-and-verified-list-import.md) | S2 Spec IDs, a dictionary from the verified list, and its import | Ready |
