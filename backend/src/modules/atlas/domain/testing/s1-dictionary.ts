@@ -38,8 +38,8 @@ export const S1_0_1_0_VALUES: readonly DictionaryValue[] = [
   { slot: 'capacity', code: 'G', meaning: 'Grams' },
 ];
 
-/** The "Which slots apply" table: one rule per ruled slot, per product type. */
-const TABLE: Readonly<Record<string, Readonly<Record<RuledSlotKey, SlotRule>>>> = {
+/** The "Which slots apply" table: one rule per ruled slot S1 had, per product type. */
+const TABLE: Readonly<Record<string, Readonly<Partial<Record<RuledSlotKey, SlotRule>>>>> = {
   BLD: {
     coating: 'applies',
     colourClarity: 'applies',
@@ -107,7 +107,7 @@ const TABLE: Readonly<Record<string, Readonly<Record<RuledSlotKey, SlotRule>>>> 
 };
 
 export const S1_0_1_0_RULES: readonly SlotRuleEntry[] = Object.entries(TABLE).flatMap(([productType, rules]) =>
-  Object.entries(rules).map(([slot, rule]) => ({ productType, slot: slot as RuledSlotKey, rule })),
+  Object.entries(rules).map(([slot, rule]) => ({ productType, slot: slot as RuledSlotKey, rule: rule as SlotRule })),
 );
 
 export function s1Dictionary(): Dictionary {

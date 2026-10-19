@@ -12,7 +12,7 @@ export interface DecodedSlotRow {
   messages?: readonly string[] | undefined;
 }
 
-/** A Spec ID's 18 slots, one row each. Scrolls sideways inside itself, never the page. */
+/** A Spec ID's 26 slots, one row each. Scrolls sideways inside itself, never the page. */
 export function DecodedSlotsTable({ rows }: { rows: readonly DecodedSlotRow[] }) {
   return (
     <div className="overflow-x-auto rounded-surface border border-border bg-surface">

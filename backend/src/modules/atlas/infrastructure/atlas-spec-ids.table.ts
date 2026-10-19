@@ -5,7 +5,9 @@ import { atlasDictionaryReleases } from './atlas-dictionary.table.js';
 /*
  * Saved Spec IDs. Each slot after the format version is its own column,
  * holding the slot's raw text so `0` and `X` keep their meaning, and is
- * indexed for the similar lookup. A row is updated when its facts or name
+ * indexed for the similar lookup. The eight slots S2 added are null only on a
+ * row an older API saved during a deploy; it is read as its S1 code converts
+ * (ADR 0024). A row is updated when its facts or name
  * change, with `version` raised and a row in `atlas_spec_id_changes`; nothing
  * deletes one (ADR 0022).
  */
@@ -13,7 +15,7 @@ export const atlasSpecIds = pgTable(
   'atlas_spec_ids',
   {
     id: uuid('id').primaryKey(),
-    code: varchar('code', { length: 74 }).notNull(),
+    code: varchar('code', { length: 97 }).notNull(),
     productType: varchar('product_type', { length: 3 }).notNull(),
     material: varchar('material', { length: 3 }).notNull(),
     coating: varchar('coating', { length: 2 }).notNull(),
@@ -30,6 +32,14 @@ export const atlasSpecIds = pgTable(
     unitWeight: varchar('unit_weight', { length: 4 }).notNull(),
     basisWeight: varchar('basis_weight', { length: 3 }).notNull(),
     thickness: varchar('thickness', { length: 3 }).notNull(),
+    wall: varchar('wall', { length: 2 }),
+    print: varchar('print', { length: 2 }),
+    compartments: varchar('compartments', { length: 2 }),
+    plies: varchar('plies', { length: 1 }),
+    lidOpening: varchar('lid_opening', { length: 2 }),
+    handle: varchar('handle', { length: 2 }),
+    wrap: varchar('wrap', { length: 2 }),
+    window: varchar('window', { length: 2 }),
     variant: varchar('variant', { length: 2 }).notNull(),
     name: varchar('name', { length: 120 }).notNull(),
     dictionaryRelease: varchar('dictionary_release', { length: 16 }).notNull(),
@@ -68,5 +78,13 @@ export const atlasSpecIds = pgTable(
     index('atlas_spec_ids_unit_weight_idx').on(table.unitWeight),
     index('atlas_spec_ids_basis_weight_idx').on(table.basisWeight),
     index('atlas_spec_ids_thickness_idx').on(table.thickness),
+    index('atlas_spec_ids_wall_idx').on(table.wall),
+    index('atlas_spec_ids_print_idx').on(table.print),
+    index('atlas_spec_ids_compartments_idx').on(table.compartments),
+    index('atlas_spec_ids_plies_idx').on(table.plies),
+    index('atlas_spec_ids_lid_opening_idx').on(table.lidOpening),
+    index('atlas_spec_ids_handle_idx').on(table.handle),
+    index('atlas_spec_ids_wrap_idx').on(table.wrap),
+    index('atlas_spec_ids_window_idx').on(table.window),
   ],
 );

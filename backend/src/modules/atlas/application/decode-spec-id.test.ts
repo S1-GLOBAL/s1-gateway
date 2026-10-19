@@ -3,7 +3,7 @@ import { InvalidSpecIdError } from '../domain/spec-id.errors.js';
 import { DecodeSpecId } from './decode-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 
-const ILLUSTRATIVE = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX';
+const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
 
 describe('DecodeSpecId', () => {
   const decode = new DecodeSpecId(new InMemoryDictionaryRepository());
@@ -13,8 +13,8 @@ describe('DecodeSpecId', () => {
     if (!result.ok) throw result.error;
 
     expect(result.value.code).toBe(ILLUSTRATIVE);
-    expect(result.value.dictionaryRelease).toBe('S1 0.1.0');
-    expect(result.value.slots).toHaveLength(18);
+    expect(result.value.dictionaryRelease).toBe('S2 0.1.0');
+    expect(result.value.slots).toHaveLength(26);
     expect(result.value.slots[1]).toEqual({
       number: 2,
       key: 'productType',
@@ -35,7 +35,7 @@ describe('DecodeSpecId', () => {
 
   it('fails loudly when the current release is missing', async () => {
     await expect(new DecodeSpecId({ get: async () => null }).execute({ code: ILLUSTRATIVE })).rejects.toThrow(
-      'Dictionary S1 0.1.0 is missing',
+      'Dictionary S2 0.1.0 is missing',
     );
   });
 });

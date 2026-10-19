@@ -8,7 +8,7 @@ import { connectTestDatabase, resetTables } from './test/database.js';
 
 const ADMIN = 'admin@sourceone.global';
 const PASSWORD = 'correct-horse-battery';
-const ILLUSTRATIVE = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX';
+const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
 const FACTS = {
   productType: 'BLD',
   material: 'APS',
@@ -67,10 +67,10 @@ describe('Atlas, composed over Postgres', () => {
     const response = await agent.get('/api/v1/atlas/dictionary');
 
     expect(response.status).toBe(200);
-    expect(response.body.data.release).toBe('S1 0.1.0');
+    expect(response.body.data.release).toBe('S2 0.1.0');
     const values = response.body.data.slots.flatMap((slot: { values: unknown[] }) => slot.values);
-    expect(values).toHaveLength(28);
-    expect(response.body.data.rules).toHaveLength(56);
+    expect(values).toHaveLength(118);
+    expect(response.body.data.rules).toHaveLength(682);
   });
 
   it('decodes the illustrative code when signed in', async () => {

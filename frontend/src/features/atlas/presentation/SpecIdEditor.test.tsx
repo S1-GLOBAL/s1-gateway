@@ -57,7 +57,7 @@ describe('SpecIdEditor, the header', () => {
     renderEditor();
     expect(screen.getByRole('link', { name: 'Atlas' }).getAttribute('href')).toBe('/atlas');
     expect(screen.getByRole('heading', { level: 1, name: 'Illustrative lid' })).toBeTruthy();
-    expect(screen.getByText('3 not known')).toBeTruthy();
+    expect(screen.getByText('4 not known')).toBeTruthy();
     expect(
       screen.getByText('Last updated by Ada Invented on 16 October 2026 · created by Ada Invented on 16 October 2026'),
     ).toBeTruthy();
@@ -99,7 +99,7 @@ describe('SpecIdEditor, Save changes', () => {
     expect(await screen.findByText(`Saved. The code is now ${WITH_HEIGHT}.`)).toBeTruthy();
     expect(update).toHaveBeenCalledWith(ID, expect.objectContaining({ name: 'Illustrative lid', version: 1 }));
     expect(update.mock.calls[0]?.[1].facts.height).toEqual({ value: '62', unit: 'mm' });
-    expect(screen.getByText('2 not known')).toBeTruthy();
+    expect(screen.getByText('3 not known')).toBeTruthy();
     expect(
       screen.getByText('Last updated by Ben Invented on 17 October 2026 · created by Ada Invented on 16 October 2026'),
     ).toBeTruthy();

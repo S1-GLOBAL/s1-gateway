@@ -73,12 +73,15 @@ describe('AtlasLibrary, the list', () => {
     expect(within(card!).getByText('Lid 1')).toBeTruthy();
     expect(within(card!).getByText(ILLUSTRATIVE)).toBeTruthy();
     expect(within(card!).getByText('Bowl lid · APS · CL · RD · DM · 0090 · 0033')).toBeTruthy();
-    expect(within(card!).getByText('3 not known')).toBeTruthy();
+    expect(within(card!).getByText('4 not known')).toBeTruthy();
     expect(within(card!).getByText('Last updated by Ben Invented on 17 October 2026')).toBeTruthy();
   });
 
   it('marks a Spec ID with nothing missing as Complete', async () => {
-    const complete = ILLUSTRATIVE.replace('.00.', '.PE.').replace('.0000.', '.0062.').replace('.000.', '.030.');
+    const complete = ILLUSTRATIVE.replace('.XX.00.XX.X.', '.XX.NP.XX.X.')
+      .replace('.00.', '.PE.')
+      .replace('.0000.', '.0062.')
+      .replace('.000.', '.030.');
     renderLibrary({ library: async () => ({ items: [saved(1, { code: complete, slots: readCode(complete).slots })], nextCursor: null }) });
     expect(await screen.findByText('Complete')).toBeTruthy();
   });
@@ -210,15 +213,15 @@ describe('AtlasLibrary, a pasted code', () => {
     expect(screen.getByRole('link', { name: 'Start a Spec ID from it' }).getAttribute('href')).toBe(
       `/atlas/new?code=${encodeURIComponent(ILLUSTRATIVE)}`,
     );
-    const fold = screen.getByText("7 slots don't apply").closest('details') as HTMLDetailsElement;
+    const fold = screen.getByText("14 slots don't apply").closest('details') as HTMLDetailsElement;
     expect(fold.open).toBe(false);
     const [shown] = screen.getAllByRole('table');
-    // The header row, then the 11 slots that apply.
-    expect(within(shown!).getAllByRole('row')).toHaveLength(12);
+    // The header row, then the 12 slots that apply.
+    expect(within(shown!).getAllByRole('row')).toHaveLength(13);
   });
 
   it("shows the decoder's messages for a code it cannot read", async () => {
-    const fields = { code: ['A Spec ID has 18 parts separated by dots; this has 3.'] };
+    const fields = { code: ['A Spec ID has 26 parts separated by dots. This one has 3.'] };
     renderLibrary({
       findByCode: async () => Promise.reject(NOT_FOUND),
       decode: async () => Promise.reject(new AppError('INVALID_SPEC_ID', 'The Spec ID is not valid.', fields)),
@@ -226,7 +229,7 @@ describe('AtlasLibrary, a pasted code', () => {
 
     search('S1.BLD.APS');
 
-    expect(await screen.findByText('A Spec ID has 18 parts separated by dots; this has 3.')).toBeTruthy();
+    expect(await screen.findByText('A Spec ID has 26 parts separated by dots. This one has 3.')).toBeTruthy();
     expect(screen.queryByRole('table')).toBeNull();
   });
 });

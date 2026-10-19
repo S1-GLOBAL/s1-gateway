@@ -1,6 +1,6 @@
 # 0006. S2 Spec IDs, a dictionary from the verified list, and its import
 
-- **Status:** Ready
+- **Status:** In progress
 - **Owner:** Rey Denzo
 - **Related:** [#28](https://github.com/S1-GLOBAL/s1-gateway/issues/28) ·
   [plan 0004](./0004-atlas-library-and-editable-spec-ids.md) ·
@@ -58,7 +58,7 @@ request, stopping for the owner after each.
 
 | Phase | Steps | Status |
 |---|---|---|
-| 1. S2 format, S2 0.1.0 and the conversion | 0 / 7 | Not started |
+| 1. S2 format, S2 0.1.0 and the conversion | 6 / 7 | In progress — step 1.7's staging check remains after merge |
 | 2. Workspace and library for S2 | 0 / 4 | Not started |
 | 3. The verified-list import | 0 / 6 | Not started |
 
@@ -98,12 +98,21 @@ request, stopping for the owner after each.
 
 ### S1 codes — `backend/src/modules/atlas/domain/s1-code.ts`
 
-`fromS1(code: string, dictionary: Dictionary): string | null` turns a
-74-character S1 code into its S2 code: `S2`, characters 3–71 unchanged, then
-the eight new slots, each `0`-filled where the S2 rules apply them to the code's
-product type and `X`-filled where they don't, then the variant. Anything that is
-not 18 slots starting `S1.` returns null. `SpecId.parse` calls it first, so
-decoding and `GET /atlas/spec-ids/:code` take S1 codes; nothing ever issues one.
+`fromS1(code: string): string | null` turns a 74-character S1 code into its
+S2 code: `S2`, characters 3–71 unchanged, then the eight new slots from the
+fixed table below (`0` where the S2 rules apply them to the code's product type,
+`X` where they don't), then the variant. S1 had only these four product types,
+so the conversion needs no dictionary, and a test proves the table equals S2
+0.1.0's rules. Anything that is not 18 slots starting `S1.` returns null.
+`SpecId.parse` calls it first, so decoding and `GET /atlas/spec-ids/:code` take
+S1 codes; nothing ever issues one.
+
+`toS1(code: string): string | null` is the reverse, and `storedForms(code)`
+names both forms. The old API keeps running for a minute or two after the
+migration during a deploy, so a row it saves there holds an S1 code and no
+added slots (reyxdz, 2026-10-19: convert on every read). The mapper reads its
+added slots from the table, History codes are converted as they are read, and
+lookups, former holders and the "already saved" check match a code in both forms.
 
 For the four S1 product types the new slots read:
 
@@ -118,12 +127,13 @@ For the four S1 product types the new slots read:
 
 | # | Name | Made by | Does |
 |---|---|---|---|
-| 0009 | `atlas_codes_97_characters` | `npm --prefix backend run db:generate -- --name atlas_codes_97_characters` | `atlas_spec_ids.code`, `atlas_spec_id_changes.code_before` and `code_after` to `varchar(97)` |
+| 0009 | `atlas_codes_97_characters` | `npm --prefix backend run db:generate -- --name atlas_codes_97_characters` | `atlas_spec_ids.code`, `atlas_spec_id_changes.code_before` and `code_after` to `varchar(97)`; the eight slot columns on `atlas_spec_ids` (nullable), each with its index |
 | 0010 | `seed_atlas_dictionary_s2_0_1_0` | `npm --prefix backend run db:generate -- --custom --name seed_atlas_dictionary_s2_0_1_0` | Release `S2 0.1.0` (approved `2026-10-19`), every value and every rule in #28's tables |
 | 0011 | `convert_atlas_codes_to_s2` | `npm --prefix backend run db:generate -- --custom --name convert_atlas_codes_to_s2` | Every S1 `code`, `code_before` and `code_after` to S2 by the table above; `dictionary_release` to `S2 0.1.0` |
 
 0011's SQL, per row: `'S2' || substr(code, 3, 69) || '.' || <the type's eight slots> || '.' || right(code, 2)`,
-with the type read from `substr(code, 4, 3)` and only codes starting `S1.` touched.
+with the type read from `substr(code, 4, 3)` and only codes starting `S1.` touched;
+it also fills the eight slot columns.
 
 ### Contract — `backend/src/contracts/atlas.ts`
 
@@ -201,33 +211,33 @@ save as not known or doesn't apply until phase 2 adds their controls.
 
 ### Step 1.1 — Record the decision
 
-- [ ] **Action.** Write `docs/decisions/0024-spec-ids-move-to-the-s2-format.md` from `_template.md`, Accepted, dated the day it is written: the eight slots and their order, 97 characters, saved codes and History converted once, S1 codes still readable and never issued, #28's dictionary as release S2 0.1.0, and rulings R1b, R5 and R6 for reading supplier sizes. Alternatives: product-type splits for print and features (rejected by reyxdz on 2026-10-19: they multiply product types and cannot hold counts); variant numbers (rejected the same day: the code would not say what differs). Add "Partly superseded by 0024" to the status lines of ADR 0019 (the layout and length) and ADR 0021 ("no later migration updates … a saved Spec ID"), each linked. Add 0024 to `docs/decisions/README.md`.
-- [ ] **Verify.** `npm run docs:check` exits 0.
+- [x] **Action.** Write `docs/decisions/0024-spec-ids-move-to-the-s2-format.md` from `_template.md`, Accepted, dated the day it is written: the eight slots and their order, 97 characters, saved codes and History converted once, S1 codes still readable and never issued, #28's dictionary as release S2 0.1.0, and rulings R1b, R5 and R6 for reading supplier sizes. Alternatives: product-type splits for print and features (rejected by reyxdz on 2026-10-19: they multiply product types and cannot hold counts); variant numbers (rejected the same day: the code would not say what differs). Add "Partly superseded by 0024" to the status lines of ADR 0019 (the layout and length) and ADR 0021 ("no later migration updates … a saved Spec ID"), each linked. Add 0024 to `docs/decisions/README.md`.
+- [x] **Verify.** `npm run docs:check` exits 0.
 
 ### Step 1.2 — The S2 slots and S1 codes in the domain
 
-- [ ] **Action.** Tests first. Extend `slots.ts` as in the design; add the `count` kind to `SpecId.build`, `SpecId.parse`, `checkSlotValue` and `meaningOf` ("1 compartment", "3 compartments"; "1 ply", "2 plies"); add `s1-code.ts`; change `spec-id.messages.ts`'s length sentence to "A Spec ID is 97 characters. This one has {n}."; replace the S2 test dictionary in `domain/testing/` (#28's rules for every type). Tests: the illustrative S1 bowl lid converts to `S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX`; `fromS1` is null for 17 slots or an `S2` code; compartments `13` and plies `5` are refused with #28's sentences; a value in a slot the rules mark `never` is refused, one test per product type; two fact sets differing only in print (then each new slot) give different codes; `WC` is accepted as a coating and `WX` refused as a mixed marker.
-- [ ] **Verify.** `npm --prefix backend run test:unit -- atlas` passes.
+- [x] **Action.** Tests first. Extend `slots.ts` as in the design; add the `count` kind to `SpecId.build`, `SpecId.parse`, `checkSlotValue` and `meaningOf` ("1 compartment", "3 compartments"; "1 ply", "2 plies"); add `s1-code.ts`; change `spec-id.messages.ts`'s length sentence to "A Spec ID is 97 characters. This one has {n}."; replace the S2 test dictionary in `domain/testing/` (#28's rules for every type). Tests: the illustrative S1 bowl lid converts to `S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX`; `fromS1` is null for 17 slots or an `S2` code; compartments `13` and plies `5` are refused with #28's sentences; a value in a slot the rules mark `never` is refused, one test per product type; two fact sets differing only in print (then each new slot) give different codes; `WC` is accepted as a coating and `BWP` as a material, and `WX` refused as a mixed marker (an `X` inside any code is, so #28's `BWX` is `BWP`).
+- [x] **Verify.** `npm --prefix backend run test:unit -- atlas` passes.
 
 ### Step 1.3 — Contract, schemas and the use cases
 
-- [ ] **Action.** The contract additions; the zod facts schema in `atlas.schemas.ts` (dictionary codes as strings, counts as `^\d{1,2}$`); `find-spec-id-by-code.ts` converts an S1 code with `fromS1` before looking it up. HTTP tests: encode with every new fact; decode of an S1 code answers 26 slots; `GET /atlas/spec-ids/<s1 code in lower case, with spaces around it>` finds the converted Spec ID.
-- [ ] **Verify.** `npm --prefix backend run test:unit` passes; `npm run typecheck` reports only frontend errors from the wider `SlotKey` (Step 1.6 fixes them).
+- [x] **Action.** The contract additions; the zod facts schema in `atlas.schemas.ts` (dictionary codes and counts as strings, so the domain refuses a bad count beside its slot); `find-spec-id-by-code.ts` converts an S1 code with `fromS1` before looking it up. HTTP tests: encode with every new fact; decode of an S1 code answers 26 slots; `GET /atlas/spec-ids/<s1 code in lower case, with spaces around it>` finds the converted Spec ID.
+- [x] **Verify.** `npm --prefix backend run test:unit` passes; `npm run typecheck` reports only frontend errors from the wider `SlotKey` (Step 1.6 fixes them).
 
 ### Step 1.4 — The three migrations
 
-- [ ] **Action.** Change `code` in `atlas-spec-ids.table.ts`, and `code_before` and `code_after` in `atlas-spec-id-changes.table.ts`, to `{ length: 97 }` and generate 0009; write 0010 from #28's tables and 0011 from the design; extend `backend/src/test/database.ts` if a new table appears (none expected). A `*.db.test.ts` saves an S1 Spec ID and History before 0011 is applied, applies it, and proves: the code equals `fromS1` of the old one, the History rows' codes are converted, `dictionary_release` is `S2 0.1.0`, and the number of History rows is unchanged.
-- [ ] **Verify.** `npm run db:migrate` applies all three; a second `db:generate` prints "No schema changes"; `npm test` passes.
+- [x] **Action.** Change `code` in `atlas-spec-ids.table.ts`, and `code_before` and `code_after` in `atlas-spec-id-changes.table.ts`, to `{ length: 97 }`, add the eight slot columns, and generate 0009; write 0010 from #28's tables and 0011 from the design; extend `backend/src/test/database.ts` if a new table appears (none expected). A `*.db.test.ts` saves an S1 Spec ID and History before 0011 is applied, applies it, and proves: the code equals `fromS1` of the old one, the History rows' codes are converted, `dictionary_release` is `S2 0.1.0`, and the number of History rows is unchanged.
+- [x] **Verify.** `npm run db:migrate` applies all three; a second `db:generate` prints "No schema changes"; `npm test` passes.
 
 ### Step 1.5 — Old codes after an edit
 
-- [ ] **Action.** A database test: save A as S1 code C1, edit it to C2, convert, then `GET /atlas/spec-ids/C1` (as S1 text) answers A with `replacedCode` set.
-- [ ] **Verify.** The test passes in `npm test`.
+- [x] **Action.** A database test: save A as S1 code C1, edit it to C2, convert, then `GET /atlas/spec-ids/C1` (as S1 text) answers A with `replacedCode` set.
+- [x] **Verify.** The test passes in `npm test`.
 
 ### Step 1.6 — Keep today's pages working
 
-- [ ] **Action.** Frontend `SLOT_NAMES` and `SlotKey` to 26; the fixtures' `ILLUSTRATIVE` and every literal S1 code in tests to its S2 form; `readCode`, `decodedFor` and the S2 test dictionary for 31 types. No new control yet.
-- [ ] **Verify.** `npm run typecheck && npm run lint && npm run arch:check && npm --prefix frontend run test -- --no-file-parallelism` exits 0.
+- [x] **Action.** Frontend `SLOT_NAMES` and `SlotKey` to 26; the fixtures' `ILLUSTRATIVE` and every literal S1 code in tests to its S2 form; `asPastedCode` takes text starting `S2.` as well as `S1.`. No new control yet.
+- [x] **Verify.** `npm run typecheck && npm run lint && npm run arch:check && npm --prefix frontend run test -- --no-file-parallelism` exits 0.
 
 ### Step 1.7 — Docs, then the pull request
 
@@ -242,7 +252,7 @@ One pull request, "Part of #28".
 
 ### Step 2.1 — Form helpers
 
-- [ ] **Action.** `slot-controls.ts`, `build-facts.ts` and `to-build-form.ts` for the six dictionary slots and the two counts. Tests: `toBuildForm` round-trips an S2 code with every new slot known; a count typed `03` sends `3`; a count left empty sends nothing.
+- [ ] **Action.** The frontend's S2 test dictionary for 31 types beside `s1Dictionary` in `atlas-fixtures.ts`; `slot-controls.ts`, `build-facts.ts` and `to-build-form.ts` for the six dictionary slots and the two counts. Tests: `toBuildForm` round-trips an S2 code with every new slot known; a count typed `03` sends `3`; a count left empty sends nothing.
 - [ ] **Verify.** `npm --prefix frontend run test -- --no-file-parallelism src/features/atlas/domain` passes.
 
 ### Step 2.2 — The workspace

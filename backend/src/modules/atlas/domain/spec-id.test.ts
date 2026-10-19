@@ -3,12 +3,12 @@ import type { Result } from '../../../shared/domain/result.js';
 import { InvalidSpecIdError } from './spec-id.errors.js';
 import { checkSlotValue, SpecId, type SpecIdFactsInput } from './spec-id.js';
 import type { DictionarySlotKey, SlotKey } from './slots.js';
-import { s1Dictionary } from './testing/s1-dictionary.js';
+import { s2Dictionary } from './testing/s2-dictionary.js';
 
-const dictionary = s1Dictionary();
+const dictionary = s2Dictionary();
 
 /** The specification's illustrative bowl lid. Every other value here is invented. */
-const ILLUSTRATIVE = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX';
+const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
 const ILLUSTRATIVE_FACTS: SpecIdFactsInput = {
   productType: 'BLD',
   material: 'APS',
@@ -55,20 +55,20 @@ function states(specId: SpecId): Record<string, string> {
 const illustrativeWith = (facts: Partial<SpecIdFactsInput>): SpecIdFactsInput => ({ ...ILLUSTRATIVE_FACTS, ...facts });
 
 describe('the illustrative code', () => {
-  it('parses into 18 slots read in plain words', () => {
+  it('parses into 26 slots read in plain words', () => {
     const specId = parsed(ILLUSTRATIVE);
     const slots = specId.describe(dictionary);
 
     expect(specId.code).toBe(ILLUSTRATIVE);
-    expect(slots).toHaveLength(18);
-    expect(slots.map((slot) => slot.number)).toEqual(Array.from({ length: 18 }, (_, index) => index + 1));
+    expect(slots).toHaveLength(26);
+    expect(slots.map((slot) => slot.number)).toEqual(Array.from({ length: 26 }, (_, index) => index + 1));
     expect(slots[0]).toEqual({
       number: 1,
       key: 'formatVersion',
       name: 'Format version',
-      raw: 'S1',
+      raw: 'S2',
       state: 'value',
-      meaning: 'S1',
+      meaning: 'S2',
     });
     expect(slots.find((slot) => slot.key === 'productType')).toMatchObject({ raw: 'BLD', meaning: 'Bowl lid' });
     expect(slots.find((slot) => slot.key === 'topDiameter')).toMatchObject({ state: 'value', meaning: '90 mm' });
@@ -98,8 +98,8 @@ describe('the illustrative code', () => {
 describe('SpecId.parse', () => {
   it('trims surrounding spaces and folds no case', () => {
     expect(parsed(`  ${ILLUSTRATIVE}\n`).code).toBe(ILLUSTRATIVE);
-    expect(parseIssues(ILLUSTRATIVE.replace('S1.', 's1.'))).toEqual({
-      formatVersion: ['Only S1 codes can be read here. This code starts with s1.'],
+    expect(parseIssues(ILLUSTRATIVE.replace('S2.', 's2.'))).toEqual({
+      formatVersion: ['A Spec ID starts with S2, or S1 for codes given out before. This code starts with s2.'],
     });
     expect(parseIssues(ILLUSTRATIVE.replace('.BLD.', '.bld.'))).toEqual({
       productType: ['Product type: bld is not in the dictionary.'],
@@ -107,7 +107,7 @@ describe('SpecId.parse', () => {
   });
 
   it('describes capacity, dimensions, weights and thickness in their units', () => {
-    const specId = parsed('S1.BWL.BKR.PB.WH.RD.XX.Z0006.0090.0060.0045.XXXX.XXXX.XXXX.0040.300.025.XX');
+    const specId = parsed('S2.BWL.BKR.PB.WH.RD.XX.Z0006.0090.0060.0045.XXXX.XXXX.XXXX.0040.300.025.00.00.00.X.XX.XX.XX.XX.XX');
     expect(meanings(specId)).toMatchObject({
       material: 'Paper and paperboard, kraft',
       coating: 'PE both sides',
@@ -122,13 +122,16 @@ describe('SpecId.parse', () => {
   });
 
   it('reports every problem with the code at once', () => {
+    expect(parseIssues('S2.BLD')).toEqual({
+      code: ['A Spec ID is 97 characters. This one has 6.', 'A Spec ID has 26 parts separated by dots. This one has 2.'],
+    });
     expect(parseIssues('S1.BLD')).toEqual({
-      code: ['A Spec ID is 74 characters. This one has 6.', 'A Spec ID has 18 parts separated by dots. This one has 2.'],
+      code: ['An S1 Spec ID is 74 characters in 18 parts. This one has 6 characters in 2 parts.'],
     });
   });
 
   it('reports each broken slot, one message per slot', () => {
-    const code = 'S1.BLD.QQQ.00.CL.RD.DM.Z0006.0X90.XXXX.XXXX.XXXX.XXXX.XXXX.00A3.XXX.000.01';
+    const code = 'S2.BLD.QQQ.00.CL.RD.DM.Z0006.0X90.XXXX.XXXX.XXXX.XXXX.XXXX.00A3.XXX.000.XX.00.XX.X.XX.XX.XX.XX.01';
     expect(parseIssues(code)).toEqual({
       material: ['Material: QQQ is not in the dictionary.'],
       capacity: ['Nominal capacity must be XXXXX for a bowl lid.'],
@@ -161,7 +164,7 @@ describe('SpecId.parse', () => {
 describe('SpecId.build', () => {
   it('writes 0 in every slot that applies and X in every slot that never does', () => {
     const specId = built({ productType: 'BLD' });
-    expect(specId.code).toBe('S1.BLD.000.00.00.00.00.XXXXX.0000.XXXX.0000.0000.0000.XXXX.0000.000.000.XX');
+    expect(specId.code).toBe('S2.BLD.000.00.00.00.00.XXXXX.0000.XXXX.0000.0000.0000.XXXX.0000.000.000.XX.00.XX.X.XX.XX.XX.XX.XX');
 
     const back = parsed(specId.code);
     expect(back.code).toBe(specId.code);
@@ -183,6 +186,14 @@ describe('SpecId.build', () => {
       unitWeight: 'not-known',
       basisWeight: 'not-known',
       thickness: 'not-known',
+      wall: 'does-not-apply',
+      print: 'not-known',
+      compartments: 'does-not-apply',
+      plies: 'does-not-apply',
+      lidOpening: 'does-not-apply',
+      handle: 'does-not-apply',
+      wrap: 'does-not-apply',
+      window: 'does-not-apply',
       variant: 'does-not-apply',
     });
   });
@@ -279,17 +290,17 @@ describe('every message the domain produces', () => {
       [
         'the wrong part count',
         ILLUSTRATIVE.replace(/\.(?=XX$)/, '-'),
-        { code: ['A Spec ID has 18 parts separated by dots. This one has 17.'] },
+        { code: ['A Spec ID has 26 parts separated by dots. This one has 25.'] },
       ],
       [
         'another version',
-        ILLUSTRATIVE.replace('S1.', 'S2.'),
-        { formatVersion: ['Only S1 codes can be read here. This code starts with S2.'] },
+        ILLUSTRATIVE.replace('S2.', 'S3.'),
+        { formatVersion: ['A Spec ID starts with S2, or S1 for codes given out before. This code starts with S3.'] },
       ],
       [
         'a slot of the wrong width',
         ILLUSTRATIVE.replace('.0090.', '.090.'),
-        { code: ['A Spec ID is 74 characters. This one has 73.'], topDiameter: ['Top diameter: 090 must be 4 characters.'] },
+        { code: ['A Spec ID is 97 characters. This one has 96.'], topDiameter: ['Top diameter: 090 must be 4 characters.'] },
       ],
       [
         'a value not in the dictionary',
@@ -308,7 +319,7 @@ describe('every message the domain produces', () => {
       ],
       [
         'a capacity letter not in the dictionary',
-        'S1.BWL.APS.00.CL.RD.XX.Q0006.0090.0000.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX',
+        'S2.BWL.APS.00.CL.RD.XX.Q0006.0090.0000.0000.XXXX.XXXX.XXXX.0033.XXX.000.00.00.00.X.XX.XX.XX.XX.XX',
         { capacity: ['Nominal capacity: Q0006 is not in the dictionary.'] },
       ],
       [
@@ -357,12 +368,12 @@ describe('every message the domain produces', () => {
       ],
       [
         'a capacity that is not a number',
-        'S1.BWL.APS.00.CL.RD.XX.Z00A6.0090.0000.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX',
+        'S2.BWL.APS.00.CL.RD.XX.Z00A6.0090.0000.0000.XXXX.XXXX.XXXX.0033.XXX.000.00.00.00.X.XX.XX.XX.XX.XX',
         { capacity: ['Nominal capacity: Z00A6 is not a number.'] },
       ],
       [
         'a capacity of nothing',
-        'S1.BWL.APS.00.CL.RD.XX.Z0000.0090.0000.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX',
+        'S2.BWL.APS.00.CL.RD.XX.Z0000.0090.0000.0000.XXXX.XXXX.XXXX.0033.XXX.000.00.00.00.X.XX.XX.XX.XX.XX',
         { capacity: ['Nominal capacity: Z0000 is outside 1–9999 oz.'] },
       ],
     ])('%s', (_case, code, expected) => {
@@ -474,17 +485,17 @@ describe('every message the domain produces', () => {
 });
 
 describe('the limits', () => {
-  it('reads 74 characters and refuses 75', () => {
-    expect(parsed(ILLUSTRATIVE).code).toHaveLength(74);
+  it('reads 97 characters and refuses 98', () => {
+    expect(parsed(ILLUSTRATIVE).code).toHaveLength(97);
     expect(parseIssues(ILLUSTRATIVE.replace('.0033.', '.00033.')).code).toEqual([
-      'A Spec ID is 74 characters. This one has 75.',
+      'A Spec ID is 97 characters. This one has 98.',
     ]);
   });
 
-  it('reads 18 parts and refuses 19', () => {
-    expect(parsed(ILLUSTRATIVE).describe(dictionary)).toHaveLength(18);
+  it('reads 26 parts and refuses 27', () => {
+    expect(parsed(ILLUSTRATIVE).describe(dictionary)).toHaveLength(26);
     expect(parseIssues(`${ILLUSTRATIVE.slice(0, -3)}.X.XX`)).toEqual({
-      code: ['A Spec ID is 74 characters. This one has 76.', 'A Spec ID has 18 parts separated by dots. This one has 19.'],
+      code: ['A Spec ID is 97 characters. This one has 99.', 'A Spec ID has 26 parts separated by dots. This one has 27.'],
     });
   });
 
@@ -560,3 +571,108 @@ describe('checkSlotValue', () => {
     expect(checkSlotValue('capacity', 'M0500', dictionary)).toBeUndefined();
   });
 });
+
+/** The illustrative bowl lid as S1 wrote it, before ADR 0024. */
+const ILLUSTRATIVE_S1 = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX';
+
+describe('S1 codes', () => {
+  it('reads an S1 code as the S2 code it converts to', () => {
+    expect(parsed(ILLUSTRATIVE_S1).code).toBe(ILLUSTRATIVE);
+    expect(parsed(`  ${ILLUSTRATIVE_S1} `).code).toBe(ILLUSTRATIVE);
+  });
+
+  it('says what an S1 code must be when it cannot be converted', () => {
+    expect(parseIssues(ILLUSTRATIVE_S1.replace('.0033.', '.033.'))).toEqual({
+      code: ['An S1 Spec ID is 74 characters in 18 parts. This one has 73 characters in 18 parts.'],
+    });
+    expect(parseIssues(ILLUSTRATIVE_S1.replace('.BLD.', '.CUP.'))).toEqual({
+      productType: ['Product type: CUP is not in the dictionary.'],
+    });
+  });
+});
+
+describe('the slots S2 added', () => {
+  /** A product type each added slot applies to, and a value it can hold. */
+  const CASES: readonly [keyof SpecIdFactsInput, string, string][] = [
+    ['wall', 'CUP', 'DW'],
+    ['print', 'CUP', '02'],
+    ['compartments', 'CTN', '3'],
+    ['plies', 'NPK', '2'],
+    ['lidOpening', 'CLD', 'SP'],
+    ['handle', 'BAG', 'TW'],
+    ['wrap', 'STW', 'PW'],
+    ['window', 'BAG', 'WN'],
+  ];
+
+  it.each(CASES)('makes %s part of the code: one different fact, one different code', (slot, productType, value) => {
+    const without = built({ productType });
+    const withIt = built({ productType, [slot]: value });
+    expect(withIt.code).not.toBe(without.code);
+    expect(parsed(withIt.code).code).toBe(withIt.code);
+  });
+
+  it('pads a count to its slot and reads it in words', () => {
+    const tray = built({ productType: 'CTN', compartments: '3' });
+    expect(tray.slot('compartments')).toBe('03');
+    expect(meanings(tray).compartments).toBe('3 compartments');
+    expect(meanings(built({ productType: 'CTN', compartments: '1' })).compartments).toBe('1 compartment');
+    const napkin = built({ productType: 'NPK', plies: '2' });
+    expect(napkin.slot('plies')).toBe('2');
+    expect(meanings(napkin).plies).toBe('2 plies');
+    expect(meanings(built({ productType: 'NPK', plies: '1' })).plies).toBe('1 ply');
+  });
+
+  it.each([
+    [{ productType: 'CTN', compartments: '13' }, { compartments: ['Compartments: 13 is outside 1–12.'] }],
+    [{ productType: 'CTN', compartments: '0' }, { compartments: ['Compartments: 0 is outside 1–12.'] }],
+    [{ productType: 'CTN', compartments: 'two' }, { compartments: ['Compartments: two is not a number.'] }],
+    [{ productType: 'NPK', plies: '5' }, { plies: ['Plies: 5 is outside 1–4.'] }],
+  ] as const)('refuses the count %j', (facts, expected) => {
+    expect(buildIssues(facts)).toEqual(expected);
+  });
+
+  it('reads a coating of WC and a material of BWP, and refuses WX as a broken marker', () => {
+    expect(built({ productType: 'CUP', coating: 'WC', material: 'BWP' }).slot('coating')).toBe('WC');
+    const waxed = built({ productType: 'CUP', coating: 'WC' }).code;
+    expect(parseIssues(waxed.replace('.WC.', '.WX.'))).toEqual({
+      coating: ['Coating: WX mixes a marker with other characters.'],
+    });
+  });
+
+  it('refuses a value in a slot the rules mark never, for every product type', () => {
+    for (const { code, meaning } of dictionary.valuesOf('productType')) {
+      const never = dictionary.slotRules().find((rule) => rule.productType === code && rule.rule === 'never');
+      expect(never, `${code} has a slot that never applies`).toBeDefined();
+      if (!never) continue;
+      const facts = { productType: code, [never.slot]: valueFor(never.slot) } as SpecIdFactsInput;
+      const issues = buildIssues(facts);
+      expect(issues[never.slot]?.[0]).toMatch(new RegExp(`must be X+ for a ${meaning.toLowerCase().replace(/[()]/g, '\\$&')}\\.$`));
+    }
+  });
+});
+
+/** A value a slot can hold, whatever its kind. */
+function valueFor(slot: SlotKey): SpecIdFactsInput[keyof SpecIdFactsInput] {
+  switch (slot) {
+    case 'capacity':
+      return { unit: 'Z', value: '6' };
+    case 'compartments':
+    case 'plies':
+      return '2';
+    case 'unitWeight':
+      return { value: '3', unit: 'g' };
+    case 'basisWeight':
+      return { value: '100', unit: 'gsm' };
+    case 'thickness':
+      return { value: '30', unit: 'um' };
+    case 'topDiameter':
+    case 'bottomDiameter':
+    case 'height':
+    case 'length':
+    case 'width':
+    case 'gusset':
+      return { value: '50', unit: 'mm' };
+    default:
+      return dictionary.valuesOf(slot as DictionarySlotKey)[0]?.code ?? '';
+  }
+}

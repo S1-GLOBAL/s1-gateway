@@ -35,7 +35,7 @@ export interface SlotRuleEntryDto {
 export interface DecodedSpecIdDto {
   code: string;
   dictionaryRelease: string;
-  /** Always 18, in code order. */
+  /** Always 26, in code order. */
   slots: DecodedSlotDto[];
 }
 

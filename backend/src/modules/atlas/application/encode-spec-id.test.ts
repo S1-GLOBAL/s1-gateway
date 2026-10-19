@@ -3,7 +3,7 @@ import { InvalidSpecIdError } from '../domain/spec-id.errors.js';
 import { EncodeSpecId } from './encode-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 
-const ILLUSTRATIVE = 'S1.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX';
+const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
 const FACTS = {
   productType: 'BLD',
   material: 'APS',
@@ -22,7 +22,7 @@ describe('EncodeSpecId', () => {
     if (!result.ok) throw result.error;
 
     expect(result.value.code).toBe(ILLUSTRATIVE);
-    expect(result.value.dictionaryRelease).toBe('S1 0.1.0');
+    expect(result.value.dictionaryRelease).toBe('S2 0.1.0');
     expect(result.value.slots.map((slot) => slot.raw).join('.')).toBe(ILLUSTRATIVE);
     expect(result.value.slots.find((slot) => slot.key === 'unitWeight')?.meaning).toBe('3.3 g');
   });
@@ -36,7 +36,7 @@ describe('EncodeSpecId', () => {
 
   it('fails loudly when the current release is missing', async () => {
     await expect(new EncodeSpecId({ get: async () => null }).execute({ facts: FACTS })).rejects.toThrow(
-      'Dictionary S1 0.1.0 is missing',
+      'Dictionary S2 0.1.0 is missing',
     );
   });
 });

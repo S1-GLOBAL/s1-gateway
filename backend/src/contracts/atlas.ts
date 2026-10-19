@@ -1,4 +1,4 @@
-/** The 18 slots of an S1 Spec ID, as the API names them. */
+/** The 26 slots of an S2 Spec ID, as the API names them. */
 export type SlotKey =
   | 'formatVersion'
   | 'productType'
@@ -17,6 +17,14 @@ export type SlotKey =
   | 'unitWeight'
   | 'basisWeight'
   | 'thickness'
+  | 'wall'
+  | 'print'
+  | 'compartments'
+  | 'plies'
+  | 'lidOpening'
+  | 'handle'
+  | 'wrap'
+  | 'window'
   | 'variant';
 
 export type SlotRule = 'applies' | 'never' | 'round_only' | 'non_round_only' | 'paper_only';
@@ -44,13 +52,13 @@ export interface AtlasDictionary {
   release: string;
   /** `YYYY-MM-DD`. */
   approvedOn: string;
-  /** The seven slots whose values the dictionary holds, in code order. */
+  /** The thirteen slots whose values the dictionary holds, in code order. */
   slots: DictionarySlot[];
   rules: SlotRuleEntry[];
 }
 
 export interface DecodedSlot {
-  /** 1–18. */
+  /** 1–26. */
   number: number;
   key: SlotKey;
   name: string;
@@ -65,7 +73,7 @@ export interface DecodedSlot {
 export interface DecodedSpecId {
   code: string;
   dictionaryRelease: string;
-  /** Always 18, in code order. */
+  /** Always 26, in code order. */
   slots: DecodedSlot[];
 }
 
@@ -109,6 +117,16 @@ export interface SpecIdFacts {
   unitWeight?: MeasurementFact | null;
   basisWeight?: MeasurementFact | null;
   thickness?: MeasurementFact | null;
+  wall?: string | null;
+  print?: string | null;
+  /** A whole number, 1–12. */
+  compartments?: string | null;
+  /** A whole number, 1–4. */
+  plies?: string | null;
+  lidOpening?: string | null;
+  handle?: string | null;
+  wrap?: string | null;
+  window?: string | null;
 }
 
 /** `POST /atlas/spec-ids/encode`. Answers with a `DecodedSpecId`; nothing is saved. */

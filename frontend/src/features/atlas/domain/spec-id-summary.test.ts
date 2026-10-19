@@ -10,6 +10,7 @@ describe('summarise', () => {
 
 describe('notKnownCount', () => {
   it('counts the slots not known yet', () => {
-    expect(notKnownCount(readCode(ILLUSTRATIVE))).toBe(3);
+    // Coating, height, thickness and print.
+    expect(notKnownCount(readCode(ILLUSTRATIVE))).toBe(4);
   });
 });

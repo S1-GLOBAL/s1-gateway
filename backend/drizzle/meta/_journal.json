@@ -64,6 +64,27 @@
       "when": 1792189598095,
       "tag": "0008_backfill_person_names",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792402386408,
+      "tag": "0009_atlas_codes_97_characters",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792402439454,
+      "tag": "0010_seed_atlas_dictionary_s2_0_1_0",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792402461945,
+      "tag": "0011_convert_atlas_codes_to_s2",
+      "breakpoints": true
     }
   ]
 }
