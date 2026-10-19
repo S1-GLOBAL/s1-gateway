@@ -1,24 +1,17 @@
 import { Check, Copy } from 'lucide-react';
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
-import { cn } from '@/shared/ui/cn';
-import type { DecodedSlot, DecodedSpecId } from '../../domain/atlas';
+import type { DecodedSpecId } from '../../domain/atlas';
 import { summarise } from '../../domain/spec-id-summary';
 
 /** How long Copy reads "Copied". */
 export const COPIED_MS = 2000;
 
-const PART: Record<DecodedSlot['state'], string> = {
-  value: 'font-medium text-ink',
-  'not-known': 'text-ink-muted',
-  'does-not-apply': 'text-ink-subtle',
-};
-
-const LEGEND: readonly { state: DecodedSlot['state']; sample: string; label: string }[] = [
-  { state: 'value', sample: 'RD', label: 'Known' },
-  { state: 'not-known', sample: 'Y', label: 'Not known yet' },
-  { state: 'does-not-apply', sample: 'X', label: "Doesn't apply" },
+/** What the two markers mean (ADR 0025). The code itself is one style: a marker is a character like any other. */
+const LEGEND: readonly { sample: string; label: string }[] = [
+  { sample: 'Y', label: 'Not known yet' },
+  { sample: 'X', label: "Doesn't apply" },
 ];
 
 export interface CodePanelProps {
@@ -28,7 +21,7 @@ export interface CodePanelProps {
   error?: string;
 }
 
-/** The code as it forms: each part styled by what is known, a legend, Copy, and the facts in plain words. */
+/** The code as it forms, a key to its markers, Copy, and the facts in plain words. */
 export function CodePanel({ decoded, error }: CodePanelProps) {
   const [copied, setCopied] = useState(false);
 
@@ -62,19 +55,12 @@ export function CodePanel({ decoded, error }: CodePanelProps) {
         </Button>
       </div>
 
-      <p className="min-h-6 font-mono text-md break-all">
-        {decoded?.slots.map((slot, index) => (
-          <Fragment key={slot.key}>
-            {index > 0 && <span className="text-ink-subtle">.</span>}
-            <span className={PART[slot.state]}>{slot.raw}</span>
-          </Fragment>
-        ))}
-      </p>
+      <p className="min-h-6 font-mono text-md font-medium break-all text-ink">{decoded?.code}</p>
 
       <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
-        {LEGEND.map(({ state, sample, label }) => (
-          <li key={state} className="inline-flex items-center gap-1.5">
-            <span aria-hidden="true" className={cn('font-mono', PART[state])}>
+        {LEGEND.map(({ sample, label }) => (
+          <li key={sample} className="inline-flex items-center gap-1.5">
+            <span aria-hidden="true" className="font-mono">
               {sample}
             </span>
             {label}

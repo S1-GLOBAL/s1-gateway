@@ -9,20 +9,20 @@ afterEach(() => {
 });
 
 describe('CodePanel', () => {
-  it('shows the code part by part, the legend and the known facts in plain words', () => {
+  it('shows the code, a key to its markers and the known facts in plain words', () => {
     render(<CodePanel decoded={readCode(ILLUSTRATIVE)} />);
     expect(screen.getByText((_, element) => element?.tagName === 'P' && element.textContent === ILLUSTRATIVE)).toBeTruthy();
-    expect(screen.getByText('Known')).toBeTruthy();
+    expect(screen.queryByText('Known')).toBeNull();
     expect(screen.getByText('Not known yet')).toBeTruthy();
     expect(screen.getByText("Doesn't apply")).toBeTruthy();
     expect(screen.getByText('Bowl lid · APS · CL · RD · DM · 0090 · 0033')).toBeTruthy();
   });
 
-  it('tells Y and X apart by colour alone, with no underline', () => {
-    const { container } = render(<CodePanel decoded={readCode(ILLUSTRATIVE)} />);
-    const parts = [...container.querySelectorAll('span')].filter((span) => ['Y', 'X'].includes(span.textContent ?? ''));
-    expect(parts.length).toBeGreaterThan(0);
-    for (const part of parts) expect(part.className).not.toContain('underline');
+  it('writes the code in one style: no part, marker or dot looks different from the rest', () => {
+    render(<CodePanel decoded={readCode(ILLUSTRATIVE)} />);
+    const code = screen.getByText(ILLUSTRATIVE);
+    expect(code.tagName).toBe('P');
+    expect(code.children).toHaveLength(0);
   });
 
   it('copies the code, reads "Copied", and reads "Copy" again after 2 seconds', async () => {
