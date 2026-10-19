@@ -58,7 +58,7 @@ request, stopping for the owner after each.
 
 | Phase | Steps | Status |
 |---|---|---|
-| 1. S2 format, S2 0.1.0 and the conversion | 6 / 7 | In progress — step 1.7's staging check remains after merge |
+| 1. S2 format, S2 0.1.0 and the conversion | 7 / 7 | Done — on staging, a Spec ID saved before the release opens with its S2 code, and its old S1 code finds it; see #28 |
 | 2. Workspace and library for S2 | 0 / 4 | Not started |
 | 3. The verified-list import | 0 / 6 | Not started |
 
@@ -241,8 +241,8 @@ save as not known or doesn't apply until phase 2 adds their controls.
 
 ### Step 1.7 — Docs, then the pull request
 
-- [ ] **Action.** `api.md` (97 characters, the new fact keys, S1 codes accepted on decode and lookup), `data-model.md` (the column lengths, release S2 0.1.0, the conversion); open "Part of #28" with Database, API and Rollout filled in (0011 rewrites every saved code; nothing is dropped).
-- [ ] **Verify.** CI and `pr-audit` pass. After merge, on staging: a Spec ID saved before the release opens with a 97-character code, and pasting its old S1 code into the library finds it.
+- [x] **Action.** `api.md` (97 characters, the new fact keys, S1 codes accepted on decode and lookup), `data-model.md` (the column lengths, release S2 0.1.0, the conversion); open "Part of #28" with Database, API and Rollout filled in (0011 rewrites every saved code; nothing is dropped).
+- [x] **Verify.** CI and `pr-audit` pass. After merge, on staging: a Spec ID saved before the release opens with a 97-character code, and pasting its old S1 code into the library finds it.
 
 ---
 
