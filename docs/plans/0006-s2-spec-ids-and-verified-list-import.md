@@ -59,7 +59,7 @@ request, stopping for the owner after each.
 | Phase | Steps | Status |
 |---|---|---|
 | 1. S2 format, S2 0.1.0 and the conversion | 7 / 7 | Done — on staging, a Spec ID saved before the release opens with its S2 code, and its old S1 code finds it; see #28 |
-| 2. Workspace and library for S2 | 3 / 4 | In progress — step 2.4's staging check remains after merge |
+| 2. Workspace and library for S2 | 4 / 4 | Done — on staging, a 2-colour-print double-wall cup and a 3-compartment bagasse container save with their S2 codes, and an S1 code given out before phase 1 still finds its product; see #28 |
 | 3. The verified-list import | 0 / 6 | Not started |
 
 ---
@@ -267,8 +267,8 @@ One pull request, "Part of #28".
 
 ### Step 2.4 — Browser check, screenshots, pull request
 
-- [ ] **Action.** Locally, build and save a 2-colour-print double-wall paper cup and a 3-compartment bagasse container; light, dark and 390 px; screenshots `atlas-s2-workspace-light.png`, `atlas-s2-workspace-dark.png`, `atlas-s2-workspace-phone-light.png` into `.github/readme/`; open "Part of #28".
-- [ ] **Verify.** CI and `pr-audit` pass. After merge, on staging: the same two products save, and an S1 code given out before phase 1 still lands on its product.
+- [x] **Action.** Locally, build and save a 2-colour-print double-wall paper cup and a 3-compartment bagasse container; light, dark and 390 px; screenshots `atlas-s2-workspace-light.png`, `atlas-s2-workspace-dark.png`, `atlas-s2-workspace-phone-light.png` into `.github/readme/`; open "Part of #28".
+- [x] **Verify.** CI and `pr-audit` pass. After merge, on staging: the same two products save, and an S1 code given out before phase 1 still lands on its product.
 
 ---
 
