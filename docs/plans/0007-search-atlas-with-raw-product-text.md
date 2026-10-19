@@ -54,7 +54,7 @@ the repository, no AI model, and plan 0006's import reuses it for item names.
 |---|---|---|
 | `WORD_LIST` | `word-list.ts` | `Readonly<Record<string, { productType: string } \| { material: string }>>`: each phrase as written in the spelling table, with its code |
 | `KEYWORDS` | `keywords.ts` | plan 0006's item-name keyword table ("Item-name keywords"), each row a pattern and the slot values it sets |
-| `readSize` | `size-rulings.ts` | `(text: string, productType: string) => { facts: SizeFacts; ruling: Ruling; words: string } \| null`, #28's rulings R1, R1b, R2, R3, R5 and R6 |
+| `readSize` | `size-rulings.ts` | `(text: string, productType: string) => { facts: Partial<SpecIdFactsInput>; ruling: Ruling; words: string } \| null`, #28's rulings R1, R1b, R2, R3, R5 and R6 |
 | `readText` | `read-text.ts` | `(text: string, dictionary: Dictionary, productType?: string) => TextReading` |
 
 ```ts
@@ -63,7 +63,7 @@ interface ReadFact { key: SlotKey; words: string; ruling: Ruling | null }
 interface TextReading {
   facts: Partial<SpecIdFactsInput>; // productType set when found or given
   read: ReadFact[];                 // in code order
-  ignored: string[];                // the words no rule used, in text order
+  ignored: string[];                // the words no rule used, as the text wrote them, in text order
   conflicts: { key: SlotKey; found: string[] }[]; // the words as the text wrote them
 }
 ```
@@ -72,8 +72,8 @@ Rules, in this order:
 
 1. Text is compared in lower case; a phrase matches only as whole words (no letter or digit on either side).
 2. Product type and material come from `WORD_LIST` and from the dictionary's own product-type names. Where two phrases overlap, the longer wins ("bowl lid" over "bowl" and "lid").
-3. The other facts come from `KEYWORDS`; a capacity, count or measure with its unit (`14oz`, `500 ml`, `2 ply`) is read there.
-4. Once a product type is known, a bare number is read by `readSize` for that product type.
+3. The other facts come from `KEYWORDS`; a capacity or count with its unit (`14oz`, `500 ml`, `2 ply`) is read there.
+4. Once a product type is known, a size #28's rulings cover — a bare number, `90mm`, `93 Dia`, `200 x 300 x 80` — is read by `readSize` for that product type.
 5. Two different values for one slot leave it out of `facts` and put both in `conflicts`.
 6. Every word no rule used goes in `ignored`.
 7. A `productType` argument wins over any found in the text.
@@ -91,7 +91,7 @@ Response `SpecIdTextReading`:
 
 ```ts
 {
-  read: { key: SlotKey; name: string; words: string; ruling: Ruling | null }[];
+  read: { key: SlotKey; name: string; meaning: string; words: string; ruling: Ruling | null }[]; // meaning as a decoded slot writes it
   ignored: string[];
   conflicts: { key: SlotKey; name: string; found: string[] }[];
   decoded: DecodedSpecId | null; // null when no product type was found or given
@@ -100,7 +100,7 @@ Response `SpecIdTextReading`:
 
 `AtlasController` takes `ReadSpecIdText` as a ninth constructor argument; `atlas.routes.ts` adds `router.post('/spec-ids/read', controller.readText)`.
 
-### The library — `frontend/src/features/atlas/presentation/library/`
+### The library — `frontend/src/features/atlas/`
 
 | Name | File | Phase |
 |---|---|---|
@@ -111,7 +111,7 @@ Response `SpecIdTextReading`:
 
 - `AtlasLibrary` shows **Search** at the right of the box whenever the trimmed text is not empty and `asPastedCode` reads no code. Pressing it shows `TextSearch` in the list's place; changing the text goes back to the name list.
 - Name filtering as you type is unchanged, but for its message when nothing matches (copy below).
-- "Read from your text" is `summarise(decoded)` when there is a code, else the `words` of each read fact joined with " · ".
+- "Read from your text" is `summarise(decoded)` when there is a code, else the `meaning` of each read fact joined with " · ".
 - **No, edit it** and **Start a Spec ID from it** link to `/atlas/new?code=<decoded.code>`.
 - With no product type, the card shows a Product type select listing the dictionary's product types in code order (as New Spec ID does); choosing one asks the route again with `productType`.
 
@@ -167,7 +167,7 @@ One pull request, "Part of #41".
 ### Step 1.4 — Reading text
 
 - [ ] **Action.** `read-text.ts`. Tests:
-  - "14oz Bagasse Bowl for Cava" reads productType `BWL`, material `CBG`, capacity `Z` 14, and ignores "for", "cava";
+  - "14oz Bagasse Bowl for Cava" reads productType `BWL`, material `CBG`, capacity `Z` 14, and ignores "for", "Cava";
   - "Cup 90mm" reads topDiameter 90 mm under `R1`, and shape `RD`;
   - "clear PET and PP lid" leaves material out and reports `found: ['PET', 'PP']`;
   - Review Focus 1, 2 and 4;
@@ -180,7 +180,7 @@ One pull request, "Part of #41".
   - Add `ReadSpecIdTextRequest` and `SpecIdTextReading` to `backend/src/contracts/atlas.ts`.
   - Add `ReadSpecIdText`, its schema, the controller argument and the route; wire them in `backend/src/modules/atlas/index.ts` and the tests that build the controller.
   - Document the route in `docs/reference/api.md`.
-  - Note in plan 0006's phase 3 that the import uses `readText` for item names and `WORD_LIST` for its spelling table, and in #28 that the spelling table now lives in the repository.
+  - Note in plan 0006's phase 3 that the import uses `readText` for item names, `readSize` for sizes and `WORD_LIST` for its spelling table instead of building its own, and in #28 that the spelling table's entries, without its `skip` entries, now live in the repository as `WORD_LIST`.
   - Use-case and route tests:
     - the example builds `BWL.CBG.Y.Y.Y.X.Z0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X`;
     - Review Focus 3;
@@ -230,7 +230,7 @@ One pull request, "Closes #41".
 - [ ] **Action.**
   - Locally, search "14oz Bagasse Bowl for Cava", "Cava order 12" and "clear PET 12oz", in light, dark and at 390 px.
   - Save the screenshots `atlas-text-search-light.png`, `atlas-text-search-dark.png` and `atlas-text-search-phone-light.png` into `.github/readme/`.
-  - Open "Closes #41".
+  - Open the pull request, "Closes #41".
 - [ ] **Verify.**
   - CI and `pr-audit` pass.
   - After merge, on staging: "14oz Bagasse Bowl for Cava" reads bowl, bagasse and 14 oz; Yes, proceed lists the saved "14oz Bagasse Bowl" if its facts fit; and the library holds no new Spec ID.
@@ -244,5 +244,5 @@ One pull request, "Closes #41".
 
 ## Follow-ups
 
-- The verified-list import reuses `readText` and `WORD_LIST` — plan 0006, phase 3.
+- The verified-list import reuses `readText`, `readSize` and `WORD_LIST` — plan 0006, phase 3.
 - Learning spellings from searches, and ranking by closeness — no issue yet.
