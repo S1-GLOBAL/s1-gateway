@@ -4,8 +4,8 @@ import { SpecIdChange } from './spec-id-change.js';
 import { SpecId } from './spec-id.js';
 import { s2Dictionary } from './testing/s2-dictionary.js';
 
-const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
-const WITH_HEIGHT = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0012.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
+const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
+const WITH_HEIGHT = 'BLD.APS.Y.CL.RD.DM.X.0090.X.0012.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
 const SAVER = '00000000-0000-4000-8000-0000000000aa';
 const EDITOR = '00000000-0000-4000-8000-0000000000bb';
 

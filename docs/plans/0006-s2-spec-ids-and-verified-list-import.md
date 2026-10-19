@@ -8,7 +8,8 @@
   [ADR 0007](../decisions/0007-one-definition-of-an-api-shape.md) ·
   [ADR 0019](../decisions/0019-the-s1-spec-id-format.md) ·
   [ADR 0021](../decisions/0021-the-atlas-dictionary-changes-only-by-migration.md) ·
-  [ADR 0022](../decisions/0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md)
+  [ADR 0022](../decisions/0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md) ·
+  [ADR 0025](../decisions/0025-spec-ids-are-written-short.md)
 
 ## Goal
 
@@ -275,6 +276,10 @@ One pull request, "Part of #28".
 ## Phase 3 — The verified-list import
 
 One pull request, "Part of #28". #28 is closed after Step 3.6's staging run.
+
+Since #36 ([ADR 0025](../decisions/0025-spec-ids-are-written-short.md)), codes are written short: 25 parts, no
+`S2.` tag, an empty slot `Y` or `X`. The import creates short codes through `SaveSpecId`; where this
+plan's design writes a code in the long form, read its short form.
 
 ### Step 3.1 — The spelling table and size rulings
 

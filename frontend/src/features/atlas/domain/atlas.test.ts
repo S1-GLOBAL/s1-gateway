@@ -2,10 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { SLOT_NAMES } from './atlas';
 
 describe('SLOT_NAMES', () => {
-  it('names the 26 slots in code order, as the server does', () => {
-    expect(SLOT_NAMES).toHaveLength(26);
+  it('names the 25 slots in code order, as the server does', () => {
+    expect(SLOT_NAMES).toHaveLength(25);
     expect(SLOT_NAMES.map((slot) => slot.name)).toEqual([
-      'Format version',
       'Product type',
       'Material',
       'Coating',
@@ -32,6 +31,6 @@ describe('SLOT_NAMES', () => {
       'Window',
       'Variant number',
     ]);
-    expect(new Set(SLOT_NAMES.map((slot) => slot.key)).size).toBe(26);
+    expect(new Set(SLOT_NAMES.map((slot) => slot.key)).size).toBe(25);
   });
 });

@@ -3,7 +3,7 @@ import { slotStateFor } from './slot-state';
 
 /** Every slot a product type's rules can rule out, in code order. */
 const RULED: readonly SlotKey[] = SLOT_NAMES.map((slot) => slot.key).filter(
-  (key) => !['formatVersion', 'productType', 'material', 'variant'].includes(key),
+  (key) => !['productType', 'material', 'variant'].includes(key),
 );
 
 /** The slots that do not apply to `productType` with this shape and material: the workspace does not ask for them. */

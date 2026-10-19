@@ -19,7 +19,7 @@ describe('diffCodes', () => {
   it('gives one row for a height that was not known, which is not a correction', () => {
     const before = built({ ...KRAFT_BOWL, unitWeight: { value: '12', unit: 'g' } });
     const after = built({ ...KRAFT_BOWL, unitWeight: { value: '12', unit: 'g' }, height: { value: '62', unit: 'mm' } });
-    expect(diffCodes(before, after)).toEqual([{ key: 'height', before: '0000', after: '0062', corrected: false }]);
+    expect(diffCodes(before, after)).toEqual([{ key: 'height', before: 'Y', after: '0062', corrected: false }]);
   });
 
   it('marks a known unit weight replaced by another as corrected', () => {
@@ -33,9 +33,9 @@ describe('diffCodes', () => {
     const lid = built({ productType: 'BLD', material: 'BKR', shape: 'RD' });
     const rows = diffCodes(bowl, lid);
     expect(rows).toContainEqual({ key: 'productType', before: 'BWL', after: 'BLD', corrected: true });
-    expect(rows).toContainEqual({ key: 'capacity', before: 'Z0016', after: 'XXXXX', corrected: true });
-    expect(rows).toContainEqual({ key: 'profile', before: 'XX', after: '00', corrected: false });
-    expect(rows).toContainEqual({ key: 'bottomDiameter', before: '0000', after: 'XXXX', corrected: false });
+    expect(rows).toContainEqual({ key: 'capacity', before: 'Z0016', after: 'X', corrected: true });
+    expect(rows).toContainEqual({ key: 'profile', before: 'X', after: 'Y', corrected: false });
+    expect(rows).toContainEqual({ key: 'bottomDiameter', before: 'Y', after: 'X', corrected: false });
   });
 
   it('lists the rows in code order', () => {

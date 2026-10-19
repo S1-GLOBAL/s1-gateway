@@ -3,7 +3,7 @@ import { InvalidSpecIdError } from '../domain/spec-id.errors.js';
 import { DecodeSpecId } from './decode-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 
-const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
+const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
 
 describe('DecodeSpecId', () => {
   const decode = new DecodeSpecId(new InMemoryDictionaryRepository());
@@ -14,9 +14,9 @@ describe('DecodeSpecId', () => {
 
     expect(result.value.code).toBe(ILLUSTRATIVE);
     expect(result.value.dictionaryRelease).toBe('S2 0.1.0');
-    expect(result.value.slots).toHaveLength(26);
-    expect(result.value.slots[1]).toEqual({
-      number: 2,
+    expect(result.value.slots).toHaveLength(25);
+    expect(result.value.slots[0]).toEqual({
+      number: 1,
       key: 'productType',
       name: 'Product type',
       raw: 'BLD',

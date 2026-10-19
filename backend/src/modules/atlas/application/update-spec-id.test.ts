@@ -6,8 +6,8 @@ import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-rep
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { UpdateSpecId } from './update-spec-id.js';
 
-const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
-const WITH_HEIGHT = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0012.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
+const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
+const WITH_HEIGHT = 'BLD.APS.Y.CL.RD.DM.X.0090.X.0012.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
 const FACTS = {
   productType: 'BLD',
   material: 'APS',
@@ -150,7 +150,7 @@ describe('UpdateSpecId', () => {
     });
 
     if (!result.ok) throw result.error;
-    expect(result.value.code).toBe('S2.BWL.APS.00.00.RD.XX.Z0016.0000.0000.0000.XXXX.XXXX.XXXX.0000.XXX.000.00.00.00.X.XX.XX.XX.XX.XX');
+    expect(result.value.code).toBe('BWL.APS.Y.Y.RD.X.Z0016.Y.Y.Y.X.X.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X');
   });
 
   it('answers not found for an id nobody saved', async () => {

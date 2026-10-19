@@ -2,23 +2,21 @@ import { err, ok, type Result } from '../../../shared/domain/result.js';
 import { expectedFill, isDoesNotApply, isNotKnown } from './applicability.js';
 import type { Dictionary } from './dictionary.js';
 import { multiply, readDecimal, roundHalfUp } from './measurement.js';
-import { fromS1, S1_ADDED_SLOTS, S1_LENGTH, S1_PARTS } from './s1-code.js';
+import { S1_ADDED_SLOTS, S1_LENGTH, S1_PARTS, shortForm } from './old-codes.js';
 import { InvalidSpecIdError, type SpecIdIssues } from './spec-id.errors.js';
 import { specIdMessages as messages } from './spec-id.messages.js';
 import {
   CAPACITY_MAX,
   CAPACITY_UNIT_LABELS,
   COUNTS,
-  doesNotApplyMarker,
-  FORMAT_VERSION,
+  DOES_NOT_APPLY,
   MEASURES,
   NO_VARIANT,
-  notKnownMarker,
+  NOT_KNOWN,
   RULED_SLOTS,
   SLOT_COUNT,
   slotDefinition,
   SLOTS,
-  SPEC_ID_LENGTH,
   UNIT_LABELS,
   type CountSlotKey,
   type DictionarySlotKey,
@@ -42,7 +40,7 @@ export interface CapacityInput {
 
 /**
  * What is known about a product. A slot left out, or `null`, has no value:
- * the encoder writes `X` where the slot doesn't apply and `0` everywhere else.
+ * the encoder writes `X` where the slot doesn't apply and `Y` everywhere else.
  */
 export interface SpecIdFactsInput {
   readonly productType: string;
@@ -124,43 +122,35 @@ const MEASURE_SLOTS: readonly MeasureSlotKey[] = [
 type Reading = { readonly raw: string; readonly problem?: undefined } | { readonly problem: string };
 
 /**
- * An S2 Spec ID (ADR 0019, ADR 0024): 26 dot-separated slots, 97 characters,
- * saying what a product physically is. Every instance is valid against the
- * dictionary it was read or built with.
+ * A Spec ID (ADR 0019, ADR 0024, ADR 0025): 25 dot-separated slots, product
+ * type first, saying what a product physically is. A slot not known is `Y`,
+ * one that doesn't apply `X`. Every instance is valid against the dictionary
+ * it was read or built with.
  */
 export class SpecId {
   private constructor(private readonly values: SlotValues) {}
 
   /**
    * Reads a code, reporting every problem at once with at most one message
-   * per slot, so the page can show each beside the slot it concerns. An S1
-   * code is read as the S2 code it converts to (ADR 0024).
+   * per slot, so the page can show each beside the slot it concerns. A code
+   * given out before (S1, or starting `S2.`) is read as the short code it
+   * converts to, and a marker written wide (`0000`, `XX`) as its one letter
+   * (ADR 0025).
    */
   static parse(input: string, dictionary: Dictionary): Result<SpecId, InvalidSpecIdError> {
     const trimmed = input.trim();
     if (trimmed.length === 0) return err(new InvalidSpecIdError({ code: [messages.empty()] }));
-    const s1 = readS1(trimmed);
-    if (s1 && !s1.ok) return err(s1.error);
-    const code = s1 ? s1.value : trimmed;
-
-    const issues: SpecIdIssues = {};
-    const codeIssues: string[] = [];
-    if (code.length !== SPEC_ID_LENGTH) codeIssues.push(messages.wrongLength(code.length));
-    const parts = code.split('.');
-    if (parts.length !== SLOT_COUNT) codeIssues.push(messages.wrongPartCount(parts.length));
-    if (codeIssues.length > 0) issues.code = codeIssues;
-    if (parts.length !== SLOT_COUNT) return err(new InvalidSpecIdError(issues));
-
+    const s1 = checkS1(trimmed);
+    if (s1) return err(s1);
+    const parts = shortForm(trimmed).split('.');
+    if (parts.length !== SLOT_COUNT) {
+      return err(new InvalidSpecIdError({ code: [messages.wrongPartCount(parts.length)] }));
+    }
     const values = Object.fromEntries(SLOTS.map((slot, index) => [slot.key, parts[index] ?? ''])) as SlotValues;
 
-    const version = checkSlotValue('formatVersion', values.formatVersion, dictionary);
-    if (version) {
-      issues.formatVersion = [version];
-      return err(new InvalidSpecIdError(issues));
-    }
-
+    const issues: SpecIdIssues = {};
     const passed = new Set<SlotKey>();
-    for (const { key } of SLOTS.slice(1)) {
+    for (const { key } of SLOTS) {
       const problem = checkSlotValue(key, values[key], dictionary);
       if (problem) issues[key] = [problem];
       else passed.add(key);
@@ -182,7 +172,7 @@ export class SpecId {
 
   /**
    * Builds the code for what is known about a product. Every slot without a
-   * value is filled for it: `X` where it doesn't apply, `0` elsewhere. A value
+   * value is filled for it: `X` where it doesn't apply, `Y` elsewhere. A value
    * given for a slot that doesn't apply is refused, never silently cleared.
    */
   static build(facts: SpecIdFactsInput, dictionary: Dictionary): Result<SpecId, InvalidSpecIdError> {
@@ -216,9 +206,8 @@ export class SpecId {
     }
 
     const values: Record<SlotKey, string> = Object.fromEntries(
-      SLOTS.map((slot) => [slot.key, given.get(slot.key) ?? notKnownMarker(slot.key)]),
+      SLOTS.map((slot) => [slot.key, given.get(slot.key) ?? NOT_KNOWN]),
     ) as Record<SlotKey, string>;
-    values.formatVersion = FORMAT_VERSION;
     values.variant = NO_VARIANT;
 
     if (productType.problem === undefined) {
@@ -232,7 +221,7 @@ export class SpecId {
           const problem = applicabilityProblem(dictionary, productType.raw, key, value, shape, material);
           if (problem) issues[key] = [problem];
         } else if (expectedFill(dictionary, productType.raw, key, shape, material)?.fill === 'does-not-apply') {
-          values[key] = doesNotApplyMarker(key);
+          values[key] = DOES_NOT_APPLY;
         }
       }
     }
@@ -261,7 +250,7 @@ export class SpecId {
     return this.values[key];
   }
 
-  /** The 26 slots in order, each read in plain words. */
+  /** The 25 slots in order, each read in plain words. */
   describe(dictionary: Dictionary): DescribedSlot[] {
     return SLOTS.map((slot) => {
       const raw = this.values[slot.key];
@@ -274,46 +263,53 @@ export class SpecId {
 }
 
 /**
- * Checks one slot's raw text on its own — width, mixed markers, then what its
- * kind allows — and returns the first problem, or undefined. Applicability,
- * which needs the other slots, is not checked here.
+ * Checks one slot's raw text on its own — a marker, or a value's width, a
+ * stray `X`, then what its kind allows — and returns the first problem, or
+ * undefined. Applicability, which needs the other slots, is not checked here.
  */
 export function checkSlotValue(key: SlotKey, raw: string, dictionary: Dictionary): string | undefined {
   const { name, width, kind } = slotDefinition(key);
-  if (kind === 'version') return raw === FORMAT_VERSION ? undefined : messages.notS2(raw);
+  if (isNotKnown(raw) || isDoesNotApply(raw)) return markerProblem(key, raw);
   if (raw.length !== width) return messages.wrongWidth(name, raw, width);
-  if (raw.includes('X') && !isDoesNotApply(raw)) return messages.mixedMarker(name, raw);
+  if (raw.includes(DOES_NOT_APPLY)) return messages.mixedMarker(name, raw);
 
   switch (kind) {
     case 'dictionary':
-      if (key === 'productType' && isNotKnown(raw)) return messages.productTypeRequired();
-      if (key !== 'productType' && isNotKnown(raw)) return undefined;
-      // Product type and material are in every code, so X is no marker there: it is an unknown value.
-      if (key !== 'productType' && key !== 'material' && isDoesNotApply(raw)) return undefined;
       return dictionary.meaningOf(key as DictionarySlotKey, raw) === undefined
         ? messages.notInDictionary(name, raw)
         : undefined;
     case 'capacity': {
-      if (isNotKnown(raw) || isDoesNotApply(raw)) return undefined;
       const letter = raw.slice(0, 1);
       const digits = raw.slice(1);
       if (dictionary.meaningOf('capacity', letter) === undefined) return messages.notInDictionary(name, raw);
       if (!DIGITS.test(digits)) return messages.notANumber(name, raw);
-      if (isNotKnown(digits)) return messages.outOfRange(name, raw, capacityRange(letter));
+      if (/^0+$/.test(digits)) return messages.outOfRange(name, raw, capacityRange(letter));
       return undefined;
     }
     case 'measure':
-      return isNotKnown(raw) || isDoesNotApply(raw) || DIGITS.test(raw) ? undefined : messages.notANumber(name, raw);
+      return DIGITS.test(raw) ? undefined : messages.notANumber(name, raw);
     case 'count': {
-      if (isNotKnown(raw) || isDoesNotApply(raw)) return undefined;
       if (!DIGITS.test(raw)) return messages.notANumber(name, raw);
       const { max } = COUNTS[key as CountSlotKey];
       const count = Number.parseInt(raw, 10);
       return count > max ? messages.outOfRange(name, String(count), `1–${max}`) : undefined;
     }
     case 'variant':
-      return raw === NO_VARIANT ? undefined : messages.notInDictionary(name, raw);
+      return messages.notInDictionary(name, raw);
   }
+}
+
+/**
+ * Whether a marker may stand in this slot. Product type is always known;
+ * material and the variant are in every code, so `X` is no marker for
+ * material, and the variant is `X` until variants exist.
+ */
+function markerProblem(key: SlotKey, raw: string): string | undefined {
+  const { name } = slotDefinition(key);
+  if (key === 'productType') return isNotKnown(raw) ? messages.productTypeRequired() : messages.notInDictionary(name, raw);
+  if (key === 'material' && isDoesNotApply(raw)) return messages.notInDictionary(name, raw);
+  if (key === 'variant' && raw !== NO_VARIANT) return messages.notInDictionary(name, raw);
+  return undefined;
 }
 
 /** Step 6 of reading a code: whether a slot holds what its product type, shape and material allow. */
@@ -331,11 +327,11 @@ function applicabilityProblem(
   const product = (dictionary.meaningOf('productType', productType) ?? productType).toLowerCase();
   switch (expected.fill) {
     case 'does-not-apply':
-      return isDoesNotApply(raw) ? undefined : messages.mustNotApply(name, doesNotApplyMarker(key), product);
+      return isDoesNotApply(raw) ? undefined : messages.mustNotApply(name, DOES_NOT_APPLY, product);
     case 'any':
       return isDoesNotApply(raw) ? messages.mustApply(name, product) : undefined;
     case 'not-known':
-      return isNotKnown(raw) ? undefined : messages.mustBeNotKnown(name, notKnownMarker(key), expected.dependsOn);
+      return isNotKnown(raw) ? undefined : messages.mustBeNotKnown(name, NOT_KNOWN, expected.dependsOn);
   }
 }
 
@@ -344,7 +340,7 @@ function readProductType(value: string, dictionary: Dictionary): Reading {
   return readCode('productType', value, dictionary);
 }
 
-/** A dictionary code as given. A marker is not a value, so `"00"` is refused like any unknown code. */
+/** A dictionary code as given. A marker is not a value, so `"Y"` is refused like any unknown code. */
 function readCode(key: DictionarySlotKey, value: string, dictionary: Dictionary): Reading {
   if (dictionary.meaningOf(key, value) === undefined) {
     return { problem: messages.notInDictionary(slotDefinition(key).name, value) };
@@ -404,21 +400,20 @@ function readCount(key: CountSlotKey, value: string): Reading {
 }
 
 /**
- * An S1 code, converted to S2; null when the text is not meant as one (it
- * does not start `S1.`). An S1 code that cannot be converted says why.
+ * Why a code starting `S1.` cannot be converted, or undefined: one that can
+ * be, or text that is not meant as an S1 code at all.
  */
-function readS1(code: string): Result<string, InvalidSpecIdError> | null {
-  if (!code.startsWith('S1.')) return null;
+function checkS1(code: string): InvalidSpecIdError | undefined {
+  if (!code.startsWith('S1.')) return undefined;
   const parts = code.split('.');
   if (code.length !== S1_LENGTH || parts.length !== S1_PARTS) {
-    return err(new InvalidSpecIdError({ code: [messages.malformedS1(code.length, parts.length)] }));
+    return new InvalidSpecIdError({ code: [messages.malformedS1(code.length, parts.length)] });
   }
   const productType = parts[1] ?? '';
   if (S1_ADDED_SLOTS[productType] === undefined) {
-    return err(new InvalidSpecIdError({ productType: [messages.notInDictionary('Product type', productType)] }));
+    return new InvalidSpecIdError({ productType: [messages.notInDictionary('Product type', productType)] });
   }
-  const converted = fromS1(code);
-  return converted === null ? null : ok(converted);
+  return undefined;
 }
 
 function capacityLabel(letter: string): string {
@@ -432,7 +427,6 @@ function capacityRange(letter: string): string {
 /** A slot holding a value, in plain words (4.5). Whole numbers of at most four digits only. */
 function meaningOf(slot: SlotDefinition, raw: string, dictionary: Dictionary): string {
   switch (slot.kind) {
-    case 'version':
     case 'variant':
       return raw;
     case 'dictionary':

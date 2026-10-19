@@ -1,7 +1,7 @@
-import { fromS1, S1_ADDED_SLOTS } from '../domain/s1-code.js';
+import { S1_ADDED_SLOTS, shortForm, shortPart } from '../domain/old-codes.js';
 import { SavedSpecId } from '../domain/saved-spec-id.js';
 import { SpecIdChange, type SpecIdChangeKind } from '../domain/spec-id-change.js';
-import { FORMAT_VERSION, notKnownMarker, SLOTS, type SlotKey } from '../domain/slots.js';
+import { NOT_KNOWN, SLOTS, type SlotKey } from '../domain/slots.js';
 import { SpecId } from '../domain/spec-id.js';
 import type { atlasSpecIdChanges } from './atlas-spec-id-changes.table.js';
 import type { atlasSpecIds } from './atlas-spec-ids.table.js';
@@ -15,27 +15,22 @@ type NewChangeRow = typeof atlasSpecIdChanges.$inferInsert;
 const ADDED_SLOTS = ['wall', 'print', 'compartments', 'plies', 'lidOpening', 'handle', 'wrap', 'window'] as const;
 
 /**
- * Every slot's raw text, as the row holds it. The format version is not
- * stored: it is always the current one. A row an older API saved during a
- * deploy has no added slots: they are read as its S1 code converts.
+ * Every slot's raw text, as the row holds it, in the short form (ADR 0025).
+ * A row an older API saved during a deploy holds its markers written wide,
+ * or, saved before S2, no added slots: they are read as its old code converts.
  */
 function slotValues(row: SpecIdRow) {
   const added = (S1_ADDED_SLOTS[row.productType] ?? '').split('.');
   const valueOf = (key: SlotKey): string => {
-    if (key === 'formatVersion') return FORMAT_VERSION;
     const index = (ADDED_SLOTS as readonly string[]).indexOf(key);
-    if (index === -1) return row[key as Exclude<SlotKey, 'formatVersion' | (typeof ADDED_SLOTS)[number]>];
-    return row[ADDED_SLOTS[index] as (typeof ADDED_SLOTS)[number]] ?? added[index] ?? notKnownMarker(key);
+    if (index === -1) return shortPart(row[key as Exclude<SlotKey, (typeof ADDED_SLOTS)[number]>]);
+    return shortPart(row[ADDED_SLOTS[index] as (typeof ADDED_SLOTS)[number]] ?? added[index] ?? NOT_KNOWN);
   };
   return Object.fromEntries(SLOTS.map((slot) => [slot.key, valueOf(slot.key)])) as Parameters<
     typeof SpecId.restore
   >[0];
 }
 
-/** A stored code in S2 form: one an older API wrote during a deploy is converted. */
-function inS2(code: string): string {
-  return fromS1(code) ?? code;
-}
 
 export function toDomain(row: SpecIdRow): SavedSpecId {
   return SavedSpecId.restore({
@@ -98,8 +93,9 @@ export function toChange(row: ChangeRow): SpecIdChange {
     kind: row.kind as SpecIdChangeKind,
     changedBy: row.changedBy,
     changedAt: row.changedAt,
-    codeBefore: row.codeBefore === null ? null : inS2(row.codeBefore),
-    codeAfter: inS2(row.codeAfter),
+    // A code an older API wrote during a deploy is read in the short form.
+    codeBefore: row.codeBefore === null ? null : shortForm(row.codeBefore),
+    codeAfter: shortForm(row.codeAfter),
     nameBefore: row.nameBefore,
     nameAfter: row.nameAfter,
   });

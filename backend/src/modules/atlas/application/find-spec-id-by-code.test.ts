@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { FixedClock, SequentialIdGenerator } from '../../../shared/application/testing/fakes.js';
 import { SpecIdNotFoundError } from '../domain/spec-id.errors.js';
+import { ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1, withSlot } from '../domain/testing/spec-id-codes.js';
 import { FindSpecIdByCode } from './find-spec-id-by-code.js';
 import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { UpdateSpecId } from './update-spec-id.js';
 
-const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
+const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
 const FACTS = {
   productType: 'BLD',
   material: 'APS',
@@ -39,7 +40,24 @@ describe('FindSpecIdByCode', () => {
     expect(result.value.code).toBe(ILLUSTRATIVE);
     expect(result.value.name).toBe('Illustrative lid');
     expect(result.value.savedBy).toEqual(SAVER);
-    expect(result.value.slots).toHaveLength(26);
+    expect(result.value.slots).toHaveLength(25);
+  });
+
+  it('finds a Spec ID by the long code and the S1 code it was given out as', async () => {
+    const saved = new InMemorySpecIdRepository();
+    saved.nameSaver(SAVER.id, SAVER.fullName);
+    await new SaveSpecId(
+      dictionaries,
+      saved,
+      new FixedClock(new Date('2026-10-16T08:00:00.000Z')),
+      new SequentialIdGenerator(),
+    ).execute({ name: 'Illustrative lid', facts: FACTS, savedBy: SAVER });
+    const findSaved = new FindSpecIdByCode(dictionaries, saved);
+
+    for (const code of [ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1.toLowerCase(), withSlot(ILLUSTRATIVE, 'height', '0000')]) {
+      const result = await findSaved.execute({ code });
+      expect(result.ok && result.value.code, code).toBe(ILLUSTRATIVE);
+    }
   });
 
   it('answers not found for a code nobody saved', async () => {
@@ -52,7 +70,7 @@ describe('FindSpecIdByCode', () => {
 describe('FindSpecIdByCode, after codes change', () => {
   const EDITOR = { id: '00000000-0000-4000-8000-0000000000bb', fullName: 'Ben Invented' };
   const C1 = ILLUSTRATIVE;
-  const C2 = ILLUSTRATIVE.replace('.0000.', '.0012.');
+  const C2 = withSlot(ILLUSTRATIVE, 'height', '0012');
 
   /** A is saved as C1 and corrected to C2; `takeC1` then saves B as C1. */
   async function setup(takeC1: boolean) {

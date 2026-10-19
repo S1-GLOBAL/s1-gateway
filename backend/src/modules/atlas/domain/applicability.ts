@@ -1,30 +1,30 @@
 import type { Dictionary } from './dictionary.js';
-import { PAPER_FAMILY, ROUND_SHAPE, type RuledSlotKey } from './slots.js';
+import { DOES_NOT_APPLY, NOT_KNOWN, PAPER_FAMILY, ROUND_SHAPE, type RuledSlotKey } from './slots.js';
 
 /**
  * What a ruled slot must hold for a product (ADR 0019, "Which slots apply"):
- * `any` is a value or `0`, `does-not-apply` is `X`, and `not-known` is `0`
+ * `any` is a value or `Y`, `does-not-apply` is `X`, and `not-known` is `Y`
  * because the shape or material it depends on is not known.
  */
 export type ExpectedFill =
   | { readonly fill: 'any' | 'does-not-apply'; readonly dependsOn?: undefined }
   | { readonly fill: 'not-known'; readonly dependsOn: 'shape' | 'material' };
 
-/** Every character is `0`: the product has this property, but no source states it. */
+/** `Y`: the product has this property, but no source states it. */
 export function isNotKnown(raw: string): boolean {
-  return /^0+$/.test(raw);
+  return raw === NOT_KNOWN;
 }
 
-/** Every character is `X`: the product never has this property. */
+/** `X`: the product never has this property. */
 export function isDoesNotApply(raw: string): boolean {
-  return /^X+$/.test(raw);
+  return raw === DOES_NOT_APPLY;
 }
 
 /**
  * The fill a ruled slot of `productType` expects, given the raw shape and
  * material. Pass `undefined` for a shape or material that failed its own
  * check: the slots that depend on it are then skipped (null), because that
- * slot's own message is enough. A shape or material of all `X` is skipped too.
+ * slot's own message is enough. A shape or material of `X` is skipped too.
  */
 export function expectedFill(
   dictionary: Dictionary,

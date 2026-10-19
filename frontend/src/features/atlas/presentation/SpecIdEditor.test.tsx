@@ -13,12 +13,13 @@ import {
   readCode,
   savedFor,
   testDictionary,
+  withSlot,
 } from '../application/testing/atlas-fixtures';
 import type { SavedSpecId } from '../domain/atlas';
 import { SpecIdEditor } from './SpecIdEditor';
 
 const ID = '00000000-0000-4000-8000-000000000001';
-const WITH_HEIGHT = ILLUSTRATIVE.replace('.0000.', '.0062.');
+const WITH_HEIGHT = withSlot(ILLUSTRATIVE, 'height', '0062');
 const ben = { id: '00000000-0000-4000-8000-0000000000bb', fullName: 'Ben Invented' };
 
 /** The illustrative lid as saved: three slots not known. */

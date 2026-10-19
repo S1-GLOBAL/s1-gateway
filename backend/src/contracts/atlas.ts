@@ -1,6 +1,5 @@
-/** The 26 slots of an S2 Spec ID, as the API names them. */
+/** The 25 slots of a Spec ID, as the API names them (ADR 0025). */
 export type SlotKey =
-  | 'formatVersion'
   | 'productType'
   | 'material'
   | 'coating'
@@ -58,7 +57,7 @@ export interface AtlasDictionary {
 }
 
 export interface DecodedSlot {
-  /** 1–26. */
+  /** 1–25. */
   number: number;
   key: SlotKey;
   name: string;
@@ -73,7 +72,7 @@ export interface DecodedSlot {
 export interface DecodedSpecId {
   code: string;
   dictionaryRelease: string;
-  /** Always 26, in code order. */
+  /** Always 25, in code order. */
   slots: DecodedSlot[];
 }
 

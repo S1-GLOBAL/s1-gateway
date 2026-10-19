@@ -13,7 +13,14 @@ import {
 /** Test doubles for the Atlas feature. Never imported by production code. */
 
 /** The specification's illustrative bowl lid. Every other value in the tests is invented. */
-export const ILLUSTRATIVE = 'S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX';
+export const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
+
+/** `code` with one slot's text replaced: `withSlot(ILLUSTRATIVE, 'height', '0062')`. */
+export function withSlot(code: string, key: SlotKey, raw: string): string {
+  const parts = code.split('.');
+  parts[SLOT_NAMES.findIndex((slot) => slot.key === key)] = raw;
+  return parts.join('.');
+}
 
 const RULED_ORDER: readonly SlotKey[] = [
   'coating',
@@ -113,7 +120,7 @@ export const testDictionary: AtlasDictionary = {
   ],
 };
 
-/** The 26 slots of `code`, each meaning just the raw text, except the product type. */
+/** The 25 slots of `code`, each meaning just the raw text, except the product type. */
 export function decodedFor(code: string): DecodedSpecId {
   const parts = code.split('.');
   return {
@@ -134,7 +141,7 @@ export function decodedFor(code: string): DecodedSpecId {
 }
 
 /**
- * The 26 slots of `code`, each in the state its text shows: all `0` not
+ * The 25 slots of `code`, each in the state its text shows: `Y` not
  * known, all `X` doesn't apply, anything else a value meaning just its text,
  * as in `decodedFor`.
  */
@@ -143,8 +150,8 @@ export function readCode(code: string): DecodedSpecId {
   return {
     ...decoded,
     slots: decoded.slots.map((slot) => {
-      if (/^0+$/.test(slot.raw)) return { ...slot, state: 'not-known' as const, meaning: 'Not known' };
-      if (/^X+$/.test(slot.raw)) return { ...slot, state: 'does-not-apply' as const, meaning: "Doesn't apply" };
+      if (slot.raw === 'Y') return { ...slot, state: 'not-known' as const, meaning: 'Not known' };
+      if (slot.raw === 'X') return { ...slot, state: 'does-not-apply' as const, meaning: "Doesn't apply" };
       return slot;
     }),
   };
