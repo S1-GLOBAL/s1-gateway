@@ -128,9 +128,11 @@ describe('the app, signed in', () => {
     20_000,
   );
 
-  it('shows the signed-in name and Sign out in the top bar', async () => {
+  it('shows the signed-in name beside the sidebar collapse, and Sign out in the top bar', async () => {
     renderAt('/theme');
-    expect(await screen.findByText('Ada Lovelace')).toBeTruthy();
+    const sidebar = await screen.findByRole('complementary', { name: 'Main' });
+    expect(within(sidebar).getByText('Ada Lovelace')).toBeTruthy();
+    expect(within(sidebar).getByText('AL')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy();
   });
 

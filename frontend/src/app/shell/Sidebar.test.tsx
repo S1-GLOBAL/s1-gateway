@@ -5,9 +5,11 @@ import { navItemsFor } from '../nav';
 import { Sidebar } from './Sidebar';
 import { SIDEBAR_STORAGE_KEY, useSidebarCollapsed } from './use-sidebar-collapsed';
 
+const ADA = { firstName: 'Ada', lastName: 'Lovelace', fullName: 'Ada Lovelace' };
+
 function Harness({ isAdmin }: { isAdmin: boolean }) {
   const [collapsed, toggle] = useSidebarCollapsed();
-  return <Sidebar items={navItemsFor(isAdmin)} collapsed={collapsed} onToggle={toggle} />;
+  return <Sidebar items={navItemsFor(isAdmin)} account={ADA} collapsed={collapsed} onToggle={toggle} />;
 }
 
 function renderAt(path: string, isAdmin = false) {
@@ -42,13 +44,37 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Accounts' })).toBeTruthy();
   });
 
+  it('shows who is signed in beside the collapse control', () => {
+    renderAt('/theme');
+    expect(screen.getByText('Ada Lovelace')).toBeTruthy();
+    expect(screen.getByText('AL')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toBeTruthy();
+  });
+
+  it('uses the first two letters when there is no family name', () => {
+    render(
+      <MemoryRouter>
+        <Sidebar
+          items={navItemsFor(false)}
+          account={{ firstName: 'Ada', lastName: '', fullName: 'Ada' }}
+          collapsed={false}
+          onToggle={() => undefined}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('AD')).toBeTruthy();
+    expect(screen.getByText('Ada')).toBeTruthy();
+  });
+
   it('folds to its rail and remembers it', () => {
     renderAt('/theme');
     fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
     expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('collapsed');
     expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeTruthy();
-    // Folded, the link keeps its name for assistive technology.
+    // Folded, the link and the signed-in name stay available to assistive technology.
     expect(screen.getByRole('link', { name: 'Theme' })).toBeTruthy();
+    expect(screen.getByTitle('Ada Lovelace').className).toContain('sr-only');
+    expect(screen.getByText('AL')).toBeTruthy();
   });
 
   it('starts folded when it was left folded', () => {

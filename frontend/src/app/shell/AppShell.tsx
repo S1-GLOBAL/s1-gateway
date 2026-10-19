@@ -22,7 +22,7 @@ export function AppShell() {
       >
         Skip to content
       </a>
-      <Sidebar items={items} collapsed={collapsed} onToggle={toggleCollapsed} />
+      <Sidebar items={items} account={me} collapsed={collapsed} onToggle={toggleCollapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
         <OfflineBanner />
         <TopBar />
