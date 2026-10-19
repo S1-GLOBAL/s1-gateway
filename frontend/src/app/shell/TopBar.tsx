@@ -5,7 +5,7 @@ import { Button } from '@/shared/ui/Button';
 import { Logo } from '@/shared/ui/Logo';
 import { navItemFor } from '../nav';
 
-/** Where you are, who you are, and the theme. Nothing else lives here until it does something. */
+/** Where you are, and the way out. Your name sits on the sidebar, beside the control that folds it. */
 export function TopBar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ export function TopBar() {
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-3">
-        <p className="hidden max-w-48 truncate text-sm text-ink-muted sm:block">{me.fullName}</p>
+        <p className="hidden max-w-40 truncate text-sm text-ink-muted sm:block md:hidden">{me.fullName}</p>
         <Button variant="ghost" size="sm" loading={signOut.isPending} onClick={leave}>
           Sign out
         </Button>
