@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import { check, date, foreignKey, pgTable, primaryKey, varchar } from 'drizzle-orm/pg-core';
 
 /*
- * The S1 dictionary (ADR 0021). Rows arrive only by migration, and nothing in
+ * The Atlas dictionary (ADR 0021). Rows arrive only by migration, and nothing in
  * the application updates or deletes one: a published meaning is never
  * reassigned. A new release adds rows under its own `release` key.
  */

@@ -48,12 +48,12 @@ export interface SlotRuleEntry {
   rule: SlotRule;
 }
 
-/** One release of the S1 dictionary. */
+/** One release of the Atlas dictionary. */
 export interface AtlasDictionary {
   release: string;
   /** `YYYY-MM-DD`. */
   approvedOn: string;
-  /** The seven slots whose values the dictionary holds, in code order. */
+  /** The thirteen slots whose values the dictionary holds, in code order. */
   slots: DictionarySlot[];
   /** By product type code, then slot order. */
   rules: SlotRuleEntry[];
