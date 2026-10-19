@@ -7,6 +7,7 @@ import type {
   SpecIdChange,
   SpecIdLibraryPage,
   SpecIdLookup,
+  SpecIdTextReading,
 } from '../../../contracts/atlas.js';
 import type { UseCase } from '../../../shared/application/use-case.js';
 import type { Result } from '../../../shared/domain/result.js';
@@ -21,6 +22,7 @@ import type {
   FindSimilarSpecIdsInput,
   FindSpecIdByCodeInput,
   ListSavedSpecIdsInput,
+  ReadSpecIdTextInput,
   SaveSpecIdInput,
   SavedSpecIdDto,
   SavedSpecIdIdInput,
@@ -28,6 +30,7 @@ import type {
   SpecIdChangeDto,
   SpecIdLibraryPageDto,
   SpecIdLookupDto,
+  SpecIdTextReadingDto,
   UpdateSpecIdInput,
 } from '../application/atlas.dto.js';
 import {
@@ -40,6 +43,7 @@ import {
 import {
   decodeSpecIdRequestSchema,
   encodeSpecIdRequestSchema,
+  readSpecIdTextRequestSchema,
   saveSpecIdRequestSchema,
   savedSpecIdIdSchema,
   updateSpecIdRequestSchema,
@@ -56,6 +60,7 @@ type UpdateResult = Result<
 >;
 type HistoryResult = Result<SpecIdChangeDto[], SpecIdNotFoundError>;
 type LibraryResult = Result<SpecIdLibraryPageDto, InvalidLookupError>;
+type ReadResult = Result<SpecIdTextReadingDto, InvalidLookupError | InvalidSpecIdError>;
 
 type AtlasErrorCode =
   | InvalidSpecIdError['code']
@@ -94,6 +99,7 @@ export class AtlasController {
     private readonly findSimilarSpecIds: UseCase<FindSimilarSpecIdsInput, SimilarResult>,
     private readonly signedInStaff: SignedInStaff,
     private readonly saved: SavedSpecIdUseCases,
+    private readonly readSpecIdText: UseCase<ReadSpecIdTextInput, ReadResult>,
   ) {}
 
   dictionary = async (_req: Request, res: Response): Promise<void> => {
@@ -109,6 +115,14 @@ export class AtlasController {
   encode = async (req: Request, res: Response): Promise<void> => {
     const input = parseBody(encodeSpecIdRequestSchema, req.body);
     sendDecoded(res, await this.encodeSpecId.execute(input));
+  };
+
+  readText = async (req: Request, res: Response): Promise<void> => {
+    const input = parseBody(readSpecIdTextRequestSchema, req.body);
+    const result = await this.readSpecIdText.execute(input);
+    if (!result.ok) throw toHttpError(result.error);
+    const reading: SpecIdTextReading = result.value;
+    sendData(res, 200, reading);
   };
 
   save = async (req: Request, res: Response): Promise<void> => {

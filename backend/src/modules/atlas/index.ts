@@ -11,6 +11,7 @@ import { GetDictionary } from './application/get-dictionary.js';
 import { GetSavedSpecId } from './application/get-saved-spec-id.js';
 import { GetSpecIdHistory } from './application/get-spec-id-history.js';
 import { ListSavedSpecIds } from './application/list-saved-spec-ids.js';
+import { ReadSpecIdText } from './application/read-spec-id-text.js';
 import { SaveSpecId } from './application/save-spec-id.js';
 import { UpdateSpecId } from './application/update-spec-id.js';
 import { DrizzleDictionaryRepository } from './infrastructure/drizzle-dictionary-repository.js';
@@ -45,6 +46,7 @@ export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule {
       history: new GetSpecIdHistory(dictionaries, specIds),
       library: new ListSavedSpecIds(dictionaries, specIds),
     },
+    new ReadSpecIdText(dictionaries),
   );
   return { path: '/atlas', router: createAtlasRouter(controller), access: 'session' };
 }

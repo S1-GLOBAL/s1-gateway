@@ -3,6 +3,7 @@ import type {
   CapacityFact,
   DecodeSpecIdRequest,
   EncodeSpecIdRequest,
+  ReadSpecIdTextRequest,
   MeasurementFact,
   SaveSpecIdRequest,
   SpecIdFacts,
@@ -56,6 +57,11 @@ export const decodeSpecIdRequestSchema = z.object({
 export const encodeSpecIdRequestSchema = z.object({
   facts: specIdFactsSchema,
 }) satisfies z.ZodType<EncodeSpecIdRequest>;
+
+export const readSpecIdTextRequestSchema = z.object({
+  text: z.string(),
+  productType: z.string().optional(),
+}) satisfies z.ZodType<ReadSpecIdTextRequest>;
 
 export const saveSpecIdRequestSchema = z.object({
   name: z.string(),

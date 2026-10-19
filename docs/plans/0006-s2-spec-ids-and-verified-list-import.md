@@ -280,6 +280,11 @@ Since #36 ([ADR 0025](../decisions/0025-spec-ids-are-written-short.md)), codes a
 `S2.` tag, an empty slot `Y` or `X`. The import creates short codes through `SaveSpecId`; where this
 plan's design writes a code in the long form, read its short form.
 
+Since #41 ([ADR 0026](../decisions/0026-raw-text-is-read-by-rules-and-a-public-word-list.md), plan 0007), the import
+reads item names with `readText`, sizes with `readSize` and spellings from `WORD_LIST`, all in
+`backend/src/modules/atlas/domain/reading/`, instead of building its own `item-name.ts`,
+`size-rulings.ts` and `spelling-table.ts`; the spelling table's entries are in the repository.
+
 ### Step 3.1 — The spelling table and size rulings
 
 - [ ] **Action.** Tests first, with invented values only. `spelling-table.ts` (refuses a file whose entry names a code not in S2 0.1.0, naming the entry); `size-rulings.ts` with one passing and one near-miss test per ruling: R1 `93 Dia` on a cup → top 93, `RD`; R1b `94 Dia x 115` → top 94, height 115; R2 `90 dia x 60 x 45` → 90 × 60 × 45, and `60 dia x 90 x 45` → null (B not smaller); R3 pouch `200 x 300 x 80` → width 200, height 300, gusset 80; R5 bag `30*12*35 cm` → width 300, gusset 120, height 350; R6 box `8 x 6 x 3 inches` → 203 × 152 × 76; anything else → null.

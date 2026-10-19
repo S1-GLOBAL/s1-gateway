@@ -52,6 +52,7 @@ Request bodies are JSON, at most **100 kB**.
 | GET | `/atlas/dictionary` | session | 200 `{ data: AtlasDictionary }` | 401 `SIGN_IN_REQUIRED` |
 | POST | `/atlas/spec-ids/decode` | session | 200 `{ data: DecodedSpecId }` | 401, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED` |
 | POST | `/atlas/spec-ids/encode` | session | 200 `{ data: DecodedSpecId }`; nothing is saved | 401, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED` |
+| POST | `/atlas/spec-ids/read` | session | 200 `{ data: SpecIdTextReading }`; nothing is saved | 401, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED` |
 | POST | `/atlas/spec-ids` | session | 201 `{ data: SavedSpecId }` | 401 `SIGN_IN_REQUIRED`, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED`, 409 `SPEC_ID_EXISTS` |
 | GET | `/atlas/spec-ids/:code` | session | 200 `{ data: SpecIdLookup }` | 401, 404 `SPEC_ID_NOT_FOUND` |
 | GET | `/atlas/spec-ids?<slot>=<value>…` | session | 200 `{ data: SimilarSpecIds }` | 401, 400 `VALIDATION_FAILED` |
@@ -184,6 +185,23 @@ number:
 `INVALID_SPEC_ID` reports every problem at once in `details.fields`, keyed by
 slot. A problem with the whole code (its length or its number of parts) is
 under `code`.
+
+`POST /atlas/spec-ids/read` takes `{ text, productType? }` and reads the facts
+in raw text by rules ([ADR 0026](../decisions/0026-raw-text-is-read-by-rules-and-a-public-word-list.md)).
+`text` is trimmed and must be 1–500 characters; otherwise it answers 400
+`VALIDATION_FAILED` with `details.fields.text`: "Type some text to read." or
+"Search text must be at most 500 characters." A `productType` reads the text as
+that product type, over any the text names; one not in the dictionary answers
+400 `INVALID_SPEC_ID` beside `productType`. It answers a `SpecIdTextReading`:
+
+| Field | Type | Notes |
+|---|---|---|
+| `read` | `{ key, name, meaning, words, ruling }[]` | Each fact read, in code order. `meaning` reads as a decoded slot does (`14 oz`); `words` as the text wrote them; `ruling` is #28's ruling for a size (`R1`, `R1b`, `R2`, `R3`, `R5`, `R6`), else null |
+| `ignored` | `string[]` | The words no rule used, and the words of a fact the product type cannot have, as the text wrote them |
+| `conflicts` | `{ key, name, found }[]` | A slot the text gives two values for, with each value's words; it is left out of the code |
+| `decoded` | `DecodedSpecId \| null` | The code the facts make, once a product type is found or given; else null |
+
+Nothing is saved.
 
 `SavedSpecId` is a `DecodedSpecId` plus its permanent `id`, `name` (1–120
 characters), `savedBy: { id, fullName }`, `savedAt` (ISO 8601), `version` (1

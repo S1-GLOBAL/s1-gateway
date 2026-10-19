@@ -335,6 +335,35 @@ function applicabilityProblem(
   }
 }
 
+/**
+ * One fact in plain words, as its slot reads in a decoded code ("14 oz",
+ * "90 mm", "Molded fibre, bagasse"), or undefined when the fact is not valid
+ * on its own. Reading raw text uses it before there is a code (ADR 0026).
+ */
+export function meaningOfFact(
+  key: SlotKey,
+  fact: string | CapacityInput | MeasurementInput,
+  dictionary: Dictionary,
+): string | undefined {
+  const slot = slotDefinition(key);
+  const reading = ((): Reading | undefined => {
+    switch (slot.kind) {
+      case 'dictionary':
+        if (typeof fact !== 'string') return undefined;
+        return key === 'productType' ? readProductType(fact, dictionary) : readCode(key as DictionarySlotKey, fact, dictionary);
+      case 'capacity':
+        return typeof fact === 'string' ? undefined : readCapacity(fact, dictionary);
+      case 'measure':
+        return typeof fact === 'string' ? undefined : readMeasurement(key as MeasureSlotKey, fact);
+      case 'count':
+        return typeof fact === 'string' ? readCount(key as CountSlotKey, fact) : undefined;
+      case 'variant':
+        return undefined;
+    }
+  })();
+  return reading === undefined || reading.problem !== undefined ? undefined : meaningOf(slot, reading.raw, dictionary);
+}
+
 function readProductType(value: string, dictionary: Dictionary): Reading {
   if (value === '' || isNotKnown(value)) return { problem: messages.productTypeRequired() };
   return readCode('productType', value, dictionary);

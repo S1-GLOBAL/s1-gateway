@@ -1,6 +1,6 @@
 # 0007. Search Atlas with raw product text
 
-- **Status:** Ready
+- **Status:** In progress
 - **Owner:** Rey Denzo
 - **Related:** [#41](https://github.com/S1-GLOBAL/s1-gateway/issues/41) ·
   [plan 0006](./0006-s2-spec-ids-and-verified-list-import.md) ·
@@ -41,7 +41,7 @@ the repository, no AI model, and plan 0006's import reuses it for item names.
 
 | Phase | Steps | Status |
 |---|---|---|
-| 1. The reader and its route | 0 / 5 | Not started |
+| 1. The reader and its route | 5 / 5 | Done |
 | 2. The library's Search | 0 / 4 | Not started |
 
 ---
@@ -151,32 +151,32 @@ One pull request, "Part of #41".
 
 ### Step 1.1 — Record the decision
 
-- [ ] **Action.** `docs/decisions/0026-raw-text-is-read-by-rules-and-a-public-word-list.md` (Accepted, 2026-10-20): the reader is rules, a word list in the repository and #28's rulings, no AI model; why (predictable, testable, no cost, one reader for search and import); what it costs (a phrase missing from the list is not read). Add its row to `docs/decisions/README.md`.
-- [ ] **Verify.** `npm run docs:check` ends with "The README index agrees with every plan."
+- [x] **Action.** `docs/decisions/0026-raw-text-is-read-by-rules-and-a-public-word-list.md` (Accepted, 2026-10-20): the reader is rules, a word list in the repository and #28's rulings, no AI model; why (predictable, testable, no cost, one reader for search and import); what it costs (a phrase missing from the list is not read). Add its row to `docs/decisions/README.md`.
+- [x] **Verify.** `npm run docs:check` ends with "The README index agrees with every plan."
 
 ### Step 1.2 — The word list and the keywords
 
-- [ ] **Action.** `word-list.ts` with the entries the handoff supplies, and `keywords.ts` with plan 0006's keyword table. Tests: every code in `WORD_LIST` is a value of S2 0.1.0 for its slot; "Bowl Lid" is `BLD`; no key is empty.
-- [ ] **Verify.** From `backend/`: `npx vitest run --config vitest.unit.config.ts src/modules/atlas/domain/reading` passes.
+- [x] **Action.** `word-list.ts` with the entries the handoff supplies, and `keywords.ts` with plan 0006's keyword table. Tests: every code in `WORD_LIST` is a value of S2 0.1.0 for its slot; "Bowl Lid" is `BLD`; no key is empty.
+- [x] **Verify.** From `backend/`: `npx vitest run --config vitest.unit.config.ts src/modules/atlas/domain/reading` passes.
 
 ### Step 1.3 — The size rulings
 
-- [ ] **Action.** `size-rulings.ts`, with #28's table: one test per ruling reading its pattern, and one near miss per ruling reading nothing ("90" on a bag; "A x B" with two numbers on a takeout box).
-- [ ] **Verify.** The same command passes.
+- [x] **Action.** `size-rulings.ts`, with #28's table: one test per ruling reading its pattern, and one near miss per ruling reading nothing ("90" on a bag; "A x B" with two numbers on a takeout box).
+- [x] **Verify.** The same command passes.
 
 ### Step 1.4 — Reading text
 
-- [ ] **Action.** `read-text.ts`. Tests:
+- [x] **Action.** `read-text.ts`. Tests:
   - "14oz Bagasse Bowl for Cava" reads productType `BWL`, material `CBG`, capacity `Z` 14, and ignores "for", "Cava";
   - "Cup 90mm" reads topDiameter 90 mm under `R1`, and shape `RD`;
   - "clear PET and PP lid" leaves material out and reports `found: ['PET', 'PP']`;
   - Review Focus 1, 2 and 4;
   - a given `productType` wins over the text's.
-- [ ] **Verify.** The same command passes.
+- [x] **Verify.** The same command passes.
 
 ### Step 1.5 — The route, its contract and the docs
 
-- [ ] **Action.**
+- [x] **Action.**
   - Add `ReadSpecIdTextRequest` and `SpecIdTextReading` to `backend/src/contracts/atlas.ts`.
   - Add `ReadSpecIdText`, its schema, the controller argument and the route; wire them in `backend/src/modules/atlas/index.ts` and the tests that build the controller.
   - Document the route in `docs/reference/api.md`.
@@ -188,7 +188,7 @@ One pull request, "Part of #41".
     - a `productType` not in the dictionary gets 400 `INVALID_SPEC_ID` beside `productType`;
     - text with no product type answers `decoded: null`;
     - no route saves (the in-memory repository holds nothing afterwards).
-- [ ] **Verify.** `npm run typecheck`, `npm run lint`, `npm run arch:check`, `npm --prefix backend test` and `npm run docs:check` pass; CI and `pr-audit` pass on the pull request.
+- [x] **Verify.** `npm run typecheck`, `npm run lint`, `npm run arch:check`, `npm --prefix backend test` and `npm run docs:check` pass; CI and `pr-audit` pass on the pull request.
 
 ---
 

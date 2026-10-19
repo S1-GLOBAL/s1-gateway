@@ -10,6 +10,7 @@ import { GetDictionary } from '../application/get-dictionary.js';
 import { GetSavedSpecId } from '../application/get-saved-spec-id.js';
 import { GetSpecIdHistory } from '../application/get-spec-id-history.js';
 import { ListSavedSpecIds } from '../application/list-saved-spec-ids.js';
+import { ReadSpecIdText } from '../application/read-spec-id-text.js';
 import { SaveSpecId } from '../application/save-spec-id.js';
 import { UpdateSpecId } from '../application/update-spec-id.js';
 import { InMemoryDictionaryRepository } from '../application/testing/in-memory-dictionary-repository.js';
@@ -58,6 +59,7 @@ function setup() {
       history: new GetSpecIdHistory(dictionaries, specIds),
       library: new ListSavedSpecIds(dictionaries, specIds),
     },
+    new ReadSpecIdText(dictionaries),
   );
   // Atlas route shape only — production mounts Atlas behind the session gate.
   return createApp({
@@ -561,5 +563,50 @@ describe('the slots S2 added, and codes given out before', () => {
     expect(response.status).toBe(200);
     expect(response.body.data.code).toBe(ILLUSTRATIVE);
     expect(response.body.data.replacedCode).toBeNull();
+  });
+});
+
+describe('POST /api/v1/atlas/spec-ids/read', () => {
+  const read = (agent: ReturnType<typeof setup>, body: object) => request(agent).post('/api/v1/atlas/spec-ids/read').send(body);
+
+  it('answers 200 with what was read, what was ignored and the code, and saves nothing', async () => {
+    const own = setup();
+    const response = await read(own, { text: '14oz Bagasse Bowl for Cava' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.decoded.code).toBe('BWL.CBG.Y.Y.Y.X.Z0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X');
+    expect(response.body.data.read.map((fact: { meaning: string }) => fact.meaning)).toEqual([
+      'Bowl',
+      'Molded fibre, bagasse',
+      '14 oz',
+    ]);
+    expect(response.body.data.ignored).toEqual(['for', 'Cava']);
+    expect(response.body.data.conflicts).toEqual([]);
+    const library = await request(own).get('/api/v1/atlas/saved');
+    expect(library.body.data.items).toEqual([]);
+  });
+
+  it('answers decoded null for text that names no product type', async () => {
+    const response = await read(setup(), { text: 'clear PET 12oz' });
+    expect(response.status).toBe(200);
+    expect(response.body.data.decoded).toBeNull();
+  });
+
+  it('answers 400 VALIDATION_FAILED for 501 characters, and for a body without text', async () => {
+    const over = await read(setup(), { text: 'x'.repeat(501) });
+    expect(over.status).toBe(400);
+    expect(over.body.error.code).toBe('VALIDATION_FAILED');
+    expect(over.body.error.details.fields.text).toEqual(['Search text must be at most 500 characters.']);
+
+    const none = await read(setup(), {});
+    expect(none.status).toBe(400);
+    expect(none.body.error.code).toBe('VALIDATION_FAILED');
+  });
+
+  it('answers 400 INVALID_SPEC_ID for a product type not in the dictionary', async () => {
+    const response = await read(setup(), { text: 'clear PET', productType: 'ZZZ' });
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('INVALID_SPEC_ID');
+    expect(response.body.error.details.fields.productType).toEqual(['Product type: ZZZ is not in the dictionary.']);
   });
 });
