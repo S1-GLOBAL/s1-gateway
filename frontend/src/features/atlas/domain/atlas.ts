@@ -111,6 +111,16 @@ export interface SpecIdFacts {
   unitWeight?: MeasurementFact;
   basisWeight?: MeasurementFact;
   thickness?: MeasurementFact;
+  wall?: string;
+  print?: string;
+  /** A whole number, 1–12. */
+  compartments?: string;
+  /** A whole number, 1–4. */
+  plies?: string;
+  lidOpening?: string;
+  handle?: string;
+  wrap?: string;
+  window?: string;
 }
 
 /** Who saved or changed a Spec ID. */

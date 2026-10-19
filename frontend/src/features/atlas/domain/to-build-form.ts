@@ -1,12 +1,13 @@
 import type { DecodedSpecId, SlotKey } from './atlas';
 import type { BuildForm } from './build-facts';
-import { CODE_SLOTS, MEASURED_SLOTS } from './slot-controls';
+import { CODE_SLOTS, COUNT_SLOTS, MEASURED_SLOTS } from './slot-controls';
 
 const DIGITS = /^\d+$/;
 
 /**
  * The form that builds `decoded` again: each known slot's value, in the unit
- * its code counts in (`0090` → 90 mm, `0033` → 3.3 g, `Z0016` → Z and 16).
+ * its code counts in (`0090` → 90 mm, `0033` → 3.3 g, `Z0016` → Z and 16,
+ * `03` → 3 compartments).
  * Not known and doesn't apply leave a choice empty. Text only: `toFacts` of
  * the result encodes back to the same code.
  */
@@ -30,6 +31,12 @@ export function toBuildForm(decoded: DecodedSpecId): BuildForm {
         return [slot.key, { value: slot.key === 'unitWeight' ? tenths(raw) : withoutLeadingZeros(raw), unit }];
       }),
     ) as BuildForm['measures'],
+    counts: Object.fromEntries(
+      COUNT_SLOTS.map((key) => {
+        const raw = known(key);
+        return [key, raw !== undefined && DIGITS.test(raw) ? withoutLeadingZeros(raw) : ''];
+      }),
+    ) as BuildForm['counts'],
   };
 }
 

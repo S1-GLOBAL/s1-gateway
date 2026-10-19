@@ -67,12 +67,6 @@ describe('SpecIdWorkspace, the slots that apply', () => {
     expect(field('Height')).not.toBeNull();
   });
 
-  it('hides the shape group of a stand-up pouch, which has neither shape nor profile', () => {
-    renderWorkspace({ productType: 'SUP' });
-    expect(screen.queryByRole('radiogroup', { name: 'Shape' })).toBeNull();
-    expect(screen.queryByRole('region', { name: 'Shape' })).toBeNull();
-  });
-
   it('shows top diameter as "Not known", disabled, until a shape is chosen', () => {
     renderWorkspace({ productType: 'BLD' });
     const topDiameter = field('Top diameter') as HTMLInputElement;

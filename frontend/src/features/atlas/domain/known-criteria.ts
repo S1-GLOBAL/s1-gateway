@@ -1,6 +1,6 @@
 import type { DecodedSpecId, SimilarCriteria } from './atlas';
 
-/** The slots the similar lookup never asks about: S1 and XX are the same on every code. */
+/** The slots the similar lookup never asks about: S2 and XX are the same on every code. */
 const NOT_ASKED = new Set(['formatVersion', 'variant']);
 
 /** The known slots of `decoded`, as the similar lookup asks for them: each slot's raw text. */

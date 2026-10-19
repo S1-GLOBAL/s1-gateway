@@ -11,9 +11,11 @@ import {
   ILLUSTRATIVE,
   lookupFor,
   readCode,
+  s2Dictionary,
   savedFor,
   testDictionary,
 } from '../application/testing/atlas-fixtures';
+import type { AtlasDictionary } from '../domain/atlas';
 import { NewSpecIdForm, type SavedNotice } from './NewSpecIdForm';
 
 const NOT_FOUND = new AppError('SPEC_ID_NOT_FOUND', 'No saved Spec ID has this code. Check it, or build and save it.');
@@ -26,7 +28,7 @@ function Landed() {
   return <p>{`Opened ${id}: ${notice}`}</p>;
 }
 
-function renderForm(overrides: Partial<AtlasGateway> = {}) {
+function renderForm(overrides: Partial<AtlasGateway> = {}, dictionary: AtlasDictionary = testDictionary) {
   const gateway = gatewayWith({
     encode: async () => readCode(ILLUSTRATIVE),
     findByCode: async () => Promise.reject(NOT_FOUND),
@@ -39,7 +41,7 @@ function renderForm(overrides: Partial<AtlasGateway> = {}) {
       <AtlasGatewayProvider gateway={gateway}>
         <MemoryRouter initialEntries={['/atlas/new']}>
           <Routes>
-            <Route path="/atlas/new" element={<NewSpecIdForm dictionary={testDictionary} seed={null} timeZone="UTC" />} />
+            <Route path="/atlas/new" element={<NewSpecIdForm dictionary={dictionary} seed={null} timeZone="UTC" />} />
             <Route path="/atlas/:id" element={<Landed />} />
           </Routes>
         </MemoryRouter>
@@ -122,5 +124,34 @@ describe('NewSpecIdForm', () => {
 
     expect(await screen.findByText('Name is required.')).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('NewSpecIdForm, the S2 slots', () => {
+  it('starts on the first product type in the list, a bag', async () => {
+    const encode = vi.fn<AtlasGateway['encode']>(async () => readCode(ILLUSTRATIVE));
+    renderForm({ encode }, s2Dictionary);
+
+    expect((screen.getByLabelText('Product type') as HTMLSelectElement).value).toBe('BAG');
+    await waitFor(() => expect(encode).toHaveBeenLastCalledWith({ productType: 'BAG' }));
+  });
+
+  it.each([
+    ['Wall', 'CUP', 'DW', { wall: 'DW' }],
+    ['Print', 'CUP', '02', { print: '02' }],
+    ['Compartments', 'BWL', '03', { compartments: '3' }],
+    ['Plies', 'NPK', '2', { plies: '2' }],
+    ['Lid opening', 'CLD', 'SP', { lidOpening: 'SP' }],
+    ['Handle', 'BAG', 'TW', { handle: 'TW' }],
+    ['Individual wrap', 'STW', 'PW', { wrap: 'PW' }],
+    ['Window', 'TKB', 'WN', { window: 'WN' }],
+  ])('asks for a new code once %s is given', async (label, productType, value, fact) => {
+    const encode = vi.fn<AtlasGateway['encode']>(async () => readCode(ILLUSTRATIVE));
+    renderForm({ encode }, s2Dictionary);
+
+    fireEvent.change(screen.getByLabelText('Product type'), { target: { value: productType } });
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+
+    await waitFor(() => expect(encode).toHaveBeenLastCalledWith({ productType, ...fact }));
   });
 });

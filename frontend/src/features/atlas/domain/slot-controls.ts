@@ -1,9 +1,37 @@
 import type { SlotKey } from './atlas';
 
 /** The dictionary slots, besides product type and capacity, a form offers as a choice of codes. */
-export type CodeSlotKey = 'material' | 'coating' | 'colourClarity' | 'shape' | 'profile';
+export type CodeSlotKey =
+  | 'material'
+  | 'coating'
+  | 'colourClarity'
+  | 'shape'
+  | 'profile'
+  | 'wall'
+  | 'print'
+  | 'lidOpening'
+  | 'handle'
+  | 'wrap'
+  | 'window';
 
-export const CODE_SLOTS: readonly CodeSlotKey[] = ['material', 'coating', 'colourClarity', 'shape', 'profile'];
+export const CODE_SLOTS: readonly CodeSlotKey[] = [
+  'material',
+  'coating',
+  'colourClarity',
+  'shape',
+  'profile',
+  'wall',
+  'print',
+  'lidOpening',
+  'handle',
+  'wrap',
+  'window',
+];
+
+/** The slots a form takes as a whole number of things, typed: the server refuses one out of range. */
+export type CountSlotKey = 'compartments' | 'plies';
+
+export const COUNT_SLOTS: readonly CountSlotKey[] = ['compartments', 'plies'];
 
 export type MeasuredSlotKey =
   | 'topDiameter'
@@ -52,4 +80,8 @@ export const MEASURED_SLOTS: readonly MeasuredSlot[] = [
 
 export function isMeasuredSlot(key: SlotKey): key is MeasuredSlotKey {
   return MEASURED_SLOTS.some((slot) => slot.key === key);
+}
+
+export function isCountSlot(key: SlotKey): key is CountSlotKey {
+  return COUNT_SLOTS.some((slot) => slot === key);
 }
