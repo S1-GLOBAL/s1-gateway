@@ -318,7 +318,7 @@ const S2_RULES: Record<string, readonly SlotRule[]> = {
 
 /**
  * Release S2 0.1.0 as the API sends it: every value of
- * `0010_seed_atlas_dictionary_s2_0_1_0.sql`, each slot's in code order,
+ * `0010_seed_atlas_dictionary_s2_0_1_0.sql`, each slot's values in code order,
  * and every rule, by product type code.
  */
 export const s2Dictionary: AtlasDictionary = {
