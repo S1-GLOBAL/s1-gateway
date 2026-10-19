@@ -11,7 +11,7 @@ export const COPIED_MS = 2000;
 
 const PART: Record<DecodedSlot['state'], string> = {
   value: 'font-medium text-ink',
-  'not-known': 'text-ink-muted underline decoration-dashed underline-offset-4',
+  'not-known': 'text-ink-muted',
   'does-not-apply': 'text-ink-subtle',
 };
 
