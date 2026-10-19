@@ -1,7 +1,7 @@
 /**
  * Every message a Spec ID can fail with, worded exactly as issue #4's copy
- * table, the owner's decisions of 2026-10-16 and issue #28's copy table. The page shows them as they
- * come; nothing else may reword them.
+ * table, the owner's decisions of 2026-10-16, and the copy tables of issues
+ * #28 and #34. The page shows them as they come; nothing else may reword them.
  */
 export const specIdMessages = {
   empty: (): string => 'Paste a Spec ID to read it.',
@@ -21,7 +21,9 @@ export const specIdMessages = {
     `${slot} can't be "doesn't apply" for a ${productType}.`,
   mustBeNotKnown: (slot: string, notKnown: string, dependsOn: 'shape' | 'material'): string =>
     `${slot} must be ${notKnown} while the ${dependsOn} is not known.`,
-  notANumber: (slot: string, value: string): string => `${slot}: ${value} is not a number.`,
+  /** A blank value asks for a number: quoting nothing would read "Height: is not a number." */
+  notANumber: (slot: string, value: string): string =>
+    value.trim() === '' ? `${slot}: type a number.` : `${slot}: ${value} is not a number.`,
   tooManyDecimals: (slot: string, valueWithUnit: string): string =>
     `${slot}: ${valueWithUnit} has more than 6 decimal places.`,
   wrongUnit: (slot: string, unit: string, units: string): string =>

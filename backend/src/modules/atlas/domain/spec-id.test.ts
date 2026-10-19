@@ -415,6 +415,11 @@ describe('every message the domain produces', () => {
         { capacity: ['Nominal capacity: six is not a number.'] },
       ],
       [
+        'a capacity unit with no amount',
+        { productType: 'BWL', capacity: { unit: 'Z', value: '' } },
+        { capacity: ['Nominal capacity: type a number.'] },
+      ],
+      [
         'a capacity of nothing',
         { productType: 'BWL', capacity: { unit: 'M', value: '0' } },
         { capacity: ['Nominal capacity: 0 mL is outside 1–9999 mL.'] },
@@ -433,6 +438,11 @@ describe('every message the domain produces', () => {
         'a measurement that is not a number',
         illustrativeWith({ height: { value: '9O', unit: 'mm' } }),
         { height: ['Height: 9O is not a number.'] },
+      ],
+      [
+        'a blank measurement',
+        illustrativeWith({ height: { value: '  ', unit: 'mm' } }),
+        { height: ['Height: type a number.'] },
       ],
       [
         'a negative measurement',
