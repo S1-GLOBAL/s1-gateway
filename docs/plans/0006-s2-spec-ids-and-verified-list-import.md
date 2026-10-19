@@ -141,7 +141,7 @@ is 1–26. Nothing else changes shape.
 | `CODE_SLOTS` adds the six dictionary slots; `COUNT_SLOTS` (`compartments` max 12, `plies` max 4) | `features/atlas/domain/slot-controls.ts` | 2 |
 | `BuildForm.counts`; `toFacts`, `toBuildForm`, `isFormChanged` | `features/atlas/domain/build-facts.ts`, `to-build-form.ts` | 2 |
 | Group 06 "Print and features"; the groups of #28 | `features/atlas/presentation/workspace/FactGroups.tsx` | 2 |
-| Product type as a `SelectField` grouped like the dictionary (31 types do not fit a segmented row) | same | 2 |
+| Product type as a `SelectField` listing the dictionary's product types in its order (31 types do not fit a segmented row) | same | 2 |
 
 ### The import — phase 3
 
@@ -158,13 +158,15 @@ is 1–26. Nothing else changes shape.
 | the command | `backend/src/scripts/atlas-import.ts`; script `"atlas:import": "tsx src/scripts/atlas-import.ts"` | `--workbook`, `--spellings`, `--report`, `--as`, `--write`; refuses an unknown or disabled `--as` with #28's sentence |
 
 Item-name keywords (case-insensitive, whole words; a hit sets the fact only
-where the row's columns did not):
+where the row's columns did not). Where two phrases for one slot match, the
+longer wins (`half dome` over `dome`, `white kraft` over `kraft`); two
+different facts left for one slot leave it not known, flagged in the report:
 
 | Words | Fact |
 |---|---|
 | `<n> oz`, `<n>oz` | capacity `Z` n |
 | `<n> ml` | capacity `M` n |
-| `clear`, `transparent` · `white` · `black` · `brown`, `kraft` (colour only when material is paper) | colour `CL` · `WH` · `BK` · `BR` |
+| `clear`, `transparent` · `white`, `white kraft` · `black` · `brown`, `kraft` (colour only when material is paper) | colour `CL` · `WH` · `BK` · `BR` |
 | `round` · `square` · `rectangular` · `oval` | shape `RD` · `SQ` · `RC` · `OV` |
 | `dome` · `half dome` · `flat lid` | profile `DM` · `HD` · `FL` |
 | `single wall` · `double wall` · `ripple` | wall `SW` · `DW` · `RW` |
@@ -182,7 +184,7 @@ where the row's columns did not):
 Inputs #28 implies but does not spell out. Each has its test in the step that
 owns the code.
 
-1. A pasted S1 code in lower case, or with spaces around it — found, as an S2 code (Step 1.2).
+1. A pasted S1 code in lower case, or with spaces around it — found, as an S2 code (Step 1.3).
 2. A Spec ID edited after an earlier S1 code was given out — the old S1 code still finds it after the conversion (Step 1.5).
 3. A workbook cell holding a number, not text (Excel stores `90` as a number) — read like the text `90` (Step 3.2).
 4. The same item name with different facts — two Spec IDs, never merged by name (Step 3.3).
@@ -202,17 +204,17 @@ save as not known or doesn't apply until phase 2 adds their controls.
 
 ### Step 1.2 — The S2 slots and S1 codes in the domain
 
-- [ ] **Action.** Tests first. Extend `slots.ts` as in the design; add the `count` kind to `SpecId.build`, `SpecId.parse`, `checkSlotValue` and `meaningOf` ("3 compartments", "2 plies"); add `s1-code.ts`; change `spec-id.messages.ts`'s length sentence to "A Spec ID is 97 characters. This one has {n}."; replace the S2 test dictionary in `domain/testing/` (#28's rules for every type). Tests: the illustrative S1 bowl lid converts to `S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX`; `fromS1` is null for 17 slots or an `S2` code; compartments `13` and plies `5` are refused with #28's sentences; a value in a slot the rules mark `never` is refused, one test per product type; two fact sets differing only in print (then each new slot) give different codes; `WC` is accepted as a coating and `WX` refused as a mixed marker.
+- [ ] **Action.** Tests first. Extend `slots.ts` as in the design; add the `count` kind to `SpecId.build`, `SpecId.parse`, `checkSlotValue` and `meaningOf` ("1 compartment", "3 compartments"; "1 ply", "2 plies"); add `s1-code.ts`; change `spec-id.messages.ts`'s length sentence to "A Spec ID is 97 characters. This one has {n}."; replace the S2 test dictionary in `domain/testing/` (#28's rules for every type). Tests: the illustrative S1 bowl lid converts to `S2.BLD.APS.00.CL.RD.DM.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0033.XXX.000.XX.00.XX.X.XX.XX.XX.XX.XX`; `fromS1` is null for 17 slots or an `S2` code; compartments `13` and plies `5` are refused with #28's sentences; a value in a slot the rules mark `never` is refused, one test per product type; two fact sets differing only in print (then each new slot) give different codes; `WC` is accepted as a coating and `WX` refused as a mixed marker.
 - [ ] **Verify.** `npm --prefix backend run test:unit -- atlas` passes.
 
 ### Step 1.3 — Contract, schemas and the use cases
 
-- [ ] **Action.** The contract additions; the zod facts schema in `atlas.schemas.ts` (dictionary codes as strings, counts as `^\d{1,2}$`); `find-spec-id-by-code.ts` converts an S1 code with `fromS1` before looking it up. HTTP tests: encode with every new fact; decode of an S1 code answers 26 slots; `GET /atlas/spec-ids/<s1 code in lower case>` finds the converted Spec ID.
+- [ ] **Action.** The contract additions; the zod facts schema in `atlas.schemas.ts` (dictionary codes as strings, counts as `^\d{1,2}$`); `find-spec-id-by-code.ts` converts an S1 code with `fromS1` before looking it up. HTTP tests: encode with every new fact; decode of an S1 code answers 26 slots; `GET /atlas/spec-ids/<s1 code in lower case, with spaces around it>` finds the converted Spec ID.
 - [ ] **Verify.** `npm --prefix backend run test:unit` passes; `npm run typecheck` reports only frontend errors from the wider `SlotKey` (Step 1.6 fixes them).
 
 ### Step 1.4 — The three migrations
 
-- [ ] **Action.** Change the two code columns to `{ length: 97 }` and generate 0009; write 0010 from #28's tables and 0011 from the design; extend `backend/src/test/database.ts` if a new table appears (none expected). A `*.db.test.ts` saves an S1 Spec ID and History before 0011 is applied, applies it, and proves: the code equals `fromS1` of the old one, the History rows' codes are converted, `dictionary_release` is `S2 0.1.0`, and the number of History rows is unchanged.
+- [ ] **Action.** Change `code` in `atlas-spec-ids.table.ts`, and `code_before` and `code_after` in `atlas-spec-id-changes.table.ts`, to `{ length: 97 }` and generate 0009; write 0010 from #28's tables and 0011 from the design; extend `backend/src/test/database.ts` if a new table appears (none expected). A `*.db.test.ts` saves an S1 Spec ID and History before 0011 is applied, applies it, and proves: the code equals `fromS1` of the old one, the History rows' codes are converted, `dictionary_release` is `S2 0.1.0`, and the number of History rows is unchanged.
 - [ ] **Verify.** `npm run db:migrate` applies all three; a second `db:generate` prints "No schema changes"; `npm test` passes.
 
 ### Step 1.5 — Old codes after an edit
@@ -260,7 +262,7 @@ One pull request, "Part of #28".
 
 ## Phase 3 — The verified-list import
 
-One pull request, "Closes #28" once the staging run below is done.
+One pull request, "Part of #28". #28 is closed after Step 3.6's staging run.
 
 ### Step 3.1 — The spelling table and size rulings
 
@@ -274,12 +276,12 @@ One pull request, "Closes #28" once the staging run below is done.
 
 ### Step 3.3 — The use case
 
-- [ ] **Action.** `ImportVerifiedList` with in-memory ports. Tests: three rows with one code become one Spec ID named by the most common name; two rows with the same name and different facts become two; a fact `SaveSpecId` refuses is dropped and reported, the row saved; a dry run calls no save; the summary counts rows, new, same-as, already-saved and skipped, and the item-name agreement on rows with both columns.
+- [ ] **Action.** `ImportVerifiedList` with in-memory ports. Tests: three rows with one code become one Spec ID named by the most common name; two rows with the same name and different facts become two; a fact `SaveSpecId` refuses is dropped and reported, the row saved; a dry run calls no save; a value read under a ruling is flagged in its report row with the ruling's name; the summary counts rows, new, same-as, already-saved and skipped, and the item-name agreement on rows with both columns.
 - [ ] **Verify.** The tests pass.
 
 ### Step 3.4 — Workbook, report and command
 
-- [ ] **Action.** Add `exceljs`; `ExcelVerifiedListSource`, `CsvImportReport`, `src/scripts/atlas-import.ts` and the npm script. A database test runs the command on an invented workbook built in the test: a dry run saves nothing and prints #28's dry-run sentence; `--write` saves and prints #28's sentence; a second `--write` saves nothing; an unknown `--as` prints #28's refusal and reads nothing.
+- [ ] **Action.** Add `exceljs`; `ExcelVerifiedListSource`, `CsvImportReport`, `src/scripts/atlas-import.ts` and the npm script. A database test runs the command on an invented workbook built in the test: a dry run saves nothing and prints #28's dry-run sentence; `--write` saves and prints #28's sentence; a second `--write` saves nothing and reports every saved row `already saved`; an unknown or disabled `--as` prints #28's refusal and reads nothing.
 - [ ] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
 
 ### Step 3.5 — Docs and the pull request
