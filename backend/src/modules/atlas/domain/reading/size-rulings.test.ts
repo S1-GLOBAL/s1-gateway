@@ -27,6 +27,7 @@ describe('readSize, by #28 rulings', () => {
     ['a number before a word', 'cup 12 pcs', 'CUP'],
     ['two numbers on a takeout box', 'takeout box 200 x 150', 'TKB'],
     ['R2 with a bottom wider than the top', 'bowl 120 dia x 150 x 60', 'BWL'],
+    ['a Dia by height on a bag, which R1b does not cover', 'bag 94 dia x 115', 'BAG'],
     ['R3 with the gusset not the smallest', 'pouch 80 x 210 x 140', 'SUP'],
     ['R5 with the gusset not the smallest', 'bag 120 x 250 x 300', 'BAG'],
   ])('reads nothing for %s', (_case, text, productType) => {
