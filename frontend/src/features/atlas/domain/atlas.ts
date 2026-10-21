@@ -246,3 +246,36 @@ export const SLOT_NAMES: readonly { readonly key: SlotKey; readonly name: string
   { key: 'window', name: 'Window' },
   { key: 'variant', name: 'Variant number' },
 ];
+
+/** #28's rulings for a size that does not say what it measures. */
+export type TextRuling = 'R1' | 'R1b' | 'R2' | 'R3' | 'R5' | 'R6';
+
+/** One fact read from raw text. */
+export interface TextReadFact {
+  key: SlotKey;
+  name: string;
+  /** As the slot reads in a decoded code: "14 oz", "Molded fibre, bagasse". */
+  meaning: string;
+  /** As the text wrote them. */
+  words: string;
+  ruling: TextRuling | null;
+}
+
+/** A slot the text gives two or more values for: left out of the code. */
+export interface TextConflict {
+  key: SlotKey;
+  name: string;
+  /** Each value's words, as the text wrote them. */
+  found: string[];
+}
+
+/** What raw text reads as, and the code once there is a product type. Nothing is saved. */
+export interface SpecIdTextReading {
+  /** In code order. */
+  read: TextReadFact[];
+  /** The words no rule used, as the text wrote them. */
+  ignored: string[];
+  conflicts: TextConflict[];
+  /** Null when no product type was found or given. */
+  decoded: DecodedSpecId | null;
+}

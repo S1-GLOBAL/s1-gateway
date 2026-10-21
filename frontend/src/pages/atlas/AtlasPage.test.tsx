@@ -27,6 +27,7 @@ function renderPage(load: AtlasGateway['dictionary']) {
     save: pending,
     findByCode: pending,
     findSimilar: pending,
+    readText: pending,
     getSaved: pending,
     update: pending,
     history: pending,

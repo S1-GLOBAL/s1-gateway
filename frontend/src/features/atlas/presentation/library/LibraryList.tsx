@@ -9,6 +9,9 @@ import { lowerFirst } from '../../domain/lower-first';
 import { NewSpecIdLink } from './NewSpecIdLink';
 import { SpecIdSummary } from './SpecIdSummary';
 
+/** When no saved name matches the search: Search reads the facts instead. */
+export const NO_NAMES_MATCH = 'No names match. Press Search to read the facts from your text.';
+
 export interface LibraryListProps {
   library: ReturnType<typeof useSpecIdLibrary>;
   /** The search text asked for, trimmed. */
@@ -45,7 +48,7 @@ export function LibraryList({ library, q, productTypeName, timeZone }: LibraryLi
     if (q !== '') {
       return (
         <p role="status" className="text-sm text-ink-muted">
-          {`No Spec IDs match "${q}". Check the spelling, or paste the full code.`}
+          {NO_NAMES_MATCH}
         </p>
       );
     }

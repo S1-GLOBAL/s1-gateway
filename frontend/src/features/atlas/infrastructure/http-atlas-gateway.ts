@@ -3,6 +3,7 @@ import type {
   DecodedSpecId as DecodedSpecIdContract,
   DecodeSpecIdRequest,
   EncodeSpecIdRequest,
+  ReadSpecIdTextRequest,
   SavedSpecId as SavedSpecIdContract,
   SaveSpecIdRequest,
   SimilarSpecIds as SimilarSpecIdsContract,
@@ -10,6 +11,7 @@ import type {
   SpecIdExistsDetails,
   SpecIdLibraryPage as SpecIdLibraryPageContract,
   SpecIdLookup as SpecIdLookupContract,
+  SpecIdTextReading as SpecIdTextReadingContract,
   UpdateSpecIdRequest,
 } from '@contracts/atlas';
 import type { ApiErrorBody, DataEnvelope } from '@contracts/envelope';
@@ -30,6 +32,7 @@ import type {
   SpecIdFacts,
   SpecIdLibraryPage,
   SpecIdLookup,
+  SpecIdTextReading,
 } from '../domain/atlas';
 
 /** The AtlasGateway port over the HTTP API. The only file in the feature that knows the wire format. */
@@ -97,6 +100,17 @@ export class HttpAtlasGateway implements AtlasGateway {
       });
       const { fits, mightFit } = response.data.data;
       return { fits: fits.map(toSavedSpecId), mightFit: mightFit.map(toSavedSpecId) };
+    } catch (error) {
+      throw toAppError(error);
+    }
+  }
+
+  async readText(input: { text: string; productType?: string }): Promise<SpecIdTextReading> {
+    const body: ReadSpecIdTextRequest = { text: input.text };
+    if (input.productType !== undefined) body.productType = input.productType;
+    try {
+      const response = await this.http.post<DataEnvelope<SpecIdTextReadingContract>>('/atlas/spec-ids/read', body);
+      return toTextReading(response.data.data);
     } catch (error) {
       throw toAppError(error);
     }
@@ -183,6 +197,15 @@ function toDecodedSpecId(contract: DecodedSpecIdContract): DecodedSpecId {
     code: contract.code,
     dictionaryRelease: contract.dictionaryRelease,
     slots: contract.slots.map(({ number, key, name, raw, state, meaning }) => ({ number, key, name, raw, state, meaning })),
+  };
+}
+
+function toTextReading(contract: SpecIdTextReadingContract): SpecIdTextReading {
+  return {
+    read: contract.read.map(({ key, name, meaning, words, ruling }) => ({ key, name, meaning, words, ruling })),
+    ignored: [...contract.ignored],
+    conflicts: contract.conflicts.map(({ key, name, found }) => ({ key, name, found: [...found] })),
+    decoded: contract.decoded === null ? null : toDecodedSpecId(contract.decoded),
   };
 }
 

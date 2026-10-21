@@ -44,6 +44,7 @@ function renderAt(path: string, overrides: Partial<AtlasGateway> = {}) {
     save: pending,
     findByCode: pending,
     findSimilar: pending,
+    readText: pending,
     getSaved: pending,
     update: pending,
     history: pending,
