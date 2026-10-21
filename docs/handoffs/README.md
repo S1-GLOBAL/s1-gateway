@@ -14,6 +14,7 @@ checking its "ground truth" section against `main` first.
 |---|---|---|
 | [Visual identity, motion and the app shell](./plan-0002-visual-identity-and-motion.md) | Plan 0002 | Complete |
 | [Search Atlas with raw product text, phase 2](./issue-41-library-search.md) | #41 | Complete |
+| [Save a new Spec ID from Search](./issue-48-save-from-search.md) | #48 | Complete |
 
 Name a new handoff `issue-<number>-<short-title>.md` and add a row here. A handoff
 for a plan with no issue is named `plan-<number>-<short-title>.md`.
