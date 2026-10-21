@@ -1,6 +1,6 @@
 # Handoff: plan 0002 — Visual identity, motion and the app shell
 
-STATUS: READY.
+STATUS: COMPLETE.
 Written for: whoever builds plan 0002, with no memory of earlier conversations.
 Based on `main` at commit `afeebbd5e7fada483cd5d1485f258e7a09878acd`, 2026-10-15.
 The one commit after it on `main` adds this handoff and updates the text of
