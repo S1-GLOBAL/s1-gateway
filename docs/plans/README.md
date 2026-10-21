@@ -66,4 +66,4 @@ does not exist yet, say so and mark the plan blocked rather than inventing it.
 | [0004](./0004-atlas-library-and-editable-spec-ids.md) | Atlas: a library, one workspace, and editable Spec IDs with History | In progress |
 | [0005](./0005-account-invites.md) | Accounts by invite: a one-time registration link, and first and last names | In progress |
 | [0006](./0006-s2-spec-ids-and-verified-list-import.md) | S2 Spec IDs, a dictionary from the verified list, and its import | In progress |
-| [0007](./0007-search-atlas-with-raw-product-text.md) | Search Atlas with raw product text | Ready |
+| [0007](./0007-search-atlas-with-raw-product-text.md) | Search Atlas with raw product text | In progress |

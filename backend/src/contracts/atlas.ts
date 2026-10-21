@@ -234,3 +234,39 @@ export interface SpecIdLookup extends SavedSpecId {
   /** Every other Spec ID that once had the code asked for, newest first. */
   formerHolders: FormerHolder[];
 }
+
+/** `POST /atlas/spec-ids/read`: raw text, and a product type to read it as when the text names none. */
+export interface ReadSpecIdTextRequest {
+  text: string;
+  productType?: string;
+}
+
+/** #28's rulings for a size that does not say what it measures. */
+export type TextRuling = 'R1' | 'R1b' | 'R2' | 'R3' | 'R5' | 'R6';
+
+/** One fact read from raw text. */
+export interface TextReadFact {
+  key: SlotKey;
+  name: string;
+  /** As the slot reads in a decoded code: "14 oz", "Molded fibre, bagasse". */
+  meaning: string;
+  /** As the text wrote them. */
+  words: string;
+  ruling: TextRuling | null;
+}
+
+/** A slot the text gives two values for: left out of the code. */
+export interface TextConflict {
+  key: SlotKey;
+  name: string;
+  /** Each value's words, as the text wrote them. */
+  found: string[];
+}
+
+/** `POST /atlas/spec-ids/read`: what was read, what was not, and the code once there is a product type. Nothing is saved. */
+export interface SpecIdTextReading {
+  read: TextReadFact[];
+  ignored: string[];
+  conflicts: TextConflict[];
+  decoded: DecodedSpecId | null;
+}

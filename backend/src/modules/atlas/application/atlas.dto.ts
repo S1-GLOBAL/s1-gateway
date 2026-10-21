@@ -1,6 +1,7 @@
 import type { Dictionary } from '../domain/dictionary.js';
 import type { SlotState, SpecId, SpecIdFactsInput } from '../domain/spec-id.js';
 import type { FormerHolderRecord, SavedSpecIdRecord } from '../domain/spec-id-repository.js';
+import type { Ruling } from '../domain/reading/size-rulings.js';
 import { DICTIONARY_SLOTS, slotDefinition, type SlotKey, type SlotRule } from '../domain/slots.js';
 
 /** The dictionary as the application hands it outward. */
@@ -202,4 +203,35 @@ export function toFormerHolderDto({ record, until }: FormerHolderRecord): Former
     code: record.savedSpecId.specId.code,
     until: until.toISOString(),
   };
+}
+
+/** `POST /atlas/spec-ids/read`: raw text, and a product type to read it as when the text names none (#41). */
+export interface ReadSpecIdTextInput {
+  text: string;
+  productType?: string | undefined;
+}
+
+export interface TextReadFactDto {
+  key: SlotKey;
+  name: string;
+  /** As the slot reads in a decoded code: "14 oz", "Molded fibre, bagasse". */
+  meaning: string;
+  /** As the text wrote them. */
+  words: string;
+  ruling: Ruling | null;
+}
+
+export interface TextConflictDto {
+  key: SlotKey;
+  name: string;
+  /** Each value's words, as the text wrote them. */
+  found: string[];
+}
+
+export interface SpecIdTextReadingDto {
+  read: TextReadFactDto[];
+  ignored: string[];
+  conflicts: TextConflictDto[];
+  /** Null until a product type is found or given. */
+  decoded: DecodedSpecIdDto | null;
 }

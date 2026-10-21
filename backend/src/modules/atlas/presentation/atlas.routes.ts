@@ -10,6 +10,7 @@ export function createAtlasRouter(controller: AtlasController): Router {
   router.get('/dictionary', controller.dictionary);
   router.post('/spec-ids/decode', controller.decode);
   router.post('/spec-ids/encode', controller.encode);
+  router.post('/spec-ids/read', controller.readText);
   router.post('/spec-ids', controller.save);
   router.get('/spec-ids', controller.findSimilar);
   router.get('/spec-ids/:code', controller.findByCode);
