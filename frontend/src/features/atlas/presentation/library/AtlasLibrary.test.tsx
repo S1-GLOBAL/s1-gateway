@@ -109,10 +109,10 @@ describe('AtlasLibrary, the list', () => {
     expect(SEARCH_WAIT_MS).toBe(250);
   });
 
-  it('says so when no Spec ID matches the search', async () => {
+  it('points to Search when no name matches', async () => {
     renderLibrary();
     search('  zebra ');
-    expect(await screen.findByText('No Spec IDs match "zebra". Check the spelling, or paste the full code.')).toBeTruthy();
+    expect(await screen.findByText('No names match. Press Search to read the facts from your text.')).toBeTruthy();
   });
 
   it('says nothing about a search until its own answer arrives', async () => {
@@ -124,10 +124,10 @@ describe('AtlasLibrary, the list', () => {
 
     search('zebra');
     await waitFor(() => expect(screen.queryByText('No Spec IDs yet')).toBeNull());
-    expect(screen.queryByText(/No Spec IDs match/)).toBeNull();
+    expect(screen.queryByText(/No names match/)).toBeNull();
 
     act(() => answer(EMPTY));
-    expect(await screen.findByText('No Spec IDs match "zebra". Check the spelling, or paste the full code.')).toBeTruthy();
+    expect(await screen.findByText('No names match. Press Search to read the facts from your text.')).toBeTruthy();
   });
 
   it('filters by product type, and names the type when none is saved yet', async () => {
@@ -166,9 +166,22 @@ describe('AtlasLibrary, the list', () => {
         return EMPTY;
       },
     });
-    search('x'.repeat(121));
+    search('x'.repeat(120));
     expect(await screen.findByText(message)).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('does not ask the name search for text over 120 characters, and points to Search', async () => {
+    const library = vi.fn<AtlasGateway['library']>(async () => EMPTY);
+    renderLibrary({ library });
+    await screen.findByText('No Spec IDs yet');
+
+    search('x'.repeat(121));
+
+    expect(await screen.findByText('No names match. Press Search to read the facts from your text.')).toBeTruthy();
+    expect(library).not.toHaveBeenCalledWith(expect.objectContaining({ q: 'x'.repeat(121) }));
+    expect(screen.queryByText('Search text must be at most 120 characters.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Search' })).toBeTruthy();
   });
 
   it('shows any other failure with Try again', async () => {

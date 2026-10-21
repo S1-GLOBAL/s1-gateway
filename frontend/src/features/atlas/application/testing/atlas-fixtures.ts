@@ -563,6 +563,7 @@ export function gatewayWith(overrides: Partial<AtlasGateway>): AtlasGateway {
     save: pending,
     findByCode: pending,
     findSimilar: pending,
+    readText: pending,
     getSaved: pending,
     update: pending,
     history: pending,

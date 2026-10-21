@@ -9,6 +9,7 @@ import type {
   SpecIdFacts,
   SpecIdLibraryPage,
   SpecIdLookup,
+  SpecIdTextReading,
 } from '../domain/atlas';
 
 /**
@@ -27,6 +28,8 @@ export interface AtlasGateway {
   /** The Spec ID that has a code now, or the last one that did. */
   findByCode(code: string): Promise<SpecIdLookup>;
   findSimilar(criteria: SimilarCriteria): Promise<SimilarSpecIds>;
+  /** Reads the facts in raw text, as `productType` when one is given. Nothing is saved. */
+  readText(input: { text: string; productType?: string }): Promise<SpecIdTextReading>;
   /** One saved Spec ID by its permanent id. */
   getSaved(id: string): Promise<SavedSpecId>;
   /** Changes a saved Spec ID, from the `version` the change was started from. */

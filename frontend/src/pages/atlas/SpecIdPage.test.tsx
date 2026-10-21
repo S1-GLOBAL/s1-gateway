@@ -33,6 +33,7 @@ function renderAt(path: string, getSaved: AtlasGateway['getSaved'], state?: unkn
     save: pending,
     findByCode: pending,
     findSimilar: pending,
+    readText: pending,
     getSaved,
     update: pending,
     history: pending,

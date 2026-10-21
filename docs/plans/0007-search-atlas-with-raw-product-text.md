@@ -42,7 +42,7 @@ the repository, no AI model, and plan 0006's import reuses it for item names.
 | Phase | Steps | Status |
 |---|---|---|
 | 1. The reader and its route | 5 / 5 | Done |
-| 2. The library's Search | 0 / 4 | Not started |
+| 2. The library's Search | 3 / 4 | In progress — step 2.4's staging check remains after merge |
 
 ---
 
@@ -114,6 +114,11 @@ Response `SpecIdTextReading`:
 - "Read from your text" is `summarise(decoded)` when there is a code, else the `meaning` of each read fact joined with " · ".
 - **No, edit it** and **Start a Spec ID from it** link to `/atlas/new?code=<decoded.code>`.
 - With no product type, the card shows a Product type select listing the dictionary's product types in code order (as New Spec ID does); choosing one asks the route again with `productType`.
+- Decided by reyxdz on 2026-10-21:
+  - Text over 120 characters is not asked of the name search; the list shows the no-match sentence, and Search reads it (up to 500).
+  - When nothing fits but something might, "No saved Spec ID fits these facts." and Start a Spec ID from it come first, then Might fit.
+  - A fact found three or more times lists every value, and says "both" only for two.
+  - Search ignores the product-type filter, which is hidden while the card shows.
 
 ### Copy
 
@@ -124,7 +129,7 @@ Response `SpecIdTextReading`:
 | The card's question | "Does this code look right?" |
 | What was read | "Read from your text: {facts}" |
 | What was left out | "Ignored: {words joined with ", "}" — only when something was |
-| A fact found twice | "{Slot}: found both {A} and {B}, so it's left as not known." |
+| A fact found twice | "{Slot}: found both {A} and {B}, so it's left as not known." — three or more: "{Slot}: found {A}, {B} and {C}, so it's left as not known." |
 | The buttons | "Yes, proceed" · "No, edit it" |
 | No product type | "Couldn't tell what product this is. Choose a product type:" |
 | No facts at all | "No facts found in your text. Check the wording, or start a Spec ID by hand." with "New Spec ID" |
@@ -198,21 +203,21 @@ One pull request, "Closes #41".
 
 ### Step 2.1 — The gateway and the hook
 
-- [ ] **Action.** `readText` on the gateway port and the HTTP adapter (`POST /atlas/spec-ids/read`, `decoded` mapped as `decode` maps it), and `useReadText`. Test: the adapter sends `{ text, productType }` and answers the reading; a 400 becomes an `AppError` with its fields.
-- [ ] **Verify.** From `frontend/`: `npx vitest run --no-file-parallelism src/features/atlas` passes.
+- [x] **Action.** `readText` on the gateway port and the HTTP adapter (`POST /atlas/spec-ids/read`, `decoded` mapped as `decode` maps it), and `useReadText`. Test: the adapter sends `{ text, productType }` and answers the reading; a 400 becomes an `AppError` with its fields.
+- [x] **Verify.** From `frontend/`: `npx vitest run --no-file-parallelism src/features/atlas` passes.
 
 ### Step 2.2 — The card
 
-- [ ] **Action.** `TextSearch.tsx` with the copy above. Tests:
+- [x] **Action.** `TextSearch.tsx` with the copy above. Tests:
   - a reading with a code shows what was read, what was ignored, the code and both buttons, and No, edit it links to `/atlas/new?code=…`;
   - a reading with no product type shows the select, and choosing `BWL` asks again with `productType: 'BWL'`;
   - a reading with nothing read shows the no-facts sentence and New Spec ID;
   - a conflict shows its sentence.
-- [ ] **Verify.** The same command passes; `npm run design:check` prints "Design tokens only."
+- [x] **Verify.** The same command passes; `npm run design:check` prints "Design tokens only."
 
 ### Step 2.3 — The results and the library
 
-- [ ] **Action.**
+- [x] **Action.**
   - Add `TextSearchResults.tsx`.
   - In `AtlasLibrary.tsx`, add the Search button and the switch between the name list and `TextSearch`.
   - In `LibraryList.tsx`, change the no-match sentence to the copy above.
@@ -223,7 +228,7 @@ One pull request, "Closes #41".
     - typing after a search returns to the name list;
     - Review Focus 5;
     - the no-match sentence.
-- [ ] **Verify.** The same command passes.
+- [x] **Verify.** The same command passes.
 
 ### Step 2.4 — Browser check, screenshots, pull request
 

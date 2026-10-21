@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Badge } from './Badge';
 import { Button } from './Button';
 import { Logo } from './Logo';
+import { TextField } from './TextField';
 
 describe('Button', () => {
   it('is a plain button by default', () => {
@@ -37,5 +38,19 @@ describe('Badge', () => {
   it('uses the accent ink for the accent tone, never the fill', () => {
     render(<Badge tone="accent">New</Badge>);
     expect(screen.getByText('New').className).toContain('text-accent-ink');
+  });
+});
+
+describe('TextField', () => {
+  it('keeps the same input, and its focus, when its action appears', () => {
+    const { rerender } = render(<TextField label="Search" action={null} />);
+    const input = screen.getByLabelText('Search');
+    input.focus();
+
+    rerender(<TextField label="Search" action={<Button>Go</Button>} />);
+
+    expect(screen.getByLabelText('Search')).toBe(input);
+    expect(document.activeElement).toBe(input);
+    expect(screen.getByRole('button', { name: 'Go' })).toBeTruthy();
   });
 });

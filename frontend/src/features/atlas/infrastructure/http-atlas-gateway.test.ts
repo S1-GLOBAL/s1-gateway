@@ -231,6 +231,47 @@ describe('HttpAtlasGateway, looking up', () => {
   });
 });
 
+describe('HttpAtlasGateway, reading raw text', () => {
+  const wireReading = {
+    read: [{ key: 'productType', name: 'Product type', meaning: 'Bowl lid', words: 'Lid', ruling: null }],
+    ignored: ['for', 'Cava'],
+    conflicts: [{ key: 'material', name: 'Material', found: ['PET', 'PP'] }],
+    decoded: wireDecoded,
+  };
+
+  it('sends the text and the product type, and returns the reading with its code', async () => {
+    const sent: Sent[] = [];
+    const reading = await gatewayAnswering(200, { data: wireReading }, sent).readText({
+      text: 'Lid for Cava',
+      productType: 'BLD',
+    });
+    expect(sent).toEqual([
+      { method: 'post', url: '/atlas/spec-ids/read', body: { text: 'Lid for Cava', productType: 'BLD' } },
+    ]);
+    expect(reading).toEqual(wireReading);
+  });
+
+  it('sends the text alone when no product type is given, and keeps a missing code as null', async () => {
+    const sent: Sent[] = [];
+    const reading = await gatewayAnswering(200, { data: { ...wireReading, decoded: null } }, sent).readText({
+      text: 'PET and PP',
+    });
+    expect(sent).toEqual([{ method: 'post', url: '/atlas/spec-ids/read', body: { text: 'PET and PP' } }]);
+    expect(reading.decoded).toBeNull();
+  });
+
+  it('rejects refused text with an AppError whose fields carry the message for the box', async () => {
+    const fields = { text: ['Search text must be at most 500 characters.'] };
+    const gateway = gatewayAnswering(400, {
+      error: { code: 'VALIDATION_FAILED', message: 'The lookup is not valid.', details: { fields } },
+    });
+    const failure = await gateway.readText({ text: 'x'.repeat(501) }).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(AppError);
+    expect((failure as AppError).code).toBe('VALIDATION_FAILED');
+    expect((failure as AppError).fields).toEqual(fields);
+  });
+});
+
 describe('HttpAtlasGateway, changing a saved Spec ID', () => {
   const ben = { id: '00000000-0000-4000-8000-0000000000bb', fullName: 'Ben Invented' };
 
