@@ -30,7 +30,7 @@ this plan and the issue disagree, the issue wins and this plan is corrected.
 - The S2 slots in the domain, the contract, the code columns and every page that shows a code
 - Release S2 0.1.0 by migration, and the conversion of saved codes and History
 - The workspace's new controls and group 06
-- `atlas:import`, its spelling table and its CSV report
+- `atlas:import` and its CSV report. Spellings are `WORD_LIST` (plan 0007)
 - `api.md`, `data-model.md` and `commands.md`
 
 **Out of scope** — and where it is handled instead
@@ -48,8 +48,7 @@ this plan and the issue disagree, the issue wins and this plan is corrected.
   `git show origin/main:backend/drizzle/meta/_journal.json | grep -c '"tag"'` prints `9`.
 - A working local setup: `npm run typecheck && npm run lint && npm run arch:check && npm run test:unit`
   exits 0 on a fresh branch from `main`, and `npm run db:up` then `npm test` passes.
-- For phase 3 only: the verified list and `verified-list-spellings.json`
-  (prepared on 2026-10-19) on reyxdz's computer. Never in the repository.
+- For phase 3 only: the verified list workbook (prepared on 2026-10-19) on reyxdz's computer. Never in the repository. Its spelling table's entries, without the `skip` entries, are `WORD_LIST`.
 
 ## Progress
 
@@ -157,15 +156,15 @@ is 1–26. Nothing else changes shape.
 
 | Name | File | Shape |
 |---|---|---|
-| `SpellingTable` | `backend/src/modules/atlas/domain/import/spelling-table.ts` | `Map<string, { productType } \| { material } \| { skip: string }>`, keys trimmed, read with zod from the JSON file |
-| `readSize` | `domain/import/size-rulings.ts` | `(text: string, productType: string) => { facts; ruling: 'R1' \| 'R1b' \| 'R2' \| 'R3' \| 'R5' \| 'R6' } \| null` — #28's ruling table, units by ADR 0019 |
-| `readItemName` | `domain/import/item-name.ts` | `(name: string) => { productType?; material?; facts; read: string[] }` — the keyword table below |
-| `readVerifiedRow` | `domain/import/verified-row.ts` | `(row: VerifiedRow, spellings) => RowReading` — columns first, item name second, sizes and weights by ruling |
+| `WORD_LIST` | `backend/src/modules/atlas/domain/reading/word-list.ts` | The spelling table's entries, without its `skip` entries (plan 0007, ADR 0026). Not a JSON file |
+| `readSize` | `backend/src/modules/atlas/domain/reading/size-rulings.ts` | Already shipped with plan 0007: #28's ruling table, units by ADR 0019 |
+| `readText` | `backend/src/modules/atlas/domain/reading/read-text.ts` | Item names, in place of `item-name.ts`. The keyword table is `KEYWORDS` beside it |
+| `readVerifiedRow` | `domain/import/verified-row.ts` | `(row: VerifiedRow) => RowReading` — columns first, the item name through `readText`, sizes through `readSize` |
 | `ImportVerifiedList` | `application/import-verified-list.ts` | builds every code, groups rows by code, names each group by its most common item name (first row on a tie), saves through `SaveSpecId` only when writing, returns `ImportReport` |
 | `VerifiedListSource`, `ImportReportSink` | `application/ports/` | read rows; write the report |
 | `ExcelVerifiedListSource` | `infrastructure/excel-verified-list-source.ts` | `exceljs` (new dependency, MIT): sheet `Main Table`, rows from 4, columns C–G |
 | `CsvImportReport` | `infrastructure/csv-import-report.ts` | #28's report columns, UTF-8, header row first |
-| the command | `backend/src/scripts/atlas-import.ts`; script `"atlas:import": "tsx src/scripts/atlas-import.ts"` | `--workbook`, `--spellings`, `--report`, `--as`, `--write`; refuses an unknown or disabled `--as` with #28's sentence |
+| the command | `backend/src/scripts/atlas-import.ts`; script `"atlas:import": "tsx src/scripts/atlas-import.ts"` | `--workbook`, `--report`, `--as`, `--write`; spellings are `WORD_LIST`; refuses an unknown or disabled `--as` with #28's sentence |
 
 Item-name keywords, also read in the Category and Material cells
 (case-insensitive, whole words; a hit sets the fact only where the row's
@@ -287,12 +286,12 @@ reads item names with `readText`, sizes with `readSize` and spellings from `WORD
 
 ### Step 3.1 — The spelling table and size rulings
 
-- [ ] **Action.** Tests first, with invented values only. `spelling-table.ts` (refuses a file whose entry names a code not in S2 0.1.0, naming the entry); `size-rulings.ts` with one passing and one near-miss test per ruling: R1 `93 Dia` on a cup → top 93, `RD`; R1b `94 Dia x 115` → top 94, height 115; R2 `90 dia x 60 x 45` → 90 × 60 × 45, and `60 dia x 90 x 45` → null (B not smaller); R3 pouch `200 x 300 x 80` → width 200, height 300, gusset 80; R5 bag `30*12*35 cm` → width 300, gusset 120, height 350; R6 box `8 x 6 x 3 inches` → 203 × 152 × 76; anything else → null.
-- [ ] **Verify.** `npm --prefix backend run test:unit -- import` passes.
+- [ ] **Action.** No new spelling table or size rulings. Plan 0007 put them in `backend/src/modules/atlas/domain/reading/`: `WORD_LIST` and `readSize`. Do not add `spelling-table.ts` or another `size-rulings.ts`.
+- [ ] **Verify.** From `backend/`: `npx vitest run --config vitest.unit.config.ts src/modules/atlas/domain/reading` passes.
 
 ### Step 3.2 — Reading one row
 
-- [ ] **Action.** `item-name.ts` (the keyword table) and `verified-row.ts`. Tests: swapped Category and Material are read the right way round; a column value wins over the item name; a numeric cell `90` reads as `90`; `3.3g` is unit weight 3.3; `110 gsm` is basis weight 110; a bare `25` and `300+250+18` are not known; a row with no determinable type is `skipped` with its reason; a 130-character name is cut at the last space before 120 and flagged.
+- [ ] **Action.** `verified-row.ts` reads the item name with `readText` and sizes with `readSize` (the keyword table is `KEYWORDS`). Tests: swapped Category and Material are read the right way round; a column value wins over the item name; a numeric cell `90` reads as `90`; `3.3g` is unit weight 3.3; `110 gsm` is basis weight 110; a bare `25` and `300+250+18` are not known; a row with no determinable type is `skipped` with its reason; a 130-character name is cut at the last space before 120 and flagged.
 - [ ] **Verify.** The tests pass.
 
 ### Step 3.3 — The use case
@@ -307,7 +306,7 @@ reads item names with `readText`, sizes with `readSize` and spellings from `WORD
 
 ### Step 3.5 — Docs and the pull request
 
-- [ ] **Action.** `commands.md` (`atlas:import`, its options, that the workbook, spelling table and report never enter the repository); open the pull request "Part of #28".
+- [ ] **Action.** `commands.md` (`atlas:import`, its options, that the workbook and the report never enter the repository; the spelling table's entries are `WORD_LIST`); open the pull request "Part of #28".
 - [ ] **Verify.** CI and `pr-audit` pass.
 
 ### Step 3.6 — The staging run (reyxdz)
