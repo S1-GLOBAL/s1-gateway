@@ -5,7 +5,7 @@ import { ErrorState } from '@/shared/ui/ErrorState';
 import { SelectField } from '@/shared/ui/SelectField';
 import { SkeletonBlock, SkeletonRegion } from '@/shared/ui/Skeleton';
 import type { useReadText } from '../../application/use-read-text';
-import type { AtlasDictionary, DecodedSpecId, SpecIdTextReading } from '../../domain/atlas';
+import type { AtlasDictionary, DecodedSpecId, SlotRuleEntry, SpecIdTextReading } from '../../domain/atlas';
 import { conflictSentence, readInWords } from '../../domain/text-reading';
 import { dictionaryOptions } from '../dictionary-options';
 import { NewSpecIdLink } from './NewSpecIdLink';
@@ -29,7 +29,7 @@ export interface TextSearchProps {
 /**
  * What Search read in the text, to confirm before anything is looked up: the
  * code and the way to correct it; or a product type to choose; or that it
- * read nothing. Nothing is saved.
+ * read nothing. Nothing is saved until Save as a new Spec ID is pressed.
  */
 export function TextSearch({ reading, text, dictionary, timeZone }: TextSearchProps) {
   if (reading.isPending) {
@@ -48,7 +48,17 @@ export function TextSearch({ reading, text, dictionary, timeZone }: TextSearchPr
   const found = reading.data;
   if (!found) return null;
 
-  if (found.decoded) return <CodeBuilt reading={found} decoded={found.decoded} timeZone={timeZone} />;
+  if (found.decoded) {
+    return (
+      <CodeBuilt
+        reading={found}
+        decoded={found.decoded}
+        text={text}
+        rules={dictionary.rules}
+        timeZone={timeZone}
+      />
+    );
+  }
   if (found.read.length === 0) return <NoFacts reading={found} />;
   return (
     <NoProductType
@@ -62,10 +72,14 @@ export function TextSearch({ reading, text, dictionary, timeZone }: TextSearchPr
 function CodeBuilt({
   reading,
   decoded,
+  text,
+  rules,
   timeZone,
 }: {
   reading: SpecIdTextReading;
   decoded: DecodedSpecId;
+  text: string;
+  rules: readonly SlotRuleEntry[];
   timeZone?: string;
 }) {
   const [proceeding, setProceeding] = useState(false);
@@ -84,7 +98,7 @@ function CodeBuilt({
           </Link>
         </div>
       </section>
-      {proceeding && <TextSearchResults decoded={decoded} timeZone={timeZone} />}
+      {proceeding && <TextSearchResults decoded={decoded} text={text} rules={rules} timeZone={timeZone} />}
     </div>
   );
 }
