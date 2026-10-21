@@ -59,7 +59,7 @@ describe('FindSimilarSpecIds', () => {
     expect(result.value.mightFit).toEqual([]);
   });
 
-  it('lists each group newest first', async () => {
+  it('keeps Spec IDs that tie newest first', async () => {
     const { find, saveLid } = await setup();
     await saveLid('Clear unstated rim', '2026-10-17T08:00:00.000Z', { colourClarity: 'CL' });
     const result = await find.execute({ topDiameter: '0090' });
@@ -88,5 +88,39 @@ describe('FindSimilarSpecIds', () => {
     expect(!result.ok && result.error.details).toEqual({
       fields: { variant: ['Not a slot of a Spec ID.'], formatVersion: ['Not a slot of a Spec ID.'] },
     });
+  });
+});
+
+describe('FindSimilarSpecIds, closest first (#50)', () => {
+  it('lists those that might fit by how many of the chosen slots they record, most first, whatever their age', async () => {
+    const { find, saveLid } = await setup();
+    // Newer than every rim, so newest first would list them first.
+    await saveLid('Type and material', '2026-10-19T08:00:00.000Z', { shape: null });
+    await saveLid('Type only', '2026-10-20T08:00:00.000Z', { material: null, shape: null });
+    const result = await find.execute({ productType: 'BLD', material: 'APS', shape: 'RD', colourClarity: 'CL' });
+    if (!result.ok) throw result.error;
+
+    // The rims record three of the four (colour is not known), and tie, so stay newest first.
+    expect(result.value.fits).toEqual([]);
+    expect(result.value.mightFit.map((saved) => saved.name)).toEqual([
+      'Rim 91',
+      'Rim 90',
+      'Unstated rim',
+      'Type and material',
+      'Type only',
+    ]);
+  });
+
+  it('lists those that fit by how few slots they leave not known, fewest first, whatever their age', async () => {
+    const { find, saveLid } = await setup();
+    await saveLid('Rim 92, clear', '2026-10-01T08:00:00.000Z', {
+      colourClarity: 'CL',
+      topDiameter: { value: '92', unit: 'mm' },
+    });
+    const result = await find.execute({ shape: 'RD' });
+    if (!result.ok) throw result.error;
+
+    expect(result.value.fits.map((saved) => saved.name)).toEqual(['Rim 92, clear', 'Rim 91', 'Rim 90', 'Unstated rim']);
+    expect(result.value.mightFit).toEqual([]);
   });
 });
