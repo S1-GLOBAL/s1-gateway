@@ -1,17 +1,14 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { isSignInRequired } from '@/features/accounts';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { TextField } from '@/shared/ui/TextField';
-import { SpecIdExistsError } from '../application/spec-id-exists-error';
 import { useSaveSpecId } from '../application/use-save-spec-id';
 import { useSpecIdDraft } from '../application/use-spec-id-draft';
 import type { AtlasDictionary, DecodedSpecId } from '../domain/atlas';
 import { initialBuildForm, type BuildForm } from '../domain/build-facts';
-import { formatSavedDate } from '../domain/format-saved-date';
 import { toBuildForm } from '../domain/to-build-form';
-import { Alert } from './workspace/Alert';
+import { SaveOutcome } from './SaveOutcome';
 import { SpecIdWorkspace } from './workspace/SpecIdWorkspace';
 
 /** What a Spec ID's page shows once, after it is saved. */
@@ -94,27 +91,4 @@ export function NewSpecIdForm({ dictionary, seed, timeZone }: NewSpecIdFormProps
       timeZone={timeZone}
     />
   );
-}
-
-function SaveOutcome({ error, timeZone }: { error: ReturnType<typeof useSaveSpecId>['error']; timeZone?: string }) {
-  if (error instanceof SpecIdExistsError) {
-    const { existing } = error;
-    return (
-      <div role="status" className="flex flex-col gap-2 text-sm text-ink">
-        <p>
-          {`This Spec ID already exists, saved as "${existing.name}" by ${existing.savedBy.fullName} on ${formatSavedDate(existing.savedAt, timeZone)}. Nothing new was saved.`}
-        </p>
-        <Link
-          to={`/atlas/${existing.id}`}
-          className="self-start font-medium text-accent-ink underline-offset-4 hover:underline"
-        >
-          Open
-        </Link>
-      </div>
-    );
-  }
-  if (isSignInRequired(error)) return <Alert message="Sign in to save Spec IDs." />;
-  // Slot and name problems are already beside their controls.
-  if (error && error.code !== 'INVALID_SPEC_ID') return <Alert message={error.message} />;
-  return null;
 }

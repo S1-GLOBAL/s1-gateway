@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/shared/application/app-error';
 import type { AtlasGateway } from '../../application/atlas-gateway';
 import { AtlasGatewayProvider } from '../../application/atlas-gateway-context';
+import { SpecIdExistsError } from '../../application/spec-id-exists-error';
 import { gatewayWith, ILLUSTRATIVE, readCode, s1Dictionary, savedFor } from '../../application/testing/atlas-fixtures';
 import type { DecodedSpecId, SpecIdTextReading } from '../../domain/atlas';
 import { AtlasLibrary } from './AtlasLibrary';
@@ -213,5 +214,140 @@ describe('AtlasLibrary, Search', () => {
     expect(await screen.findByText('Does this code look right?')).toBeTruthy();
     await waitFor(() => expect(readText).toHaveBeenCalledTimes(2));
     expect(readText).toHaveBeenLastCalledWith({ text: TEXT });
+  });
+});
+
+/** Where a save lands: the address, and the notice it carries. */
+function SavedPage() {
+  const location = useLocation();
+  const notice = (location.state as { notice?: string } | null)?.notice ?? '';
+  return <p>{`Opened ${location.pathname}: ${notice}`}</p>;
+}
+
+/** The library at /atlas, with a page for /atlas/<id> to open after a save. */
+function renderLibraryWithRoutes(overrides: Partial<AtlasGateway> = {}) {
+  const gateway = gatewayWith({ library: vi.fn(async () => EMPTY), readText: async () => READ_BOWL, ...overrides });
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={queryClient}>
+      <AtlasGatewayProvider gateway={gateway}>
+        <MemoryRouter initialEntries={['/atlas']}>
+          <Routes>
+            <Route path="/atlas" element={<AtlasLibrary dictionary={s1Dictionary} timeZone="UTC" />} />
+            <Route path="/atlas/:id" element={<SavedPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AtlasGatewayProvider>
+    </QueryClientProvider>,
+  );
+  return gateway;
+}
+
+/** Searches the example and presses Yes, proceed. */
+async function searchAndProceed() {
+  type(TEXT);
+  pressSearch();
+  fireEvent.click(await screen.findByRole('button', { name: 'Yes, proceed' }));
+}
+
+const NOTHING_FITS = async () => ({ fits: [], mightFit: [] });
+
+describe('AtlasLibrary, saving from Search', () => {
+  it('saves the code under the search text when nothing fits, and opens the saved Spec ID', async () => {
+    const saved = savedFor(BOWL, TEXT, { id: '00000000-0000-4000-8000-000000000048' });
+    const save = vi.fn<AtlasGateway['save']>(async () => saved);
+    renderLibraryWithRoutes({ findSimilar: NOTHING_FITS, save });
+    await searchAndProceed();
+
+    const name = await screen.findByLabelText('Name');
+    expect((name as HTMLInputElement).value).toBe(TEXT);
+    fireEvent.click(screen.getByRole('button', { name: 'Save as a new Spec ID' }));
+
+    expect(await screen.findByText(`Opened /atlas/${saved.id}: Saved ${BOWL} as "${TEXT}".`)).toBeTruthy();
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save).toHaveBeenCalledWith({
+      name: TEXT,
+      facts: expect.objectContaining({ productType: 'BWL', material: 'CBG', capacity: { unit: 'Z', value: '14' } }),
+    });
+  });
+
+  it('saves the name as changed', async () => {
+    const save = vi.fn<AtlasGateway['save']>(async () =>
+      savedFor(BOWL, '14oz Bagasse Bowl', { id: '00000000-0000-4000-8000-000000000049' }),
+    );
+    renderLibraryWithRoutes({ findSimilar: NOTHING_FITS, save });
+    await searchAndProceed();
+
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: '14oz Bagasse Bowl' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save as a new Spec ID' }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ name: '14oz Bagasse Bowl' })));
+  });
+
+  it('offers no save while a saved Spec ID fits', async () => {
+    const fits = savedFor(BOWL, '14oz Bagasse Bowl', { id: '00000000-0000-4000-8000-000000000001' });
+    renderLibraryWithRoutes({ findSimilar: async () => ({ fits: [fits], mightFit: [] }) });
+    await searchAndProceed();
+
+    await screen.findByRole('heading', { name: 'Fits — every fact you gave matches' });
+    expect(screen.queryByLabelText('Name')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Save as a new Spec ID' })).toBeNull();
+  });
+
+  it('offers the save when nothing fits, even when some might', async () => {
+    const might = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-000000000002' });
+    renderLibraryWithRoutes({ findSimilar: async () => ({ fits: [], mightFit: [might] }) });
+    await searchAndProceed();
+
+    expect(await screen.findByRole('button', { name: 'Save as a new Spec ID' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /Might fit/ })).toBeTruthy();
+  });
+
+  it('says so when the code is already saved, with the way to it, and opens nothing', async () => {
+    const existing = savedFor(BOWL, '14oz Bagasse Bowl', { id: '00000000-0000-4000-8000-000000000003' });
+    renderLibraryWithRoutes({
+      findSimilar: NOTHING_FITS,
+      save: async () => {
+        throw new SpecIdExistsError(existing, 'This Spec ID already exists. Nothing new was saved.');
+      },
+    });
+    await searchAndProceed();
+    fireEvent.click(await screen.findByRole('button', { name: 'Save as a new Spec ID' }));
+
+    expect(
+      await screen.findByText(/^This Spec ID already exists, saved as "14oz Bagasse Bowl" by .+\. Nothing new was saved\.$/),
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Open' }).getAttribute('href')).toBe(`/atlas/${existing.id}`);
+    expect(screen.queryByText(/^Opened /)).toBeNull();
+  });
+
+  it('puts a refused name under the field', async () => {
+    const message = 'Name must be at most 120 characters.';
+    renderLibraryWithRoutes({
+      findSimilar: NOTHING_FITS,
+      save: async () => {
+        throw new AppError('INVALID_SPEC_ID', 'The Spec ID is not valid.', { name: [message] });
+      },
+    });
+    await searchAndProceed();
+    fireEvent.click(await screen.findByRole('button', { name: 'Save as a new Spec ID' }));
+
+    expect(await screen.findByText(message)).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('says to sign in when the session has ended, and the failure itself otherwise', async () => {
+    const save = vi
+      .fn<AtlasGateway['save']>()
+      .mockRejectedValueOnce(new AppError('SIGN_IN_REQUIRED', 'Sign in to continue.'))
+      .mockRejectedValueOnce(new AppError('NETWORK', 'Cannot reach the server. Check your connection and try again.'));
+    renderLibraryWithRoutes({ findSimilar: NOTHING_FITS, save });
+    await searchAndProceed();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Save as a new Spec ID' }));
+    expect(await screen.findByText('Sign in to save Spec IDs.')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save as a new Spec ID' }));
+    expect(await screen.findByText('Cannot reach the server. Check your connection and try again.')).toBeTruthy();
   });
 });
