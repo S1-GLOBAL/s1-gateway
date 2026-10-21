@@ -14,6 +14,8 @@ describe('readSize, by #28 rulings', () => {
     ['R3', 'pouch 140 x 210 x 80', 'SUP', { width: mm('140'), height: mm('210'), gusset: mm('80') }],
     ['R5', 'bag 250 x 120 x 300', 'BAG', { width: mm('250'), gusset: mm('120'), height: mm('300') }],
     ['R6', 'takeout box 200 x 150 x 60 mm', 'TKB', { length: mm('200'), width: mm('150'), height: mm('60') }],
+    ['R6', 'tray 200 x 150 x 60', 'TRY', { shape: 'RC', length: mm('200'), width: mm('150'), height: mm('60') }],
+    ['R6', 'clamshell 200 x 150 x 80', 'HCT', { shape: 'RC', length: mm('200'), width: mm('150'), height: mm('80') }],
   ])('%s reads "%s" on %s', (ruling, text, productType, facts) => {
     expect(readSize(text, productType)).toMatchObject({ ruling, facts });
   });

@@ -15,6 +15,8 @@ const R1_TYPES = new Set(['CUP', 'CLD', 'BWL', 'BLD', 'PCP', 'PCL']);
 const R1B_TYPES = new Set(['CUP', 'BWL', 'PCP']);
 const R2_TYPES = new Set(['CUP', 'BWL', 'CTN', 'PCP']);
 const R6_TYPES = new Set(['TKB', 'FCB', 'RSC', 'TRY', 'HCT']);
+/** Of those, the ones whose shape slot applies. Length and width need a shape that is not round. */
+const R6_WITH_SHAPE = new Set(['TRY', 'HCT']);
 
 const NUMBER = '(\\d+(?:\\.\\d+)?)';
 /** A unit a size may be written in; none written is millimetres (ADR 0019). */
@@ -62,7 +64,14 @@ export function readSize(text: string, productType: string): SizeReading | null 
     if (productType === 'BAG' && n(y) < n(x) && n(y) < n(z)) {
       return { facts: { width: x, gusset: y, height: z }, ruling: 'R5', words };
     }
-    if (R6_TYPES.has(productType)) return { facts: { length: x, width: y, height: z }, ruling: 'R6', words };
+    if (R6_TYPES.has(productType)) {
+      // A tray or a hinged container cannot keep a length until its shape is
+      // not round, so the ruling names it rectangular. readText leaves a shape
+      // the text already gave.
+      const facts: Partial<SpecIdFactsInput> = { length: x, width: y, height: z };
+      if (R6_WITH_SHAPE.has(productType)) facts.shape = 'RC';
+      return { facts, ruling: 'R6', words };
+    }
     return null;
   }
   for (const match of text.matchAll(DIA_BY)) {

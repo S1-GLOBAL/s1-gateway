@@ -18,6 +18,29 @@ describe('ReadSpecIdText', () => {
     expect(result.value.ignored).toEqual(['for', 'Cava']);
   });
 
+  it('keeps a tray\'s length and width by reading the shape as rectangular', async () => {
+    const result = await readText.execute({ text: 'tray 200 x 150 x 60' });
+    if (!result.ok) throw result.error;
+
+    const meaning = Object.fromEntries(result.value.decoded?.slots.map((slot) => [slot.key, slot.meaning]) ?? []);
+    expect(meaning.shape).toBe('Rectangular');
+    expect(meaning.length).toBe('200 mm');
+    expect(meaning.width).toBe('150 mm');
+    expect(meaning.height).toBe('60 mm');
+    expect(result.value.ignored).toEqual([]);
+  });
+
+  it('keeps a square tray square, and still reads its length and width', async () => {
+    const result = await readText.execute({ text: 'square tray 200 x 150 x 60' });
+    if (!result.ok) throw result.error;
+
+    const meaning = Object.fromEntries(result.value.decoded?.slots.map((slot) => [slot.key, slot.meaning]) ?? []);
+    expect(meaning.shape).toBe('Square');
+    expect(meaning.length).toBe('200 mm');
+    expect(meaning.width).toBe('150 mm');
+    expect(meaning.height).toBe('60 mm');
+  });
+
   it('drops a fact the product type cannot have, lists its words as ignored, and still builds the code', async () => {
     const result = await readText.execute({ text: '14oz bowl lid PP' });
     if (!result.ok) throw result.error;
