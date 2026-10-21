@@ -29,7 +29,7 @@ export interface TextSearchProps {
 /**
  * What Search read in the text, to confirm before anything is looked up: the
  * code and the way to correct it; or a product type to choose; or that it
- * read nothing. Nothing is saved.
+ * read nothing. Nothing is saved until Save as a new Spec ID is pressed.
  */
 export function TextSearch({ reading, text, dictionary, timeZone }: TextSearchProps) {
   if (reading.isPending) {

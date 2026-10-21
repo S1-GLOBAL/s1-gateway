@@ -23,7 +23,7 @@ export interface TextSearchResultsProps {
 /**
  * The saved Spec IDs that fit every fact read, then those that might: nothing
  * contradicts them, but some facts aren't recorded. When none fits, the way to
- * start a Spec ID from the code, and to save it at once, come before those
+ * start a Spec ID from the code, and to save it at once, comes before those
  * that might. Nothing is saved until Save as a new Spec ID is pressed.
  */
 export function TextSearchResults({ decoded, text, rules, timeZone }: TextSearchResultsProps) {
