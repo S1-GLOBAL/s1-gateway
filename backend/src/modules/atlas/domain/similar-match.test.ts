@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SearchableSlotKey } from './similar-match.js';
-import { classifyMatch, isSearchableSlot } from './similar-match.js';
+import { classifyMatch, isSearchableSlot, notKnownCount, recordedCount } from './similar-match.js';
 
 /** A saved Spec ID reduced to the slots a lookup can ask about. */
 const slotsOf = (values: Partial<Record<SearchableSlotKey, string>>) => (key: SearchableSlotKey) =>
@@ -49,5 +49,27 @@ describe('isSearchableSlot', () => {
     expect(isSearchableSlot('formatVersion')).toBe(false);
     expect(isSearchableSlot('variant')).toBe(false);
     expect(isSearchableSlot('constructor')).toBe(false);
+  });
+});
+
+describe('recordedCount', () => {
+  const criteria = { productType: 'BWL', material: 'CBG', capacity: 'Z0014' };
+
+  it('counts the chosen slots a Spec ID holds the asked-for value in', () => {
+    expect(recordedCount(slotsOf({ productType: 'BWL', material: 'CBG', capacity: 'Z0014' }), criteria)).toBe(3);
+    expect(recordedCount(slotsOf({ productType: 'BWL', material: 'CBG' }), criteria)).toBe(2);
+    expect(recordedCount(slotsOf({ productType: 'BWL' }), criteria)).toBe(1);
+  });
+
+  it('does not count a slot that is not known, or one that was not asked about', () => {
+    expect(recordedCount(slotsOf({ productType: 'BWL', shape: 'RD' }), criteria)).toBe(1);
+  });
+});
+
+describe('notKnownCount', () => {
+  it('counts the slots that are Y, and not those that never apply', () => {
+    const allY = slotsOf({});
+    expect(notKnownCount(allY)).toBe(24);
+    expect(notKnownCount(slotsOf({ productType: 'BWL', material: 'CBG', coating: 'X' }))).toBe(21);
   });
 });
