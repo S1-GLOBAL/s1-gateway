@@ -59,3 +59,13 @@ export function classifyMatch(
   }
   return unknown ? 'might-fit' : 'fits';
 }
+
+/** How many of the chosen slots a saved Spec ID records: equal to the value asked for, not merely not known. */
+export function recordedCount(slotOf: (key: SearchableSlotKey) => string, criteria: SimilarCriteria): number {
+  return SEARCHABLE_SLOTS.filter((key) => criteria[key] !== undefined && slotOf(key) === criteria[key]).length;
+}
+
+/** How many of a saved Spec ID's slots are not known (`Y`). A slot that does not apply (`X`) is not counted. */
+export function notKnownCount(slotOf: (key: SearchableSlotKey) => string): number {
+  return SEARCHABLE_SLOTS.filter((key) => isNotKnown(slotOf(key))).length;
+}

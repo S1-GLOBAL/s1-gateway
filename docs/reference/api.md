@@ -218,13 +218,16 @@ nothing. Nothing is saved on any 4xx.
 
 `GET /atlas/spec-ids?<slot>=<value>…` takes any subset of slot keys from
 `productType` to `window`, each with a raw slot value (`topDiameter=0090`,
-`capacity=Z0006`, `compartments=03`). It answers `{ fits, mightFit }`, each newest first:
+`capacity=Z0006`, `compartments=03`). It answers `{ fits, mightFit }`:
 
-- **fits:** every chosen slot equals the requested value;
+- **fits:** every chosen slot equals the requested value. Those with the
+  fewest slots not known (`Y`) come first;
 - **mightFit:** every chosen slot equals the requested value or is `Y`,
-  and at least one is `Y`.
+  and at least one is `Y`. Those that record the most chosen slots come first.
 
-A different known value excludes a Spec ID; nothing is compared by closeness.
+In each, Spec IDs that tie are newest first (#50). A different known value
+excludes a Spec ID: values are never compared by closeness, so `0091` does not
+fit `0090`.
 With no slot chosen, every saved Spec ID is in `fits`. An unknown key, or a
 value that is not a valid slot value, answers 400 `VALIDATION_FAILED` with
 `details.fields` keyed by that slot.
