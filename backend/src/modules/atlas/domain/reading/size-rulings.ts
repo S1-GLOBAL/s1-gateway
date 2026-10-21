@@ -68,8 +68,9 @@ export function readSize(text: string, productType: string): SizeReading | null 
       // A tray or a hinged container cannot keep a length until its shape is
       // not round, so the ruling names it rectangular. readText leaves a shape
       // the text already gave.
-      const facts: Partial<SpecIdFactsInput> = { length: x, width: y, height: z };
-      if (R6_WITH_SHAPE.has(productType)) facts.shape = 'RC';
+      const facts: Partial<SpecIdFactsInput> = R6_WITH_SHAPE.has(productType)
+        ? { shape: 'RC', length: x, width: y, height: z }
+        : { length: x, width: y, height: z };
       return { facts, ruling: 'R6', words };
     }
     return null;
