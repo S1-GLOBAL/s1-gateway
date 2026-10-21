@@ -1,6 +1,6 @@
 # 0007. Search Atlas with raw product text
 
-- **Status:** In progress
+- **Status:** Complete
 - **Owner:** Rey Denzo
 - **Related:** [#41](https://github.com/S1-GLOBAL/s1-gateway/issues/41) ·
   [plan 0006](./0006-s2-spec-ids-and-verified-list-import.md) ·
@@ -42,7 +42,7 @@ the repository, no AI model, and plan 0006's import reuses it for item names.
 | Phase | Steps | Status |
 |---|---|---|
 | 1. The reader and its route | 5 / 5 | Done |
-| 2. The library's Search | 3 / 4 | In progress — step 2.4's staging check remains after merge |
+| 2. The library's Search | 4 / 4 | Done — step 2.4's staging check waived by reyxdz on 2026-10-22 |
 
 ---
 
@@ -232,20 +232,21 @@ One pull request, "Closes #41".
 
 ### Step 2.4 — Browser check, screenshots, pull request
 
-- [ ] **Action.**
+- [x] **Action.**
   - Locally, search "14oz Bagasse Bowl for Cava", "Cava order 12" and "clear PET 12oz", in light, dark and at 390 px.
   - Save the screenshots `atlas-text-search-light.png`, `atlas-text-search-dark.png` and `atlas-text-search-phone-light.png` into `.github/readme/`.
   - Open the pull request, "Closes #41".
-- [ ] **Verify.**
+- [x] **Verify.**
   - CI and `pr-audit` pass.
   - After merge, on staging: "14oz Bagasse Bowl for Cava" reads bowl, bagasse and 14 oz; Yes, proceed lists the saved "14oz Bagasse Bowl" if its facts fit; and the library holds no new Spec ID.
+  - Done in #46, merged as a271851; CI and `pr-audit` passed. The staging check was waived by reyxdz on 2026-10-22: it was skipped, so this step records no staging result. Staging deployed a271851 the same day.
 
 ---
 
 ## Acceptance
 
-- [ ] Every step above is ticked.
-- [ ] Every Verify item of #41 holds.
+- [x] Every step above is ticked.
+- [x] Every Verify item of #41 holds, but for its staging item, waived by reyxdz on 2026-10-22 (step 2.4).
 
 ## Follow-ups
 
