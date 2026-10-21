@@ -132,6 +132,7 @@ describe('the app, signed in', () => {
     renderAt('/theme');
     const sidebar = await screen.findByRole('complementary', { name: 'Main' });
     expect(within(sidebar).getByText('Ada Lovelace')).toBeTruthy();
+    expect(within(sidebar).getByText('ada@sourceone.global')).toBeTruthy();
     expect(within(sidebar).getByText('AL')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy();
   });
