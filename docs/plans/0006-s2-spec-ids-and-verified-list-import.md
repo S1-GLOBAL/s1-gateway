@@ -70,7 +70,7 @@ request, stopping for the owner after each.
 | 1. S2 format, S2 0.1.0 and the conversion | 7 / 7 | Done — on staging, a Spec ID saved before the release opens with its S2 code, and its old S1 code finds it; see #28 |
 | 2. Workspace and library for S2 | 4 / 4 | Done — on staging, a 2-colour-print double-wall cup and a 3-compartment bagasse container save with their S2 codes, and an S1 code given out before phase 1 still finds its product; see #28 |
 | 3. The verified-list import | 5 / 5 | Done — `atlas:import` reads the verified list and saves its Spec IDs (#63); the staging run waits for phase 4 (Step 4.5) |
-| 4. Manufacturers and quotes | 4 / 5 | In progress — `atlas:import` records manufacturers and quotes (#64); step 4.5, the staging run, is reyxdz's |
+| 4. Manufacturers and quotes | 5 / 5 | Done — on staging on 2026-10-23, `atlas:import` saved 716 Spec IDs and 1,053 quotes from 149 manufacturers, and a second `--write` saved nothing new; see #56 |
 
 ---
 
@@ -383,8 +383,8 @@ Excel first.
 
 ### Step 4.5 — The staging run (reyxdz)
 
-- [ ] **Action.** After merge, reyxdz opens the workbook in Excel and saves it, so its price formulas have values, then runs the command against staging as a dry run, reads the report, then runs it with `--write`. The totals, including manufacturers found and quotes recorded, are written as a comment on #56, without any row content; then #56 is closed.
-- [ ] **Verify.** Every workbook row with an item name appears once in the report; the library on staging shows the report's "new" total; a second `--write` reports every row `already saved` or `skipped`, and records the same number of quotes.
+- [x] **Action.** After merge, reyxdz opens the workbook in Excel and saves it, so its price formulas have values, then runs the command against staging as a dry run, reads the report, then runs it with `--write`. The totals, including manufacturers found and quotes recorded, are written as a comment on #56, without any row content; then #56 is closed.
+- [x] **Verify.** Every workbook row with an item name appears once in the report; the library on staging shows the report's "new" total; a second `--write` reports every row `already saved` or `skipped`, and records the same number of quotes.
 
 ---
 
@@ -393,11 +393,11 @@ Excel first.
 The plan is complete when every box below is checked.
 
 - [ ] Every item under "Verify" in [#28](https://github.com/S1-GLOBAL/s1-gateway/issues/28) is ticked on the issue.
-- [ ] ADR 0024 is Accepted and listed, and ADRs 0019 and 0021 link to it.
-- [ ] `api.md`, `data-model.md` and `commands.md` describe S2 and the import.
-- [ ] #28 is closed.
-- [ ] Every item under "Verify" in [#56](https://github.com/S1-GLOBAL/s1-gateway/issues/56) is ticked on the issue, and #56 is closed.
-- [ ] ADR 0027 is Accepted and listed, and `data-model.md` describes `atlas_manufacturers` and `atlas_quotes`.
+- [x] ADR 0024 is Accepted and listed, and ADRs 0019 and 0021 link to it.
+- [x] `api.md`, `data-model.md` and `commands.md` describe S2 and the import.
+- [x] #28 is closed.
+- [x] Every item under "Verify" in [#56](https://github.com/S1-GLOBAL/s1-gateway/issues/56) is ticked on the issue, and #56 is closed.
+- [x] ADR 0027 is Accepted and listed, and `data-model.md` describes `atlas_manufacturers` and `atlas_quotes`.
 
 ## Follow-ups
 
