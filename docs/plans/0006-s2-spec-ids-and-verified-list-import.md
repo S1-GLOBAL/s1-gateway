@@ -69,7 +69,7 @@ request, stopping for the owner after each.
 |---|---|---|
 | 1. S2 format, S2 0.1.0 and the conversion | 7 / 7 | Done — on staging, a Spec ID saved before the release opens with its S2 code, and its old S1 code finds it; see #28 |
 | 2. Workspace and library for S2 | 4 / 4 | Done — on staging, a 2-colour-print double-wall cup and a 3-compartment bagasse container save with their S2 codes, and an S1 code given out before phase 1 still finds its product; see #28 |
-| 3. The verified-list import | 4 / 5 | In progress — steps 3.1 to 3.4 built; step 3.5 is this phase's pull request |
+| 3. The verified-list import | 5 / 5 | Done — `atlas:import` reads the verified list and saves its Spec IDs (#63); the staging run waits for phase 4 (Step 4.5) |
 | 4. Manufacturers and quotes | 0 / 5 | Not started |
 
 ---
@@ -338,8 +338,8 @@ reads item names with `readText`, sizes with `readSize` and spellings from `WORD
 
 ### Step 3.5 — Docs and the pull request
 
-- [ ] **Action.** `commands.md` (`atlas:import`, its options, that the workbook and the report never enter the repository; the spelling table's entries are `WORD_LIST`); open the pull request "Part of #56".
-- [ ] **Verify.** CI and `pr-audit` pass.
+- [x] **Action.** `commands.md` (`atlas:import`, its options, that the workbook and the report never enter the repository; the spelling table's entries are `WORD_LIST`); open the pull request "Part of #56".
+- [x] **Verify.** CI and `pr-audit` pass.
 
 ---
 
