@@ -24,6 +24,8 @@ export interface ImportSummary {
   readonly rows: number;
   /** Spec IDs created, or that a dry run would create. */
   readonly created: number;
+  /** Rows with the same code as an earlier row, which add no Spec ID of their own. */
+  readonly sameAs: number;
   /** Codes that were already saved before this run. */
   readonly alreadySaved: number;
   readonly skipped: number;

@@ -108,6 +108,7 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
     const summary: ImportSummary = {
       rows: rows.length,
       created,
+      sameAs: [...lines.values()].filter((entry) => entry.outcome.startsWith('same as row')).length,
       alreadySaved,
       skipped: [...lines.values()].filter((entry) => entry.outcome === 'skipped').length,
       agreement: { agreed, compared },

@@ -48,7 +48,7 @@ describe('ImportVerifiedList', () => {
     const saved = await specIds.list({ limit: 10 });
     expect(saved.map((record) => record.savedSpecId.name)).toEqual(['Invented PP cup']);
     expect(report().rows.map((line) => line.outcome)).toEqual(['new', 'same as row 4', 'same as row 4']);
-    expect(summary).toMatchObject({ rows: 3, created: 1, alreadySaved: 0, skipped: 0 });
+    expect(summary).toMatchObject({ rows: 3, created: 1, sameAs: 2, alreadySaved: 0, skipped: 0 });
   });
 
   it('makes two Spec IDs of two rows with the same name and different facts', async () => {

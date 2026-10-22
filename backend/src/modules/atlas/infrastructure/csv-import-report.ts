@@ -24,6 +24,7 @@ export class CsvImportReport implements ImportReportSink {
     const lines = [
       csvLine(['Rows read', summary.rows]),
       csvLine(['Spec IDs created', summary.created]),
+      csvLine(['Rows the same as an earlier row', summary.sameAs]),
       csvLine(['Spec IDs already saved', summary.alreadySaved]),
       csvLine(['Rows skipped', summary.skipped]),
       csvLine(['Item name agreed with Category and Material', `${summary.agreement.agreed} of ${summary.agreement.compared}`]),

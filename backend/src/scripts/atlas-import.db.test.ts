@@ -90,15 +90,16 @@ describe('atlas:import', () => {
       ]),
     );
     const report = (await readFile(join(folder, 'report.csv'), 'utf8')).split('\n');
-    expect(report.slice(0, 5)).toEqual([
+    expect(report.slice(0, 6)).toEqual([
       'Rows read,4',
       'Spec IDs created,2',
+      'Rows the same as an earlier row,1',
       'Spec IDs already saved,0',
       'Rows skipped,1',
       'Item name agreed with Category and Material,3 of 3',
     ]);
-    expect(report[6]).toBe('Row,Item name,Outcome,Code,Reason skipped,Read from the row,Dropped,Flags');
-    expect(report.slice(7, 11).map((line) => line.split(',').slice(0, 3).join(','))).toEqual([
+    expect(report[7]).toBe('Row,Item name,Outcome,Code,Reason skipped,Read from the row,Dropped,Flags');
+    expect(report.slice(8, 12).map((line) => line.split(',').slice(0, 3).join(','))).toEqual([
       '4,Invented PP cup,new',
       '5,Invented PP cup,same as row 4',
       '6,Invented PET lid,new',
@@ -116,7 +117,7 @@ describe('atlas:import', () => {
     expect(await saved()).toHaveLength(2);
     const outcomes = (await readFile(join(folder, 'report.csv'), 'utf8'))
       .split('\n')
-      .slice(7, 10)
+      .slice(8, 11)
       .map((line) => line.split(',')[2]);
     expect(outcomes).toEqual(['already saved', 'already saved', 'already saved']);
   });
