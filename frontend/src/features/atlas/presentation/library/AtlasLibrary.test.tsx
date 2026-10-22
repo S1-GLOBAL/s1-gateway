@@ -116,18 +116,47 @@ describe('AtlasLibrary, the list', () => {
   });
 
   it('says nothing about a search until its own answer arrives', async () => {
-    let answer: (page: typeof EMPTY) => void = () => undefined;
+    const pending: Array<(page: typeof EMPTY) => void> = [];
+    let answered = false;
     renderLibrary({
-      library: ({ q }) => (q ? new Promise((resolve) => (answer = resolve)) : Promise.resolve(EMPTY)),
+      library: ({ q }) => {
+        if (!q || answered) return Promise.resolve(EMPTY);
+        return new Promise((resolve) => pending.push(resolve));
+      },
     });
     await screen.findByText('No Spec IDs yet');
 
     search('zebra');
     await waitFor(() => expect(screen.queryByText('No Spec IDs yet')).toBeNull());
+    await waitFor(() => expect(pending).not.toHaveLength(0));
     expect(screen.queryByText(/No names match/)).toBeNull();
 
-    act(() => answer(EMPTY));
+    answered = true;
+    act(() => {
+      for (const resolve of pending.splice(0)) resolve(EMPTY);
+    });
     expect(await screen.findByText('No names match. Press Search to read the facts from your text.')).toBeTruthy();
+  });
+
+  it('folds the product types away, and names the one in force', async () => {
+    renderLibrary();
+    await screen.findByText('No Spec IDs yet');
+
+    const details = screen.getByRole('radio', { name: 'All' }).closest('details') as HTMLDetailsElement;
+    const summary = details.querySelector('summary');
+    expect(details.open).toBe(true);
+    expect(summary?.textContent).toBe('Product type · All');
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Bowl lid' }));
+    expect(summary?.textContent).toBe('Product type · Bowl lid');
+
+    fireEvent.click(summary!);
+    expect(details.open).toBe(false);
+    expect(summary?.textContent).toBe('Product type · Bowl lid');
+
+    fireEvent.click(summary!);
+    expect(details.open).toBe(true);
+    expect(screen.getByRole('radio', { name: 'Bowl lid' }).getAttribute('aria-checked')).toBe('true');
   });
 
   it('filters by product type, and names the type when none is saved yet', async () => {

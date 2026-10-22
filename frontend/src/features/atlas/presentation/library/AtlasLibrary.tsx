@@ -1,3 +1,4 @@
+import { ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/shared/ui/Button';
 import { SegmentedControl } from '@/shared/ui/SegmentedControl';
@@ -5,7 +6,7 @@ import { TextField } from '@/shared/ui/TextField';
 import { useCodeLookup } from '../../application/use-code-lookup';
 import { useReadText } from '../../application/use-read-text';
 import { useSpecIdLibrary } from '../../application/use-spec-id-library';
-import type { AtlasDictionary } from '../../domain/atlas';
+import type { AtlasDictionary, DictionaryValue } from '../../domain/atlas';
 import { asPastedCode } from '../../domain/pasted-code';
 import { LibraryList, NO_NAMES_MATCH } from './LibraryList';
 import { PastedCodeResult } from './PastedCodeResult';
@@ -79,16 +80,7 @@ export function AtlasLibrary({ dictionary, timeZone }: { dictionary: AtlasDictio
           }
         />
         {code === null && searched === null && (
-          <SegmentedControl
-            label="Product type"
-            value={productType}
-            options={[
-              { value: '', label: 'All' },
-              ...productTypes.map(({ code: value, meaning }) => ({ value, label: meaning })),
-            ]}
-            onChange={setProductType}
-            className="flex-wrap self-start"
-          />
+          <ProductTypeFilter productType={productType} productTypes={productTypes} onChange={setProductType} />
         )}
       </div>
 
@@ -115,5 +107,48 @@ export function AtlasLibrary({ dictionary, timeZone }: { dictionary: AtlasDictio
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * The product-type choices, folded under a summary that names the one in
+ * force. Open at first, so the choices stay a glance away.
+ */
+function ProductTypeFilter({
+  productType,
+  productTypes,
+  onChange,
+}: {
+  productType: string;
+  productTypes: readonly DictionaryValue[];
+  onChange: (value: string) => void;
+}) {
+  const current = productTypes.find((value) => value.code === productType)?.meaning ?? 'All';
+
+  return (
+    <details open className="group flex flex-col gap-2">
+      <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
+        <ChevronDown
+          size={16}
+          strokeWidth={1.75}
+          aria-hidden="true"
+          className="shrink-0 text-ink-muted transition-transform duration-150 ease-standard group-open:rotate-180"
+        />
+        <span className="text-ink">
+          Product type
+          <span className={productType ? 'font-normal text-ink' : 'font-normal text-ink-muted'}>{` · ${current}`}</span>
+        </span>
+      </summary>
+      <SegmentedControl
+        label="Product type"
+        value={productType}
+        options={[
+          { value: '', label: 'All' },
+          ...productTypes.map(({ code: value, meaning }) => ({ value, label: meaning })),
+        ]}
+        onChange={onChange}
+        className="flex-wrap self-start"
+      />
+    </details>
   );
 }
