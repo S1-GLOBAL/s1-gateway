@@ -9,7 +9,11 @@
   [ADR 0019](../decisions/0019-the-s1-spec-id-format.md) ·
   [ADR 0021](../decisions/0021-the-atlas-dictionary-changes-only-by-migration.md) ·
   [ADR 0022](../decisions/0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md) ·
-  [ADR 0025](../decisions/0025-spec-ids-are-written-short.md)
+  [ADR 0025](../decisions/0025-spec-ids-are-written-short.md) ·
+  [ADR 0026](../decisions/0026-raw-text-is-read-by-rules-and-a-public-word-list.md) ·
+  [ADR 0027](../decisions/0027-manufacturers-and-quotes-live-in-atlas-behind-sign-in.md) ·
+  [#56](https://github.com/S1-GLOBAL/s1-gateway/issues/56) ·
+  [#57](https://github.com/S1-GLOBAL/s1-gateway/issues/57)
 
 ## Goal
 
@@ -22,6 +26,10 @@ given out still finds its product. The workspace offers all of it, and
 library. Issue [#28](https://github.com/S1-GLOBAL/s1-gateway/issues/28) is the
 specification: its tables are the exact dictionary, rules and copy, and where
 this plan and the issue disagree, the issue wins and this plan is corrected.
+Since 2026-10-22 the import also records each row's manufacturer and quote
+against its Spec ID (phase 4, ADR 0027), so the Manufacturers page (#57) has
+its data; [#56](https://github.com/S1-GLOBAL/s1-gateway/issues/56) is the
+specification for phases 3 and 4.
 
 ## Scope
 
@@ -31,11 +39,13 @@ this plan and the issue disagree, the issue wins and this plan is corrected.
 - Release S2 0.1.0 by migration, and the conversion of saved codes and History
 - The workspace's new controls and group 06
 - `atlas:import` and its CSV report. Spellings are `WORD_LIST` (plan 0007)
+- Each row's manufacturer, country, FOB prices, mold cost and lead times, recorded against its Spec ID (phase 4, ADR 0027)
 - `api.md`, `data-model.md` and `commands.md`
 
 **Out of scope** — and where it is handled instead
-- A product's manufacturers and quotations — no issue yet
-- Case packing, prices, lead times, manufacturers and countries — no issue yet
+- The Manufacturers page and its stages — #57
+- Adding or editing manufacturers and quotes in Atlas — #61
+- Case packing, case weights and case dimensions — not stored (ADR 0027)
 - Editing the dictionary from the app — no issue yet
 - Variant numbers and the collision review — no issue yet
 - Running the import on production — reyxdz, with the release, after staging
@@ -48,7 +58,7 @@ this plan and the issue disagree, the issue wins and this plan is corrected.
   `git show origin/main:backend/drizzle/meta/_journal.json | grep -c '"tag"'` prints `9`.
 - A working local setup: `npm run typecheck && npm run lint && npm run arch:check && npm run test:unit`
   exits 0 on a fresh branch from `main`, and `npm run db:up` then `npm test` passes.
-- For phase 3 only: the verified list workbook (prepared on 2026-10-19) on reyxdz's computer. Never in the repository. Its spelling table's entries, without the `skip` entries, are `WORD_LIST`.
+- For phases 3 and 4 only: the verified list workbook (prepared on 2026-10-19) on reyxdz's computer. Never in the repository, and never its rows, names or prices in tests or docs (ADR 0027). Its spelling table's entries, without the `skip` entries, are `WORD_LIST`.
 
 ## Progress
 
@@ -59,7 +69,8 @@ request, stopping for the owner after each.
 |---|---|---|
 | 1. S2 format, S2 0.1.0 and the conversion | 7 / 7 | Done — on staging, a Spec ID saved before the release opens with its S2 code, and its old S1 code finds it; see #28 |
 | 2. Workspace and library for S2 | 4 / 4 | Done — on staging, a 2-colour-print double-wall cup and a 3-compartment bagasse container save with their S2 codes, and an S1 code given out before phase 1 still finds its product; see #28 |
-| 3. The verified-list import | 0 / 6 | Not started |
+| 3. The verified-list import | 0 / 5 | Not started |
+| 4. Manufacturers and quotes | 0 / 5 | Not started |
 
 ---
 
@@ -72,6 +83,7 @@ request, stopping for the owner after each.
 | A change to the code's format | A new format version, `S2`; slots 1–17 keep their positions and the new slots sit before the variant | Every reader of positions 1–17 keeps working; the variant stays last, as ADR 0019 has it |
 | A migration that rewrites saved data | Hand-written SQL that converts by product type, proved equal to the TypeScript conversion for every S1 product type | The conversion is a pure function of the code, so SQL and TypeScript can be compared exactly |
 | A command that writes staff data | `src/scripts/atlas-import.ts`, like `create-admin.ts`: composes the module's own use cases, never starts HTTP, saves nothing without `--write` | One path for every save, so the import obeys the same rules as the workspace |
+| Commercial data from Source One | Manufacturers and quotes in two tables, behind sign-in, kept as the workbook writes them; tests use invented ones (ADR 0027) | The repository is public; the database is not |
 
 ### The S2 layout — `backend/src/modules/atlas/domain/slots.ts`
 
@@ -162,7 +174,7 @@ is 1–26. Nothing else changes shape.
 | `readVerifiedRow` | `domain/import/verified-row.ts` | `(row: VerifiedRow) => RowReading` — columns first, the item name through `readText`, sizes through `readSize` |
 | `ImportVerifiedList` | `application/import-verified-list.ts` | builds every code, groups rows by code, names each group by its most common item name (first row on a tie), saves through `SaveSpecId` only when writing, returns `ImportReport` |
 | `VerifiedListSource`, `ImportReportSink` | `application/ports/` | read rows; write the report |
-| `ExcelVerifiedListSource` | `infrastructure/excel-verified-list-source.ts` | `exceljs` (new dependency, MIT): sheet `Main Table`, rows from 4, columns C–G |
+| `ExcelVerifiedListSource` | `infrastructure/excel-verified-list-source.ts` | `exceljs` (new dependency, MIT): sheet `Main Table`, rows from 4, columns C–G. A merged cell's value applies to every row it spans: the workbook merges item names, dimensions and lead times down some groups of rows, and COMPANY and COUNTRY down every manufacturer's rows |
 | `CsvImportReport` | `infrastructure/csv-import-report.ts` | #28's report columns, UTF-8, header row first |
 | the command | `backend/src/scripts/atlas-import.ts`; script `"atlas:import": "tsx src/scripts/atlas-import.ts"` | `--workbook`, `--report`, `--as`, `--write`; spellings are `WORD_LIST`; refuses an unknown or disabled `--as` with #28's sentence |
 
@@ -189,6 +201,26 @@ left for one slot leave it not known, flagged in the report:
 | `window` | window `WN` |
 | `cpet` · `pla lined` · `grease resistant` · `uncoated` | coating `CP` · `PL` · `GR` · `NC` |
 | `double pe`, `2pe`, `+2pe`, `+<n>gpe+<n>gpe` · `single pe`, `1pe`, `+1pe`, `+<n>gpe`, `pe coating` | coating `PB` · `PU` |
+
+### Manufacturers and quotes — phase 4
+
+ADR 0027 records why these live in the database and never in the repository.
+#56 is the specification.
+
+| Name | File | Shape |
+|---|---|---|
+| `atlas_manufacturers` | `infrastructure/atlas-manufacturers.table.ts`, by generated migration | `id` uuid, `name` text, `name_key` text unique (the name trimmed and lower-cased), `country` text null, `created_at` |
+| `atlas_quotes` | `infrastructure/atlas-quotes.table.ts`, same migration | `id` uuid, `spec_id` → `atlas_spec_ids.id`, `manufacturer_id` → `atlas_manufacturers.id`, and as text, each null when the cell is empty: `item_name`, `fob_per_unit`, `fob_per_case`, `fob_total`, `mold_cost`, `mold_lead_time`, `sample_lead_time`, `production_lead_time`; `imported_at` |
+| `Manufacturer`, `Quote` | `domain/sourcing/` | The two records, values as written; a manufacturer's identity is its `name_key` |
+| `SourcingRepository` | `domain/sourcing/sourcing-repository.ts`; Drizzle and in-memory adapters | `replaceQuotes(rows)`: in one transaction, finds or adds each manufacturer by `name_key` (updating its country when the row gives one), deletes every quote, inserts the given ones. Manufacturers are never deleted: #57's stages point at them |
+| The workbook's other columns | `ExcelVerifiedListSource` | A COMPANY, B COUNTRY (each merged down its manufacturer's rows), O FOB per unit, P FOB per case, Q FOB total, R mold cost, S mold lead time, T sample lead time, U production lead time. A row's country is its own B cell, merged or not |
+| The report | `CsvImportReport` | Two more columns: `manufacturer` (`found` or `no manufacturer`) and `quote` (`recorded` or `not recorded`) |
+
+`ImportVerifiedList`, when writing, gathers a quote for every row it saves or
+finds already saved (the row's code matches a saved Spec ID) and that has a
+manufacturer, then calls `replaceQuotes` once. A dry run calls nothing. A row
+with no manufacturer, or one not imported, records no quote. Stages (#57) are
+another table, which this phase neither creates nor touches.
 
 ### Review Focus
 
@@ -273,7 +305,7 @@ One pull request, "Part of #28".
 
 ## Phase 3 — The verified-list import
 
-One pull request, "Part of #28". #28 is closed after Step 3.6's staging run.
+One pull request, "Part of #56". #28 closed after phase 2, so #56 carries this phase and phase 4; the staging run waits for phase 4 (Step 4.5).
 
 Since #36 ([ADR 0025](../decisions/0025-spec-ids-are-written-short.md)), codes are written short: 25 parts, no
 `S2.` tag, an empty slot `Y` or `X`. The import creates short codes through `SaveSpecId`; where this
@@ -301,18 +333,45 @@ reads item names with `readText`, sizes with `readSize` and spellings from `WORD
 
 ### Step 3.4 — Workbook, report and command
 
-- [ ] **Action.** Add `exceljs`; `ExcelVerifiedListSource`, `CsvImportReport`, `src/scripts/atlas-import.ts` and the npm script. A database test runs the command on an invented workbook built in the test: a dry run saves nothing and prints #28's dry-run sentence; `--write` saves and prints #28's sentence; a second `--write` saves nothing and reports every saved row `already saved`; an unknown or disabled `--as` prints #28's refusal and reads nothing.
+- [ ] **Action.** Add `exceljs`; `ExcelVerifiedListSource`, `CsvImportReport`, `src/scripts/atlas-import.ts` and the npm script. A database test runs the command on an invented workbook built in the test: a dry run saves nothing and prints #28's dry-run sentence; `--write` saves and prints #28's sentence; a second `--write` saves nothing and reports every saved row `already saved`; an unknown or disabled `--as` prints #28's refusal and reads nothing; an item name merged down three rows gives all three rows that name.
 - [ ] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
 
 ### Step 3.5 — Docs and the pull request
 
-- [ ] **Action.** `commands.md` (`atlas:import`, its options, that the workbook and the report never enter the repository; the spelling table's entries are `WORD_LIST`); open the pull request "Part of #28".
+- [ ] **Action.** `commands.md` (`atlas:import`, its options, that the workbook and the report never enter the repository; the spelling table's entries are `WORD_LIST`); open the pull request "Part of #56".
 - [ ] **Verify.** CI and `pr-audit` pass.
 
-### Step 3.6 — The staging run (reyxdz)
+---
 
-- [ ] **Action.** After merge, reyxdz runs the command against staging as a dry run, reads the report, then runs it with `--write`. The totals are written as a comment on #28, without any row content.
-- [ ] **Verify.** Every workbook row with an item name appears once in the report; the library on staging shows the report's "new" total; a second `--write` reports every row `already saved` or `skipped`.
+## Phase 4 — Manufacturers and quotes
+
+One pull request, "Part of #56". #56 is closed after Step 4.5's staging run.
+Every test uses invented manufacturers, items and prices (ADR 0027).
+
+### Step 4.1 — The tables
+
+- [ ] **Action.** `atlas_manufacturers` and `atlas_quotes` as the design gives them, added to `database-schema.ts`, and their migration made with `npm run db:generate` (ADR 0005). A database test: two quotes for one manufacturer, then deleting the quotes leaves the manufacturer.
+- [ ] **Verify.** `npm run db:generate` run again makes no new migration; `npm test` passes.
+
+### Step 4.2 — The sourcing records and repository
+
+- [ ] **Action.** `Manufacturer`, `Quote` and `SourcingRepository` in `domain/sourcing/`, with the Drizzle and in-memory adapters. Tests: " Acme Packaging " and "acme packaging" are one manufacturer; `replaceQuotes` twice with the same rows leaves the same quotes, not twice as many; a row giving a country updates the manufacturer's.
+- [ ] **Verify.** The tests pass; `npm run arch:check` exits 0.
+
+### Step 4.3 — The import records quotes
+
+- [ ] **Action.** `ExcelVerifiedListSource` reads columns A, B and O–U; `ImportVerifiedList` gathers quotes and calls `replaceQuotes` when writing; `CsvImportReport` adds the `manufacturer` and `quote` columns. Tests, on an invented workbook with two company blocks: each row records its own block's manufacturer, and a row outside both reports `no manufacturer`; a row whose code is already saved records its quote against that Spec ID and saves no new one; a second `--write` leaves the number of quotes unchanged; a dry run records no manufacturer and no quote.
+- [ ] **Verify.** `npm test` passes.
+
+### Step 4.4 — Docs and the pull request
+
+- [ ] **Action.** `data-model.md` (both tables), `commands.md` (the report's two columns); open the pull request "Part of #56".
+- [ ] **Verify.** CI and `pr-audit` pass.
+
+### Step 4.5 — The staging run (reyxdz)
+
+- [ ] **Action.** After merge, reyxdz runs the command against staging as a dry run, reads the report, then runs it with `--write`. The totals, including manufacturers found and quotes recorded, are written as a comment on #56, without any row content; then #56 is closed.
+- [ ] **Verify.** Every workbook row with an item name appears once in the report; the library on staging shows the report's "new" total; a second `--write` reports every row `already saved` or `skipped`, and records the same number of quotes.
 
 ---
 
@@ -324,10 +383,14 @@ The plan is complete when every box below is checked.
 - [ ] ADR 0024 is Accepted and listed, and ADRs 0019 and 0021 link to it.
 - [ ] `api.md`, `data-model.md` and `commands.md` describe S2 and the import.
 - [ ] #28 is closed.
+- [ ] Every item under "Verify" in [#56](https://github.com/S1-GLOBAL/s1-gateway/issues/56) is ticked on the issue, and #56 is closed.
+- [ ] ADR 0027 is Accepted and listed, and `data-model.md` describes `atlas_manufacturers` and `atlas_quotes`.
 
 ## Follow-ups
 
-- A product's manufacturers and quotations — no issue yet
+- The Manufacturers page and its stages — #57
+- Adding or editing manufacturers and quotes in Atlas — #61
+- Reading inches, print colour counts and capacity ranges correctly — #58, best before Step 4.5
 - Running the import on production — reyxdz, with the release
 - Variant numbers and the collision review — no issue yet
 - Editing the dictionary from the app — no issue yet
