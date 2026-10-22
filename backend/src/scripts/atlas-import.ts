@@ -1,10 +1,11 @@
 /**
  * `npm --prefix backend run atlas:import -- --workbook "<path>" --report "<path>" --as <email> [--write]`
  *
- * Imports the verified list into Atlas (#28, plan 0006, phase 3): reads the
- * workbook, builds a code for every product row, and writes a CSV report. It
- * saves nothing unless `--write` is given, and then only through the module's
- * own `SaveSpecId`, as the workspace saves. It never starts the HTTP app. The
+ * Imports the verified list into Atlas (#28, #56, plan 0006, phases 3 and 4):
+ * reads the workbook, builds a code for every product row, gathers each row's
+ * manufacturer and quote, and writes a CSV report. It saves nothing unless
+ * `--write` is given, and then saves Spec IDs only through the module's own
+ * `SaveSpecId`, as the workspace saves, and replaces the quotes. It never starts the HTTP app. The
  * workbook and the report stay outside the repository (ADR 0027).
  */
 import { resolve } from 'node:path';
@@ -16,6 +17,7 @@ import { ImportVerifiedList } from '../modules/atlas/application/import-verified
 import { SaveSpecId } from '../modules/atlas/application/save-spec-id.js';
 import { CsvImportReport } from '../modules/atlas/infrastructure/csv-import-report.js';
 import { DrizzleDictionaryRepository } from '../modules/atlas/infrastructure/drizzle-dictionary-repository.js';
+import { DrizzleSourcingRepository } from '../modules/atlas/infrastructure/drizzle-sourcing-repository.js';
 import { DrizzleSpecIdRepository } from '../modules/atlas/infrastructure/drizzle-spec-id-repository.js';
 import { ExcelVerifiedListSource } from '../modules/atlas/infrastructure/excel-verified-list-source.js';
 import { err, ok, type Result } from '../shared/domain/result.js';
@@ -43,12 +45,17 @@ export async function atlasImport(db: Database, options: AtlasImportOptions): Pr
 
   const dictionaries = new DrizzleDictionaryRepository(db);
   const specIds = new DrizzleSpecIdRepository(db);
+  const clock = new SystemClock();
+  const ids = new CryptoIdGenerator();
   const importer = new ImportVerifiedList(
     dictionaries,
     specIds,
-    new SaveSpecId(dictionaries, specIds, new SystemClock(), new CryptoIdGenerator()),
+    new DrizzleSourcingRepository(db),
+    new SaveSpecId(dictionaries, specIds, clock, ids),
     new ExcelVerifiedListSource(options.workbook),
     new CsvImportReport(options.report),
+    clock,
+    ids,
   );
   const summary = await importer.execute({ write: options.write, savedBy: { id: account.id, fullName: account.fullName } });
 

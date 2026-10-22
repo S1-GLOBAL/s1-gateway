@@ -5,7 +5,22 @@ import { NAME_MAX_LENGTH } from '../saved-spec-id.js';
 import type { SlotKey } from '../slots.js';
 import type { MeasurementInput, SpecIdFactsInput } from '../spec-id.js';
 
-/** One product row of the verified list: columns C to G as text, a number written as the cell shows it (#28). */
+/** Columns O to U of the verified list, what one row quotes, and their names in the report (#56). */
+export const QUOTE_COLUMNS = {
+  fobPerUnit: 'FOB per unit',
+  fobPerCase: 'FOB per case',
+  fobTotal: 'FOB total',
+  moldCost: 'Mold cost',
+  moldLeadTime: 'Mold lead time',
+  sampleLeadTime: 'Sample lead time',
+  productionLeadTime: 'Production lead time',
+} as const;
+export type QuoteColumn = keyof typeof QUOTE_COLUMNS;
+
+/**
+ * One product row of the verified list: columns C to G as text, a number
+ * written as the cell shows it (#28), and its manufacturer and quote (#56).
+ */
 export interface VerifiedRow {
   /** The workbook's own row number. */
   readonly row: number;
@@ -16,6 +31,14 @@ export interface VerifiedRow {
   readonly dimension: string;
   /** Product Weight (grams) / Thickness (gsm). */
   readonly weight: string;
+  /** Column A, COMPANY, which heads its manufacturer's rows; empty outside every block. */
+  readonly company: string;
+  /** Column B, COUNTRY. */
+  readonly country: string;
+  /** Columns O to U as Excel shows them; empty when the cell is. */
+  readonly quote: Readonly<Record<QuoteColumn, string>>;
+  /** Columns of `quote` whose formula has no value saved in the workbook, so are read empty. */
+  readonly unsavedFormulas: readonly QuoteColumn[];
 }
 
 /** A fact the report lists: read from the item name, or under one of #28's rulings. */

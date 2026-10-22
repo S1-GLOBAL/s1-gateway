@@ -45,10 +45,17 @@ Run from the repository root unless noted.
 
 | Option | Means |
 |---|---|
-| `--workbook` | The verified list workbook. It reads sheet "Main Table" from row 4, columns C–G: item name, Category, Material, Dimension, Weight. A merged cell's value applies to every row it spans |
-| `--report` | Where to write the report, a CSV file: the totals first, then one line per row with its outcome (`new`, `same as row <n>`, `already saved` or `skipped`), its code, why it was skipped, what was read from it, any fact dropped and why, and any flag |
+| `--workbook` | The verified list workbook. It reads sheet "Main Table" from row 4: columns A–B, COMPANY and COUNTRY; C–G, item name, Category, Material, Dimension, Weight; and O–U, the FOB prices per unit, per case and total, the mold cost, and the mold, sample and production lead times. A merged cell's value applies to every row it spans, so a COMPANY merged down a block of rows is each row's manufacturer |
+| `--report` | Where to write the report, a CSV file: the totals first, then one line per row with its outcome (`new`, `same as row <n>`, `already saved` or `skipped`), its code, `manufacturer` (`found` or `no manufacturer`), `quote` (`recorded` or `not recorded`), why it was skipped, what was read from it, any fact dropped and why, and any flag |
 | `--as` | The email of an active staff account, recorded as the one who saved each Spec ID. Any other email is refused before the workbook is read |
-| `--write` | Saves the Spec IDs not already saved. Running it again saves nothing new |
+| `--write` | Saves the Spec IDs not already saved, and replaces every quote with one for each row imported that names its manufacturer ([ADR 0027](../decisions/0027-manufacturers-and-quotes-live-in-atlas-behind-sign-in.md)). Running it again saves no new Spec ID and leaves as many quotes. Manufacturers are found or added, never deleted |
+
+A dry run's report says what `--write` would do. A quote's values are kept as
+Excel shows them, number format and all (`$0.0350`). A price that is a
+formula has a value only if Excel saved one with it; a workbook last saved by
+a tool that does not calculate has none, and the report flags each such cell,
+for example `FOB per unit: a formula with no value saved in the workbook`.
+Opening the workbook in Excel and saving it stores the values.
 
 The workbook and the report hold Source One rows, names and prices: keep
 both outside the repository and never commit either

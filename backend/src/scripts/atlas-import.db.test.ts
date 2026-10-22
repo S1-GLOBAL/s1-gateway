@@ -1,9 +1,13 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { count } from 'drizzle-orm';
 import ExcelJS from 'exceljs';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { accountsTable } from '../modules/accounts/index.js';
+import { atlasManufacturers } from '../modules/atlas/infrastructure/atlas-manufacturers.table.js';
+import { atlasQuotes } from '../modules/atlas/infrastructure/atlas-quotes.table.js';
+import { DrizzleSourcingRepository } from '../modules/atlas/infrastructure/drizzle-sourcing-repository.js';
 import { DrizzleSpecIdRepository } from '../modules/atlas/infrastructure/drizzle-spec-id-repository.js';
 import { connectTestDatabase, resetTables } from '../test/database.js';
 import { atlasImport } from './atlas-import.js';
@@ -90,16 +94,18 @@ describe('atlas:import', () => {
       ]),
     );
     const report = (await readFile(join(folder, 'report.csv'), 'utf8')).split('\n');
-    expect(report.slice(0, 6)).toEqual([
+    expect(report.slice(0, 8)).toEqual([
       'Rows read,4',
       'Spec IDs created,2',
       'Rows the same as an earlier row,1',
       'Spec IDs already saved,0',
       'Rows skipped,1',
+      'Manufacturers found,0',
+      'Quotes recorded,0',
       'Item name agreed with Category and Material,3 of 3',
     ]);
-    expect(report[7]).toBe('Row,Item name,Outcome,Code,Reason skipped,Read from the row,Dropped,Flags');
-    expect(report.slice(8, 12).map((line) => line.split(',').slice(0, 3).join(','))).toEqual([
+    expect(report[9]).toBe('Row,Item name,Outcome,Code,Manufacturer,Quote,Reason skipped,Read from the row,Dropped,Flags');
+    expect(report.slice(10, 14).map((line) => line.split(',').slice(0, 3).join(','))).toEqual([
       '4,Invented PP cup,new',
       '5,Invented PP cup,same as row 4',
       '6,Invented PET lid,new',
@@ -117,7 +123,7 @@ describe('atlas:import', () => {
     expect(await saved()).toHaveLength(2);
     const outcomes = (await readFile(join(folder, 'report.csv'), 'utf8'))
       .split('\n')
-      .slice(8, 11)
+      .slice(10, 13)
       .map((line) => line.split(',')[2]);
     expect(outcomes).toEqual(['already saved', 'already saved', 'already saved']);
   });
@@ -159,5 +165,82 @@ describe('atlas:import', () => {
 
     const names = (await saved()).map((record) => record.savedSpecId.name);
     expect(names).toEqual(['Invented merged cup', 'Invented merged cup', 'Invented merged cup']);
+  });
+});
+
+/**
+ * An invented workbook with two manufacturer blocks, COMPANY and COUNTRY
+ * merged down each, and a row outside both. Invented manufacturers and prices
+ * only (ADR 0027).
+ */
+async function blocksWorkbook(): Promise<string> {
+  const book = new ExcelJS.Workbook();
+  const sheet = book.addWorksheet('Main Table');
+  const products: [string, string, string, number | string][] = [
+    ['Invented PP cup', 'Cup', 'Plastic - PP', 90],
+    ['Invented PET lid', 'Lid', 'Plastic - PET', ''],
+    ['Invented PP bowl', 'Bowl', 'Plastic - PP', ''],
+    ['Invented PP cup', 'Cup', 'Plastic - PP', 90],
+  ];
+  products.forEach(([itemName, category, material, dimension], index) => {
+    sheet.getCell(index + 4, 3).value = itemName;
+    sheet.getCell(index + 4, 4).value = category;
+    sheet.getCell(index + 4, 5).value = material;
+    sheet.getCell(index + 4, 6).value = dimension;
+  });
+  sheet.getCell('A4').value = 'Acme Packaging';
+  sheet.getCell('B4').value = 'Atlantis';
+  sheet.mergeCells('A4:A5');
+  sheet.mergeCells('B4:B5');
+  sheet.getCell('A6').value = 'Borealis Boxes';
+  sheet.getCell('B6').value = 'Lemuria';
+  sheet.getCell('O4').value = 0.0123;
+  sheet.getCell('O4').numFmt = '"$"#,##0.0000';
+  sheet.getCell('U4').value = '30 days';
+  const path = join(folder, 'blocks.xlsx');
+  await book.xlsx.writeFile(path);
+  return path;
+}
+
+const tally = async () => ({
+  manufacturers: (await connection.db.select({ n: count() }).from(atlasManufacturers))[0]?.n,
+  quotes: (await connection.db.select({ n: count() }).from(atlasQuotes))[0]?.n,
+});
+
+describe('atlas:import, manufacturers and quotes (#56)', () => {
+  it("records each row against its own block's manufacturer, and reports a row outside both", async () => {
+    await run(await blocksWorkbook(), true);
+
+    const sourcing = new DrizzleSourcingRepository(connection.db);
+    const quotes = (await Promise.all((await saved()).map((record) => sourcing.quotesOf(record.savedSpecId.id)))).flat();
+    expect(
+      quotes.map(({ manufacturer, quote }) => [quote.values.itemName, manufacturer.name, manufacturer.country]).sort(),
+    ).toEqual([
+      ['Invented PET lid', 'Acme Packaging', 'Atlantis'],
+      ['Invented PP bowl', 'Borealis Boxes', 'Lemuria'],
+      ['Invented PP cup', 'Acme Packaging', 'Atlantis'],
+    ]);
+    const cup = quotes.find(({ quote }) => quote.values.itemName === 'Invented PP cup');
+    expect(cup?.quote.values).toMatchObject({ fobPerUnit: '$0.0123', fobPerCase: null, productionLeadTime: '30 days' });
+    const report = (await readFile(join(folder, 'report.csv'), 'utf8')).split('\n');
+    expect(report.slice(5, 7)).toEqual(['Manufacturers found,2', 'Quotes recorded,3']);
+    expect(report[13]?.split(',').slice(0, 6)).toEqual(['7', 'Invented PP cup', 'same as row 4', expect.any(String), 'no manufacturer', 'not recorded']);
+  });
+
+  it('leaves the number of quotes, manufacturers and Spec IDs unchanged on a second --write', async () => {
+    const path = await blocksWorkbook();
+    await run(path, true);
+    const first = { ...(await tally()), specIds: (await saved()).length };
+
+    await run(path, true);
+
+    expect({ ...(await tally()), specIds: (await saved()).length }).toEqual(first);
+    expect(first).toEqual({ manufacturers: 2, quotes: 3, specIds: 3 });
+  });
+
+  it('records no manufacturer and no quote in a dry run', async () => {
+    await run(await blocksWorkbook(), false);
+
+    expect(await tally()).toEqual({ manufacturers: 0, quotes: 0 });
   });
 });
