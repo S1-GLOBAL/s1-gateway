@@ -13,7 +13,8 @@ Based on `main` at commit `b59cb0bee84392215a7828508ee247d781cb7d34`, 2026-10-23
 - There is one pull request. Build it on a fresh branch from the latest `main`:
   `git fetch origin` then `git switch -c feat/58-reader-fractions-ranges-colours origin/main`.
 - Pull request #64 (plan 0006, phase 4) may be open or merged when you start.
-  It does not touch the files this handoff changes. The patch in Appendix B
+  It edits `docs/plans/0006-s2-spec-ids-and-verified-list-import.md`, one of
+  the six files in Step 6.1, and not the other five. The patch in Appendix B
   applies to `main` both with #64 and without it.
 - After you open the pull request, STOP. Send your report (section 7, item 10)
   and wait.
