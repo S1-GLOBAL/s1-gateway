@@ -129,6 +129,22 @@ describe('atlas:import', () => {
     expect(await saved()).toEqual([]);
   });
 
+  it('refuses an --as whose account is disabled, and reads nothing', async () => {
+    await connection.db.insert(accountsTable).values({
+      id: '00000000-0000-4000-8000-0000000000ab',
+      email: 'gone@sourceone.global',
+      fullName: 'Bo Invented',
+      passwordHash: 'hash',
+      status: 'disabled',
+      createdAt: new Date('2026-10-22T08:00:00.000Z'),
+    });
+
+    const result = await run(join(folder, 'no-such-workbook.xlsx'), true, 'gone@sourceone.global');
+
+    expect(result).toEqual({ ok: false, error: 'No active staff account is gone@sourceone.global. Nothing was imported.' });
+    expect(await saved()).toEqual([]);
+  });
+
   it('gives every row an item name merged down three rows', async () => {
     const path = await workbook(
       [

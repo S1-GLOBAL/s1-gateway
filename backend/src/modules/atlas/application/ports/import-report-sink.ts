@@ -11,7 +11,7 @@ export interface ImportReportRow {
   readonly code: string | null;
   /** Why it was skipped; null otherwise. */
   readonly reason: string | null;
-  /** Every fact read from the item name, `Colour / clarity: Clear`, a ruling's name after one read under it. */
+  /** Every fact read from the item name or under a ruling, as `Colour / clarity: Clear`, with the ruling's name after one read under it. */
   readonly readFromRow: readonly string[];
   /** Every fact the save rules refused, with the reason. */
   readonly dropped: readonly string[];
