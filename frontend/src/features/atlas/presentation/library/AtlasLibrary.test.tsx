@@ -130,6 +130,27 @@ describe('AtlasLibrary, the list', () => {
     expect(await screen.findByText('No names match. Press Search to read the facts from your text.')).toBeTruthy();
   });
 
+  it('folds the product types away, and names the one in force', async () => {
+    renderLibrary();
+    await screen.findByText('No Spec IDs yet');
+
+    const details = screen.getByRole('radio', { name: 'All' }).closest('details') as HTMLDetailsElement;
+    const summary = details.querySelector('summary');
+    expect(details.open).toBe(true);
+    expect(summary?.textContent).toBe('Product type · All');
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Bowl lid' }));
+    expect(summary?.textContent).toBe('Product type · Bowl lid');
+
+    fireEvent.click(summary!);
+    expect(details.open).toBe(false);
+    expect(summary?.textContent).toBe('Product type · Bowl lid');
+
+    fireEvent.click(summary!);
+    expect(details.open).toBe(true);
+    expect(screen.getByRole('radio', { name: 'Bowl lid' }).getAttribute('aria-checked')).toBe('true');
+  });
+
   it('filters by product type, and names the type when none is saved yet', async () => {
     const library = vi.fn<AtlasGateway['library']>(async () => EMPTY);
     renderLibrary({ library });
