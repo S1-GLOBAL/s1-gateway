@@ -43,6 +43,20 @@ function renderLibrary(overrides: Partial<AtlasGateway> = {}, dictionary: AtlasD
 }
 
 const search = (text: string) => fireEvent.change(screen.getByLabelText('Search'), { target: { value: text } });
+
+function productTypeSummary() {
+  const summary = document.querySelector('summary');
+  if (!(summary instanceof HTMLElement)) throw new Error('Product type summary is missing');
+  return summary;
+}
+
+function chooseProductType(name: string) {
+  const summary = productTypeSummary();
+  const details = summary.closest('details') as HTMLDetailsElement;
+  if (!details.open) fireEvent.click(summary);
+  fireEvent.click(screen.getByRole('radio', { name }));
+}
+
 const cards = () => within(screen.getByRole('list')).getAllByRole('link');
 
 afterEach(() => {
@@ -138,15 +152,17 @@ describe('AtlasLibrary, the list', () => {
     expect(await screen.findByText('No names match. Press Search to read the facts from your text.')).toBeTruthy();
   });
 
-  it('folds the product types away, and names the one in force', async () => {
+  it('starts with the product types folded, and names the one in force', async () => {
     renderLibrary();
     await screen.findByText('No Spec IDs yet');
 
-    const details = screen.getByRole('radio', { name: 'All' }).closest('details') as HTMLDetailsElement;
-    const summary = details.querySelector('summary');
-    expect(details.open).toBe(true);
+    const summary = productTypeSummary();
+    const details = summary.closest('details') as HTMLDetailsElement;
+    expect(details.open).toBe(false);
     expect(summary?.textContent).toBe('Product type · All');
 
+    fireEvent.click(summary!);
+    expect(details.open).toBe(true);
     fireEvent.click(screen.getByRole('radio', { name: 'Bowl lid' }));
     expect(summary?.textContent).toBe('Product type · Bowl lid');
 
@@ -164,7 +180,7 @@ describe('AtlasLibrary, the list', () => {
     renderLibrary({ library });
     await screen.findByText('No Spec IDs yet');
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Bowl lid' }));
+    chooseProductType('Bowl lid');
 
     expect(await screen.findByText('No bowl lid Spec IDs yet.')).toBeTruthy();
     expect(library).toHaveBeenLastCalledWith({ q: '', productType: 'BLD', cursor: undefined });
@@ -175,7 +191,7 @@ describe('AtlasLibrary, the list', () => {
     renderLibrary({}, s2Dictionary);
     await screen.findByText('No Spec IDs yet');
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Shipping box (RSC)' }));
+    chooseProductType('Shipping box (RSC)');
 
     expect(await screen.findByText('No shipping box (RSC) Spec IDs yet.')).toBeTruthy();
   });

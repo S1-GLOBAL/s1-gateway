@@ -23,10 +23,7 @@ export function AtlasPageSkeleton() {
           <SkeletonText size="sm" className="w-16" order={2} />
           <SkeletonBlock className="h-10 w-full" order={2} />
         </div>
-        <div className="flex flex-col gap-2">
-          <SkeletonText size="sm" className="w-36" order={3} />
-          <SkeletonBlock className="h-8 w-96 max-w-full" order={3} />
-        </div>
+        <SkeletonText size="sm" className="w-36" order={3} />
       </div>
 
       <div className="flex flex-col gap-3">
