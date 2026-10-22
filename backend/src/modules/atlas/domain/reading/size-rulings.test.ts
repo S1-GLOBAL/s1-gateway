@@ -34,3 +34,23 @@ describe('readSize, by #28 rulings', () => {
     expect(readSize(text, productType)).toBeNull();
   });
 });
+
+describe('readSize, a fraction (#58)', () => {
+  const inches = (value: string) => ({ value, unit: 'in' });
+
+  it.each([
+    ['R6', 'box 20-1/8 x 13 x 10', 'FCB', { length: inches('20.125'), width: inches('13'), height: inches('10') }],
+    ['R6', 'box 6 1/2 x 4 x 2', 'FCB', { length: inches('6.5'), width: inches('4'), height: inches('2') }],
+    ['R6', 'tray 10½ x 8¼ x 1¾', 'TRY', { shape: 'RC', length: inches('10.5'), width: inches('8.25'), height: inches('1.75') }],
+    ['R6', 'box 1/2 x 3/4 x 5/64', 'FCB', { length: inches('0.5'), width: inches('0.75'), height: inches('0.078125') }],
+    ['R1', 'cup 3 1/2', 'CUP', { shape: 'RD', topDiameter: inches('3.5') }],
+    ['R6', 'box 20 1/8 x 13 x 10 mm', 'FCB', { length: { value: '20.125', unit: 'mm' }, width: { value: '13', unit: 'mm' } }],
+  ])('%s reads %s on %s', (ruling, text, productType, facts) => {
+    expect(readSize(text, productType)).toMatchObject({ ruling, facts });
+  });
+
+  it('reads no part of a fraction as a number of its own', () => {
+    expect(readSize('box 20-1/8 x 13 x 10', 'FCB')?.facts.length).not.toEqual({ value: '8', unit: 'mm' });
+    expect(readSize('cup 1/3', 'CUP')).toBeNull();
+  });
+});

@@ -13,10 +13,29 @@ export interface Keyword {
   readonly value: string | ((match: RegExpExecArray) => string);
   /** A colour that holds only on paper: kraft is a brown paper, not a brown plastic. */
   readonly paperOnly?: true;
+  /**
+   * A range, `8-16oz`: each end is read as its own value, with the words it
+   * is reported by, so the slot is left not known and both are reported (#58).
+   * Replaces `value`.
+   */
+  readonly ends?: (match: RegExpExecArray) => readonly { readonly value: string; readonly words: string }[];
 }
 
 const word = (source: string) => new RegExp(`${BEFORE}(?:${source})${AFTER}`, 'g');
 const number = (match: RegExpExecArray) => match[1] ?? '';
+const capacityUnit = (unit: string | undefined) => (unit === 'ml' ? 'M' : 'Z');
+
+/**
+ * `8-16oz`, `16/24 oz`, `8oz-16oz`, `250 to 500ml`: both ends, each with the
+ * unit written after it, or else after the range.
+ */
+function rangeEnds(match: RegExpExecArray): { value: string; words: string }[] {
+  const [, from = '', fromGap = '', fromUnit, to = '', toGap = '', toUnit = ''] = match;
+  return [
+    { value: `${capacityUnit(fromUnit ?? toUnit)}${from}`, words: fromUnit === undefined ? `${from}${toGap}${toUnit}` : `${from}${fromGap}${fromUnit}` },
+    { value: `${capacityUnit(toUnit)}${to}`, words: `${to}${toGap}${toUnit}` },
+  ];
+}
 
 /**
  * Plan 0006's item-name keywords, in its order: capacity, colour, shape,
@@ -24,6 +43,12 @@ const number = (match: RegExpExecArray) => match[1] ?? '';
  * window and coating.
  */
 export const KEYWORDS: readonly Keyword[] = [
+  {
+    pattern: word('(\\d+(?:\\.\\d+)?)(\\s*)(oz|ml)?\\s*(?:-|–|\\/|to)\\s*(\\d+(?:\\.\\d+)?)(\\s*)(oz|ml)'),
+    slot: 'capacity',
+    value: '',
+    ends: rangeEnds,
+  },
   { pattern: word('(\\d+(?:\\.\\d+)?)\\s*oz'), slot: 'capacity', value: (match) => `Z${number(match)}` },
   { pattern: word('(\\d+(?:\\.\\d+)?)\\s*ml'), slot: 'capacity', value: (match) => `M${number(match)}` },
   { pattern: word('clear|transparent'), slot: 'colourClarity', value: 'CL' },
@@ -41,8 +66,9 @@ export const KEYWORDS: readonly Keyword[] = [
   { pattern: word('double[\\s-]*wall'), slot: 'wall', value: 'DW' },
   { pattern: word('ripple(?:[\\s-]*wall)?'), slot: 'wall', value: 'RW' },
   { pattern: word('no[\\s-]*print'), slot: 'print', value: 'NP' },
-  { pattern: word('(\\d+)[\\s-]*colou?rs?[\\s-]*print(?:ed)?'), slot: 'print', value: (match) => number(match).padStart(2, '0') },
-  { pattern: word('full[\\s-]*colou?r(?:[\\s-]*print(?:ed)?)?'), slot: 'print', value: 'FC' },
+  // "3-color" alone is a print colour count, as "3-color print" is (#58).
+  { pattern: word('(\\d+)[\\s-]*colou?rs?(?:[\\s-]*print(?:ed|ing)?)?'), slot: 'print', value: (match) => number(match).padStart(2, '0') },
+  { pattern: word('full[\\s-]*colou?r(?:[\\s-]*print(?:ed|ing)?)?'), slot: 'print', value: 'FC' },
   { pattern: word('(\\d+)[\\s-]*compartments?'), slot: 'compartments', value: number },
   { pattern: word('(\\d+)[\\s-]*comp'), slot: 'compartments', value: number },
   { pattern: word('(\\d+)[\\s-]*ply'), slot: 'plies', value: number },
