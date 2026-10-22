@@ -65,3 +65,39 @@ describe('readText', () => {
     expect(reading.facts).toMatchObject({ productType: 'PCL', material: 'APT', topDiameter: { value: '90', unit: 'mm' } });
   });
 });
+
+describe('readText, #58', () => {
+  const inches = (value: string) => ({ value, unit: 'in' });
+  const mm = (value: string) => ({ value, unit: 'mm' });
+
+  it.each(['Box 20-1/8 x 13 x 10', 'Box 20 1/8 x 13 x 10', 'Box 20⅛ x 13 x 10'])('reads a size with a fraction, %s, in inches', (text) => {
+    expect(read(text).facts).toEqual({ productType: 'FCB', length: inches('20.125'), width: inches('13'), height: inches('10') });
+  });
+
+  it('still reads three numbers with no unit in millimetres, by R6', () => {
+    expect(read('10 x 8 x 6 shipper box').facts).toMatchObject({ length: mm('10'), width: mm('8'), height: mm('6') });
+  });
+
+  it.each([
+    ['8-16oz lid', ['8oz', '16oz']],
+    ['16/24 oz lid', ['16 oz', '24 oz']],
+    ['8oz-16oz lid', ['8oz', '16oz']],
+    ['250 to 500ml lid', ['250ml', '500ml']],
+  ])('leaves the capacity of a range, %s, not known, and reads neither end as a size', (text, found) => {
+    const reading = read(text);
+    expect(reading.facts).toEqual({ productType: 'CLD' });
+    expect(reading.conflicts).toEqual([{ key: 'capacity', found }]);
+    expect(reading.ignored).toEqual([]);
+  });
+
+  it.each([
+    ['Paper cup 3-color', '03'],
+    ['Paper cup 3 colours', '03'],
+    ['Paper cup 3 color printing', '03'],
+    ['Paper cup with 3-color print', '03'],
+    ['Paper cup full colour printing', 'FC'],
+  ])('reads %s as print %s, and no size', (text, print) => {
+    const reading = read(text);
+    expect(reading.facts).toEqual({ productType: 'CUP', material: 'B00', print });
+  });
+});

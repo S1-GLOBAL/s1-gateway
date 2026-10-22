@@ -188,11 +188,12 @@ left for one slot leave it not known, flagged in the report:
 |---|---|
 | `<n> oz`, `<n>oz` | capacity `Z` n |
 | `<n> ml` | capacity `M` n |
+| `<a>-<b>oz`, `<a>/<b> oz`, `<a>oz-<b>oz`, `<a> to <b> ml` | a range: capacity not known, both ends reported (#58) |
 | `clear`, `transparent` · `white`, `white kraft` · `black` · `brown`, `kraft` (colour only when material is paper) | colour `CL` · `WH` · `BK` · `BR` |
 | `round` · `square` · `rectangular` · `oval` | shape `RD` · `SQ` · `RC` · `OV` |
 | `dome` · `half dome` · `flat lid` | profile `DM` · `HD` · `FL` |
 | `single wall` · `double wall` · `ripple` | wall `SW` · `DW` · `RW` |
-| `no print` · `<n> colou?r print` · `full colou?r` | print `NP` · `0n` · `FC` |
+| `no print` · `<n> colou?rs?`, with or without `print`, `printed` or `printing` · `full colou?r` | print `NP` · `0n` · `FC` (#58) |
 | `<n> compartments?`, `<n>-comp` | compartments n |
 | `<n> ?ply` | plies n |
 | `sip`, `strawless` · `straw hole`, `x cross`, `cross cut` | lid opening `SP` · `SH` |
@@ -201,6 +202,11 @@ left for one slot leave it not known, flagged in the report:
 | `window` | window `WN` |
 | `cpet` · `pla lined` · `grease resistant` · `uncoated` | coating `CP` · `PL` · `GR` · `NC` |
 | `double pe`, `2pe`, `+2pe`, `+<n>gpe+<n>gpe` · `single pe`, `1pe`, `+1pe`, `+<n>gpe`, `pe coating` | coating `PB` · `PU` |
+
+A size written with a fraction, `20-1/8`, `20 1/8` or `10½` (halves to
+sixty-fourths), is in inches, as is every number of that size with no unit
+written (#58). A size with no unit and no fraction stays millimetres, by
+ADR 0019 and the rulings.
 
 ### Manufacturers and quotes — phase 4
 
