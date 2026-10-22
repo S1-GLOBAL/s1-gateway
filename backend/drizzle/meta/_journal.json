@@ -92,6 +92,13 @@
       "when": 1792429048342,
       "tag": "0012_shorten_atlas_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792685071668,
+      "tag": "0013_atlas_manufacturers_and_quotes",
+      "breakpoints": true
     }
   ]
 }

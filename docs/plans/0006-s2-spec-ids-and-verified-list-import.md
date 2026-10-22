@@ -70,7 +70,7 @@ request, stopping for the owner after each.
 | 1. S2 format, S2 0.1.0 and the conversion | 7 / 7 | Done — on staging, a Spec ID saved before the release opens with its S2 code, and its old S1 code finds it; see #28 |
 | 2. Workspace and library for S2 | 4 / 4 | Done — on staging, a 2-colour-print double-wall cup and a 3-compartment bagasse container save with their S2 codes, and an S1 code given out before phase 1 still finds its product; see #28 |
 | 3. The verified-list import | 5 / 5 | Done — `atlas:import` reads the verified list and saves its Spec IDs (#63); the staging run waits for phase 4 (Step 4.5) |
-| 4. Manufacturers and quotes | 0 / 5 | Not started |
+| 4. Manufacturers and quotes | 4 / 5 | In progress — `atlas:import` records manufacturers and quotes (#64); step 4.5, the staging run, is reyxdz's |
 
 ---
 
@@ -354,29 +354,36 @@ reads item names with `readText`, sizes with `readSize` and spellings from `WORD
 One pull request, "Part of #56". #56 is closed after Step 4.5's staging run.
 Every test uses invented manufacturers, items and prices (ADR 0027).
 
+A quote's values are kept as Excel shows them, number format and all (`$0.0350`):
+the workbook stores a price as a number and a format, and staff read the two
+together. A price that is a formula has a value only if Excel saved one with it.
+The verified list prepared on 2026-10-19 has none for its formulas, so those
+cells are read empty and flagged in the report; Step 4.5 opens and saves it in
+Excel first.
+
 ### Step 4.1 — The tables
 
-- [ ] **Action.** `atlas_manufacturers` and `atlas_quotes` as the design gives them, added to `database-schema.ts`, and their migration made with `npm run db:generate` (ADR 0005). A database test: two quotes for one manufacturer, then deleting the quotes leaves the manufacturer.
-- [ ] **Verify.** `npm run db:generate` run again makes no new migration; `npm test` passes.
+- [x] **Action.** `atlas_manufacturers` and `atlas_quotes` as the design gives them, added to `database-schema.ts`, and their migration made with `npm run db:generate` (ADR 0005). A database test: two quotes for one manufacturer, then deleting the quotes leaves the manufacturer.
+- [x] **Verify.** `npm run db:generate` run again makes no new migration; `npm test` passes.
 
 ### Step 4.2 — The sourcing records and repository
 
-- [ ] **Action.** `Manufacturer`, `Quote` and `SourcingRepository` in `domain/sourcing/`, with the Drizzle and in-memory adapters. Tests: " Acme Packaging " and "acme packaging" are one manufacturer; `replaceQuotes` twice with the same rows leaves the same quotes, not twice as many; a row giving a country updates the manufacturer's.
-- [ ] **Verify.** The tests pass; `npm run arch:check` exits 0.
+- [x] **Action.** `Manufacturer`, `Quote` and `SourcingRepository` in `domain/sourcing/`, with the Drizzle and in-memory adapters. Tests: " Acme Packaging " and "acme packaging" are one manufacturer; `replaceQuotes` twice with the same rows leaves the same quotes, not twice as many; a row giving a country updates the manufacturer's.
+- [x] **Verify.** The tests pass; `npm run arch:check` exits 0.
 
 ### Step 4.3 — The import records quotes
 
-- [ ] **Action.** `ExcelVerifiedListSource` reads columns A, B and O–U; `ImportVerifiedList` gathers quotes and calls `replaceQuotes` when writing; `CsvImportReport` adds the `manufacturer` and `quote` columns. Tests, on an invented workbook with two company blocks: each row records its own block's manufacturer, and a row outside both reports `no manufacturer`; a row whose code is already saved records its quote against that Spec ID and saves no new one; a second `--write` leaves the number of quotes unchanged; a dry run records no manufacturer and no quote.
-- [ ] **Verify.** `npm test` passes.
+- [x] **Action.** `ExcelVerifiedListSource` reads columns A, B and O–U; `ImportVerifiedList` gathers quotes and calls `replaceQuotes` when writing; `CsvImportReport` adds the `manufacturer` and `quote` columns. Tests, on an invented workbook with two company blocks: each row records its own block's manufacturer, and a row outside both reports `no manufacturer`; a row whose code is already saved records its quote against that Spec ID and saves no new one; a second `--write` leaves the number of quotes unchanged; a dry run records no manufacturer and no quote.
+- [x] **Verify.** `npm test` passes.
 
 ### Step 4.4 — Docs and the pull request
 
-- [ ] **Action.** `data-model.md` (both tables), `commands.md` (the report's two columns); open the pull request "Part of #56".
-- [ ] **Verify.** CI and `pr-audit` pass.
+- [x] **Action.** `data-model.md` (both tables), `commands.md` (the report's two columns); open the pull request "Part of #56".
+- [x] **Verify.** CI and `pr-audit` pass.
 
 ### Step 4.5 — The staging run (reyxdz)
 
-- [ ] **Action.** After merge, reyxdz runs the command against staging as a dry run, reads the report, then runs it with `--write`. The totals, including manufacturers found and quotes recorded, are written as a comment on #56, without any row content; then #56 is closed.
+- [ ] **Action.** After merge, reyxdz opens the workbook in Excel and saves it, so its price formulas have values, then runs the command against staging as a dry run, reads the report, then runs it with `--write`. The totals, including manufacturers found and quotes recorded, are written as a comment on #56, without any row content; then #56 is closed.
 - [ ] **Verify.** Every workbook row with an item name appears once in the report; the library on staging shows the report's "new" total; a second `--write` reports every row `already saved` or `skipped`, and records the same number of quotes.
 
 ---

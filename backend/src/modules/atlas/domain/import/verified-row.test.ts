@@ -4,9 +4,11 @@ import { NO_PRODUCT_TYPE, readVerifiedRow, type VerifiedRow } from './verified-r
 
 const dictionary = s2Dictionary();
 
+const NO_QUOTE = { fobPerUnit: '', fobPerCase: '', fobTotal: '', moldCost: '', moldLeadTime: '', sampleLeadTime: '', productionLeadTime: '' };
+
 /** An invented row: never one of the verified list's own (constraints §6). */
 function row(overrides: Partial<VerifiedRow>): VerifiedRow {
-  return { row: 4, itemName: '', category: '', material: '', dimension: '', weight: '', ...overrides };
+  return { row: 4, itemName: '', category: '', material: '', dimension: '', weight: '', company: '', country: '', quote: NO_QUOTE, unsavedFormulas: [], ...overrides };
 }
 
 function read(overrides: Partial<VerifiedRow>) {

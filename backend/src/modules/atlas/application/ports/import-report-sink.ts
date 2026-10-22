@@ -15,6 +15,10 @@ export interface ImportReportRow {
   readonly readFromRow: readonly string[];
   /** Every fact the save rules refused, with the reason. */
   readonly dropped: readonly string[];
+  /** Whether the row names its manufacturer: COMPANY, in the block above it (#56). */
+  readonly manufacturer: 'found' | 'no manufacturer';
+  /** Whether the row's quote is recorded against its Spec ID: it has a manufacturer and is not skipped (#56). */
+  readonly quote: 'recorded' | 'not recorded';
   /** Anything else to check, such as a name cut to fit. */
   readonly flags: readonly string[];
 }
@@ -29,6 +33,10 @@ export interface ImportSummary {
   /** Codes that were already saved before this run. */
   readonly alreadySaved: number;
   readonly skipped: number;
+  /** Manufacturers with at least one quote recorded, or that a dry run would record. */
+  readonly manufacturers: number;
+  /** Quotes recorded, or that a dry run would record: one per row with a manufacturer that is not skipped. */
+  readonly quotes: number;
   /** On rows where both the columns and the item name give a product type or material: how many agreed. */
   readonly agreement: { readonly agreed: number; readonly compared: number };
 }

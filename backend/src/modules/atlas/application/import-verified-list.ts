@@ -1,9 +1,14 @@
+import type { Clock } from '../../../shared/application/ports/clock.js';
+import type { IdGenerator } from '../../../shared/application/ports/id-generator.js';
 import type { UseCase } from '../../../shared/application/use-case.js';
 import { buildKeepingWhatFits } from '../domain/build-keeping-what-fits.js';
 import type { Dictionary } from '../domain/dictionary.js';
 import type { DictionaryRepository } from '../domain/dictionary-repository.js';
-import { readVerifiedRow, type RowNote, type RowReading } from '../domain/import/verified-row.js';
+import { QUOTE_COLUMNS, readVerifiedRow, type RowNote, type RowReading, type VerifiedRow } from '../domain/import/verified-row.js';
 import { CURRENT_RELEASE, slotDefinition } from '../domain/slots.js';
+import { manufacturerKey } from '../domain/sourcing/manufacturer.js';
+import type { QuoteValues } from '../domain/sourcing/quote.js';
+import type { QuoteToRecord, SourcingRepository } from '../domain/sourcing/sourcing-repository.js';
 import { meaningOfFact, type SpecIdFactsInput } from '../domain/spec-id.js';
 import type { SpecIdRepository } from '../domain/spec-id-repository.js';
 import type { ImportReportRow, ImportReportSink, ImportSummary, RowOutcome } from './ports/import-report-sink.js';
@@ -21,26 +26,31 @@ const NAME_CUT = 'Item name cut to 120 characters';
 
 /** A row read into a code, with what the report says about it. */
 interface Coded {
+  readonly row: VerifiedRow;
   readonly reading: Extract<RowReading, { kind: 'read' }>;
-  readonly itemName: string;
   readonly code: string;
   readonly facts: Partial<SpecIdFactsInput>;
   readonly dropped: readonly string[];
 }
 
 /**
- * Imports the verified list (#28, plan 0006): reads each row, builds its
+ * Imports the verified list (#28, #56, plan 0006): reads each row, builds its
  * code, groups rows with one code into one Spec ID named by the item name
  * most of them use, and, only when writing, saves each new one through
- * `SaveSpecId`. A code already saved is left as it is. Writes #28's report.
+ * `SaveSpecId`. A code already saved is left as it is. Every row imported
+ * that names its manufacturer gives a quote for its Spec ID; when writing,
+ * they replace the quotes recorded before (ADR 0027). Writes #28's report.
  */
 export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, ImportSummary> {
   constructor(
     private readonly dictionaries: DictionaryRepository,
     private readonly specIds: SpecIdRepository,
+    private readonly sourcing: SourcingRepository,
     private readonly save: SaveSpecId,
     private readonly source: VerifiedListSource,
     private readonly report: ImportReportSink,
+    private readonly clock: Clock,
+    private readonly ids: IdGenerator,
   ) {}
 
   async execute(input: ImportVerifiedListInput): Promise<ImportSummary> {
@@ -59,51 +69,73 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
         compared += 1;
         if (reading.agreement) agreed += 1;
       }
-      const flags = reading.nameCut ? [NAME_CUT] : [];
       if (reading.kind === 'skipped') {
-        lines.set(row.row, line(row.row, row.itemName, 'skipped', null, reading.reason, [], [], flags));
+        lines.set(row.row, skippedLine(row, reading.reason, reading.nameCut));
         continue;
       }
       const build = buildKeepingWhatFits(reading.facts, dictionary);
       if (!build.specId) {
-        lines.set(row.row, line(row.row, row.itemName, 'skipped', null, `${reading.facts.productType} is not a product type in ${dictionary.release}.`, [], [], flags));
+        lines.set(row.row, skippedLine(row, `${reading.facts.productType} is not a product type in ${dictionary.release}.`, reading.nameCut));
         continue;
       }
       const dropped = build.dropped.map(({ key, reasons }) => `${slotDefinition(key).name}: ${reasons.join(' ')}`);
-      const coded: Coded = { reading, itemName: row.itemName, code: build.specId.code, facts: build.facts, dropped };
+      const coded: Coded = { row, reading, code: build.specId.code, facts: build.facts, dropped };
       groups.set(coded.code, [...(groups.get(coded.code) ?? []), coded]);
     }
 
+    const importedAt = this.clock.now();
+    const manufacturerIds = new Map<string, string>();
+    const quotes: QuoteToRecord[] = [];
+    let quoted = 0;
     let created = 0;
     let alreadySaved = 0;
     for (const [code, members] of groups) {
       const [first] = members as [Coded, ...Coded[]];
-      let saved = (await this.specIds.findByCode(code)) !== null;
+      let specId = (await this.specIds.findByCode(code))?.savedSpecId.id ?? null;
+      const saved = specId !== null;
       if (!saved && input.write) {
         const result = await this.save.execute({ name: nameOf(members), facts: first.facts as SpecIdFactsInput, savedBy: input.savedBy });
-        // Saved by someone else since it was looked up: it is already saved, as far as this run goes.
-        if (!result.ok && result.error.code === 'SPEC_ID_EXISTS') saved = true;
-        else if (!result.ok) throw new Error(`Row ${first.reading.row} could not be saved: ${result.error.message}`);
+        if (result.ok) specId = result.value.id;
+        // Saved by someone else since it was looked up: it is that Spec ID the quotes belong to.
+        else if (result.error.code === 'SPEC_ID_EXISTS') specId = (await this.specIds.findByCode(code))?.savedSpecId.id ?? null;
+        else throw new Error(`Row ${first.row.row} could not be saved: ${result.error.message}`);
       }
       if (saved) alreadySaved += 1;
       else created += 1;
       for (const member of members) {
-        const outcome: RowOutcome = saved ? 'already saved' : member === first ? 'new' : `same as row ${first.reading.row}`;
-        lines.set(
-          member.reading.row,
-          line(
-            member.reading.row,
-            member.itemName,
-            outcome,
-            code,
-            null,
-            notesOf(member.reading, member.facts, dictionary),
-            member.dropped,
-            member.reading.nameCut ? [NAME_CUT] : [],
-          ),
-        );
+        const outcome: RowOutcome = saved ? 'already saved' : member === first ? 'new' : `same as row ${first.row.row}`;
+        const company = member.row.company.trim();
+        // A dry run has no id for a Spec ID it would create, but would record the quote all the same.
+        const recorded = company !== '' && (specId !== null || !input.write);
+        if (recorded) {
+          quoted += 1;
+          const key = manufacturerKey(company);
+          if (!manufacturerIds.has(key)) manufacturerIds.set(key, this.ids.next());
+          if (specId !== null) {
+            quotes.push({
+              id: this.ids.next(),
+              specId,
+              manufacturer: { id: manufacturerIds.get(key) as string, name: company, country: orNull(member.row.country) },
+              values: quoteOf(member.row),
+              importedAt,
+            });
+          }
+        }
+        lines.set(member.row.row, {
+          row: member.row.row,
+          itemName: member.row.itemName,
+          outcome,
+          code,
+          reason: null,
+          readFromRow: notesOf(member.reading, member.facts, dictionary),
+          dropped: member.dropped,
+          manufacturer: company === '' ? 'no manufacturer' : 'found',
+          quote: recorded ? 'recorded' : 'not recorded',
+          flags: flagsOf(member.row, member.reading.nameCut),
+        });
       }
     }
+    if (input.write) await this.sourcing.replaceQuotes(quotes);
 
     const summary: ImportSummary = {
       rows: rows.length,
@@ -111,6 +143,8 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
       sameAs: [...lines.values()].filter((entry) => entry.outcome.startsWith('same as row')).length,
       alreadySaved,
       skipped: [...lines.values()].filter((entry) => entry.outcome === 'skipped').length,
+      manufacturers: manufacturerIds.size,
+      quotes: quoted,
       agreement: { agreed, compared },
     };
     await this.report.write({ summary, rows: rows.map((row) => lines.get(row.row)).filter((entry) => entry !== undefined) });
@@ -118,17 +152,46 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
   }
 }
 
-function line(
-  row: number,
-  itemName: string,
-  outcome: RowOutcome,
-  code: string | null,
-  reason: string | null,
-  readFromRow: readonly string[],
-  dropped: readonly string[],
-  flags: readonly string[],
-): ImportReportRow {
-  return { row, itemName, outcome, code, reason, readFromRow, dropped, flags };
+/** A row not imported: it records no quote (#56). */
+function skippedLine(row: VerifiedRow, reason: string, nameCut: boolean): ImportReportRow {
+  return {
+    row: row.row,
+    itemName: row.itemName,
+    outcome: 'skipped',
+    code: null,
+    reason,
+    readFromRow: [],
+    dropped: [],
+    manufacturer: row.company.trim() === '' ? 'no manufacturer' : 'found',
+    quote: 'not recorded',
+    flags: flagsOf(row, nameCut),
+  };
+}
+
+function flagsOf(row: VerifiedRow, nameCut: boolean): string[] {
+  return [
+    ...(nameCut ? [NAME_CUT] : []),
+    ...row.unsavedFormulas.map((column) => `${QUOTE_COLUMNS[column]}: a formula with no value saved in the workbook`),
+  ];
+}
+
+function orNull(text: string): string | null {
+  const trimmed = text.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
+/** The row's quote, each value as the workbook shows it (ADR 0027). */
+function quoteOf(row: VerifiedRow): QuoteValues {
+  return {
+    itemName: orNull(row.itemName),
+    fobPerUnit: orNull(row.quote.fobPerUnit),
+    fobPerCase: orNull(row.quote.fobPerCase),
+    fobTotal: orNull(row.quote.fobTotal),
+    moldCost: orNull(row.quote.moldCost),
+    moldLeadTime: orNull(row.quote.moldLeadTime),
+    sampleLeadTime: orNull(row.quote.sampleLeadTime),
+    productionLeadTime: orNull(row.quote.productionLeadTime),
+  };
 }
 
 /** The item name most of the rows use; the first row's breaks a tie (#28). */
