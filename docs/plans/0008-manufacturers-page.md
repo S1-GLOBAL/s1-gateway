@@ -185,7 +185,7 @@ error's own message beside the buttons, and the buttons stay usable.
 ### Review focus
 
 1. A price cell holding `N/A`, `-` or `/` — not a price (Step 1.2).
-2. An admin clears a stage, then a re-import runs — the stage stays cleared and the quotes decide it (Step 1.3).
+2. After an admin sets a stage, `replaceQuotes` with the same rows leaves that stage set (Step 1.3). Clearing hands it back to the quotes (Step 1.2).
 3. Two admins set different stages at once — each change's "before" is the stage it replaced (Step 1.3).
 4. A non-admin calls the `PUT` — 403 before any Atlas code runs, and nothing is recorded (Step 1.5).
 5. A manufacturer with quotes on another Spec ID only — 404 `MANUFACTURER_NOT_FOUND` (Step 1.4).
@@ -299,7 +299,7 @@ One pull request, "Closes #57". Screenshots use invented manufacturers and price
 ### Step 2.6 — The card links, browser check and pull request
 
 - [ ] **Action.**
-  - The library's cards (`LibraryList.tsx`) and Search's result cards (`TextSearchResults.tsx`) link to `/atlas/<id>/manufacturers`. Tests check both links, and that the workspace's similar list and History still link to `/atlas/<id>`.
+  - The library's cards (`LibraryList.tsx`) and Search's result cards (`TextSearchResults.tsx`, both Fits and Might fit) link to `/atlas/<id>/manufacturers`. Tests check both links, and that these still go to `/atlas/<id>`: a save (`features/atlas/presentation/NewSpecIdForm.tsx`, `features/atlas/presentation/library/SaveFromSearch.tsx`, `features/atlas/presentation/SaveOutcome.tsx`), the workspace's similar list (`features/atlas/presentation/workspace/MatchPanel.tsx`), and a pasted code's Open (`features/atlas/presentation/library/PastedCodeResult.tsx`). History remains the button on the Spec ID page (`features/atlas/presentation/SpecIdEditor.tsx`).
   - With invented manufacturers in the local database, check the page and take screenshots: light and dark, 390px with the bottom bar, an admin and a non-admin.
   - Open the pull request "Closes #57".
 - [ ] **Verify.** CI and `pr-audit` pass.
@@ -330,4 +330,3 @@ The plan is complete when every box below is checked.
 - Every stage change on the page — #59
 - Finding Spec IDs by manufacturer — #60
 - Adding or editing manufacturers and quotes — #61
-- Loading the dictionary once per import run, not once per save — no issue yet
