@@ -34,3 +34,30 @@ Run from the repository root unless noted.
 |---|---|
 | `npm run pwa:icons` | Regenerates the PWA icons in `public/brand/` from `public/brand/app-icon.png` (settings in `pwa-assets.config.ts`) |
 | `npm run preview` | Serves the production build locally, with the service worker |
+
+## In `backend/`
+
+| Command | Does |
+|---|---|
+| `npm run atlas:import -- --workbook "<path>" --report "<path>" --as <email> [--write]` | Imports the verified list into the Atlas library of the database in `DATABASE_URL` ([plan 0006](../plans/0006-s2-spec-ids-and-verified-list-import.md), [ADR 0027](../decisions/0027-manufacturers-and-quotes-live-in-atlas-behind-sign-in.md)). Without `--write` it is a dry run and saves nothing. See below |
+
+### `atlas:import`
+
+| Option | Means |
+|---|---|
+| `--workbook` | The verified list workbook. It reads sheet "Main Table" from row 4, columns C–G: item name, Category, Material, Dimension, Weight. A merged cell's value applies to every row it spans |
+| `--report` | Where to write the report, a CSV file: the totals first, then one line per row with its outcome (`new`, `same as row <n>`, `already saved` or `skipped`), its code, why it was skipped, what was read from it, any fact dropped and why, and any flag |
+| `--as` | The email of an active staff account, recorded as the one who saved each Spec ID. Any other email is refused before the workbook is read |
+| `--write` | Saves the Spec IDs not already saved. Running it again saves nothing new |
+
+The workbook and the report hold Source One rows, names and prices: keep
+both outside the repository and never commit either
+([constraints](../explanation/constraints.md#6-the-repository-is-public)).
+Spellings come from `WORD_LIST` in
+`backend/src/modules/atlas/domain/reading/`.
+
+| When | It prints |
+|---|---|
+| A dry run | `Dry run: nothing was saved. {n} Spec IDs would be created from {r} rows; {s} rows skipped. Report: {path}` |
+| `--write` | `Saved {n} Spec IDs from {r} rows; {e} were already saved; {s} rows skipped. Report: {path}` |
+| `--as` is not an active staff account | `No active staff account is {email}. Nothing was imported.` |

@@ -69,7 +69,7 @@ request, stopping for the owner after each.
 |---|---|---|
 | 1. S2 format, S2 0.1.0 and the conversion | 7 / 7 | Done — on staging, a Spec ID saved before the release opens with its S2 code, and its old S1 code finds it; see #28 |
 | 2. Workspace and library for S2 | 4 / 4 | Done — on staging, a 2-colour-print double-wall cup and a 3-compartment bagasse container save with their S2 codes, and an S1 code given out before phase 1 still finds its product; see #28 |
-| 3. The verified-list import | 0 / 5 | Not started |
+| 3. The verified-list import | 5 / 5 | Done — `atlas:import` reads the verified list and saves its Spec IDs (#63); the staging run waits for phase 4 (Step 4.5) |
 | 4. Manufacturers and quotes | 0 / 5 | Not started |
 
 ---
@@ -318,28 +318,28 @@ reads item names with `readText`, sizes with `readSize` and spellings from `WORD
 
 ### Step 3.1 — The spelling table and size rulings
 
-- [ ] **Action.** No new spelling table or size rulings. Plan 0007 put them in `backend/src/modules/atlas/domain/reading/`: `WORD_LIST` and `readSize`. Do not add `spelling-table.ts` or another `size-rulings.ts`.
-- [ ] **Verify.** From `backend/`: `npx vitest run --config vitest.unit.config.ts src/modules/atlas/domain/reading` passes.
+- [x] **Action.** No new spelling table or size rulings. Plan 0007 put them in `backend/src/modules/atlas/domain/reading/`: `WORD_LIST` and `readSize`. Do not add `spelling-table.ts` or another `size-rulings.ts`.
+- [x] **Verify.** From `backend/`: `npx vitest run --config vitest.unit.config.ts src/modules/atlas/domain/reading` passes.
 
 ### Step 3.2 — Reading one row
 
-- [ ] **Action.** `verified-row.ts` reads the item name with `readText` and sizes with `readSize` (the keyword table is `KEYWORDS`). Tests: swapped Category and Material are read the right way round; a column value wins over the item name; a numeric cell `90` reads as `90`; `3.3g` is unit weight 3.3; `110 gsm` is basis weight 110; a bare `25` and `300+250+18` are not known; a row with no determinable type is `skipped` with its reason; a 130-character name is cut at the last space before 120 and flagged.
-- [ ] **Verify.** The tests pass.
+- [x] **Action.** `verified-row.ts` reads the item name with `readText` and sizes with `readSize` (the keyword table is `KEYWORDS`). Tests: swapped Category and Material are read the right way round; a column value wins over the item name; a numeric cell `90` reads as `90`; `3.3g` is unit weight 3.3; `110 gsm` is basis weight 110; a bare `25` and `300+250+18` are not known; a row with no determinable type is `skipped` with its reason; a 130-character name is cut at the last space before 120 and flagged.
+- [x] **Verify.** The tests pass.
 
 ### Step 3.3 — The use case
 
-- [ ] **Action.** `ImportVerifiedList` with in-memory ports. Tests: three rows with one code become one Spec ID named by the most common name; two rows with the same name and different facts become two; a fact `SaveSpecId` refuses is dropped and reported, the row saved; a dry run calls no save; a value read under a ruling is flagged in its report row with the ruling's name; the summary counts rows, new, same-as, already-saved and skipped, and the item-name agreement on rows with both columns.
-- [ ] **Verify.** The tests pass.
+- [x] **Action.** `ImportVerifiedList` with in-memory ports. Tests: three rows with one code become one Spec ID named by the most common name; two rows with the same name and different facts become two; a fact `SaveSpecId` refuses is dropped and reported, the row saved; a dry run calls no save; a value read under a ruling is flagged in its report row with the ruling's name; the summary counts rows, new, same-as, already-saved and skipped, and the item-name agreement on rows with both columns.
+- [x] **Verify.** The tests pass.
 
 ### Step 3.4 — Workbook, report and command
 
-- [ ] **Action.** Add `exceljs`; `ExcelVerifiedListSource`, `CsvImportReport`, `src/scripts/atlas-import.ts` and the npm script. A database test runs the command on an invented workbook built in the test: a dry run saves nothing and prints #28's dry-run sentence; `--write` saves and prints #28's sentence; a second `--write` saves nothing and reports every saved row `already saved`; an unknown or disabled `--as` prints #28's refusal and reads nothing; an item name merged down three rows gives all three rows that name.
-- [ ] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
+- [x] **Action.** Add `exceljs`; `ExcelVerifiedListSource`, `CsvImportReport`, `src/scripts/atlas-import.ts` and the npm script. A database test runs the command on an invented workbook built in the test: a dry run saves nothing and prints #28's dry-run sentence; `--write` saves and prints #28's sentence; a second `--write` saves nothing and reports every saved row `already saved`; an unknown or disabled `--as` prints #28's refusal and reads nothing; an item name merged down three rows gives all three rows that name.
+- [x] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
 
 ### Step 3.5 — Docs and the pull request
 
-- [ ] **Action.** `commands.md` (`atlas:import`, its options, that the workbook and the report never enter the repository; the spelling table's entries are `WORD_LIST`); open the pull request "Part of #56".
-- [ ] **Verify.** CI and `pr-audit` pass.
+- [x] **Action.** `commands.md` (`atlas:import`, its options, that the workbook and the report never enter the repository; the spelling table's entries are `WORD_LIST`); open the pull request "Part of #56".
+- [x] **Verify.** CI and `pr-audit` pass.
 
 ---
 

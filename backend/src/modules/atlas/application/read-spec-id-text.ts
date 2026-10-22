@@ -1,11 +1,12 @@
 import type { UseCase } from '../../../shared/application/use-case.js';
 import { err, ok, type Result } from '../../../shared/domain/result.js';
+import { buildKeepingWhatFits } from '../domain/build-keeping-what-fits.js';
 import type { DictionaryRepository } from '../domain/dictionary-repository.js';
 import { readText } from '../domain/reading/read-text.js';
 import { CURRENT_RELEASE, slotDefinition, type SlotKey } from '../domain/slots.js';
 import { InvalidLookupError, InvalidSpecIdError } from '../domain/spec-id.errors.js';
 import { specIdMessages } from '../domain/spec-id.messages.js';
-import { meaningOfFact, SpecId, type SpecIdFactsInput } from '../domain/spec-id.js';
+import { meaningOfFact } from '../domain/spec-id.js';
 import {
   toDecodedSpecIdDto,
   type DecodedSpecIdDto,
@@ -40,25 +41,11 @@ export class ReadSpecIdText
     }
 
     const reading = readText(text, dictionary, input.productType);
-    const facts: Record<string, unknown> = { ...reading.facts };
-    const dropped = new Set<SlotKey>();
-    let decoded: DecodedSpecIdDto | null = null;
-    if (typeof facts.productType === 'string') {
-      // A fact the product type cannot have is refused by the build: drop each one and build again.
-      for (;;) {
-        const built = SpecId.build(facts as unknown as SpecIdFactsInput, dictionary);
-        if (built.ok) {
-          decoded = toDecodedSpecIdDto(built.value, dictionary);
-          break;
-        }
-        const refused = (Object.keys(built.error.issues) as SlotKey[]).filter((key) => key !== 'productType' && key in facts);
-        if (refused.length === 0) break;
-        for (const key of refused) {
-          delete facts[key];
-          dropped.add(key);
-        }
-      }
-    }
+    // A fact the product type cannot have is refused by the build: it is dropped and the build tried again.
+    const build = buildKeepingWhatFits(reading.facts, dictionary);
+    const facts: Record<string, unknown> = { ...build.facts };
+    const dropped = new Set<SlotKey>(build.dropped.map(({ key }) => key));
+    const decoded: DecodedSpecIdDto | null = build.specId ? toDecodedSpecIdDto(build.specId, dictionary) : null;
 
     const kept = reading.read.filter((fact) => !dropped.has(fact.key));
     const meaningIn = (key: SlotKey, words: string): string => {
