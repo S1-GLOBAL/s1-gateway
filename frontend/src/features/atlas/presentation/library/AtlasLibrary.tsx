@@ -112,7 +112,7 @@ export function AtlasLibrary({ dictionary, timeZone }: { dictionary: AtlasDictio
 
 /**
  * The product-type choices, folded under a summary that names the one in
- * force. Open at first, so the choices stay a glance away.
+ * force. Folded at first, so the list can sit higher.
  */
 function ProductTypeFilter({
   productType,
@@ -126,7 +126,7 @@ function ProductTypeFilter({
   const current = productTypes.find((value) => value.code === productType)?.meaning ?? 'All';
 
   return (
-    <details open className="group flex flex-col gap-2">
+    <details className="group flex flex-col gap-2">
       <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
         <ChevronDown
           size={16}
