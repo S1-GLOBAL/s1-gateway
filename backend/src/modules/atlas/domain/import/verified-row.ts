@@ -35,9 +35,9 @@ export interface VerifiedRow {
   readonly company: string;
   /** Column B, COUNTRY. */
   readonly country: string;
-  /** Columns O to U as Excel shows them; empty when the cell is. */
+  /** Columns O to U as Excel shows them; empty when the cell is empty. */
   readonly quote: Readonly<Record<QuoteColumn, string>>;
-  /** Columns of `quote` whose formula has no value saved in the workbook, so are read empty. */
+  /** Columns of `quote` whose formula has no value saved in the workbook, so they are read empty. */
   readonly unsavedFormulas: readonly QuoteColumn[];
 }
 
