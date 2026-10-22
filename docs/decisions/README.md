@@ -63,3 +63,4 @@ Number sequentially. Never renumber.
 | [0024](./0024-spec-ids-move-to-the-s2-format.md) | Spec IDs move to the S2 format | Accepted; partly superseded by 0025 |
 | [0025](./0025-spec-ids-are-written-short.md) | Spec IDs are written short: one letter for an empty slot, and no format tag | Accepted |
 | [0026](./0026-raw-text-is-read-by-rules-and-a-public-word-list.md) | Raw text is read by rules and a public word list | Accepted |
+| [0027](./0027-manufacturers-and-quotes-live-in-atlas-behind-sign-in.md) | Manufacturers and quotes live in Atlas, behind sign-in, and never in the repository | Accepted |
