@@ -181,7 +181,7 @@ describe('AtlasLibrary, Search', () => {
     type(`${TEXT}s`);
 
     expect(screen.queryByText('Does this code look right?')).toBeNull();
-    expect(screen.getByRole('radio', { name: 'All' })).toBeTruthy();
+    expect(document.querySelector('summary')?.textContent).toBe('Product type · All');
     expect(await screen.findByText('No names match. Press Search to read the facts from your text.')).toBeTruthy();
   });
 
