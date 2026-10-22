@@ -69,7 +69,7 @@ request, stopping for the owner after each.
 |---|---|---|
 | 1. S2 format, S2 0.1.0 and the conversion | 7 / 7 | Done — on staging, a Spec ID saved before the release opens with its S2 code, and its old S1 code finds it; see #28 |
 | 2. Workspace and library for S2 | 4 / 4 | Done — on staging, a 2-colour-print double-wall cup and a 3-compartment bagasse container save with their S2 codes, and an S1 code given out before phase 1 still finds its product; see #28 |
-| 3. The verified-list import | 5 / 5 | Done — `atlas:import` reads the verified list and saves its Spec IDs (#63); the staging run waits for phase 4 (Step 4.5) |
+| 3. The verified-list import | 5 / 5 | Done — `atlas:import` reads the verified list and saves its Spec IDs (#63); the staging run is done in phase 4 (Step 4.5) |
 | 4. Manufacturers and quotes | 5 / 5 | Done — on staging on 2026-10-23, `atlas:import` saved 716 Spec IDs and 1,053 quotes from 149 manufacturers, and a second `--write` saved nothing new; see #56 |
 
 ---
@@ -311,7 +311,7 @@ One pull request, "Part of #28".
 
 ## Phase 3 — The verified-list import
 
-One pull request, "Part of #56". #28 closed after phase 2, so #56 carries this phase and phase 4; the staging run waits for phase 4 (Step 4.5).
+One pull request, "Part of #56". #28 closed after phase 2, so #56 carries this phase and phase 4; the staging run is done in phase 4 (Step 4.5).
 
 Since #36 ([ADR 0025](../decisions/0025-spec-ids-are-written-short.md)), codes are written short: 25 parts, no
 `S2.` tag, an empty slot `Y` or `X`. The import creates short codes through `SaveSpecId`; where this
