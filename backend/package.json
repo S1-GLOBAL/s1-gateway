@@ -18,15 +18,18 @@
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:create-admin": "tsx src/scripts/create-admin.ts"
+    "db:create-admin": "tsx src/scripts/create-admin.ts",
+    "atlas:import": "tsx src/scripts/atlas-import.ts"
   },
   "dependencies": {
     "compression": "^1.8.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
+    "jszip": "^3.10.2",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
     "postgres": "^3.4.9",
