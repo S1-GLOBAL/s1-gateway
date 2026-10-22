@@ -205,8 +205,8 @@ left for one slot leave it not known, flagged in the report:
 
 A size written with a fraction, `20-1/8`, `20 1/8` or `10½` (halves to
 sixty-fourths), is in inches, as is every number of that size with no unit
-written (#58). A size with no unit and no fraction stays millimetres, by
-ADR 0019 and the rulings.
+written; a unit written still wins (#58). A size with no unit and no fraction
+stays millimetres, by ADR 0019 and the rulings.
 
 ### Manufacturers and quotes — phase 4
 
@@ -396,7 +396,6 @@ The plan is complete when every box below is checked.
 
 - The Manufacturers page and its stages — #57
 - Adding or editing manufacturers and quotes in Atlas — #61
-- Reading inches, print colour counts and capacity ranges correctly — #58, best before Step 4.5
 - Running the import on production — reyxdz, with the release
 - Variant numbers and the collision review — no issue yet
 - Editing the dictionary from the app — no issue yet

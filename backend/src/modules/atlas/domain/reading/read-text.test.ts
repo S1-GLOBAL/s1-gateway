@@ -96,7 +96,7 @@ describe('readText, #58', () => {
     ['Paper cup 3 color printing', '03'],
     ['Paper cup with 3-color print', '03'],
     ['Paper cup full colour printing', 'FC'],
-  ])('reads %s as print %s, and no size', (text, print) => {
+  ])('reads %s as print %s, and not as a size', (text, print) => {
     const reading = read(text);
     expect(reading.facts).toEqual({ productType: 'CUP', material: 'B00', print });
   });
