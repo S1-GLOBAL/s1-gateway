@@ -32,6 +32,8 @@ interface Match {
   /** A slot code, `Z14` for a capacity, or a count as digits. */
   readonly value: string;
   readonly paperOnly: boolean;
+  /** How a conflict reports this value, when not as the span's own words: one end of a range. */
+  readonly words?: string;
 }
 
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
@@ -62,8 +64,13 @@ function allMatches(lower: string, dictionary: Dictionary): Match[] {
   }
   for (const keyword of KEYWORDS) {
     for (const match of lower.matchAll(keyword.pattern)) {
+      const span = { start: match.index, end: match.index + match[0].length, key: keyword.slot, paperOnly: keyword.paperOnly === true };
+      if (keyword.ends) {
+        for (const { value, words } of keyword.ends(match)) found.push({ ...span, value, words });
+        continue;
+      }
       const value = typeof keyword.value === 'string' ? keyword.value : keyword.value(match);
-      found.push({ start: match.index, end: match.index + match[0].length, key: keyword.slot, value, paperOnly: keyword.paperOnly === true });
+      found.push({ ...span, value });
     }
   }
   // The word list and the product-type names can both name the same words ("bowl"): one match each.
@@ -119,7 +126,10 @@ export function readText(text: string, dictionary: Dictionary, productType?: str
   const decide = (key: SlotKey, found: readonly Match[]) => {
     const values = [...new Set(found.map((match) => match.value))];
     if (values.length === 1) facts[key] = factOf(key, values[0] ?? '');
-    else conflicts.push({ key, found: values.map((value) => wordsOf(text, found.filter((match) => match.value === value).slice(0, 1))) });
+    else {
+      const first = (value: string) => found.find((match) => match.value === value) as Match;
+      conflicts.push({ key, found: values.map((value) => first(value).words ?? wordsOf(text, [first(value)])) });
+    }
   };
   for (const key of ['productType', 'material'] as const) {
     const found = byKey.get(key);
