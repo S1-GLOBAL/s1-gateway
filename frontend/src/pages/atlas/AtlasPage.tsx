@@ -1,7 +1,7 @@
-import { BookOpen } from 'lucide-react';
 import { useState } from 'react';
 import { AtlasLibrary, DictionarySheet, NewSpecIdLink, useDictionary } from '@/features/atlas';
 import { Button } from '@/shared/ui/Button';
+import { BookOpenIcon } from '@/shared/ui/icons';
 import { PageHeader } from '@/shared/ui/PageHeader';
 
 /** `/atlas`: the library of saved Spec IDs, one search box, and the dictionary. */
@@ -17,7 +17,7 @@ export function AtlasPage() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="secondary" onClick={() => setDictionaryOpen(true)}>
-              <BookOpen size={16} strokeWidth={1.75} aria-hidden="true" />
+              <BookOpenIcon size={16} />
               Dictionary
             </Button>
             <NewSpecIdLink />

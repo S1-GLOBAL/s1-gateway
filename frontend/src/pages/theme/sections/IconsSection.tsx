@@ -4,6 +4,7 @@ import {
   AccountsIcon,
   AlertIcon,
   AtlasIcon,
+  BookOpenIcon,
   CheckIcon,
   ExternalLinkIcon,
   InProductionIcon,
@@ -28,6 +29,7 @@ import { ShowcaseSection } from '../ShowcaseSection';
 const ICONS: { name: string; Icon: ComponentType<IconProps>; motion: string }[] = [
   { name: 'Accounts', Icon: AccountsIcon, motion: 'Second person joins' },
   { name: 'Atlas', Icon: AtlasIcon, motion: 'Folds redraw in turn' },
+  { name: 'Book open', Icon: BookOpenIcon, motion: 'Covers open; spine redraws' },
   { name: 'Tools', Icon: ToolsIcon, motion: 'Tiles dip in turn' },
   { name: 'Theme', Icon: ThemeIcon, motion: 'Paint dots pop' },
   { name: 'Sun', Icon: SunIcon, motion: 'Rays redraw around' },
