@@ -9,6 +9,7 @@ import { atlasSpecIdChanges } from './atlas-spec-id-changes.table.js';
 import { atlasSpecIds } from './atlas-spec-ids.table.js';
 import { DrizzleDictionaryRepository } from './drizzle-dictionary-repository.js';
 import { DrizzleSpecIdRepository } from './drizzle-spec-id-repository.js';
+import { DrizzleSourcingRepository } from './drizzle-sourcing-repository.js';
 
 const connection = connectTestDatabase();
 const CONVERT = readFileSync(new URL('../../../../drizzle/0011_convert_atlas_codes_to_s2.sql', import.meta.url), 'utf8');
@@ -106,7 +107,7 @@ describe('the conversion migration, 0011', () => {
     });
     await connection.db.execute(sql.raw(CONVERT));
 
-    const find = new FindSpecIdByCode(new DrizzleDictionaryRepository(connection.db), new DrizzleSpecIdRepository(connection.db));
+    const find = new FindSpecIdByCode(new DrizzleDictionaryRepository(connection.db), new DrizzleSpecIdRepository(connection.db), new DrizzleSourcingRepository(connection.db));
     const result = await find.execute({ code: LID.toLowerCase() });
 
     expect(result.ok && result.value.id).toBe('00000000-0000-4000-8000-000000000001');

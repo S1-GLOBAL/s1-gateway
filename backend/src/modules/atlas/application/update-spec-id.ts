@@ -13,9 +13,11 @@ import {
   type SpecIdIssues,
 } from '../domain/spec-id.errors.js';
 import { SpecId } from '../domain/spec-id.js';
+import type { SourcingRepository } from '../domain/sourcing/sourcing-repository.js';
 import type { SpecIdRepository } from '../domain/spec-id-repository.js';
 import { CURRENT_RELEASE } from '../domain/slots.js';
-import { toSavedSpecIdDto, type SavedSpecIdDto, type UpdateSpecIdInput } from './atlas.dto.js';
+import type { SavedSpecIdDto, UpdateSpecIdInput } from './atlas.dto.js';
+import { savedSpecIdDtoOf } from './stage-counts.js';
 
 export type UpdateSpecIdError = InvalidSpecIdError | SpecIdNotFoundError | SpecIdChangedError | SpecIdExistsError;
 
@@ -28,6 +30,7 @@ export class UpdateSpecId implements UseCase<UpdateSpecIdInput, Result<SavedSpec
   constructor(
     private readonly dictionaries: DictionaryRepository,
     private readonly specIds: SpecIdRepository,
+    private readonly sourcing: SourcingRepository,
     private readonly clock: Clock,
     private readonly ids: IdGenerator,
   ) {}
@@ -59,14 +62,14 @@ export class UpdateSpecId implements UseCase<UpdateSpecIdInput, Result<SavedSpec
     const change = SpecIdChange.updated(current.savedSpecId, revised.value, this.ids.next());
 
     // Nothing to change: answer what is saved, and record nothing.
-    if (change.isEmpty) return ok(toSavedSpecIdDto(current, dictionary));
+    if (change.isEmpty) return ok(await savedSpecIdDtoOf(this.sourcing, current, dictionary));
 
     if (input.version !== current.savedSpecId.version) return err(new SpecIdChangedError());
 
     const code = built.value.code;
     const other = await this.specIds.findByCode(code);
     if (other && other.savedSpecId.id !== input.id) {
-      return err(new SpecIdExistsError(toSavedSpecIdDto(other, dictionary)));
+      return err(new SpecIdExistsError(await savedSpecIdDtoOf(this.sourcing, other, dictionary)));
     }
 
     // The database decides between simultaneous changes: the version, and the unique code.
@@ -74,11 +77,12 @@ export class UpdateSpecId implements UseCase<UpdateSpecIdInput, Result<SavedSpec
     if (!updated.ok) {
       if (updated.error instanceof SpecIdChangedError) return err(updated.error);
       const winner = await this.specIds.findByCode(code);
-      return err(winner ? new SpecIdExistsError(toSavedSpecIdDto(winner, dictionary)) : updated.error);
+      return err(winner ? new SpecIdExistsError(await savedSpecIdDtoOf(this.sourcing, winner, dictionary)) : updated.error);
     }
 
     return ok(
-      toSavedSpecIdDto(
+      await savedSpecIdDtoOf(
+        this.sourcing,
         { savedSpecId: revised.value, savedByName: current.savedByName, updatedByName: input.updatedBy.fullName },
         dictionary,
       ),

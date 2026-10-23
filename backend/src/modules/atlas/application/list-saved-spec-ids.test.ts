@@ -4,6 +4,7 @@ import { SequentialIdGenerator } from '../../../shared/application/testing/fakes
 import { ListSavedSpecIds } from './list-saved-spec-ids.js';
 import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
+import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { UpdateSpecId } from './update-spec-id.js';
 
@@ -26,7 +27,7 @@ async function setup(count: number) {
   specIds.nameSaver(SAVER.id, SAVER.fullName);
   const clock = new TickingClock();
   const ids = new SequentialIdGenerator();
-  const save = new SaveSpecId(dictionaries, specIds, clock, ids);
+  const save = new SaveSpecId(dictionaries, specIds, new InMemorySourcingRepository(), clock, ids);
   const savedIds: string[] = [];
   for (let n = 1; n <= count; n += 1) {
     const saved = await save.execute({
@@ -38,8 +39,8 @@ async function setup(count: number) {
     savedIds.push(saved.value.id);
   }
   return {
-    list: new ListSavedSpecIds(dictionaries, specIds),
-    update: new UpdateSpecId(dictionaries, specIds, clock, ids),
+    list: new ListSavedSpecIds(dictionaries, specIds, new InMemorySourcingRepository()),
+    update: new UpdateSpecId(dictionaries, specIds, new InMemorySourcingRepository(), clock, ids),
     save,
     savedIds,
   };

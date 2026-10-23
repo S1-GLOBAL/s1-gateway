@@ -4,13 +4,14 @@ import type { DictionaryRepository } from '../domain/dictionary-repository.js';
 import { shortForm } from '../domain/old-codes.js';
 import { CURRENT_RELEASE } from '../domain/slots.js';
 import { SpecIdNotFoundError } from '../domain/spec-id.errors.js';
+import type { SourcingRepository } from '../domain/sourcing/sourcing-repository.js';
 import type { SpecIdRepository } from '../domain/spec-id-repository.js';
 import {
   toFormerHolderDto,
-  toSavedSpecIdDto,
   type FindSpecIdByCodeInput,
   type SpecIdLookupDto,
 } from './atlas.dto.js';
+import { savedSpecIdDtoOf } from './stage-counts.js';
 
 /**
  * Opens a saved Spec ID by a code: the one that has it now, with every Spec ID
@@ -24,6 +25,7 @@ export class FindSpecIdByCode
   constructor(
     private readonly dictionaries: DictionaryRepository,
     private readonly specIds: SpecIdRepository,
+    private readonly sourcing: SourcingRepository,
   ) {}
 
   async execute(input: FindSpecIdByCodeInput): Promise<Result<SpecIdLookupDto, SpecIdNotFoundError>> {
@@ -38,12 +40,16 @@ export class FindSpecIdByCode
     );
 
     if (holder) {
-      return ok({ ...toSavedSpecIdDto(holder, dictionary), replacedCode: null, formerHolders: former.map(toFormerHolderDto) });
+      return ok({
+        ...(await savedSpecIdDtoOf(this.sourcing, holder, dictionary)),
+        replacedCode: null,
+        formerHolders: former.map(toFormerHolderDto),
+      });
     }
     const [latest, ...others] = former;
     if (!latest) return err(new SpecIdNotFoundError());
     return ok({
-      ...toSavedSpecIdDto(latest.record, dictionary),
+      ...(await savedSpecIdDtoOf(this.sourcing, latest.record, dictionary)),
       replacedCode: code,
       formerHolders: others.map(toFormerHolderDto),
     });

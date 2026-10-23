@@ -45,13 +45,14 @@ export async function atlasImport(db: Database, options: AtlasImportOptions): Pr
 
   const dictionaries = new DrizzleDictionaryRepository(db);
   const specIds = new DrizzleSpecIdRepository(db);
+  const sourcing = new DrizzleSourcingRepository(db);
   const clock = new SystemClock();
   const ids = new CryptoIdGenerator();
   const importer = new ImportVerifiedList(
     dictionaries,
     specIds,
-    new DrizzleSourcingRepository(db),
-    new SaveSpecId(dictionaries, specIds, clock, ids),
+    sourcing,
+    new SaveSpecId(dictionaries, specIds, sourcing, clock, ids),
     new ExcelVerifiedListSource(options.workbook),
     new CsvImportReport(options.report),
     clock,

@@ -7,7 +7,7 @@ import type {
   StageChangeRecord,
   StageChangeToRecord,
 } from '../../domain/sourcing/sourcing-repository.js';
-import { recordedAt, type StageChange } from '../../domain/sourcing/stage.js';
+import { recordedAt, type Stage, type StageChange, stageOf } from '../../domain/sourcing/stage.js';
 
 /** The SourcingRepository contract, in memory. A test double, never used in production. */
 export class InMemorySourcingRepository implements SourcingRepository {
@@ -79,5 +79,27 @@ export class InMemorySourcingRepository implements SourcingRepository {
     const change: StageChange = { ...input, stageBefore, changedAt: recordedAt(newest?.changedAt ?? null, input.changedAt) };
     this.stageChanges.push(change);
     return change;
+  }
+
+  /** The ids of each `stagesOf` call, in order: a test sees one read per answer. */
+  readonly stageReads: string[][] = [];
+
+  async stagesOf(specIds: readonly string[]): Promise<Map<string, Stage[]>> {
+    this.stageReads.push([...specIds]);
+    const stages = new Map<string, Stage[]>();
+    for (const specId of specIds) {
+      const quotes = this.quotes.filter((quote) => quote.specId === specId);
+      const manufacturerIds = [...new Set(quotes.map((quote) => quote.manufacturerId))];
+      if (manufacturerIds.length === 0) continue;
+      stages.set(
+        specId,
+        manufacturerIds.map((manufacturerId) => {
+          const set = this.stageChanges.filter((c) => c.specId === specId && c.manufacturerId === manufacturerId).at(-1);
+          const values = quotes.filter((quote) => quote.manufacturerId === manufacturerId).map((quote) => quote.values);
+          return stageOf(values, set?.stageAfter ?? null);
+        }),
+      );
+    }
+    return stages;
   }
 }

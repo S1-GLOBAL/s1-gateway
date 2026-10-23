@@ -12,13 +12,15 @@ import {
 import { CURRENT_RELEASE } from '../domain/slots.js';
 import { InvalidLookupError } from '../domain/spec-id.errors.js';
 import { checkSlotValue } from '../domain/spec-id.js';
-import type { SpecIdRepository } from '../domain/spec-id-repository.js';
+import type { SourcingRepository } from '../domain/sourcing/sourcing-repository.js';
+import type { SavedSpecIdRecord, SpecIdRepository } from '../domain/spec-id-repository.js';
 import {
   toSavedSpecIdDto,
   type FindSimilarSpecIdsInput,
   type SavedSpecIdDto,
   type SimilarSpecIdsDto,
 } from './atlas.dto.js';
+import { stageCountsOf } from './stage-counts.js';
 
 /**
  * Finds saved Spec IDs by the slots chosen: those that fit, the fewest slots
@@ -31,6 +33,7 @@ export class FindSimilarSpecIds
   constructor(
     private readonly dictionaries: DictionaryRepository,
     private readonly specIds: SpecIdRepository,
+    private readonly sourcing: SourcingRepository,
   ) {}
 
   async execute(input: FindSimilarSpecIdsInput): Promise<Result<SimilarSpecIdsDto, InvalidLookupError>> {
@@ -55,18 +58,20 @@ export class FindSimilarSpecIds
     // Candidates come newest first; each group is then ordered by closeness, and a
     // stable sort keeps a tie newest first (#50).
     const candidates = await this.specIds.findCandidates(criteria);
-    const fits: { saved: SavedSpecIdDto; notKnown: number }[] = [];
-    const mightFit: { saved: SavedSpecIdDto; recorded: number }[] = [];
+    const fits: { record: SavedSpecIdRecord; notKnown: number }[] = [];
+    const mightFit: { record: SavedSpecIdRecord; recorded: number }[] = [];
     for (const record of candidates) {
       const slotOf = (key: SearchableSlotKey) => record.savedSpecId.specId.slot(key);
       const match = classifyMatch(slotOf, criteria);
-      if (match === 'fits') fits.push({ saved: toSavedSpecIdDto(record, dictionary), notKnown: notKnownCount(slotOf) });
-      else if (match === 'might-fit') {
-        mightFit.push({ saved: toSavedSpecIdDto(record, dictionary), recorded: recordedCount(slotOf, criteria) });
-      }
+      if (match === 'fits') fits.push({ record, notKnown: notKnownCount(slotOf) });
+      else if (match === 'might-fit') mightFit.push({ record, recorded: recordedCount(slotOf, criteria) });
     }
     fits.sort((a, b) => a.notKnown - b.notKnown);
     mightFit.sort((a, b) => b.recorded - a.recorded);
-    return ok({ fits: fits.map(({ saved }) => saved), mightFit: mightFit.map(({ saved }) => saved) });
+    // One read for every match in both groups (#73).
+    const counts = await stageCountsOf(this.sourcing, [...fits, ...mightFit].map(({ record }) => record.savedSpecId.id));
+    const dto = ({ record }: { record: SavedSpecIdRecord }): SavedSpecIdDto =>
+      toSavedSpecIdDto(record, dictionary, counts(record.savedSpecId.id));
+    return ok({ fits: fits.map(dto), mightFit: mightFit.map(dto) });
   }
 }

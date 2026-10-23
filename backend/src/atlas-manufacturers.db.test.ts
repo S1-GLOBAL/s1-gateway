@@ -160,3 +160,17 @@ describe('PUT /api/v1/atlas/saved/:id/manufacturers/:manufacturerId/stage', () =
     expect(response.status).toBe(401);
   });
 });
+
+describe('manufacturerStages on the library (#73)', () => {
+  it("answers each Spec ID's stage counts with it in GET /api/v1/atlas/saved", async () => {
+    const { id, acme } = await cupWithQuotes();
+    await admin.put(stagePath(id, acme)).send({ stage: 'sampling' });
+
+    const response = await staff.get('/api/v1/atlas/saved');
+
+    expect(response.status).toBe(200);
+    const cup = response.body.data.items.find((item: { id: string }) => item.id === id);
+    // Acme set to Sampling; Borealis with N/A only.
+    expect(cup.manufacturerStages).toEqual({ specificationsReceived: 2, quoted: 1, sampling: 1, inProduction: 0 });
+  });
+});

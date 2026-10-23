@@ -1,6 +1,6 @@
 # 0009. Stage icons on every Spec ID card
 
-- **Status:** Ready
+- **Status:** In progress
 - **Owner:** Rey Denzo
 - **Related:** [#73](https://github.com/S1-GLOBAL/s1-gateway/issues/73) ·
   [plan 0008](./0008-manufacturers-page.md) ·
@@ -41,7 +41,7 @@ Lit icons draw themselves once when the card appears, and again on hover; nothin
 
 | Phase | Steps | Status |
 |---|---|---|
-| 1. Stage counts in the API | 0 / 4 | Not started |
+| 1. Stage counts in the API | 3 / 4 | In progress — steps 1.1 to 1.3 built; step 1.4 is this phase's pull request |
 | 2. Icons on the cards | 0 / 6 | Not started |
 
 Two pull requests, as reyxdz decided on 2026-10-23: phase 1 is "Part of #73",
@@ -132,26 +132,26 @@ One pull request, "Part of #73".
 
 ### Step 1.1 — Counts in the domain
 
-- [ ] **Action.** `STAGE_ORDER` and `reachedCounts` in `domain/sourcing/stage.ts`. Tests:
+- [x] **Action.** `STAGE_ORDER` and `reachedCounts` in `domain/sourcing/stage.ts`. Tests:
   - one In production and one Quoted give 2, 2, 1, 1;
   - one Specifications received gives 1, 0, 0, 0;
   - an admin-set Sampling gives 1, 1, 1, 0;
   - none give 0, 0, 0, 0.
-- [ ] **Verify.** From `backend/`: `npx vitest run --config vitest.unit.config.ts src/modules/atlas/domain/sourcing` passes.
+- [x] **Verify.** From `backend/`: `npx vitest run --config vitest.unit.config.ts src/modules/atlas/domain/sourcing` passes.
 
 ### Step 1.2 — One read for many Spec IDs
 
-- [ ] **Action.** `stagesOf` on `SourcingRepository`, Drizzle and in-memory. Database tests:
+- [x] **Action.** `stagesOf` on `SourcingRepository`, Drizzle and in-memory. Database tests:
   - two Spec IDs with three manufacturers between them answer each manufacturer's stage under its Spec ID;
   - a price of `N/A` is no price;
   - an admin-set stage wins, and a cleared one hands back to the quotes;
   - a Spec ID with none is absent;
   - an empty list answers an empty map.
-- [ ] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
+- [x] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
 
 ### Step 1.3 — Every `SavedSpecId` carries its counts
 
-- [ ] **Action.** The contract and DTO field, `toSavedSpecIdDto`'s third argument, and the six use cases above, each calling `stagesOf` once.
+- [x] **Action.** The contract and DTO field, `toSavedSpecIdDto`'s third argument, and the six use cases above, each calling `stagesOf` once.
 
   Tests with the in-memory adapters:
   - the library page of 20 calls `stagesOf` once, with all 20 ids;
@@ -160,7 +160,7 @@ One pull request, "Part of #73".
   - `SPEC_ID_EXISTS` carries the existing Spec ID's counts.
 
   One composed database test: `GET /api/v1/atlas/saved` answers `manufacturerStages` with each item.
-- [ ] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
+- [x] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
 
 ### Step 1.4 — Docs and the pull request
 

@@ -41,18 +41,18 @@ export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule[] {
     new GetDictionary(dictionaries),
     new DecodeSpecId(dictionaries),
     new EncodeSpecId(dictionaries),
-    new SaveSpecId(dictionaries, specIds, deps.clock, deps.ids),
-    new FindSpecIdByCode(dictionaries, specIds),
-    new FindSimilarSpecIds(dictionaries, specIds),
+    new SaveSpecId(dictionaries, specIds, sourcing, deps.clock, deps.ids),
+    new FindSpecIdByCode(dictionaries, specIds, sourcing),
+    new FindSimilarSpecIds(dictionaries, specIds, sourcing),
     (req) => {
       const { account } = requireAuth(req);
       return { id: account.id, fullName: account.fullName };
     },
     {
-      getSaved: new GetSavedSpecId(dictionaries, specIds),
-      update: new UpdateSpecId(dictionaries, specIds, deps.clock, deps.ids),
+      getSaved: new GetSavedSpecId(dictionaries, specIds, sourcing),
+      update: new UpdateSpecId(dictionaries, specIds, sourcing, deps.clock, deps.ids),
       history: new GetSpecIdHistory(dictionaries, specIds),
-      library: new ListSavedSpecIds(dictionaries, specIds),
+      library: new ListSavedSpecIds(dictionaries, specIds, sourcing),
     },
     new ReadSpecIdText(dictionaries),
     {

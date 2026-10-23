@@ -33,7 +33,7 @@ async function setup() {
   sourcing.nameChanger(ADMIN.id, ADMIN.fullName);
   const ids = new SequentialIdGenerator();
   const clock = new FixedClock(NOW);
-  const save = new SaveSpecId(dictionaries, specIds, clock, ids);
+  const save = new SaveSpecId(dictionaries, specIds, new InMemorySourcingRepository(), clock, ids);
   const saved = async (material: string) => {
     const result = await save.execute({ name: 'Invented cup', facts: { productType: 'CUP', material }, savedBy: ADMIN });
     if (!result.ok) throw new Error('setup failed');

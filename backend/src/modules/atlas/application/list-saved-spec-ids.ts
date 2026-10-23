@@ -5,9 +5,11 @@ import { NAME_MAX_LENGTH } from '../domain/saved-spec-id.js';
 import { CURRENT_RELEASE } from '../domain/slots.js';
 import { InvalidLookupError } from '../domain/spec-id.errors.js';
 import { checkSlotValue } from '../domain/spec-id.js';
+import type { SourcingRepository } from '../domain/sourcing/sourcing-repository.js';
 import type { LibraryQuery, SpecIdRepository } from '../domain/spec-id-repository.js';
 import { toSavedSpecIdDto, type ListSavedSpecIdsInput, type SpecIdLibraryPageDto } from './atlas.dto.js';
 import { decodeLibraryCursor, encodeLibraryCursor } from './library-cursor.js';
+import { stageCountsOf } from './stage-counts.js';
 
 /** Twenty saved Spec IDs per page (#16). */
 export const LIBRARY_PAGE_SIZE = 20;
@@ -21,6 +23,7 @@ export class ListSavedSpecIds
   constructor(
     private readonly dictionaries: DictionaryRepository,
     private readonly specIds: SpecIdRepository,
+    private readonly sourcing: SourcingRepository,
   ) {}
 
   async execute(input: ListSavedSpecIdsInput): Promise<Result<SpecIdLibraryPageDto, InvalidLookupError>> {
@@ -54,8 +57,9 @@ export class ListSavedSpecIds
     const records = await this.specIds.list(query);
     const page = records.slice(0, LIBRARY_PAGE_SIZE);
     const last = page.at(-1);
+    const counts = await stageCountsOf(this.sourcing, page.map((record) => record.savedSpecId.id));
     return ok({
-      items: page.map((record) => toSavedSpecIdDto(record, dictionary)),
+      items: page.map((record) => toSavedSpecIdDto(record, dictionary, counts(record.savedSpecId.id))),
       nextCursor:
         records.length > LIBRARY_PAGE_SIZE && last
           ? encodeLibraryCursor({ lastChangedAt: last.savedSpecId.lastChangedAt, id: last.savedSpecId.id })
