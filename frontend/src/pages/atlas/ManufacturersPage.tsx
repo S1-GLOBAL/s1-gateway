@@ -1,8 +1,8 @@
-import { Factory } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useMe } from '@/features/accounts';
 import { BackToAtlas, ManufacturerGroups, useSpecIdManufacturers } from '@/features/atlas';
 import { EmptyState } from '@/shared/ui/EmptyState';
+import { NoManufacturersIcon } from '@/shared/ui/icons';
 
 const SECONDARY_LINK =
   'inline-flex h-10 items-center rounded-control border border-border-strong bg-surface px-4 text-sm font-medium text-ink shadow-sm transition-colors duration-150 ease-standard hover:bg-surface-raised';
@@ -49,7 +49,7 @@ export function ManufacturersPage() {
       </div>
       {data.manufacturers.length === 0 ? (
         <EmptyState
-          icon={<Factory size={24} strokeWidth={1.75} aria-hidden="true" />}
+          icon={<NoManufacturersIcon size={24} />}
           title="No manufacturers are recorded for this Spec ID yet."
           description="They come from the verified list import."
           action={openSpecId}
