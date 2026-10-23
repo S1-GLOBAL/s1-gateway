@@ -244,6 +244,36 @@ describe('the sign-in gate', () => {
     expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();
   });
 
+  it('keeps the front door up until the session check settles', async () => {
+    let rejectSession: (error: unknown) => void = () => undefined;
+    const pending = new Promise<never>((_resolve, reject) => {
+      rejectSession = reject;
+    });
+    const me = vi.fn<AccountsGateway['me']>(() => pending);
+    renderAt('/', fakeAccountsGateway({ me }));
+
+    expect(await screen.findByRole('status', { name: 'Source One' })).toBeTruthy();
+    expect(screen.queryByLabelText('Email')).toBeNull();
+
+    rejectSession(SIGNED_OUT);
+    expect(await screen.findByLabelText('Email')).toBeTruthy();
+  });
+
+  it('keeps the registration curtain up until the invite has loaded', async () => {
+    let resolveInvite: (invite: { email: string; expiresAt: Date }) => void = () => undefined;
+    const pending = new Promise<{ email: string; expiresAt: Date }>((resolve) => {
+      resolveInvite = resolve;
+    });
+    const getInvite = vi.fn<AccountsGateway['getInvite']>(() => pending);
+    renderAt('/register?token=tok', fakeAccountsGateway({ getInvite, me: async () => Promise.reject(SIGNED_OUT) }));
+
+    expect(await screen.findByRole('status', { name: 'Source One Internal Registration' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Create your account' })).toBeNull();
+
+    resolveInvite({ email: 'ada@sourceone.global', expiresAt: new Date('2026-10-23T08:00:00.000Z') });
+    expect(await screen.findByRole('heading', { level: 1, name: 'Create your account' })).toBeTruthy();
+  });
+
   it('opens an invite link without a session, outside the shell', async () => {
     const router = renderAt('/register?token=tok', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Create your account' })).toBeTruthy();

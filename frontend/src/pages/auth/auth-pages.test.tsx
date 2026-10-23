@@ -39,6 +39,11 @@ describe('SignInPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeTruthy();
   });
 
+  it('can go back to the landing', () => {
+    renderPage('/sign-in', <SignInPage />, '/sign-in', fakeAccountsGateway());
+    expect(screen.getByRole('link', { name: 'Back' }).getAttribute('href')).toBe('/');
+  });
+
   it('offers no way to create an account', () => {
     renderPage('/sign-in', <SignInPage />, '/sign-in', fakeAccountsGateway());
     expect(screen.queryByText(/New here?/)).toBeNull();
@@ -55,7 +60,7 @@ describe('SignInPage', () => {
     expect(signIn).toHaveBeenCalledWith({ email: 'ada@sourceone.global', password: 'a long enough password' });
   });
 
-  it('goes home when there is no next, or it points off the site', async () => {
+  it('opens Atlas when there is no next, or it points off the site', async () => {
     const router = renderPage(
       '/sign-in?next=https%3A%2F%2Fevil.example',
       <SignInPage />,
@@ -65,7 +70,7 @@ describe('SignInPage', () => {
     type('Email', 'ada@sourceone.global');
     type('Password', 'a long enough password');
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/atlas'));
   });
 
   it('shows why it was refused, exactly', async () => {

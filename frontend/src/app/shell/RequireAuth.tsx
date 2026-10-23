@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { isSignInRequired, takePriorSessionEnded, useSession } from '@/features/accounts';
 import { SkeletonBlock, SkeletonRegion } from '@/shared/ui/Skeleton';
+import { useDoorHold } from './door-hold';
 
 export interface RequireAuthProps {
   /** The change-password page itself must open for someone who has to change it. */
@@ -18,6 +19,7 @@ export interface RequireAuthProps {
 export function RequireAuth({ allowMustChangePassword = false, children }: RequireAuthProps) {
   const session = useSession();
   const location = useLocation();
+  useDoorHold(session.isPending);
 
   if (session.isPending) return <GateSkeleton />;
 

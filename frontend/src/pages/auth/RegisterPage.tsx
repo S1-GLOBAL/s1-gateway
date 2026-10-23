@@ -1,4 +1,5 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useDoorHold } from '@/app/shell/door-hold';
 import { isInviteInvalid, RegisterForm, useInvite, type Account } from '@/features/accounts';
 import { Button } from '@/shared/ui/Button';
 import { AuthLayout } from './AuthLayout';
@@ -8,8 +9,13 @@ import { AuthPageSkeleton } from './AuthPageSkeleton';
 export function RegisterPage() {
   const [params] = useSearchParams();
   const token = params.get('token');
-  if (!token) return <InviteNoLongerWorks />;
+  if (!token) return <MissingInvite />;
   return <Registration token={token} />;
+}
+
+function MissingInvite() {
+  useDoorHold(false);
+  return <InviteNoLongerWorks />;
 }
 
 function Registration({ token }: { token: string }) {
@@ -17,6 +23,7 @@ function Registration({ token }: { token: string }) {
   // Not a suspense query: a link that no longer works is a state of this
   // page, not a failure for the route's error boundary.
   const invite = useInvite(token);
+  useDoorHold(invite.isPending);
 
   if (invite.isPending) return <AuthPageSkeleton />;
 

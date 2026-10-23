@@ -97,19 +97,27 @@ Tokens in `src/shared/ui/motion.ts` (seconds) and `theme.css` (CSS):
 |---|---|---|
 | `duration.fast` | 120ms | Hover, press, leaving |
 | `duration.base` | 200ms | Toggles, small arrivals |
-| `duration.slow` | 320ms | Pages, panels, the sidebar |
+| `duration.slow` | 320ms | Pages inside the hub, panels, the sidebar |
+| `duration.curtain` | 600ms | The door curtain's cover, and its reveal |
 | `ease.standard` / `ease-standard` | `0.2, 0, 0, 1` | Most movement |
-| `ease.emphasized` / `ease-emphasized` | `0.05, 0.7, 0.1, 1` | Arrivals, the nav pill |
-| `ease.exit` / `ease-exit` | `0.3, 0, 1, 1` | Leaving |
+| `ease.emphasized` / `ease-emphasized` | `0.05, 0.7, 0.1, 1` | Arrivals, the nav pill, the curtain's reveal |
+| `ease.exit` / `ease-exit` | `0.3, 0, 1, 1` | Leaving, the curtain's cover |
 
 - Animate with `motion` through `import * as m from 'motion/react-m'` — never
   `motion.div`, which `<LazyMotion strict>` rejects.
-- Only the content region moves between pages. Transforms, opacity and a
-  small blur only.
+- Inside the hub, only the content region moves between pages. Transforms,
+  opacity and a small blur only. The sidebar and top bar stay put.
+- Crossing the door — landing, sign-in, registration, and entering or leaving
+  the hub — is a full-screen accent curtain: the mark and a mono line, never
+  the wordmark (ADR 0028). It does not play between hub pages. A cold open of
+  the landing or an invite link stays on that curtain until the screen can be
+  shown, then wipes.
 - Nothing shifts sideways between pages. The root always reserves the
   scrollbar's space (`scrollbar-gutter: stable` in `src/styles/index.css`), so
   a page that scrolls and one that does not have the same width.
 - Every animation respects reduced motion (`MotionConfig reducedMotion="user"`).
+  The curtain's wipe is skipped: the wash stays still until the screen is
+  ready, then it is gone.
 
 ## Icons
 

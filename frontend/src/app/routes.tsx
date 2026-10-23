@@ -10,6 +10,7 @@ import { AuthPageSkeleton } from '@/pages/auth/AuthPageSkeleton';
 import { LandingPageSkeleton } from '@/pages/landing/LandingPageSkeleton';
 import { ThemePageSkeleton } from '@/pages/theme/ThemePageSkeleton';
 import { AppShell } from './shell/AppShell';
+import { DoorTransition } from './shell/DoorTransition';
 import { RequireAuth } from './shell/RequireAuth';
 import { RouteBoundary } from './shell/RouteBoundary';
 
@@ -43,6 +44,9 @@ const ChangePasswordPage = lazy(() =>
 );
 
 export const routes: RouteObject[] = [
+  {
+    element: <DoorTransition />,
+    children: [
   // Outside the shell: bare layout, no navigation.
   {
     path: '/',
@@ -152,6 +156,8 @@ export const routes: RouteObject[] = [
         ),
       },
       { path: '*', element: <NotFoundPage /> },
+    ],
+  },
     ],
   },
 ];

@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-10-15
 - **Related:** [plan 0002](../plans/0002-visual-identity-and-motion.md) ·
-  [0013](./0013-loading-states-are-page-shaped-skeletons.md)
+  [0013](./0013-loading-states-are-page-shaped-skeletons.md) ·
+  [0028](./0028-the-door-is-a-full-screen-curtain.md)
 
 ## Context
 
@@ -23,10 +24,12 @@ JavaScript animation. It is used through `LazyMotion` with `m.*` elements in
 `strict` mode; the feature bundle (`domMax`, which the shared-layout nav
 indicator needs) is a separate chunk fetched after first paint.
 
-**Only the content region transitions.** The sidebar and top bar never move.
+**Only the content region transitions inside the hub.** The sidebar and top bar never move.
 Exit: fade and lift 4px, 120ms. Enter: rise 8px, fade in and un-blur from
 4px, 240ms. `AnimatePresence mode="wait"`, keyed on the route, with the
 leaving page's element frozen so it does not re-render as the new page.
+Crossing the signed-out door is a separate, longer curtain
+([ADR 0028](./0028-the-door-is-a-full-screen-curtain.md)).
 
 **The active nav item is marked by a lime pill** that slides between items as
 a shared layout animation.
@@ -39,7 +42,7 @@ link, a button, a card — sets `initial="rest"`, `whileHover="active"`,
 also plays once when its route becomes active. Nothing loops.
 
 **Durations and easings are tokens** (`frontend/src/shared/ui/motion.ts`):
-120ms, 200ms, 320ms; standard, emphasized and exit curves.
+120ms, 200ms, 320ms, and 600ms for the door curtain; standard, emphasized and exit curves.
 
 **Reduced motion is honoured** with `MotionConfig reducedMotion="user"`:
 movement and blur go, opacity fades stay, icons stay still.
@@ -65,4 +68,5 @@ variants driven by a parent's hover and by route activation are exactly what
 About 30–45 kB gzip of `motion`, loaded after first paint. Every new animated
 icon is written by hand, stroke by stroke — deliberate, and slower than
 importing one. Any page transition longer than 320ms, or any looping
-animation, is a departure from this record and needs a new one.
+animation, is a departure from this record and needs a new one. The door
+curtain is that departure: [ADR 0028](./0028-the-door-is-a-full-screen-curtain.md).
