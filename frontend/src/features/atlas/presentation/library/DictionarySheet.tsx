@@ -11,7 +11,8 @@ export interface DictionarySheetProps {
 
 /**
  * The dictionary in a side panel: every value of every slot, and which slots
- * apply to each product type. Wider than a usual sheet, for the rules table.
+ * apply to the product type you choose. Wider than a usual sheet, so the
+ * values sit in two columns.
  */
 export function DictionarySheet({ dictionary, open, onClose }: DictionarySheetProps) {
   // `approvedOn` is a day with no time: read in UTC, so no time zone moves it.
