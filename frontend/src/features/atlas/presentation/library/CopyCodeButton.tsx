@@ -4,7 +4,7 @@ import { Button } from '@/shared/ui/Button';
 import { cn } from '@/shared/ui/cn';
 
 /** How long the icon reads "Copied". Same wait as the Spec ID workspace. */
-const COPIED_MS = 2000;
+export const COPIED_MS = 2000;
 
 /** Copies one Spec ID code. Sits beside the code, so it must stay out of the card's link. */
 export function CopyCodeButton({ code }: { code: string }) {
