@@ -51,7 +51,7 @@ and this plan is corrected.
 | Phase | Steps | Status |
 |---|---|---|
 | 1. Stages and the two routes | 6 / 6 | Done — the stage table and both routes (#69); the page is phase 2 |
-| 2. The Manufacturers page | 5 / 7 | In progress — steps 2.1 to 2.5 built; step 2.6 is this phase's pull request, then reyxdz's staging check (2.7) |
+| 2. The Manufacturers page | 6 / 7 | In progress — the page (#70); step 2.7 is reyxdz's staging check |
 
 Two pull requests, as reyxdz decided on 2026-10-23: phase 1 is "Part of #57",
 and phase 2 is "Closes #57". Stop for the owner after each.
@@ -298,11 +298,11 @@ One pull request, "Closes #57". Screenshots use invented manufacturers and price
 
 ### Step 2.6 — The card links, browser check and pull request
 
-- [ ] **Action.**
+- [x] **Action.**
   - The library's cards (`LibraryList.tsx`) and Search's result cards (`TextSearchResults.tsx`, both Fits and Might fit) link to `/atlas/<id>/manufacturers`. Tests check both links, and that these still go to `/atlas/<id>`: a save (`features/atlas/presentation/NewSpecIdForm.tsx`, `features/atlas/presentation/library/SaveFromSearch.tsx`, `features/atlas/presentation/SaveOutcome.tsx`), the workspace's similar list (`features/atlas/presentation/workspace/MatchPanel.tsx`), and a pasted code's Open (`features/atlas/presentation/library/PastedCodeResult.tsx`). History remains the button on the Spec ID page (`features/atlas/presentation/SpecIdEditor.tsx`).
   - With invented manufacturers in the local database, check the page and take screenshots: light and dark, 390px with the bottom bar, an admin and a non-admin.
   - Open the pull request "Closes #57".
-- [ ] **Verify.** CI and `pr-audit` pass.
+- [x] **Verify.** CI and `pr-audit` pass.
 
 ### Step 2.7 — Staging (reyxdz)
 
