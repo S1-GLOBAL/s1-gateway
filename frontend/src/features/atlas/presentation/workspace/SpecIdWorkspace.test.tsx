@@ -128,6 +128,11 @@ describe('SpecIdWorkspace, already saved', () => {
       `Heavier lid${alike.code}`,
       `Unmeasured lid${might.code}`,
     ]);
+    // A similar Spec ID still opens its own page, not its manufacturers (#57).
+    expect(within(details).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      `/atlas/${alike.id}`,
+      `/atlas/${might.id}`,
+    ]);
     expect(screen.queryByRole('region', { name: 'Already saved' })).toBeNull();
   });
 
