@@ -83,10 +83,14 @@ describe('ManufacturersPage', () => {
     expect(screen.queryByRole('button', { name: 'Mark as sampling' })).toBeNull();
   });
 
-  it('says no manufacturers are recorded yet, with Open Spec ID', async () => {
+  it('says no manufacturers are recorded yet, with the circle-slash and Open Spec ID', async () => {
     renderAt(async () => list());
 
-    expect(await screen.findByText('No manufacturers are recorded for this Spec ID yet.')).toBeTruthy();
+    const title = await screen.findByText('No manufacturers are recorded for this Spec ID yet.');
+    const empty = title.parentElement?.parentElement;
+    expect(empty?.querySelector('circle')?.getAttribute('r')).toBe('10');
+    expect(empty?.querySelector('line')?.getAttribute('x1')).toBe('9');
+    expect(empty?.querySelector('line')?.getAttribute('y2')).toBe('9');
     expect(screen.getByText('They come from the verified list import.')).toBeTruthy();
     expect(screen.getAllByRole('link', { name: 'Open Spec ID' }).map((link) => link.getAttribute('href'))).toContain(
       `/atlas/${ID}`,
