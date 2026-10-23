@@ -18,3 +18,4 @@ export { atlasSpecIds } from './modules/atlas/infrastructure/atlas-spec-ids.tabl
 export { atlasSpecIdChanges } from './modules/atlas/infrastructure/atlas-spec-id-changes.table.js';
 export { atlasManufacturers } from './modules/atlas/infrastructure/atlas-manufacturers.table.js';
 export { atlasQuotes } from './modules/atlas/infrastructure/atlas-quotes.table.js';
+export { atlasManufacturerStageChanges } from './modules/atlas/infrastructure/atlas-manufacturer-stage-changes.table.js';

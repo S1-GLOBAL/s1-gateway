@@ -99,6 +99,13 @@
       "when": 1792685071668,
       "tag": "0013_atlas_manufacturers_and_quotes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792703812195,
+      "tag": "0014_atlas_manufacturer_stage_changes",
+      "breakpoints": true
     }
   ]
 }

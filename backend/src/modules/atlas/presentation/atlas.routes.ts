@@ -3,7 +3,9 @@ import type { AtlasController } from './atlas.controller.js';
 
 /**
  * The dictionary is only read (ADR 0021). A saved Spec ID is created, read and
- * changed, never deleted (ADR 0022): there is no PUT and no DELETE.
+ * changed, never deleted (ADR 0022): there is no DELETE. Every signed-in staff
+ * member may call these; the one PUT, a manufacturer's stage, is admins' only
+ * and lives in `createAtlasAdminRouter` (#57).
  */
 export function createAtlasRouter(controller: AtlasController): Router {
   const router = Router();
@@ -18,5 +20,16 @@ export function createAtlasRouter(controller: AtlasController): Router {
   router.get('/saved/:id', controller.getSaved);
   router.patch('/saved/:id', controller.update);
   router.get('/saved/:id/history', controller.history);
+  router.get('/saved/:id/manufacturers', controller.manufacturers);
+  return router;
+}
+
+/**
+ * Atlas routes only admins may call, mounted behind the admin gate (ADR 0027):
+ * setting or clearing a manufacturer's stage on a Spec ID (#57).
+ */
+export function createAtlasAdminRouter(controller: AtlasController): Router {
+  const router = Router();
+  router.put('/saved/:id/manufacturers/:manufacturerId/stage', controller.setManufacturerStage);
   return router;
 }

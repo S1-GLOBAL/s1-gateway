@@ -3,6 +3,7 @@ import type { SlotState, SpecId, SpecIdFactsInput } from '../domain/spec-id.js';
 import type { FormerHolderRecord, SavedSpecIdRecord } from '../domain/spec-id-repository.js';
 import type { Ruling } from '../domain/reading/size-rulings.js';
 import { DICTIONARY_SLOTS, slotDefinition, type SlotKey, type SlotRule } from '../domain/slots.js';
+import type { AdminStage, Stage } from '../domain/sourcing/stage.js';
 
 /** The dictionary as the application hands it outward. */
 export interface DictionaryDto {
@@ -234,4 +235,41 @@ export interface SpecIdTextReadingDto {
   conflicts: TextConflictDto[];
   /** Null until a product type is found or given. */
   decoded: DecodedSpecIdDto | null;
+}
+
+/** One verified-list row's quote, each value as the workbook shows it; null when empty (ADR 0027). */
+export interface ManufacturerQuoteDto {
+  itemName: string | null;
+  fobPerUnit: string | null;
+  fobPerCase: string | null;
+  fobTotal: string | null;
+  moldCost: string | null;
+  moldLeadTime: string | null;
+  sampleLeadTime: string | null;
+  productionLeadTime: string | null;
+}
+
+/** A manufacturer on one Spec ID, once, with its stage and every quote (#57). */
+export interface SpecIdManufacturerDto {
+  id: string;
+  name: string;
+  country: string | null;
+  stage: Stage;
+  /** The last change an admin made, if any; a cleared stage still names who cleared it. */
+  stageSet: { by: StaffDto; at: string; stage: AdminStage | null } | null;
+  quotes: ManufacturerQuoteDto[];
+}
+
+export interface SpecIdManufacturersDto {
+  specId: { id: string; name: string; code: string };
+  /** By name. */
+  manufacturers: SpecIdManufacturerDto[];
+}
+
+export interface SetManufacturerStageInput {
+  id: string;
+  manufacturerId: string;
+  /** Null clears the stage an admin set, handing it back to the quotes. */
+  stage: AdminStage | null;
+  by: StaffDto;
 }

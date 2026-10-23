@@ -53,7 +53,7 @@ beforeAll(async () => {
   await agent.post('/api/v1/auth/sign-in').send({ email: ADMIN, password: PASSWORD });
 });
 beforeEach(async () => {
-  await connection.db.execute(sql`truncate table atlas_quotes, atlas_manufacturers, atlas_spec_id_changes, atlas_spec_ids`);
+  await connection.db.execute(sql`truncate table atlas_manufacturer_stage_changes, atlas_quotes, atlas_manufacturers, atlas_spec_id_changes, atlas_spec_ids`);
 });
 afterAll(() => connection.close());
 
