@@ -66,7 +66,7 @@ Each manufacturer's own stage is `stageOf` from #69, unchanged: an admin-set sta
 |---|---|
 | `stagesOf(specIds: readonly string[])` | In **one** query, each manufacturer with a quote on each of the given Spec IDs: whether any of its quotes there has a price, and its newest admin stage there. Answers `Map<specId, Stage[]>`, one `Stage` per manufacturer; a Spec ID with none is absent. An empty list makes no query |
 
-Drizzle (`DISTINCT ON` for the newest change, `fob_per_unit ~ '[0-9]' or fob_per_case ~ '[0-9]'` for a price) and in-memory adapters *(technical call: one round trip for a page of 20 cards)*.
+Drizzle (a correlated subquery, spelled out in SQL, for the newest change; `fob_per_unit ~ '[0-9]' or fob_per_case ~ '[0-9]'` for a price) and in-memory adapters *(technical call: one round trip for a page of 20 cards)*.
 
 ### Contract — `backend/src/contracts/atlas.ts` (types only, ADR 0007)
 
