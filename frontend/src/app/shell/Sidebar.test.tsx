@@ -89,4 +89,10 @@ describe('Sidebar', () => {
     renderAt('/theme');
     expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeTruthy();
   });
+
+  it('stacks the folded rail above the page so its labels stay visible', () => {
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'collapsed');
+    renderAt('/theme');
+    expect(screen.getByRole('complementary', { name: 'Main' }).className).toContain('z-20');
+  });
 });
