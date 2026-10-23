@@ -41,7 +41,7 @@ export function SkeletonBlock({ className, order = 0 }: { className?: string; or
 }
 
 /** Line boxes, from the type scale in theme.css. */
-const LINE: Record<'xs' | 'sm' | 'base' | 'md' | 'lg' | 'xl' | '2xl', string> = {
+const LINE: Record<'xs' | 'sm' | 'base' | 'md' | 'lg' | 'xl' | '2xl' | '3xl', string> = {
   xs: 'h-4 text-xs',
   sm: 'h-5 text-sm',
   base: 'h-[22px] text-base',
@@ -49,6 +49,7 @@ const LINE: Record<'xs' | 'sm' | 'base' | 'md' | 'lg' | 'xl' | '2xl', string> = 
   lg: 'h-7 text-lg',
   xl: 'h-8 text-xl',
   '2xl': 'h-10 text-2xl',
+  '3xl': 'h-12 text-3xl',
 };
 
 /**
