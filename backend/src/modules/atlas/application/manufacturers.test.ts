@@ -122,9 +122,10 @@ describe('SetManufacturerStage', () => {
     await setStage(cup, BOREALIS, 'sampling');
     await setStage(cup, BOREALIS, 'in-production');
 
+    // The second change shares this clock, so its stored time is 1ms later.
     expect(sourcing.allStageChanges.map((c) => [c.stageBefore, c.stageAfter, c.changedBy, c.changedAt])).toEqual([
       [null, 'sampling', ADMIN.id, NOW],
-      ['sampling', 'in-production', ADMIN.id, NOW],
+      ['sampling', 'in-production', ADMIN.id, new Date(NOW.getTime() + 1)],
     ]);
   });
 

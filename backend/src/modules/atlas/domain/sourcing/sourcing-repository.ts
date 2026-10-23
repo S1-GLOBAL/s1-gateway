@@ -53,9 +53,10 @@ export interface SourcingRepository {
   currentStages(specId: string): Promise<StageChangeRecord[]>;
   /**
    * In one transaction, with the manufacturer's row locked: records the change
-   * with the stage it replaces as `stageBefore`, and answers it. Answers null,
-   * recording nothing, when the stage is already `stageAfter`. Changes are
-   * only ever added.
+   * with the stage it replaces as `stageBefore`, and answers it. Its time is
+   * the clock, or 1ms later when that clock is not already after the change
+   * it replaces, so a read returns this change. Answers null, recording
+   * nothing, when the stage is already `stageAfter`. Changes are only ever added.
    */
   recordStageChange(change: StageChangeToRecord): Promise<StageChange | null>;
 }

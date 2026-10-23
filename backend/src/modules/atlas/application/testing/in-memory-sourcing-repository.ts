@@ -7,7 +7,7 @@ import type {
   StageChangeRecord,
   StageChangeToRecord,
 } from '../../domain/sourcing/sourcing-repository.js';
-import type { StageChange } from '../../domain/sourcing/stage.js';
+import { recordedAt, type StageChange } from '../../domain/sourcing/stage.js';
 
 /** The SourcingRepository contract, in memory. A test double, never used in production. */
 export class InMemorySourcingRepository implements SourcingRepository {
@@ -76,7 +76,7 @@ export class InMemorySourcingRepository implements SourcingRepository {
     const newest = this.stageChanges.filter((change) => change.specId === input.specId && change.manufacturerId === input.manufacturerId).at(-1);
     const stageBefore = newest?.stageAfter ?? null;
     if (stageBefore === input.stageAfter) return null;
-    const change: StageChange = { ...input, stageBefore };
+    const change: StageChange = { ...input, stageBefore, changedAt: recordedAt(newest?.changedAt ?? null, input.changedAt) };
     this.stageChanges.push(change);
     return change;
   }

@@ -16,6 +16,17 @@ export function hasPrice(value: string | null): boolean {
 }
 
 /**
+ * The time a stage change is stored at. The newest change is the latest time,
+ * so a clock that is not already later than the change this one replaces —
+ * two saves in one millisecond, or the slower of two at once — is moved 1ms
+ * on. The change just recorded is then the one a read returns.
+ */
+export function recordedAt(replacedAt: Date | null, clock: Date): Date {
+  if (replacedAt !== null && clock.getTime() <= replacedAt.getTime()) return new Date(replacedAt.getTime() + 1);
+  return clock;
+}
+
+/**
  * A manufacturer's stage: the one an admin set, else `quoted` when any of its
  * quotes has a per-unit or per-case price, else `specifications-received`.
  * Clearing an admin's stage (`null`) hands it back to the quotes.

@@ -92,7 +92,7 @@ Rows are only ever inserted.
 | `stage_before` | `varchar(16)` | yes | `sampling`, `in-production`, or null for none |
 | `stage_after` | `varchar(16)` | yes | the same; null is a cleared stage |
 | `changed_by` | `uuid` | no | FK → `accounts.id` |
-| `changed_at` | `timestamptz` | no | the application's clock |
+| `changed_at` | `timestamptz` | no | the application's clock, or 1ms later when that clock is not after the change it replaces |
 
 A check constraint keeps both stage columns to the two values or null, and an
 index on `(spec_id, manufacturer_id, changed_at)` finds the newest change.
@@ -104,7 +104,7 @@ so a re-import leaves every stage as it was (#57; the test moved here from #56).
 | Method | Does |
 |---|---|
 | `currentStages(specId)` | Each manufacturer's newest change on that Spec ID, with the changer's full name: `{ change: StageChange; changedByName: string }[]` |
-| `recordStageChange(input)` | In one transaction: locks the manufacturer's row (`SELECT … FOR UPDATE`), reads its newest change on that Spec ID, and, when `stageAfter` differs from it, inserts a change with that as `stageBefore`. Answers the change, or null when nothing changed *(technical call: two admins at once cannot record a wrong "before")* |
+| `recordStageChange(input)` | In one transaction: locks the manufacturer's row (`SELECT … FOR UPDATE`), reads its newest change on that Spec ID, and, when `stageAfter` differs from it, inserts a change with that as `stageBefore`. Its time is the clock, or 1ms later when that clock is not after the change it replaces, so a read returns this change. Answers the change, or null when nothing changed *(technical call: two admins at once cannot record a wrong "before")* |
 | `quotesOf(specId)` | Already there (#64) |
 
 Both adapters, Drizzle and in-memory, as #64's `replaceQuotes` has them.

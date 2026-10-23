@@ -184,4 +184,27 @@ describe('DrizzleSourcingRepository, stages (#57)', () => {
     expect(firstRecorded?.stageBefore).toBeNull();
     expect(secondRecorded?.stageBefore).toBe(firstRecorded?.stageAfter);
   });
+
+  it('returns the change committed second when its clock is not later, even if its id sorts first', async () => {
+    const manufacturerId = await acme();
+
+    await repository.recordStageChange({
+      id: 'ffffffff-ffff-4000-8000-000000000002',
+      specId: CUP_ID,
+      manufacturerId,
+      stageAfter: 'in-production',
+      changedBy: SAVER_ID,
+      changedAt: later(5),
+    });
+    await repository.recordStageChange({
+      id: '00000000-0000-4000-8000-000000000001',
+      specId: CUP_ID,
+      manufacturerId,
+      stageAfter: 'sampling',
+      changedBy: SAVER_ID,
+      changedAt: AT,
+    });
+
+    expect((await repository.currentStages(CUP_ID))[0]?.change.stageAfter).toBe('sampling');
+  });
 });

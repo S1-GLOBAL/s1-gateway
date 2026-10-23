@@ -338,7 +338,7 @@ re-import leaves every stage as it was
 | `stage_before` | `varchar(16)` | yes | — | `sampling` or `in-production`; null when no admin had set one |
 | `stage_after` | `varchar(16)` | yes | — | `sampling` or `in-production`; null is a cleared stage |
 | `changed_by` | `uuid` | no | — | FK `atlas_manufacturer_stage_changes_changed_by_fk` → `accounts.id`. Always an admin: the route sits behind the admin gate |
-| `changed_at` | `timestamptz` | no | — | Set by the application's clock |
+| `changed_at` | `timestamptz` | no | — | The application's clock, or 1ms later when that clock is not after the change it replaces |
 
 **Constraints and indexes**
 

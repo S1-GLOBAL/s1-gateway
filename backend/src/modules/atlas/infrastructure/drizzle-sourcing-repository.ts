@@ -9,7 +9,7 @@ import type {
   StageChangeRecord,
   StageChangeToRecord,
 } from '../domain/sourcing/sourcing-repository.js';
-import type { AdminStage, StageChange } from '../domain/sourcing/stage.js';
+import { recordedAt, type AdminStage, type StageChange } from '../domain/sourcing/stage.js';
 import { atlasManufacturerStageChanges } from './atlas-manufacturer-stage-changes.table.js';
 import { atlasManufacturers } from './atlas-manufacturers.table.js';
 import { atlasQuotes } from './atlas-quotes.table.js';
@@ -119,7 +119,7 @@ export class DrizzleSourcingRepository implements SourcingRepository {
         .where(eq(atlasManufacturers.id, input.manufacturerId))
         .for('update');
       const [newest] = await tx
-        .select({ stageAfter: atlasManufacturerStageChanges.stageAfter })
+        .select({ stageAfter: atlasManufacturerStageChanges.stageAfter, changedAt: atlasManufacturerStageChanges.changedAt })
         .from(atlasManufacturerStageChanges)
         .where(
           and(
@@ -131,7 +131,7 @@ export class DrizzleSourcingRepository implements SourcingRepository {
         .limit(1);
       const stageBefore = (newest?.stageAfter ?? null) as AdminStage | null;
       if (stageBefore === input.stageAfter) return null;
-      const change: StageChange = { ...input, stageBefore };
+      const change: StageChange = { ...input, stageBefore, changedAt: recordedAt(newest?.changedAt ?? null, input.changedAt) };
       await tx.insert(atlasManufacturerStageChanges).values(change);
       return change;
     });
