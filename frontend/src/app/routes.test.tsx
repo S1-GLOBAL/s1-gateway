@@ -163,10 +163,10 @@ describe('the app, signed in', () => {
 });
 
 describe('the sign-in gate', () => {
-  it('sends someone signed out to /sign-in, remembering where they were going', async () => {
+  it('sends someone signed out to the landing, remembering where they were going', async () => {
     const router = renderAt('/theme', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeTruthy();
-    expect(router.state.location.pathname).toBe('/sign-in');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' })).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/');
     expect(router.state.location.search).toBe('?next=%2Ftheme');
     // First visit — never had a session in this tab — so no "session ended" notice.
     expect(screen.queryByText('Your session ended. Sign in again.')).toBeNull();
@@ -175,8 +175,8 @@ describe('the sign-in gate', () => {
   it('says the session ended when this tab had been signed in before', async () => {
     sessionStorage.setItem('s1_gateway.had_session', '1');
     const router = renderAt('/theme', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeTruthy();
-    expect(router.state.location.pathname).toBe('/sign-in');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' })).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/');
     expect(screen.getByText('Your session ended. Sign in again.')).toBeTruthy();
   });
 
@@ -236,6 +236,70 @@ describe('the sign-in gate', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/atlas'));
     expect(signIn).toHaveBeenCalledWith({ email: 'ada@sourceone.global', password: 'a long enough password' });
+  });
+
+  it('returns to the page it was asked for after signing in', async () => {
+    let signedIn = false;
+    const signIn = vi.fn<AccountsGateway['signIn']>().mockImplementation(async () => {
+      signedIn = true;
+      return account();
+    });
+    const router = renderAt(
+      '/?next=%2Ftheme',
+      fakeAccountsGateway({
+        signIn,
+        me: async () => {
+          if (!signedIn) throw SIGNED_OUT;
+          return account();
+        },
+      }),
+    );
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'ada@sourceone.global' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'a long enough password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/theme'));
+  });
+
+  it('opens Atlas when next points off the site', async () => {
+    let signedIn = false;
+    const router = renderAt(
+      '/?next=https%3A%2F%2Fevil.example',
+      fakeAccountsGateway({
+        signIn: async () => {
+          signedIn = true;
+          return account();
+        },
+        me: async () => {
+          if (!signedIn) throw SIGNED_OUT;
+          return account();
+        },
+      }),
+    );
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'ada@sourceone.global' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'a long enough password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/atlas'));
+  });
+
+  it('shows why sign-in was refused, exactly', async () => {
+    const signIn = vi
+      .fn<AccountsGateway['signIn']>()
+      .mockRejectedValue(new AppError('SIGN_IN_FAILED', "That email and password don't match."));
+    renderAt('/', fakeAccountsGateway({ signIn, me: async () => Promise.reject(SIGNED_OUT) }));
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'ada@sourceone.global' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrong' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect((await screen.findByRole('alert')).textContent).toBe("That email and password don't match.");
+  });
+
+  it('sends an old /sign-in address to the landing form, keeping the return path', async () => {
+    const router = renderAt(
+      '/sign-in?next=%2Ftheme',
+      fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }),
+    );
+    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' })).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/');
+    expect(router.state.location.search).toBe('?next=%2Ftheme');
   });
 
   it('keeps the public pages open without a session', async () => {

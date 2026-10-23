@@ -11,4 +11,5 @@ export function safeNextPath(next: string | null | undefined): string {
   return next;
 }
 
+/** `/sign-in` is the old address of the front door, so it cannot be a return path. */
 const PUBLIC_PATHS = ['/', '/sign-in', '/sign-up', '/register', '/reset-password'];

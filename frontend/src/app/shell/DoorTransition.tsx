@@ -7,7 +7,7 @@ import { DoorHoldContext, type DoorHoldApi } from './door-hold';
 import { bootTrack, nextDoorTrack, type DoorTrack } from './door-stage';
 
 /**
- * Full-screen accent curtain between the landing, sign-in, registration and
+ * Full-screen accent curtain between the landing, registration and
  * the hub (ADR 0028). The route changes underneath it. Hub pages share one
  * stage, so moving between them never starts a curtain and the shell fade
  * stays as it is.

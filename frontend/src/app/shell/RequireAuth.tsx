@@ -12,9 +12,10 @@ export interface RequireAuthProps {
 
 /**
  * The gate in front of every signed-in page. It asks the API who is signed
- * in: nobody sends you to /sign-in and back here afterwards; a password that
- * must change sends you to /change-password. Any other session failure sends
- * you home — the landing shows the unavailable note from the same query.
+ * in. A signed-out visitor goes back to the landing, the only sign-in form,
+ * with a return path. A password that must change sends you to
+ * /change-password. Any other session failure sends you home — the landing
+ * shows the unavailable note from the same query.
  */
 export function RequireAuth({ allowMustChangePassword = false, children }: RequireAuthProps) {
   const session = useSession();
@@ -27,7 +28,7 @@ export function RequireAuth({ allowMustChangePassword = false, children }: Requi
     if (isSignInRequired(session.error)) {
       const next = encodeURIComponent(`${location.pathname}${location.search}${location.hash}`);
       const sessionEnded = takePriorSessionEnded();
-      return <Navigate to={`/sign-in?next=${next}`} replace state={sessionEnded ? { sessionEnded: true } : null} />;
+      return <Navigate to={`/?next=${next}`} replace state={sessionEnded ? { sessionEnded: true } : null} />;
     }
     return <Navigate to="/" replace />;
   }

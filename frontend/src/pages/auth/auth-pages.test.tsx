@@ -3,12 +3,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider, type RouteObject } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { AccountsGatewayProvider, type AccountsGateway } from '@/features/accounts';
+import { ThemeProvider, type ThemeDocument, type ThemePreferenceStore } from '@/features/appearance';
+import { LandingPage } from '@/pages/landing/LandingPage';
 import { AppError } from '@/shared/application/app-error';
-import { account, fakeAccountsGateway } from '@/test/fake-accounts-gateway';
+import { account, fakeAccountsGateway, SIGNED_OUT } from '@/test/fake-accounts-gateway';
 import { ChangePasswordPage } from './ChangePasswordPage';
 import { RegisterPage } from './RegisterPage';
 import { ResetPasswordPage } from './ResetPasswordPage';
-import { SignInPage } from './SignInPage';
 import { SignUpPage } from './SignUpPage';
 
 function renderPage(path: string, element: RouteObject['element'], pagePath: string, gateway: AccountsGateway) {
@@ -31,60 +32,6 @@ function type(label: string, value: string) {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
 
-describe('SignInPage', () => {
-  it('is bare: no navigation, the logo and a form', () => {
-    renderPage('/sign-in', <SignInPage />, '/sign-in', fakeAccountsGateway());
-    expect(screen.queryByRole('navigation')).toBeNull();
-    expect(screen.getByRole('img', { name: 'Source One' })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeTruthy();
-  });
-
-  it('can go back to the landing', () => {
-    renderPage('/sign-in', <SignInPage />, '/sign-in', fakeAccountsGateway());
-    expect(screen.getByRole('link', { name: 'Back' }).getAttribute('href')).toBe('/');
-  });
-
-  it('offers no way to create an account', () => {
-    renderPage('/sign-in', <SignInPage />, '/sign-in', fakeAccountsGateway());
-    expect(screen.queryByText(/New here?/)).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Create an account' })).toBeNull();
-  });
-
-  it('goes to the page it was asked for after signing in', async () => {
-    const signIn = vi.fn<AccountsGateway['signIn']>().mockResolvedValue(account());
-    const router = renderPage('/sign-in?next=%2Faccounts', <SignInPage />, '/sign-in', fakeAccountsGateway({ signIn }));
-    type('Email', 'ada@sourceone.global');
-    type('Password', 'a long enough password');
-    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/accounts'));
-    expect(signIn).toHaveBeenCalledWith({ email: 'ada@sourceone.global', password: 'a long enough password' });
-  });
-
-  it('opens Atlas when there is no next, or it points off the site', async () => {
-    const router = renderPage(
-      '/sign-in?next=https%3A%2F%2Fevil.example',
-      <SignInPage />,
-      '/sign-in',
-      fakeAccountsGateway(),
-    );
-    type('Email', 'ada@sourceone.global');
-    type('Password', 'a long enough password');
-    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/atlas'));
-  });
-
-  it('shows why it was refused, exactly', async () => {
-    const signIn = vi
-      .fn<AccountsGateway['signIn']>()
-      .mockRejectedValue(new AppError('SIGN_IN_FAILED', "That email and password don't match."));
-    renderPage('/sign-in', <SignInPage />, '/sign-in', fakeAccountsGateway({ signIn }));
-    type('Email', 'ada@sourceone.global');
-    type('Password', 'wrong');
-    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect((await screen.findByRole('alert')).textContent).toBe("That email and password don't match.");
-  });
-});
-
 describe('SignUpPage', () => {
   it('says only that the Gateway is invite-only: no form, no link onward', () => {
     renderPage('/sign-up', <SignUpPage />, '/sign-up', fakeAccountsGateway());
@@ -100,21 +47,30 @@ describe('RegisterPage', () => {
   const INVITED = 'ada@sourceone.global';
   const PASSWORD = 'a long enough password';
 
-  /** The register page and the real sign-in page, so registering can be followed to where it lands. */
+  /** The register page and the landing, so registering can be followed to the only sign-in form. */
   function renderRegister(path: string, gateway: AccountsGateway) {
+    const store: ThemePreferenceStore = { read: () => 'light', write: () => undefined };
+    const document: ThemeDocument = {
+      prefersDark: () => false,
+      subscribe: () => () => undefined,
+      apply: () => undefined,
+      transition: (update) => update(),
+    };
     const router = createMemoryRouter(
       [
         { path: '/register', element: <RegisterPage /> },
-        { path: '/sign-in', element: <SignInPage /> },
+        { path: '/', element: <LandingPage /> },
       ],
       { initialEntries: [path] },
     );
     render(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <AccountsGatewayProvider gateway={gateway}>
-          <RouterProvider router={router} />
-        </AccountsGatewayProvider>
-      </QueryClientProvider>,
+      <ThemeProvider store={store} document={document}>
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+          <AccountsGatewayProvider gateway={gateway}>
+            <RouterProvider router={router} />
+          </AccountsGatewayProvider>
+        </QueryClientProvider>
+      </ThemeProvider>,
     );
     return router;
   }
@@ -210,15 +166,18 @@ describe('RegisterPage', () => {
     expect(getInvite).not.toHaveBeenCalled();
   });
 
-  it('registers, then lands on sign-in with "Your account is ready. Sign in." and the email filled in', async () => {
+  it('registers, then lands on the front door with "Your account is ready. Sign in." and the email filled in', async () => {
     const register = vi.fn<AccountsGateway['register']>().mockResolvedValue(account({ email: INVITED }));
-    const router = renderRegister('/register?token=tok', fakeAccountsGateway({ register }));
+    const router = renderRegister(
+      '/register?token=tok',
+      fakeAccountsGateway({ register, me: async () => Promise.reject(SIGNED_OUT) }),
+    );
     await screen.findByLabelText('First name');
 
     fillIn();
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/sign-in'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
     expect(register).toHaveBeenCalledWith({
       token: 'tok',
       firstName: 'Ada',
@@ -226,13 +185,13 @@ describe('RegisterPage', () => {
       password: PASSWORD,
       confirmPassword: PASSWORD,
     });
-    expect((await screen.findByRole('status')).textContent).toBe('Your account is ready. Sign in.');
+    expect(await screen.findByText('Your account is ready. Sign in.')).toBeTruthy();
     expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(INVITED);
   });
 });
 
 describe('ResetPasswordPage', () => {
-  it('sets the new password with the token from the link, then goes to sign in', async () => {
+  it('sets the new password with the token from the link, then goes to the landing', async () => {
     const resetPassword = vi.fn<AccountsGateway['resetPassword']>().mockResolvedValue(undefined);
     const router = renderPage(
       '/reset-password?token=abc123',
@@ -242,7 +201,7 @@ describe('ResetPasswordPage', () => {
     );
     type('New password', 'a brand new password');
     fireEvent.click(screen.getByRole('button', { name: 'Set new password' }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/sign-in'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
     expect(resetPassword).toHaveBeenCalledWith({ token: 'abc123', newPassword: 'a brand new password' });
   });
 

@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { type RouteObject } from 'react-router-dom';
+import { Navigate, useLocation, type RouteObject } from 'react-router-dom';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { AccountsPageSkeleton } from '@/pages/accounts/AccountsPageSkeleton';
 import { AtlasPageSkeleton } from '@/pages/atlas/AtlasPageSkeleton';
@@ -31,7 +31,6 @@ const AccountsPage = lazy(() =>
 const LandingPage = lazy(() =>
   import('@/pages/landing/LandingPage').then((module) => ({ default: module.LandingPage })),
 );
-const SignInPage = lazy(() => import('@/pages/auth/SignInPage').then((module) => ({ default: module.SignInPage })));
 const SignUpPage = lazy(() => import('@/pages/auth/SignUpPage').then((module) => ({ default: module.SignUpPage })));
 const RegisterPage = lazy(() =>
   import('@/pages/auth/RegisterPage').then((module) => ({ default: module.RegisterPage })),
@@ -42,6 +41,14 @@ const ResetPasswordPage = lazy(() =>
 const ChangePasswordPage = lazy(() =>
   import('@/pages/auth/ChangePasswordPage').then((module) => ({ default: module.ChangePasswordPage })),
 );
+
+/** The old address of the front door. The only sign-in form lives on `/`. */
+function SignInRedirect() {
+  const location = useLocation();
+  const next = new URLSearchParams(location.search).get('next');
+  const search = next === null ? '' : `?next=${encodeURIComponent(next)}`;
+  return <Navigate to={{ pathname: '/', search }} replace state={location.state} />;
+}
 
 export const routes: RouteObject[] = [
   {
@@ -58,11 +65,7 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'sign-in',
-        element: (
-          <RouteBoundary skeleton={<AuthPageSkeleton />}>
-            <SignInPage />
-          </RouteBoundary>
-        ),
+        element: <SignInRedirect />,
       },
       {
         path: 'sign-up',

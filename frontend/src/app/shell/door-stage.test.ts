@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { bootTrack, doorCrossing, doorStage, nextDoorTrack, wantsWelcome } from './door-stage';
 
 describe('doorStage', () => {
-  it('names the landing, sign-in and registration', () => {
+  it('names the landing and registration, and treats the old sign-in address as the landing', () => {
     expect(doorStage('/')).toEqual({ key: 'landing', label: 'Source One' });
-    expect(doorStage('/sign-in')).toEqual({ key: 'sign-in', label: 'Sign in' });
+    expect(doorStage('/sign-in')).toEqual(doorStage('/'));
     expect(doorStage('/register')).toEqual({
       key: 'register',
       label: 'Source One Internal Registration',
@@ -31,36 +31,34 @@ describe('doorStage', () => {
 
 describe('doorCrossing', () => {
   const landing = doorStage('/');
-  const signIn = doorStage('/sign-in');
   const register = doorStage('/register');
   const hub = doorStage('/atlas');
   const accounts = doorStage('/accounts');
   const reset = doorStage('/reset-password');
 
-  it('announces registration, sign-in and the way back to the landing', () => {
+  it('announces registration and the way back to the landing', () => {
     expect(doorCrossing(landing, register, false)).toBe(true);
-    expect(doorCrossing(register, signIn, false)).toBe(true);
-    expect(doorCrossing(signIn, landing, false)).toBe(true);
+    expect(doorCrossing(register, landing, false)).toBe(true);
+    expect(doorCrossing(doorStage('/sign-in'), landing, false)).toBe(false);
     expect(doorCrossing(hub, landing, false)).toBe(true);
   });
 
   it('welcomes only when sign-in just opened the hub', () => {
     expect(doorCrossing(landing, hub, true)).toBe(true);
-    expect(doorCrossing(signIn, hub, true)).toBe(true);
     expect(doorCrossing(landing, hub, false)).toBe(false);
   });
 
   it('stays quiet inside the hub and beside pages that are not doors', () => {
     expect(doorCrossing(hub, accounts, true)).toBe(false);
-    expect(doorCrossing(signIn, reset, false)).toBe(false);
-    expect(doorCrossing(reset, signIn, false)).toBe(false);
+    expect(doorCrossing(landing, reset, false)).toBe(false);
+    expect(doorCrossing(reset, landing, false)).toBe(false);
   });
 });
 
 describe('bootTrack', () => {
-  it('covers the landing, sign-in and an invite link on the first paint', () => {
+  it('covers the landing and an invite link on the first paint', () => {
     expect(bootTrack('/').curtain?.label).toBe('Source One');
-    expect(bootTrack('/sign-in').curtain?.label).toBe('Sign in');
+    expect(bootTrack('/sign-in').curtain?.label).toBe('Source One');
     expect(bootTrack('/register').curtain?.label).toBe('Source One Internal Registration');
   });
 
@@ -78,9 +76,15 @@ describe('nextDoorTrack', () => {
     expect(next.path).toBe('/atlas');
   });
 
-  it('replaces the curtain when the crossing announces a new screen', () => {
-    const next = nextDoorTrack(bootTrack('/register'), '/sign-in', null);
-    expect(next.curtain).toEqual({ label: 'Sign in', playId: 1 });
+  it('replaces the curtain when registration returns to the landing', () => {
+    const next = nextDoorTrack(bootTrack('/register'), '/', null);
+    expect(next.curtain).toEqual({ label: 'Source One', playId: 1 });
+  });
+
+  it('keeps the curtain when the old sign-in address returns to the landing', () => {
+    const covered = bootTrack('/sign-in');
+    const next = nextDoorTrack(covered, '/', null);
+    expect(next.curtain).toBe(covered.curtain);
   });
 
   it('does nothing when the path has not changed', () => {
