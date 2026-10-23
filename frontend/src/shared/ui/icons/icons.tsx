@@ -106,6 +106,39 @@ export function AtlasIcon(props: IconProps) {
   );
 }
 
+/* ------------------------------------------------------------ Book open -- */
+
+/** The covers open from the spine and settle; the spine redraws. */
+const covers: Variants = {
+  rest: { scaleX: 1 },
+  active: {
+    scaleX: [1, 1.14, 1],
+    transition: { duration: 0.45, ease: ease.standard },
+  },
+};
+
+const spine: Variants = {
+  rest: { pathLength: 1, opacity: 1 },
+  active: {
+    pathLength: [1, 0, 1],
+    opacity: [1, 0, 1],
+    transition: { duration: 0.4, delay: 0.06, ease: ease.standard },
+  },
+};
+
+export function BookOpenIcon(props: IconProps) {
+  return (
+    <IconSvg {...props}>
+      <m.path variants={spine} d="M12 5v16" />
+      <m.path
+        variants={covers}
+        style={iconCentre}
+        d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"
+      />
+    </IconSvg>
+  );
+}
+
 /* ------------------------------------------------------------------ Sun -- */
 
 const core: Variants = {
