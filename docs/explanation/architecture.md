@@ -128,7 +128,8 @@ Crossing the signed-out door — the landing, sign-in, registration, and
 entering or leaving the hub — is a full-screen curtain
 ([ADR 0028](../decisions/0028-the-door-is-a-full-screen-curtain.md)).
 A cold open of the landing or an invite link keeps that curtain up until
-the session or the invite has arrived.
+the session or the invite has arrived, and for at least 2 seconds so the
+line can be read.
 The routes table, `app/routes.tsx`, is the one place a page is registered,
 lazily, with its skeleton.
 

@@ -98,10 +98,11 @@ Tokens in `src/shared/ui/motion.ts` (seconds) and `theme.css` (CSS):
 | `duration.fast` | 120ms | Hover, press, leaving |
 | `duration.base` | 200ms | Toggles, small arrivals |
 | `duration.slow` | 320ms | Pages inside the hub, panels, the sidebar |
-| `duration.curtain` | 600ms | The door curtain's wipe |
+| `duration.curtain` | 600ms | The door curtain's rise, and its rise away |
+| `duration.curtainHold` | 2000ms | The door curtain, still, so the line can be read |
 | `ease.standard` / `ease-standard` | `0.2, 0, 0, 1` | Most movement |
-| `ease.emphasized` / `ease-emphasized` | `0.05, 0.7, 0.1, 1` | Arrivals, the nav pill, the curtain's reveal |
-| `ease.exit` / `ease-exit` | `0.3, 0, 1, 1` | Leaving |
+| `ease.emphasized` / `ease-emphasized` | `0.05, 0.7, 0.1, 1` | Arrivals, the nav pill, the curtain's rise |
+| `ease.exit` / `ease-exit` | `0.3, 0, 1, 1` | Leaving, the curtain's rise away |
 
 - Animate with `motion` through `import * as m from 'motion/react-m'` — never
   `motion.div`, which `<LazyMotion strict>` rejects.
@@ -109,15 +110,17 @@ Tokens in `src/shared/ui/motion.ts` (seconds) and `theme.css` (CSS):
   opacity and a small blur only. The sidebar and top bar stay put.
 - Crossing the door — landing, sign-in, registration, and entering or leaving
   the hub — is a full-screen accent curtain: the mark and a mono line, never
-  the wordmark (ADR 0028). It does not play between hub pages. A cold open of
-  the landing or an invite link stays on that curtain until the screen can be
-  shown, then wipes.
+  the wordmark (ADR 0028). It rises from the bottom, stays still for at least
+  2 seconds so the line can be read, then rises off the top. It stays longer
+  when the screen is not ready yet. It does not play between hub pages. A cold
+  open of the landing, sign-in or an invite link rises the same way. The rise
+  is CSS, from the first frame, because the motion chunk loads after first paint.
 - Nothing shifts sideways between pages. The root always reserves the
   scrollbar's space (`scrollbar-gutter: stable` in `src/styles/index.css`), so
   a page that scrolls and one that does not have the same width.
 - Every animation respects reduced motion (`MotionConfig reducedMotion="user"`).
-  The curtain's wipe is skipped: the wash stays still until the screen is
-  ready, then it is gone.
+  The curtain's rise and rise away are skipped: the wash stays still for the
+  same minimum, then it is gone.
 
 ## Icons
 

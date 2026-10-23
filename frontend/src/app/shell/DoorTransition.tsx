@@ -1,5 +1,4 @@
 import { useReducedMotion } from 'motion/react';
-import * as m from 'motion/react-m';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useOutlet } from 'react-router-dom';
 import { Logo } from '@/shared/ui/Logo';
@@ -7,20 +6,16 @@ import { duration, ease } from '@/shared/ui/motion';
 import { DoorHoldContext, type DoorHoldApi } from './door-hold';
 import { bootTrack, nextDoorTrack, type DoorTrack } from './door-stage';
 
-const REVEAL = {
-  duration: duration.curtain,
-  ease: ease.emphasized,
-  delay: duration.fast,
-} as const;
-
 /**
  * Full-screen accent curtain between the landing, sign-in, registration and
  * the hub (ADR 0028). The route changes underneath it. Hub pages share one
  * stage, so moving between them never starts a curtain and the shell fade
  * stays as it is.
  *
- * A cold open of the landing, sign-in or an invite link starts already
- * covered, and stays covered until that screen can be shown. Then it wipes.
+ * Every play rises from the bottom, stays still for at least `curtainHold`
+ * (longer, while the screen is not ready), then rises off the top. The travel
+ * is CSS, from the first frame — the motion chunk loads later, and waiting
+ * for it made the wash appear all at once.
  */
 export function DoorTransition() {
   const location = useLocation();
@@ -83,53 +78,58 @@ export function DoorTransition() {
   );
 }
 
+function slide(name: 'door-curtain-in' | 'door-curtain-out', curve: readonly [number, number, number, number]) {
+  return `${name} ${duration.curtain}s cubic-bezier(${curve.join(', ')}) both`;
+}
+
 /** Mark, then the destination in mono — never the wordmark. */
 function CurtainReveal({ label, held, onDone }: { label: string; held: boolean; onDone: () => void }) {
   const reduce = useReducedMotion() === true;
   const done = useRef(onDone);
   done.current = onDone;
+  const finished = useRef(false);
+  const [risen, setRisen] = useState(reduce);
+  const [rested, setRested] = useState(false);
+  const [left, setLeft] = useState(false);
 
   useEffect(() => {
-    if (held) return;
-    if (reduce) {
-      done.current();
-      return;
-    }
-    const fallback = window.setTimeout(() => done.current(), (duration.fast + duration.curtain) * 1000);
-    return () => window.clearTimeout(fallback);
-  }, [held, reduce]);
+    if (risen) return;
+    const id = window.setTimeout(() => setRisen(true), duration.curtain * 1000);
+    return () => window.clearTimeout(id);
+  }, [risen]);
 
-  if (reduce) {
-    if (!held) return null;
-    return (
-      <div role="status" aria-label={label} className="fixed inset-0 z-50 flex items-center justify-center bg-accent">
-        <CurtainLockup label={label} />
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!risen || rested) return;
+    const id = window.setTimeout(() => setRested(true), duration.curtainHold * 1000);
+    return () => window.clearTimeout(id);
+  }, [risen, rested]);
 
+  useEffect(() => {
+    if (!risen || !rested || held || finished.current) return;
+    finished.current = true;
+    if (reduce) done.current();
+    else setLeft(true);
+  }, [risen, rested, held, reduce]);
+
+  useEffect(() => {
+    if (!left) return;
+    const id = window.setTimeout(() => done.current(), duration.curtain * 1000);
+    return () => window.clearTimeout(id);
+  }, [left]);
+
+  const phase = left ? 'exit' : risen ? 'hold' : 'enter';
+  const quiet = phase === 'exit';
   return (
-    <m.div
-      role={held ? 'status' : undefined}
-      aria-label={held ? label : undefined}
-      aria-hidden={held ? undefined : true}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-accent"
-      initial="cover"
-      animate={held ? 'cover' : 'clear'}
-      variants={{
-        cover: { clipPath: 'inset(0% 0% 0% 0%)' },
-        clear: { clipPath: 'inset(0% 0% 100% 0%)', transition: REVEAL },
-      }}
+    <div
+      role={quiet ? undefined : 'status'}
+      aria-label={quiet ? undefined : label}
+      aria-hidden={quiet ? true : undefined}
+      data-phase={phase}
+      className="door-curtain fixed inset-0 z-50 flex items-center justify-center bg-accent"
+      style={reduce ? undefined : { animation: phase === 'exit' ? slide('door-curtain-out', ease.exit) : slide('door-curtain-in', ease.emphasized) }}
     >
-      <m.div
-        variants={{
-          cover: { opacity: 1, y: 0 },
-          clear: { opacity: 0, y: -40, transition: REVEAL },
-        }}
-      >
-        <CurtainLockup label={label} />
-      </m.div>
-    </m.div>
+      <CurtainLockup label={label} />
+    </div>
   );
 }
 

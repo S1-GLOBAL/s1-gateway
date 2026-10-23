@@ -30,29 +30,33 @@ line beside it is mono:
 | The sign-in page | Sign in |
 | The hub, only after a sign-in just succeeded | welcome back! |
 
-The wash is covering as the screen changes, in `bg-accent`, with the mark
-(never the wordmark) and a mono line. It holds for 120ms, then wipes up over
-600ms (`curtain`, after a `fast` hold). The route changes underneath, so a
-gate that redirects cannot run twice against a page that is still leaving.
+The wash is `bg-accent`, with the mark (never the wordmark) and a mono line.
+It rises from the bottom over 600ms (`curtain`, `ease.emphasized`), stays
+still for at least 2 seconds (`curtainHold`) so the line can be read, then
+rises off the top over 600ms (`ease.exit`). A screen that is already loaded
+does not shorten that still time. The route changes underneath, so a gate
+that redirects cannot run twice against a page that is still leaving. The
+travel is CSS and starts on the first frame. The motion feature chunk loads
+after first paint, and a curtain that waited for it appeared all at once.
 
-A cold open of the landing, sign-in, or an invite link starts on that wash
-and stays there until the screen can be shown. The landing waits for the
-session check. Registration waits for the invite. Sign-in waits until its
-page is up. A server that is still waking, or a link whose invite has not
-loaded, stays on the wash instead of a skeleton, and wipes once the answer
-is in — the form, the dead-link sentence, or try again. Refreshing a hub
-page does not do this.
+A cold open of the landing, sign-in, or an invite link rises the same way
+and stays until the screen can be shown. The landing waits for the session
+check. Registration waits for the invite. Sign-in waits until its page is
+up. A server that is still waking, or a link whose invite has not loaded,
+stays on the wash instead of a skeleton. When the answer is in — the form,
+the dead-link sentence, or try again — the wash still finishes its 2 seconds,
+then rises away. Refreshing a hub page does not do this.
 Hub pages keep ADR 0012's fade, because they share one stage and the shell
 does not remount. An already-signed-in visit to `/` that hops to Atlas does
 not play "welcome back!" — that line is only for a sign-in just completed.
-Reduced motion skips the wipe. The wash stays still until the screen is
-ready, then it is gone.
+Reduced motion skips both rises. The wash stays still for the same minimum,
+then it is gone.
 
 ## Alternatives considered
 
 **The same curtain between hub pages.** Rejected: the skeleton and the short
-fade already say where you went, and 720ms on every click is too much for a
-tool.
+fade already say where you went, and a rise, a 2 second hold and a rise away
+on every click is too much for a tool.
 
 **A curtain no longer than 320ms, so ADR 0012 could stay untouched.** Rejected:
 "Source One Internal Registration" has to be readable, and the cover-then-reveal
@@ -63,11 +67,13 @@ full lockup.
 
 ## Consequences
 
-Door crossings hold the name for a moment, then take 600ms to clear. That is
-deliberate and limited to those crossings. A cold open can hold much longer:
-the wash stays up for as long as the session or the invite takes, including a
-server that is still waking, and only then takes 600ms to clear. A new door
-screen needs a line in `doorStage` and, if it should announce itself, a label.
-Entering the hub without the welcome flag stays instant, so session redirects
-do not perform. The screen tells the curtain when it can be shown
-(`useDoorHold`); a door screen that forgets to call it leaves the wash up.
+Door crossings take 600ms to cover, hold the name for at least 2 seconds,
+then take 600ms to clear. That is deliberate and limited to those crossings.
+A cold open can hold longer: the wash stays up for as long as the session or
+the invite takes, including a server that is still waking, and for at least
+2 seconds even when that answer is already in, and only then takes 600ms to
+clear. A new door screen needs a line in `doorStage` and, if it should
+announce itself, a label. Entering the hub without the welcome flag stays
+instant, so session redirects do not perform. The screen tells the curtain
+when it can be shown (`useDoorHold`); a door screen that forgets to call it
+leaves the wash up.
