@@ -41,7 +41,7 @@ Lit icons draw themselves once when the card appears, and again on hover; nothin
 
 | Phase | Steps | Status |
 |---|---|---|
-| 1. Stage counts in the API | 3 / 4 | In progress — steps 1.1 to 1.3 built; step 1.4 is this phase's pull request |
+| 1. Stage counts in the API | 4 / 4 | Done — every SavedSpecId carries its stage counts (#75); the icons are phase 2 |
 | 2. Icons on the cards | 0 / 6 | Not started |
 
 Two pull requests, as reyxdz decided on 2026-10-23: phase 1 is "Part of #73",
@@ -164,8 +164,8 @@ One pull request, "Part of #73".
 
 ### Step 1.4 — Docs and the pull request
 
-- [ ] **Action.** `api.md` describes `manufacturerStages` on `SavedSpecId`. Open the pull request "Part of #73".
-- [ ] **Verify.** CI and `pr-audit` pass.
+- [x] **Action.** `api.md` describes `manufacturerStages` on `SavedSpecId`. Open the pull request "Part of #73".
+- [x] **Verify.** CI and `pr-audit` pass.
 
 ---
 
