@@ -8,6 +8,12 @@ import { AppError } from '@/shared/application/app-error';
 import { AtlasPage } from './AtlasPage';
 import { AtlasPageSkeleton } from './AtlasPageSkeleton';
 
+/** An animated icon is drawn in the shared frame, which leaves overflow visible so a stroke can travel. */
+function animatedIcon(control: HTMLElement): boolean {
+  const svg = control.querySelector('svg');
+  return svg?.style.overflow === 'visible' && svg.querySelectorAll('path').length === 2;
+}
+
 const dictionary: AtlasDictionary = {
   release: 'S1 0.1.0',
   approvedOn: '2026-10-16',
@@ -61,6 +67,10 @@ describe('AtlasPage', () => {
     expect(screen.getByLabelText('Search')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Dictionary' })).toBeTruthy();
     expect(screen.getAllByRole('link', { name: 'New Spec ID' })[0]?.getAttribute('href')).toBe('/atlas/new');
+    expect(animatedIcon(screen.getByRole('button', { name: 'Dictionary' }))).toBe(true);
+    for (const link of screen.getAllByRole('link', { name: 'New Spec ID' })) {
+      expect(animatedIcon(link)).toBe(true);
+    }
     expect(screen.queryByRole('heading', { name: 'Decode' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Build' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Look up' })).toBeNull();
