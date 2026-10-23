@@ -85,7 +85,8 @@ describe('AtlasLibrary, the list', () => {
     renderLibrary({ library: async () => ({ items: [lid], nextCursor: null }) });
 
     const [card] = await waitFor(() => cards());
-    expect(card?.getAttribute('href')).toBe(`/atlas/${lid.id}`);
+    // A card opens the Spec ID's manufacturers first (#57).
+    expect(card?.getAttribute('href')).toBe(`/atlas/${lid.id}/manufacturers`);
     expect(within(card!).getByText('Lid 1')).toBeTruthy();
     expect(within(card!).getByText(ILLUSTRATIVE)).toBeTruthy();
     expect(within(card!).getByText('Bowl lid · APS · CL · RD · DM · 0090 · 0033')).toBeTruthy();

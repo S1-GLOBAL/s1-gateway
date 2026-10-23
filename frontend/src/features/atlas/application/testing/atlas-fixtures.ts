@@ -567,6 +567,8 @@ export function gatewayWith(overrides: Partial<AtlasGateway>): AtlasGateway {
     getSaved: pending,
     update: pending,
     history: pending,
+    manufacturers: pending,
+    setManufacturerStage: pending,
     library: pending,
     ...overrides,
   };

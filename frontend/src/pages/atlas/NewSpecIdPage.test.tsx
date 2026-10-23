@@ -48,6 +48,8 @@ function renderAt(path: string, overrides: Partial<AtlasGateway> = {}) {
     getSaved: pending,
     update: pending,
     history: pending,
+    manufacturers: pending,
+    setManufacturerStage: pending,
     library: pending,
     ...overrides,
   };

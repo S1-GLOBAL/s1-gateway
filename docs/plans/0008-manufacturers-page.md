@@ -51,7 +51,7 @@ and this plan is corrected.
 | Phase | Steps | Status |
 |---|---|---|
 | 1. Stages and the two routes | 6 / 6 | Done — the stage table and both routes (#69); the page is phase 2 |
-| 2. The Manufacturers page | 0 / 7 | Not started |
+| 2. The Manufacturers page | 5 / 7 | In progress — steps 2.1 to 2.5 built; step 2.6 is this phase's pull request, then reyxdz's staging check (2.7) |
 
 Two pull requests, as reyxdz decided on 2026-10-23: phase 1 is "Part of #57",
 and phase 2 is "Closes #57". Stop for the owner after each.
@@ -255,36 +255,36 @@ One pull request, "Closes #57". Screenshots use invented manufacturers and price
 
 ### Step 2.1 — Types and the gateway
 
-- [ ] **Action.** The frontend types, both gateway methods, the HTTP adapter and the test fake. Adapter tests: `manufacturers` reads `GET /atlas/saved/<id>/manufacturers` and turns `stageSet.at` into a `Date`; `setManufacturerStage` sends `PUT` with `{ stage }`; a 403 becomes an `AppError` carrying "You are not allowed to do that."
-- [ ] **Verify.** `npm --prefix frontend run test` passes.
+- [x] **Action.** The frontend types, both gateway methods, the HTTP adapter and the test fake. Adapter tests: `manufacturers` reads `GET /atlas/saved/<id>/manufacturers` and turns `stageSet.at` into a `Date`; `setManufacturerStage` sends `PUT` with `{ stage }`; a 403 becomes an `AppError` carrying "You are not allowed to do that."
+- [x] **Verify.** `npm --prefix frontend run test` passes.
 
 ### Step 2.2 — Groups and values
 
-- [ ] **Action.** `manufacturer-groups.ts`. Tests:
+- [x] **Action.** `manufacturer-groups.ts`. Tests:
   - the groups come in #57's order with #57's names and descriptions;
   - a group with no manufacturer is left out;
   - `null` shows "—";
   - `30` shows "30 days", and `30-35 days` shows as written.
-- [ ] **Verify.** The tests pass.
+- [x] **Verify.** The tests pass.
 
 ### Step 2.3 — The hooks
 
-- [ ] **Action.** `useSpecIdManufacturers(id)` (suspense, `atlasKeys.manufacturers(id)`) and `useSetManufacturerStage(id)`, which refreshes that query on success.
-- [ ] **Verify.** A hook test: after a successful set, the query is fetched again.
+- [x] **Action.** `useSpecIdManufacturers(id)` (suspense, `atlasKeys.manufacturers(id)`) and `useSetManufacturerStage(id)`, which refreshes that query on success.
+- [x] **Verify.** A hook test: after a successful set, the query is fetched again.
 
 ### Step 2.4 — The groups on screen
 
-- [ ] **Action.** `ManufacturerGroups` in `features/atlas/presentation/manufacturers/`, tokens only (`frontend/DESIGN.md`). Tests:
+- [x] **Action.** `ManufacturerGroups` in `features/atlas/presentation/manufacturers/`, tokens only (`frontend/DESIGN.md`). Tests:
   - each manufacturer shows its name, country, stage and every quote with #57's labels;
   - an admin-set stage shows "Set to {stage} by {name} on {date}";
   - an admin sees **Mark as sampling** and **Mark as in production**, and **Clear stage** only once a stage is set;
   - someone who is not an admin sees none of them;
   - a failed change shows the error's message.
-- [ ] **Verify.** The tests pass; `npm run design:check` exits 0.
+- [x] **Verify.** The tests pass; `npm run design:check` exits 0.
 
 ### Step 2.5 — The page
 
-- [ ] **Action.**
+- [x] **Action.**
   - `ManufacturersPage` and `ManufacturersPageSkeleton`, shaped like the page, and the route `atlas/:id/manufacturers` in `app/routes.tsx`.
   - The eyebrow "Manufacturers", the name, the code under it, and **Open Spec ID** to `/atlas/<id>`.
   - With no manufacturers: "No manufacturers are recorded for this Spec ID yet. They come from the verified list import." with **Open Spec ID**.
@@ -294,7 +294,7 @@ One pull request, "Closes #57". Screenshots use invented manufacturers and price
   - the empty state shows #57's sentence;
   - an unknown id shows "This Spec ID doesn't exist. It may have been typed wrong.";
   - a failed load shows the error with **Try again**.
-- [ ] **Verify.** The tests pass.
+- [x] **Verify.** The tests pass.
 
 ### Step 2.6 — The card links, browser check and pull request
 

@@ -75,7 +75,7 @@ export function LibraryList({ library, q, productTypeName, timeZone }: LibraryLi
         {items.map((saved) => (
           <li key={saved.id}>
             <Link
-              to={`/atlas/${saved.id}`}
+              to={`/atlas/${saved.id}/manufacturers`}
               className="block rounded-surface border border-border bg-surface p-5 shadow-sm transition-colors duration-150 ease-standard hover:bg-surface-raised"
             >
               <SpecIdSummary saved={saved} timeZone={timeZone} />
