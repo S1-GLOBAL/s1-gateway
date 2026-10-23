@@ -32,8 +32,43 @@ export function recordedAt(replacedAt: Date | null, clock: Date): Date {
  * Clearing an admin's stage (`null`) hands it back to the quotes.
  */
 export function stageOf(quotes: readonly QuoteValues[], set: AdminStage | null): Stage {
+  return stageOfPriced(
+    quotes.some((quote) => hasPrice(quote.fobPerUnit) || hasPrice(quote.fobPerCase)),
+    set,
+  );
+}
+
+/** `stageOf` for a read that already knows whether any quote has a price. */
+export function stageOfPriced(priced: boolean, set: AdminStage | null): Stage {
   if (set !== null) return set;
-  return quotes.some((quote) => hasPrice(quote.fobPerUnit) || hasPrice(quote.fobPerCase)) ? 'quoted' : 'specifications-received';
+  return priced ? 'quoted' : 'specifications-received';
+}
+
+/** The stages in the order a manufacturer reaches them (#73). */
+export const STAGE_ORDER: readonly Stage[] = ['specifications-received', 'quoted', 'sampling', 'in-production'];
+
+/** How many of a Spec ID's manufacturers have reached each stage, at it or later (#73). */
+export interface ManufacturerStageCounts {
+  readonly specificationsReceived: number;
+  readonly quoted: number;
+  readonly sampling: number;
+  readonly inProduction: number;
+}
+
+/**
+ * How many of `stages` reached each stage: a manufacturer reaches its own
+ * stage and every earlier one, so one In production and one Quoted give
+ * 2, 2, 1, 1 (#73).
+ */
+export function reachedCounts(stages: readonly Stage[]): ManufacturerStageCounts {
+  const reached = (stage: Stage) =>
+    stages.filter((own) => STAGE_ORDER.indexOf(own) >= STAGE_ORDER.indexOf(stage)).length;
+  return {
+    specificationsReceived: reached('specifications-received'),
+    quoted: reached('quoted'),
+    sampling: reached('sampling'),
+    inProduction: reached('in-production'),
+  };
 }
 
 /** One change an admin made to a manufacturer's stage on a Spec ID. Only ever recorded, never changed. */

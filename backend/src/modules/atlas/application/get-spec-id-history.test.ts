@@ -4,6 +4,7 @@ import { SpecIdNotFoundError } from '../domain/spec-id.errors.js';
 import { GetSpecIdHistory } from './get-spec-id-history.js';
 import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
+import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { UpdateSpecId } from './update-spec-id.js';
 
@@ -19,12 +20,12 @@ async function setup() {
   const ids = new SequentialIdGenerator();
   const saved = await new SaveSpecId(
     dictionaries,
-    specIds,
+    specIds, new InMemorySourcingRepository(),
     new FixedClock(new Date('2026-10-15T08:00:00.000Z')),
     ids,
   ).execute({ name: 'Kraft soup bowl', facts: BOWL, savedBy: SAVER });
   if (!saved.ok) throw saved.error;
-  const update = (at: string) => new UpdateSpecId(dictionaries, specIds, new FixedClock(new Date(at)), ids);
+  const update = (at: string) => new UpdateSpecId(dictionaries, specIds, new InMemorySourcingRepository(), new FixedClock(new Date(at)), ids);
   return { history: new GetSpecIdHistory(dictionaries, specIds), update, id: saved.value.id };
 }
 

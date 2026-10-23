@@ -15,6 +15,7 @@ import { atlasSpecIdChanges } from './atlas-spec-id-changes.table.js';
 import { atlasSpecIds } from './atlas-spec-ids.table.js';
 import { DrizzleDictionaryRepository } from './drizzle-dictionary-repository.js';
 import { DrizzleSpecIdRepository } from './drizzle-spec-id-repository.js';
+import { DrizzleSourcingRepository } from './drizzle-sourcing-repository.js';
 
 const connection = connectTestDatabase();
 const SHORTEN = readFileSync(new URL('../../../../drizzle/0012_shorten_atlas_codes.sql', import.meta.url), 'utf8');
@@ -134,7 +135,7 @@ describe('the shortening migration, 0012', () => {
       nameBefore: 'Lid',
     });
     await connection.db.execute(sql.raw(SHORTEN));
-    const find = new FindSpecIdByCode(new DrizzleDictionaryRepository(connection.db), new DrizzleSpecIdRepository(connection.db));
+    const find = new FindSpecIdByCode(new DrizzleDictionaryRepository(connection.db), new DrizzleSpecIdRepository(connection.db), new DrizzleSourcingRepository(connection.db));
 
     for (const code of [ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1.toLowerCase(), ILLUSTRATIVE]) {
       const result = await find.execute({ code });

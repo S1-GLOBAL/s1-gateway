@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { QuoteValues } from './quote.js';
-import { hasPrice, recordedAt, stageOf } from './stage.js';
+import { hasPrice, reachedCounts, recordedAt, stageOf } from './stage.js';
 
 /** An invented quote: never a Source One price (ADR 0027). */
 const quote = (values: Partial<QuoteValues> = {}): QuoteValues => ({
@@ -51,5 +51,20 @@ describe('hasPrice', () => {
 
   it.each(['$0.0350', '12', '$0.05 per 1000 pouches'])('takes %j for a price', (value) => {
     expect(hasPrice(value)).toBe(true);
+  });
+});
+
+describe('reachedCounts', () => {
+  it('counts each manufacturer at its own stage and every earlier one', () => {
+    expect(reachedCounts(['in-production', 'quoted'])).toEqual({ specificationsReceived: 2, quoted: 2, sampling: 1, inProduction: 1 });
+    expect(reachedCounts(['specifications-received'])).toEqual({ specificationsReceived: 1, quoted: 0, sampling: 0, inProduction: 0 });
+  });
+
+  it('counts an admin-set Sampling as having reached Quoted, though it has no price', () => {
+    expect(reachedCounts([stageOf([], 'sampling')])).toEqual({ specificationsReceived: 1, quoted: 1, sampling: 1, inProduction: 0 });
+  });
+
+  it('counts none as zeros', () => {
+    expect(reachedCounts([])).toEqual({ specificationsReceived: 0, quoted: 0, sampling: 0, inProduction: 0 });
   });
 });

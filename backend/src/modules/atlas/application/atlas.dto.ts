@@ -3,7 +3,7 @@ import type { SlotState, SpecId, SpecIdFactsInput } from '../domain/spec-id.js';
 import type { FormerHolderRecord, SavedSpecIdRecord } from '../domain/spec-id-repository.js';
 import type { Ruling } from '../domain/reading/size-rulings.js';
 import { DICTIONARY_SLOTS, slotDefinition, type SlotKey, type SlotRule } from '../domain/slots.js';
-import type { AdminStage, Stage } from '../domain/sourcing/stage.js';
+import type { AdminStage, ManufacturerStageCounts, Stage } from '../domain/sourcing/stage.js';
 
 /** The dictionary as the application hands it outward. */
 export interface DictionaryDto {
@@ -103,6 +103,8 @@ export interface SavedSpecIdDto extends DecodedSpecIdDto {
   updatedBy: StaffDto | null;
   /** ISO 8601. */
   updatedAt: string | null;
+  /** How many of its manufacturers have reached each stage, at it or later (#73). */
+  manufacturerStages: ManufacturerStageCounts;
 }
 
 export interface SpecIdLibraryPageDto {
@@ -181,7 +183,11 @@ export type FindSimilarSpecIdsInput = Readonly<Record<string, unknown>>;
  * A saved Spec ID read slot by slot. Meanings are never reassigned between
  * releases (ADR 0021), so the current dictionary reads every saved code.
  */
-export function toSavedSpecIdDto(record: SavedSpecIdRecord, dictionary: Dictionary): SavedSpecIdDto {
+export function toSavedSpecIdDto(
+  record: SavedSpecIdRecord,
+  dictionary: Dictionary,
+  manufacturerStages: ManufacturerStageCounts,
+): SavedSpecIdDto {
   const { savedSpecId, savedByName, updatedByName } = record;
   const { updatedBy, updatedAt } = savedSpecId;
   return {
@@ -194,6 +200,7 @@ export function toSavedSpecIdDto(record: SavedSpecIdRecord, dictionary: Dictiona
     version: savedSpecId.version,
     updatedBy: updatedBy === null ? null : { id: updatedBy, fullName: updatedByName ?? '' },
     updatedAt: updatedAt === null ? null : updatedAt.toISOString(),
+    manufacturerStages: { ...manufacturerStages },
   };
 }
 

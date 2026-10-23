@@ -208,3 +208,53 @@ describe('DrizzleSourcingRepository, stages (#57)', () => {
     expect((await repository.currentStages(CUP_ID))[0]?.change.stageAfter).toBe('sampling');
   });
 });
+
+describe('DrizzleSourcingRepository, stagesOf (#73)', () => {
+  const LID_ID = '00000000-0000-4000-8000-00000000c002';
+  const PLATE_ID = '00000000-0000-4000-8000-00000000c003';
+
+  /** Saves an invented Spec ID beside the cup, with no quotes. */
+  async function saved(id: string, productType: string, material: string): Promise<void> {
+    const built = SpecId.build({ productType, material }, s2Dictionary());
+    if (!built.ok) throw new Error('setup failed');
+    const record = SavedSpecId.restore({ id, specId: built.value, name: `Invented ${productType}`, dictionaryRelease: 'S2 0.1.0', savedBy: SAVER_ID, savedAt: IMPORTED_AT });
+    await new DrizzleSpecIdRepository(connection.db).add(record, SpecIdChange.created(record, randomUUID()));
+  }
+
+  const on = (specId: string, row: QuoteToRecord): QuoteToRecord => ({ ...row, specId });
+
+  it("answers each manufacturer's stage under its Spec ID, in one read", async () => {
+    await saved(LID_ID, 'CLD', 'APT');
+    await saved(PLATE_ID, 'PLT', 'CBG');
+    await repository.replaceQuotes([
+      quote('Acme Packaging', 'Atlantis'),
+      quote('Acme Packaging', 'Atlantis', { fobPerUnit: 'N/A', fobPerCase: null }),
+      quote('Borealis Boxes', null, { fobPerUnit: 'N/A', fobPerCase: '-' }),
+      on(LID_ID, quote('Cascade Cartons', null, { fobPerUnit: '/', fobPerCase: null })),
+    ]);
+    const cascade = (await repository.quotesOf(LID_ID))[0]?.manufacturer.id as string;
+    await repository.recordStageChange({ id: randomUUID(), specId: LID_ID, manufacturerId: cascade, stageAfter: 'sampling', changedBy: SAVER_ID, changedAt: IMPORTED_AT });
+
+    const stages = await repository.stagesOf([CUP_ID, LID_ID, PLATE_ID]);
+
+    expect([...(stages.get(CUP_ID) ?? [])].sort()).toEqual(['quoted', 'specifications-received']);
+    expect(stages.get(LID_ID)).toEqual(['sampling']);
+    expect(stages.has(PLATE_ID)).toBe(false);
+  });
+
+  it('hands a cleared stage back to the quotes', async () => {
+    await repository.replaceQuotes([quote('Acme Packaging', 'Atlantis', { fobPerUnit: 'N/A', fobPerCase: null })]);
+    const acme = (await repository.quotesOf(CUP_ID))[0]?.manufacturer.id as string;
+    const change = (stageAfter: 'in-production' | null, at: string) =>
+      repository.recordStageChange({ id: randomUUID(), specId: CUP_ID, manufacturerId: acme, stageAfter, changedBy: SAVER_ID, changedAt: new Date(at) });
+
+    await change('in-production', '2026-10-23T09:00:00.000Z');
+    expect((await repository.stagesOf([CUP_ID])).get(CUP_ID)).toEqual(['in-production']);
+    await change(null, '2026-10-23T09:05:00.000Z');
+    expect((await repository.stagesOf([CUP_ID])).get(CUP_ID)).toEqual(['specifications-received']);
+  });
+
+  it('answers an empty map for no Spec IDs', async () => {
+    expect(await repository.stagesOf([])).toEqual(new Map());
+  });
+});

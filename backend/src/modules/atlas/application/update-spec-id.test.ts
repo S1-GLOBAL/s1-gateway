@@ -3,6 +3,7 @@ import { FixedClock, SequentialIdGenerator } from '../../../shared/application/t
 import { InvalidSpecIdError, SpecIdChangedError, SpecIdExistsError, SpecIdNotFoundError } from '../domain/spec-id.errors.js';
 import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
+import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { UpdateSpecId } from './update-spec-id.js';
 
@@ -26,8 +27,8 @@ async function setup() {
   specIds.nameSaver(SAVER.id, SAVER.fullName);
   specIds.nameSaver(EDITOR.id, EDITOR.fullName);
   const ids = new SequentialIdGenerator();
-  const save = new SaveSpecId(dictionaries, specIds, new FixedClock(new Date('2026-10-16T08:00:00.000Z')), ids);
-  const update = new UpdateSpecId(dictionaries, specIds, new FixedClock(new Date('2026-10-17T08:00:00.000Z')), ids);
+  const save = new SaveSpecId(dictionaries, specIds, new InMemorySourcingRepository(), new FixedClock(new Date('2026-10-16T08:00:00.000Z')), ids);
+  const update = new UpdateSpecId(dictionaries, specIds, new InMemorySourcingRepository(), new FixedClock(new Date('2026-10-17T08:00:00.000Z')), ids);
   const saved = await save.execute({ name: 'Illustrative lid', facts: FACTS, savedBy: SAVER });
   if (!saved.ok) throw saved.error;
   return { specIds, save, update, id: saved.value.id };

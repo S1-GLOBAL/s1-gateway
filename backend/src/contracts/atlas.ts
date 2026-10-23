@@ -154,6 +154,16 @@ export interface SavedSpecId extends DecodedSpecId {
   updatedBy: SavedBy | null;
   /** ISO 8601; null until the first change. */
   updatedAt: string | null;
+  /** How many of its manufacturers have reached each stage, at it or later (#73). */
+  manufacturerStages: ManufacturerStageCounts;
+}
+
+/** How many of a Spec ID's manufacturers have reached each stage, at it or later: one In production and one Quoted are 2, 2, 1, 1 (#73). */
+export interface ManufacturerStageCounts {
+  specificationsReceived: number;
+  quoted: number;
+  sampling: number;
+  inProduction: number;
 }
 
 /** `POST /atlas/spec-ids`. */

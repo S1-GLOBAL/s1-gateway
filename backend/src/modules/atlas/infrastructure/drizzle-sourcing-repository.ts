@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Database } from '../../../shared/infrastructure/database/connection.js';
 import { accountsTable } from '../../accounts/index.js';
 import { manufacturerKey } from '../domain/sourcing/manufacturer.js';
@@ -9,7 +9,7 @@ import type {
   StageChangeRecord,
   StageChangeToRecord,
 } from '../domain/sourcing/sourcing-repository.js';
-import { recordedAt, type AdminStage, type StageChange } from '../domain/sourcing/stage.js';
+import { recordedAt, stageOfPriced, type AdminStage, type Stage, type StageChange } from '../domain/sourcing/stage.js';
 import { atlasManufacturerStageChanges } from './atlas-manufacturer-stage-changes.table.js';
 import { atlasManufacturers } from './atlas-manufacturers.table.js';
 import { atlasQuotes } from './atlas-quotes.table.js';
@@ -135,6 +135,33 @@ export class DrizzleSourcingRepository implements SourcingRepository {
       await tx.insert(atlasManufacturerStageChanges).values(change);
       return change;
     });
+  }
+  async stagesOf(specIds: readonly string[]): Promise<Map<string, Stage[]>> {
+    const stages = new Map<string, Stage[]>();
+    if (specIds.length === 0) return stages;
+    // One read for a whole page of cards (#73): each manufacturer once per
+    // Spec ID, whether any of its quotes there has a price, and its newest
+    // admin stage there. A price has a digit, as `hasPrice` says.
+    const rows = await this.db
+      .select({
+        specId: atlasQuotes.specId,
+        priced: sql<boolean>`coalesce(bool_or(${atlasQuotes.fobPerUnit} ~ '[0-9]' or ${atlasQuotes.fobPerCase} ~ '[0-9]'), false)`,
+        // Spelled out: inside a subquery, Drizzle writes a column without its
+        // table, and `spec_id = spec_id` would match every change.
+        set: sql<string | null>`(
+          select change.stage_after from atlas_manufacturer_stage_changes change
+          where change.spec_id = atlas_quotes.spec_id and change.manufacturer_id = atlas_quotes.manufacturer_id
+          order by change.changed_at desc, change.id desc
+          limit 1
+        )`,
+      })
+      .from(atlasQuotes)
+      .where(inArray(atlasQuotes.specId, [...specIds]))
+      .groupBy(atlasQuotes.specId, atlasQuotes.manufacturerId);
+    for (const { specId, priced, set } of rows) {
+      stages.set(specId, [...(stages.get(specId) ?? []), stageOfPriced(priced, set as AdminStage | null)]);
+    }
+    return stages;
   }
 }
 

@@ -1,6 +1,6 @@
 # 0009. Stage icons on every Spec ID card
 
-- **Status:** Ready
+- **Status:** In progress
 - **Owner:** Rey Denzo
 - **Related:** [#73](https://github.com/S1-GLOBAL/s1-gateway/issues/73) ·
   [plan 0008](./0008-manufacturers-page.md) ·
@@ -41,7 +41,7 @@ Lit icons draw themselves once when the card appears, and again on hover; nothin
 
 | Phase | Steps | Status |
 |---|---|---|
-| 1. Stage counts in the API | 0 / 4 | Not started |
+| 1. Stage counts in the API | 4 / 4 | Done — every SavedSpecId carries its stage counts (#75); the icons are phase 2 |
 | 2. Icons on the cards | 0 / 6 | Not started |
 
 Two pull requests, as reyxdz decided on 2026-10-23: phase 1 is "Part of #73",
@@ -66,7 +66,7 @@ Each manufacturer's own stage is `stageOf` from #69, unchanged: an admin-set sta
 |---|---|
 | `stagesOf(specIds: readonly string[])` | In **one** query, each manufacturer with a quote on each of the given Spec IDs: whether any of its quotes there has a price, and its newest admin stage there. Answers `Map<specId, Stage[]>`, one `Stage` per manufacturer; a Spec ID with none is absent. An empty list makes no query |
 
-Drizzle (`DISTINCT ON` for the newest change, `fob_per_unit ~ '[0-9]' or fob_per_case ~ '[0-9]'` for a price) and in-memory adapters *(technical call: one round trip for a page of 20 cards)*.
+Drizzle (a correlated subquery, spelled out in SQL, for the newest change; `fob_per_unit ~ '[0-9]' or fob_per_case ~ '[0-9]'` for a price) and in-memory adapters *(technical call: one round trip for a page of 20 cards)*.
 
 ### Contract — `backend/src/contracts/atlas.ts` (types only, ADR 0007)
 
@@ -84,7 +84,7 @@ export interface ManufacturerStageCounts {
 
 ### Where the API builds a `SavedSpecId`
 
-`toSavedSpecIdDto(record, dictionary, counts)` takes the counts. Each use case below reads them with one `stagesOf` call for every Spec ID in its answer:
+`toSavedSpecIdDto(record, dictionary, counts)` takes the counts. Each use case below reads them with one `stagesOf` call for every Spec ID in its answer, except a Spec ID just saved, which answers zeros without a read:
 
 | Use case | Spec IDs in one call |
 |---|---|
@@ -92,7 +92,7 @@ export interface ManufacturerStageCounts {
 | `FindSimilarSpecIds` | fits and might fit together |
 | `FindSpecIdByCode` | the holder |
 | `GetSavedSpecId` | the one |
-| `SaveSpecId` | the one saved, or the existing one in `SPEC_ID_EXISTS` |
+| `SaveSpecId` | the existing one in `SPEC_ID_EXISTS`. A Spec ID just saved answers zeros, with no read |
 | `UpdateSpecId` | the one changed, or the other one in `SPEC_ID_EXISTS` |
 
 The use cases that take a `SourcingRepository` for this get it in `backend/src/modules/atlas/index.ts`, `atlas.routes.test.ts`, the import command (`backend/src/scripts/atlas-import.ts`) and their tests.
@@ -132,26 +132,26 @@ One pull request, "Part of #73".
 
 ### Step 1.1 — Counts in the domain
 
-- [ ] **Action.** `STAGE_ORDER` and `reachedCounts` in `domain/sourcing/stage.ts`. Tests:
+- [x] **Action.** `STAGE_ORDER` and `reachedCounts` in `domain/sourcing/stage.ts`. Tests:
   - one In production and one Quoted give 2, 2, 1, 1;
   - one Specifications received gives 1, 0, 0, 0;
   - an admin-set Sampling gives 1, 1, 1, 0;
   - none give 0, 0, 0, 0.
-- [ ] **Verify.** From `backend/`: `npx vitest run --config vitest.unit.config.ts src/modules/atlas/domain/sourcing` passes.
+- [x] **Verify.** From `backend/`: `npx vitest run --config vitest.unit.config.ts src/modules/atlas/domain/sourcing` passes.
 
 ### Step 1.2 — One read for many Spec IDs
 
-- [ ] **Action.** `stagesOf` on `SourcingRepository`, Drizzle and in-memory. Database tests:
+- [x] **Action.** `stagesOf` on `SourcingRepository`, Drizzle and in-memory. Database tests:
   - two Spec IDs with three manufacturers between them answer each manufacturer's stage under its Spec ID;
   - a price of `N/A` is no price;
   - an admin-set stage wins, and a cleared one hands back to the quotes;
   - a Spec ID with none is absent;
   - an empty list answers an empty map.
-- [ ] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
+- [x] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
 
 ### Step 1.3 — Every `SavedSpecId` carries its counts
 
-- [ ] **Action.** The contract and DTO field, `toSavedSpecIdDto`'s third argument, and the six use cases above, each calling `stagesOf` once.
+- [x] **Action.** The contract and DTO field, `toSavedSpecIdDto`'s third argument, and the six use cases above, each calling `stagesOf` once. A Spec ID just saved answers zeros without a read.
 
   Tests with the in-memory adapters:
   - the library page of 20 calls `stagesOf` once, with all 20 ids;
@@ -160,12 +160,12 @@ One pull request, "Part of #73".
   - `SPEC_ID_EXISTS` carries the existing Spec ID's counts.
 
   One composed database test: `GET /api/v1/atlas/saved` answers `manufacturerStages` with each item.
-- [ ] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
+- [x] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
 
 ### Step 1.4 — Docs and the pull request
 
-- [ ] **Action.** `api.md` describes `manufacturerStages` on `SavedSpecId`. Open the pull request "Part of #73".
-- [ ] **Verify.** CI and `pr-audit` pass.
+- [x] **Action.** `api.md` describes `manufacturerStages` on `SavedSpecId`. Open the pull request "Part of #73".
+- [x] **Verify.** CI and `pr-audit` pass.
 
 ---
 

@@ -5,6 +5,7 @@ import { ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1, withSlot } from '../domain/testing/
 import { FindSpecIdByCode } from './find-spec-id-by-code.js';
 import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
+import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { UpdateSpecId } from './update-spec-id.js';
 
@@ -24,12 +25,12 @@ describe('FindSpecIdByCode', () => {
   const dictionaries = new InMemoryDictionaryRepository();
   const specIds = new InMemorySpecIdRepository();
   specIds.nameSaver(SAVER.id, SAVER.fullName);
-  const find = new FindSpecIdByCode(dictionaries, specIds);
+  const find = new FindSpecIdByCode(dictionaries, specIds, new InMemorySourcingRepository());
 
   it('opens a saved Spec ID with its saver, ignoring spaces around the code', async () => {
     await new SaveSpecId(
       dictionaries,
-      specIds,
+      specIds, new InMemorySourcingRepository(),
       new FixedClock(new Date('2026-10-16T08:00:00.000Z')),
       new SequentialIdGenerator(),
     ).execute({ name: 'Illustrative lid', facts: FACTS, savedBy: SAVER });
@@ -48,11 +49,11 @@ describe('FindSpecIdByCode', () => {
     saved.nameSaver(SAVER.id, SAVER.fullName);
     await new SaveSpecId(
       dictionaries,
-      saved,
+      saved, new InMemorySourcingRepository(),
       new FixedClock(new Date('2026-10-16T08:00:00.000Z')),
       new SequentialIdGenerator(),
     ).execute({ name: 'Illustrative lid', facts: FACTS, savedBy: SAVER });
-    const findSaved = new FindSpecIdByCode(dictionaries, saved);
+    const findSaved = new FindSpecIdByCode(dictionaries, saved, new InMemorySourcingRepository());
 
     for (const code of [ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1.toLowerCase(), withSlot(ILLUSTRATIVE, 'height', '0000')]) {
       const result = await findSaved.execute({ code });
@@ -79,12 +80,12 @@ describe('FindSpecIdByCode, after codes change', () => {
     specIds.nameSaver(SAVER.id, SAVER.fullName);
     specIds.nameSaver(EDITOR.id, EDITOR.fullName);
     const ids = new SequentialIdGenerator();
-    const save = new SaveSpecId(dictionaries, specIds, new FixedClock(new Date('2026-10-16T08:00:00.000Z')), ids);
+    const save = new SaveSpecId(dictionaries, specIds, new InMemorySourcingRepository(), new FixedClock(new Date('2026-10-16T08:00:00.000Z')), ids);
     const a = await save.execute({ name: 'A', facts: FACTS, savedBy: SAVER });
     if (!a.ok) throw a.error;
     const corrected = await new UpdateSpecId(
       dictionaries,
-      specIds,
+      specIds, new InMemorySourcingRepository(),
       new FixedClock(new Date('2026-10-17T08:00:00.000Z')),
       ids,
     ).execute({ id: a.value.id, name: 'A', facts: { ...FACTS, height: { value: '12', unit: 'mm' } }, version: 1, updatedBy: EDITOR });
@@ -93,7 +94,7 @@ describe('FindSpecIdByCode, after codes change', () => {
       const b = await save.execute({ name: 'B', facts: FACTS, savedBy: SAVER });
       if (!b.ok) throw b.error;
     }
-    return { find: new FindSpecIdByCode(dictionaries, specIds), aId: a.value.id };
+    return { find: new FindSpecIdByCode(dictionaries, specIds, new InMemorySourcingRepository()), aId: a.value.id };
   }
 
   it('answers the Spec ID a replaced code became, naming the code asked for', async () => {

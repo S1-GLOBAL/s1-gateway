@@ -4,6 +4,7 @@ import { InvalidSpecIdError, SpecIdExistsError } from '../domain/spec-id.errors.
 import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
+import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
 
 const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
 const FACTS = {
@@ -22,7 +23,7 @@ function setup() {
   specIds.nameSaver(SAVER.id, SAVER.fullName);
   const save = new SaveSpecId(
     new InMemoryDictionaryRepository(),
-    specIds,
+    specIds, new InMemorySourcingRepository(),
     new FixedClock(new Date('2026-10-16T08:00:00.000Z')),
     new SequentialIdGenerator(),
   );

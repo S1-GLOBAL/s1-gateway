@@ -5,6 +5,7 @@ import { FindSimilarSpecIds } from './find-similar-spec-ids.js';
 import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
+import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
 
 const SAVER = { id: '00000000-0000-4000-8000-0000000000aa', fullName: 'Ada Invented' };
 const LID = { productType: 'BLD', material: 'APS', shape: 'RD' };
@@ -28,7 +29,7 @@ async function setup() {
   const specIds = new InMemorySpecIdRepository();
   specIds.nameSaver(SAVER.id, SAVER.fullName);
   const clock = new SteppingClock(new Date('2026-10-14T08:00:00.000Z'));
-  const save = new SaveSpecId(dictionaries, specIds, clock, new SequentialIdGenerator());
+  const save = new SaveSpecId(dictionaries, specIds, new InMemorySourcingRepository(), clock, new SequentialIdGenerator());
   const saveLid = async (name: string, at: string, extra: object) => {
     clock.set(at);
     const result = await save.execute({ name, facts: { ...LID, ...extra }, savedBy: SAVER });
@@ -37,7 +38,7 @@ async function setup() {
   await saveLid('Unstated rim', '2026-10-14T08:00:00.000Z', {});
   await saveLid('Rim 90', '2026-10-15T08:00:00.000Z', { topDiameter: { value: '90', unit: 'mm' } });
   await saveLid('Rim 91', '2026-10-16T08:00:00.000Z', { topDiameter: { value: '91', unit: 'mm' } });
-  return { find: new FindSimilarSpecIds(dictionaries, specIds), saveLid };
+  return { find: new FindSimilarSpecIds(dictionaries, specIds, new InMemorySourcingRepository()), saveLid };
 }
 
 describe('FindSimilarSpecIds', () => {

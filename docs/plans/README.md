@@ -68,4 +68,4 @@ does not exist yet, say so and mark the plan blocked rather than inventing it.
 | [0006](./0006-s2-spec-ids-and-verified-list-import.md) | S2 Spec IDs, a dictionary from the verified list, and its import | In progress |
 | [0007](./0007-search-atlas-with-raw-product-text.md) | Search Atlas with raw product text | Complete |
 | [0008](./0008-manufacturers-page.md) | Manufacturers on each Spec ID, with stages admins set | In progress |
-| [0009](./0009-stage-icons-on-spec-id-cards.md) | Stage icons on every Spec ID card | Ready |
+| [0009](./0009-stage-icons-on-spec-id-cards.md) | Stage icons on every Spec ID card | In progress |

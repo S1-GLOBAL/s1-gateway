@@ -207,8 +207,17 @@ Nothing is saved.
 
 `SavedSpecId` is a `DecodedSpecId` plus its permanent `id`, `name` (1–120
 characters), `savedBy: { id, fullName }`, `savedAt` (ISO 8601), `version` (1
-when saved, raised by 1 on every change), and `updatedBy` and `updatedAt`
-(null until the first change).
+when saved, raised by 1 on every change), `updatedBy` and `updatedAt`
+(null until the first change), and `manufacturerStages`.
+
+`manufacturerStages` is `{ specificationsReceived, quoted, sampling, inProduction }`:
+how many of the Spec ID's manufacturers have reached each stage, at it or
+later (#73). A manufacturer reaches its own stage and every earlier one, so
+one In production and one Quoted are 2, 2, 1, 1, and `specificationsReceived`
+is how many manufacturers it has. Each manufacturer's own stage is the one
+`GET /atlas/saved/:id/manufacturers` answers. A Spec ID with no manufacturers,
+or one just saved, has all four 0. Every list (the library, a similar lookup)
+reads them for all its Spec IDs at once.
 
 `POST /atlas/spec-ids` takes `{ name, facts }`. It encodes the facts, as
 `/encode` does, and saves the Spec ID under the signed-in account. Surrounding

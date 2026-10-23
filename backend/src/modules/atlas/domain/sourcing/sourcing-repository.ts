@@ -1,6 +1,6 @@
 import type { Manufacturer } from './manufacturer.js';
 import type { Quote, QuoteValues } from './quote.js';
-import type { AdminStage, StageChange } from './stage.js';
+import type { AdminStage, Stage, StageChange } from './stage.js';
 
 /** A quote to record, with the manufacturer it comes from. */
 export interface QuoteToRecord {
@@ -59,4 +59,10 @@ export interface SourcingRepository {
    * nothing, when the stage is already `stageAfter`. Changes are only ever added.
    */
   recordStageChange(change: StageChangeToRecord): Promise<StageChange | null>;
+  /**
+   * In one read, the stage of each manufacturer with a quote on each of the
+   * given Spec IDs (#73). A Spec ID with none is absent; an empty list reads
+   * nothing.
+   */
+  stagesOf(specIds: readonly string[]): Promise<Map<string, Stage[]>>;
 }

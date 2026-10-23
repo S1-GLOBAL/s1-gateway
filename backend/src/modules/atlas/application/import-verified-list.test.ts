@@ -36,7 +36,7 @@ function setup(given: VerifiedRow[]) {
   const sourcing = new InMemorySourcingRepository();
   const clock = new FixedClock(new Date('2026-10-22T08:00:00.000Z'));
   const ids = new SequentialIdGenerator();
-  const save = new SaveSpecId(dictionaries, specIds, clock, ids);
+  const save = new SaveSpecId(dictionaries, specIds, new InMemorySourcingRepository(), clock, ids);
   const saveSpy = vi.spyOn(save, 'execute');
   const written: ImportReport[] = [];
   const sink: ImportReportSink = { write: async (report) => void written.push(report) };

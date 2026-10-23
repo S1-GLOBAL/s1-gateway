@@ -7,9 +7,12 @@ import { checkName, SavedSpecId } from '../domain/saved-spec-id.js';
 import { SpecIdChange } from '../domain/spec-id-change.js';
 import { CURRENT_RELEASE } from '../domain/slots.js';
 import { InvalidSpecIdError, SpecIdExistsError, type SpecIdIssues } from '../domain/spec-id.errors.js';
+import { reachedCounts } from '../domain/sourcing/stage.js';
 import { SpecId } from '../domain/spec-id.js';
+import type { SourcingRepository } from '../domain/sourcing/sourcing-repository.js';
 import type { SpecIdRepository } from '../domain/spec-id-repository.js';
 import { toSavedSpecIdDto, type SaveSpecIdInput, type SavedSpecIdDto } from './atlas.dto.js';
+import { savedSpecIdDtoOf } from './stage-counts.js';
 
 export type SaveSpecIdError = InvalidSpecIdError | SpecIdExistsError;
 
@@ -18,6 +21,7 @@ export class SaveSpecId implements UseCase<SaveSpecIdInput, Result<SavedSpecIdDt
   constructor(
     private readonly dictionaries: DictionaryRepository,
     private readonly specIds: SpecIdRepository,
+    private readonly sourcing: SourcingRepository,
     private readonly clock: Clock,
     private readonly ids: IdGenerator,
   ) {}
@@ -47,19 +51,21 @@ export class SaveSpecId implements UseCase<SaveSpecIdInput, Result<SavedSpecIdDt
 
     const code = built.value.code;
     const existing = await this.specIds.findByCode(code);
-    if (existing) return err(new SpecIdExistsError(toSavedSpecIdDto(existing, dictionary)));
+    if (existing) return err(new SpecIdExistsError(await savedSpecIdDtoOf(this.sourcing, existing, dictionary)));
 
     // The database decides between two simultaneous saves of one code: the loser reads the winner.
     const added = await this.specIds.add(created.value, SpecIdChange.created(created.value, this.ids.next()));
     if (!added.ok) {
       const winner = await this.specIds.findByCode(code);
-      return err(winner ? new SpecIdExistsError(toSavedSpecIdDto(winner, dictionary)) : added.error);
+      return err(winner ? new SpecIdExistsError(await savedSpecIdDtoOf(this.sourcing, winner, dictionary)) : added.error);
     }
 
     return ok(
       toSavedSpecIdDto(
         { savedSpecId: created.value, savedByName: input.savedBy.fullName, updatedByName: null },
         dictionary,
+        // Just saved, so no manufacturer has a quote on it yet: nothing to read.
+        reachedCounts([]),
       ),
     );
   }
