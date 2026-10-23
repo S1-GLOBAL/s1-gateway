@@ -147,9 +147,10 @@ describe('AtlasLibrary, Search', () => {
       'Fits — every fact you gave matches',
       "Might fit — nothing contradicts, but some facts aren't recorded",
     ]);
-    expect(screen.getByRole('link', { name: /14oz Bagasse Bowl/ }).getAttribute('href')).toBe(`/atlas/${fits.id}`);
+    // Fits and Might fit cards open the Spec ID's manufacturers first (#57).
+    expect(screen.getByRole('link', { name: /14oz Bagasse Bowl/ }).getAttribute('href')).toBe(`/atlas/${fits.id}/manufacturers`);
     expect(screen.getByRole('link', { name: /Bagasse bowl, size unknown/ }).getAttribute('href')).toBe(
-      `/atlas/${might.id}`,
+      `/atlas/${might.id}/manufacturers`,
     );
     expect(findSimilar).toHaveBeenCalledWith({ productType: 'BWL', material: 'CBG', capacity: 'Z0014' });
     expect(save).not.toHaveBeenCalled();

@@ -31,6 +31,8 @@ function renderPage(load: AtlasGateway['dictionary']) {
     getSaved: pending,
     update: pending,
     history: pending,
+    manufacturers: pending,
+    setManufacturerStage: pending,
     library: async () => ({ items: [], nextCursor: null }),
   };
   render(

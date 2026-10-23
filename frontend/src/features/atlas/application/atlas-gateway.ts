@@ -1,4 +1,5 @@
 import type {
+  AdminStage,
   AtlasDictionary,
   DecodedSpecId,
   LibraryQuery,
@@ -9,6 +10,8 @@ import type {
   SpecIdFacts,
   SpecIdLibraryPage,
   SpecIdLookup,
+  SpecIdManufacturer,
+  SpecIdManufacturers,
   SpecIdTextReading,
 } from '../domain/atlas';
 
@@ -38,4 +41,8 @@ export interface AtlasGateway {
   history(id: string): Promise<SpecIdChange[]>;
   /** One page of saved Spec IDs, newest change first. */
   library(query: LibraryQuery): Promise<SpecIdLibraryPage>;
+  /** A saved Spec ID's manufacturers, each with its stage and quotes (#57). */
+  manufacturers(id: string): Promise<SpecIdManufacturers>;
+  /** Admins only: sets a manufacturer's stage on a Spec ID, or clears it with `null`. */
+  setManufacturerStage(id: string, manufacturerId: string, stage: AdminStage | null): Promise<SpecIdManufacturer>;
 }

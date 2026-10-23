@@ -279,3 +279,38 @@ export interface SpecIdTextReading {
   /** Null when no product type was found or given. */
   decoded: DecodedSpecId | null;
 }
+
+/** A manufacturer's stage on a Spec ID (#57): the quotes give the first two, an admin the last two. */
+export type ManufacturerStage = 'specifications-received' | 'quoted' | 'sampling' | 'in-production';
+
+/** The stages only an admin sets. */
+export type AdminStage = 'sampling' | 'in-production';
+
+/** One verified-list row's quote, each value as the workbook shows it; null when empty. */
+export interface ManufacturerQuote {
+  itemName: string | null;
+  fobPerUnit: string | null;
+  fobPerCase: string | null;
+  fobTotal: string | null;
+  moldCost: string | null;
+  moldLeadTime: string | null;
+  sampleLeadTime: string | null;
+  productionLeadTime: string | null;
+}
+
+/** A manufacturer on one Spec ID, once, with its stage and every quote. */
+export interface SpecIdManufacturer {
+  id: string;
+  name: string;
+  country: string | null;
+  stage: ManufacturerStage;
+  /** The last change an admin made, if any; `stage` is null once it was cleared. */
+  stageSet: { by: Staff; at: Date; stage: AdminStage | null } | null;
+  quotes: ManufacturerQuote[];
+}
+
+/** A Spec ID's manufacturers, by name. */
+export interface SpecIdManufacturers {
+  specId: { id: string; name: string; code: string };
+  manufacturers: SpecIdManufacturer[];
+}

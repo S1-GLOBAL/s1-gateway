@@ -6,11 +6,14 @@ import type {
   ReadSpecIdTextRequest,
   SavedSpecId as SavedSpecIdContract,
   SaveSpecIdRequest,
+  SetManufacturerStageRequest,
   SimilarSpecIds as SimilarSpecIdsContract,
   SpecIdChange as SpecIdChangeContract,
   SpecIdExistsDetails,
   SpecIdLibraryPage as SpecIdLibraryPageContract,
   SpecIdLookup as SpecIdLookupContract,
+  SpecIdManufacturer as SpecIdManufacturerContract,
+  SpecIdManufacturers as SpecIdManufacturersContract,
   SpecIdTextReading as SpecIdTextReadingContract,
   UpdateSpecIdRequest,
 } from '@contracts/atlas';
@@ -22,6 +25,7 @@ import type { AtlasGateway } from '../application/atlas-gateway';
 import { SpecIdChangedError } from '../application/spec-id-changed-error';
 import { SpecIdExistsError } from '../application/spec-id-exists-error';
 import type {
+  AdminStage,
   AtlasDictionary,
   DecodedSpecId,
   LibraryQuery,
@@ -32,6 +36,8 @@ import type {
   SpecIdFacts,
   SpecIdLibraryPage,
   SpecIdLookup,
+  SpecIdManufacturer,
+  SpecIdManufacturers,
   SpecIdTextReading,
 } from '../domain/atlas';
 
@@ -160,6 +166,31 @@ export class HttpAtlasGateway implements AtlasGateway {
       throw toAppError(error);
     }
   }
+
+  async manufacturers(id: string): Promise<SpecIdManufacturers> {
+    try {
+      const response = await this.http.get<DataEnvelope<SpecIdManufacturersContract>>(
+        `/atlas/saved/${encodeURIComponent(id)}/manufacturers`,
+      );
+      const { specId, manufacturers } = response.data.data;
+      return { specId: { ...specId }, manufacturers: manufacturers.map(toSpecIdManufacturer) };
+    } catch (error) {
+      throw toAppError(error);
+    }
+  }
+
+  async setManufacturerStage(id: string, manufacturerId: string, stage: AdminStage | null): Promise<SpecIdManufacturer> {
+    const body: SetManufacturerStageRequest = { stage };
+    try {
+      const response = await this.http.put<DataEnvelope<SpecIdManufacturerContract>>(
+        `/atlas/saved/${encodeURIComponent(id)}/manufacturers/${encodeURIComponent(manufacturerId)}/stage`,
+        body,
+      );
+      return toSpecIdManufacturer(response.data.data);
+    } catch (error) {
+      throw toAppError(error);
+    }
+  }
 }
 
 /**
@@ -240,5 +271,22 @@ function toSpecIdChange(contract: SpecIdChangeContract): SpecIdChange {
     nameBefore: contract.nameBefore,
     nameAfter: contract.nameAfter,
     slots: contract.slots.map(({ key, name, before, after, corrected }) => ({ key, name, before, after, corrected })),
+  };
+}
+
+function toSpecIdManufacturer(contract: SpecIdManufacturerContract): SpecIdManufacturer {
+  return {
+    id: contract.id,
+    name: contract.name,
+    country: contract.country,
+    stage: contract.stage,
+    stageSet: contract.stageSet
+      ? {
+          by: { id: contract.stageSet.by.id, fullName: contract.stageSet.by.fullName },
+          at: new Date(contract.stageSet.at),
+          stage: contract.stageSet.stage,
+        }
+      : null,
+    quotes: contract.quotes.map((quote) => ({ ...quote })),
   };
 }

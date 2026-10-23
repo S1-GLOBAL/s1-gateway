@@ -369,3 +369,64 @@ describe('HttpAtlasGateway, the library', () => {
     expect((failure as AppError).fields).toEqual(fields);
   });
 });
+
+describe('HttpAtlasGateway, manufacturers (#57)', () => {
+  const SPEC = '00000000-0000-4000-8000-000000000001';
+  const ACME = '00000000-0000-4000-8000-00000000ac01';
+  /** Invented: never a Source One manufacturer or price (ADR 0027). */
+  const wireManufacturer = {
+    id: ACME,
+    name: 'Acme Packaging',
+    country: 'Atlantis',
+    stage: 'sampling',
+    stageSet: { by: { id: 'admin', fullName: 'Ada Admin' }, at: '2026-10-23T08:00:00.000Z', stage: 'sampling' },
+    quotes: [
+      {
+        itemName: 'Invented PP cup',
+        fobPerUnit: '$0.0123',
+        fobPerCase: null,
+        fobTotal: null,
+        moldCost: null,
+        moldLeadTime: null,
+        sampleLeadTime: '7',
+        productionLeadTime: '30 days',
+      },
+    ],
+  };
+
+  it("reads a Spec ID's manufacturers, each stage change's date as a Date", async () => {
+    const sent: Sent[] = [];
+    const wire = { specId: { id: SPEC, name: 'Invented PP cup', code: ILLUSTRATIVE }, manufacturers: [wireManufacturer] };
+
+    const read = await gatewayAnswering(200, { data: wire }, sent).manufacturers(SPEC);
+
+    expect(sent).toEqual([{ method: 'get', url: `/atlas/saved/${SPEC}/manufacturers`, body: undefined }]);
+    expect(read).toEqual({
+      ...wire,
+      manufacturers: [{ ...wireManufacturer, stageSet: { ...wireManufacturer.stageSet, at: new Date('2026-10-23T08:00:00.000Z') } }],
+    });
+  });
+
+  it('sends a stage with PUT, and null to clear it', async () => {
+    const sent: Sent[] = [];
+    const gateway = gatewayAnswering(200, { data: { ...wireManufacturer, stageSet: null, stage: 'quoted' } }, sent);
+
+    await gateway.setManufacturerStage(SPEC, ACME, 'sampling');
+    const cleared = await gateway.setManufacturerStage(SPEC, ACME, null);
+
+    expect(sent).toEqual([
+      { method: 'put', url: `/atlas/saved/${SPEC}/manufacturers/${ACME}/stage`, body: { stage: 'sampling' } },
+      { method: 'put', url: `/atlas/saved/${SPEC}/manufacturers/${ACME}/stage`, body: { stage: null } },
+    ]);
+    expect(cleared).toMatchObject({ stage: 'quoted', stageSet: null });
+  });
+
+  it('turns a 403 into an AppError carrying its message', async () => {
+    const refusal = { error: { code: 'NOT_ALLOWED', message: 'You are not allowed to do that.' } };
+
+    const failed = gatewayAnswering(403, refusal).setManufacturerStage(SPEC, ACME, 'sampling');
+
+    await expect(failed).rejects.toBeInstanceOf(AppError);
+    await expect(failed).rejects.toMatchObject({ code: 'NOT_ALLOWED', message: 'You are not allowed to do that.' });
+  });
+});
