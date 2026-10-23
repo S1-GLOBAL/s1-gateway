@@ -371,3 +371,102 @@ export function WifiOffIcon(props: IconProps) {
     </IconSvg>
   );
 }
+
+/* ---------------------------------------------- Manufacturer stages (#73) -- */
+
+/** Specifications received: the page stays; its three lines write in, top to bottom. */
+const writeLine: Variants = {
+  rest: { pathLength: 1, opacity: 1 },
+  active: (order: number) => ({
+    pathLength: [1, 0, 1],
+    opacity: [1, 0, 1],
+    transition: { duration: 0.45, delay: 0.05 + order * 0.09, ease: ease.standard },
+  }),
+};
+
+export function SpecsReceivedIcon(props: IconProps) {
+  return (
+    <IconSvg {...props}>
+      <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
+      <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+      <m.path custom={0} variants={writeLine} d="M10 9H8" />
+      <m.path custom={1} variants={writeLine} d="M16 13H8" />
+      <m.path custom={2} variants={writeLine} d="M16 17H8" />
+    </IconSvg>
+  );
+}
+
+/** Quoted: the receipt stays; its price sign redraws, stem then curve. */
+const priceSign: Variants = {
+  rest: { pathLength: 1, opacity: 1 },
+  active: (order: number) => ({
+    pathLength: [1, 0, 1],
+    opacity: [1, 0, 1],
+    transition: { duration: 0.5, delay: order * 0.12, ease: ease.standard },
+  }),
+};
+
+export function QuotedIcon(props: IconProps) {
+  return (
+    <IconSvg {...props}>
+      <path d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z" />
+      <m.path custom={0} variants={priceSign} d="M12 17V7" />
+      <m.path custom={1} variants={priceSign} d="M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8" />
+    </IconSvg>
+  );
+}
+
+/** Sampling: the flask stays; the liquid's surface sloshes side to side and settles. */
+const slosh: Variants = {
+  rest: { x: 0, rotate: 0 },
+  active: {
+    x: [0, -1.2, 1, -0.5, 0],
+    rotate: [0, -6, 5, -2, 0],
+    transition: { duration: 0.7, ease: 'easeInOut' },
+  },
+};
+
+export function SamplingIcon(props: IconProps) {
+  return (
+    <IconSvg {...props}>
+      <path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2" />
+      <m.path variants={slosh} style={ownCentre} d="M6.453 15h11.094" />
+      <path d="M8.5 2h7" />
+    </IconSvg>
+  );
+}
+
+/** In production: the factory stays; its three windows light in turn, left to right. */
+const windowLight: Variants = {
+  rest: { scale: 1 },
+  active: (order: number) => ({
+    scale: [1, 2.6, 1],
+    transition: { duration: 0.4, delay: 0.05 + order * 0.1, ease: ease.standard },
+  }),
+};
+
+export function InProductionIcon(props: IconProps) {
+  return (
+    <IconSvg {...props}>
+      <path d="M3 19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5a.5.5 0 0 0-.769-.422l-4.462 2.844A.5.5 0 0 1 15 10.5v-2a.5.5 0 0 0-.769-.422L9.77 10.922A.5.5 0 0 1 9 10.5V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z" />
+      <m.path custom={0} variants={windowLight} style={ownCentre} d="M8 16h.01" />
+      <m.path custom={1} variants={windowLight} style={ownCentre} d="M12 16h.01" />
+      <m.path custom={2} variants={windowLight} style={ownCentre} d="M16 16h.01" />
+    </IconSvg>
+  );
+}
+
+/** No manufacturers: the circle stays; its slash draws on. */
+const strike: Variants = {
+  rest: { pathLength: 1 },
+  active: { pathLength: [1, 0, 1], transition: { duration: 0.5, ease: ease.standard } },
+};
+
+export function NoManufacturersIcon(props: IconProps) {
+  return (
+    <IconSvg {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <m.line variants={strike} x1="9" x2="15" y1="15" y2="9" />
+    </IconSvg>
+  );
+}

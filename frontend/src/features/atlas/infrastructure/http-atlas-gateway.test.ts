@@ -318,6 +318,15 @@ describe('HttpAtlasGateway, changing a saved Spec ID', () => {
     expect((failure as SpecIdExistsError).existing.id).toBe(SPEC_ID);
   });
 
+  it("reads a Spec ID's stage counts (#73), and none from an API that sends none", async () => {
+    const counts = { specificationsReceived: 2, quoted: 1, sampling: 0, inProduction: 0 };
+    const withStages = await gatewayAnswering(200, { data: { ...wireSaved, manufacturerStages: counts } }).getSaved(SPEC_ID);
+    const without = await gatewayAnswering(200, { data: wireSaved }).getSaved(SPEC_ID);
+
+    expect(withStages.manufacturerStages).toEqual(counts);
+    expect('manufacturerStages' in without).toBe(false);
+  });
+
   it('reads the history, each change with its date as a Date', async () => {
     const sent: Sent[] = [];
     const wire = {

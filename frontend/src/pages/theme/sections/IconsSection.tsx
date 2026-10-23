@@ -6,11 +6,16 @@ import {
   AtlasIcon,
   CheckIcon,
   ExternalLinkIcon,
+  InProductionIcon,
   MonitorIcon,
   MoonIcon,
+  NoManufacturersIcon,
   PlusIcon,
+  QuotedIcon,
   RefreshIcon,
+  SamplingIcon,
   SidebarIcon,
+  SpecsReceivedIcon,
   SunIcon,
   ThemeIcon,
   ToolsIcon,
@@ -35,6 +40,11 @@ const ICONS: { name: string; Icon: ComponentType<IconProps>; motion: string }[] 
   { name: 'Alert', Icon: AlertIcon, motion: 'Ring shakes' },
   { name: 'Refresh', Icon: RefreshIcon, motion: 'Halves turn' },
   { name: 'Offline', Icon: WifiOffIcon, motion: 'Signal fades out' },
+  { name: 'Specifications received', Icon: SpecsReceivedIcon, motion: 'Lines write in turn' },
+  { name: 'Quoted', Icon: QuotedIcon, motion: 'Price sign redraws' },
+  { name: 'Sampling', Icon: SamplingIcon, motion: 'Liquid sloshes' },
+  { name: 'In production', Icon: InProductionIcon, motion: 'Windows light in turn' },
+  { name: 'No manufacturers', Icon: NoManufacturersIcon, motion: 'Slash draws on' },
 ];
 
 export function IconsSection() {

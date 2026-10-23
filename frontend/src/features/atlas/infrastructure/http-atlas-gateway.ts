@@ -250,6 +250,8 @@ function toSavedSpecId(contract: SavedSpecIdContract): SavedSpecId {
     version: contract.version,
     updatedBy: contract.updatedBy ? { id: contract.updatedBy.id, fullName: contract.updatedBy.fullName } : null,
     updatedAt: contract.updatedAt ? new Date(contract.updatedAt) : null,
+    // An API older than #75 sends none: the card then shows no stage icons.
+    ...(contract.manufacturerStages ? { manufacturerStages: { ...contract.manufacturerStages } } : {}),
   };
 }
 
