@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { savedFor, ILLUSTRATIVE } from '../../application/testing/atlas-fixtures';
+import { COPIED_MS } from './CopyCodeButton';
 import { SpecIdSummary } from './SpecIdSummary';
 import { StageIcons } from './StageIcons';
 
@@ -11,6 +12,8 @@ vi.mock('motion/react', async (importOriginal) => ({
 }));
 afterEach(() => {
   reduced.value = false;
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 const row = () => within(screen.getByRole('list', { name: 'Manufacturer stages' }));
@@ -64,5 +67,39 @@ describe('SpecIdSummary with stage icons', () => {
     render(<SpecIdSummary saved={savedFor(ILLUSTRATIVE, 'Invented lid')} />);
 
     expect(screen.queryByRole('list', { name: 'Manufacturer stages' })).toBeNull();
+  });
+
+  it('copies the code, reads "Copied", and reads "Copy code" again after 2 seconds', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const writeText = vi.fn(async () => undefined);
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    render(<SpecIdSummary saved={savedFor(ILLUSTRATIVE, 'Invented lid')} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy code' }));
+    });
+
+    expect(writeText).toHaveBeenCalledWith(ILLUSTRATIVE);
+    expect(screen.getByRole('button', { name: 'Copied' })).toBeTruthy();
+    act(() => vi.advanceTimersByTime(COPIED_MS - 1));
+    expect(screen.getByRole('button', { name: 'Copied' })).toBeTruthy();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getByRole('button', { name: 'Copy code' })).toBeTruthy();
+    expect(COPIED_MS).toBe(2000);
+  });
+
+  it('leaves the code selectable when the clipboard refuses', async () => {
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      clipboard: { writeText: vi.fn(async () => Promise.reject(new Error('refused'))) },
+    });
+    render(<SpecIdSummary saved={savedFor(ILLUSTRATIVE, 'Invented lid')} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy code' }));
+    });
+
+    expect(screen.getByRole('button', { name: 'Copy code' })).toBeTruthy();
+    expect(screen.getByText(ILLUSTRATIVE)).toBeTruthy();
   });
 });
