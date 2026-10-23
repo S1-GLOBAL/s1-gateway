@@ -8,11 +8,16 @@ import {
   AtlasIcon,
   CheckIcon,
   ExternalLinkIcon,
+  InProductionIcon,
   MonitorIcon,
   MoonIcon,
+  NoManufacturersIcon,
   PlusIcon,
+  QuotedIcon,
   RefreshIcon,
+  SamplingIcon,
   SidebarIcon,
+  SpecsReceivedIcon,
   SunIcon,
   ThemeIcon,
   ToolsIcon,
@@ -35,6 +40,11 @@ const ICONS: [string, ComponentType<IconProps>, number][] = [
   ['AlertIcon', AlertIcon, 3],
   ['RefreshIcon', RefreshIcon, 4],
   ['WifiOffIcon', WifiOffIcon, 7],
+  ['SpecsReceivedIcon', SpecsReceivedIcon, 5],
+  ['QuotedIcon', QuotedIcon, 3],
+  ['SamplingIcon', SamplingIcon, 3],
+  ['InProductionIcon', InProductionIcon, 4],
+  ['NoManufacturersIcon', NoManufacturersIcon, 2],
 ];
 
 describe.each(ICONS)('%s', (_name, Icon, strokes) => {

@@ -57,7 +57,8 @@ function chooseProductType(name: string) {
   fireEvent.click(screen.getByRole('radio', { name }));
 }
 
-const cards = () => within(screen.getByRole('list')).getAllByRole('link');
+// The library's list comes first; each card holds its own list of stage icons (#73).
+const cards = () => within(screen.getAllByRole('list')[0]!).getAllByRole('link');
 
 afterEach(() => {
   vi.useRealTimers();
@@ -81,7 +82,7 @@ describe('AtlasLibrary, the list', () => {
 
   it('shows each Spec ID with its code, its facts in plain words, what is missing and its last change', async () => {
     const ben = { id: '00000000-0000-4000-8000-0000000000bb', fullName: 'Ben Invented' };
-    const lid = saved(1, { updatedBy: ben, updatedAt: new Date('2026-10-17T14:32:00Z') });
+    const lid = saved(1, { updatedBy: ben, updatedAt: new Date('2026-10-17T14:32:00Z'), manufacturerStages: { specificationsReceived: 2, quoted: 1, sampling: 0, inProduction: 0 } });
     renderLibrary({ library: async () => ({ items: [lid], nextCursor: null }) });
 
     const [card] = await waitFor(() => cards());
@@ -92,6 +93,8 @@ describe('AtlasLibrary, the list', () => {
     expect(within(card!).getByText('Bowl lid · APS · CL · RD · DM · 0090 · 0033')).toBeTruthy();
     expect(within(card!).getByText('4 not known')).toBeTruthy();
     expect(within(card!).getByText('Last updated by Ben Invented on 17 October 2026')).toBeTruthy();
+    // How far its manufacturers have come (#73).
+    expect(within(card!).getByRole('list', { name: 'Manufacturer stages' })).toBeTruthy();
   });
 
   it('marks a Spec ID with nothing missing as Complete', async () => {
@@ -264,6 +267,14 @@ describe('AtlasLibrary, a pasted code', () => {
     ]);
     expect(screen.getByText('This code also belonged to "Old lid" until 17 October 2026. It\'s now S1.OTHER.')).toBeTruthy();
     expect(screen.queryByRole('radiogroup', { name: 'Product type' })).toBeNull();
+  });
+
+  it("shows a pasted code's Spec ID with its stage icons (#73)", async () => {
+    renderLibrary({ findByCode: async () => lookupFor(ILLUSTRATIVE, 'Illustrative lid', { manufacturerStages: { specificationsReceived: 2, quoted: 1, sampling: 0, inProduction: 0 } }) });
+
+    search(ILLUSTRATIVE);
+
+    expect(await screen.findByRole('list', { name: 'Manufacturer stages' })).toBeTruthy();
   });
 
   it('finds the Spec ID a replaced code became', async () => {

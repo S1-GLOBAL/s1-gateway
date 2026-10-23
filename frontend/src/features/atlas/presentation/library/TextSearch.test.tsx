@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/shared/application/app-error';
@@ -132,7 +132,7 @@ describe('AtlasLibrary, Search', () => {
   });
 
   it('Yes, proceed lists the Spec IDs that fit before those that might, and saves nothing', async () => {
-    const fits = savedFor(BOWL, '14oz Bagasse Bowl', { id: '00000000-0000-4000-8000-000000000001' });
+    const fits = savedFor(BOWL, '14oz Bagasse Bowl', { id: '00000000-0000-4000-8000-000000000001', manufacturerStages: { specificationsReceived: 2, quoted: 1, sampling: 0, inProduction: 0 } });
     const might = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-000000000002' });
     const findSimilar = vi.fn<AtlasGateway['findSimilar']>(async () => ({ fits: [fits], mightFit: [might] }));
     const save = vi.fn<AtlasGateway['save']>();
@@ -152,6 +152,8 @@ describe('AtlasLibrary, Search', () => {
     expect(screen.getByRole('link', { name: /Bagasse bowl, size unknown/ }).getAttribute('href')).toBe(
       `/atlas/${might.id}/manufacturers`,
     );
+    // The fits card shows its stage icons (#73).
+    expect(within(screen.getByRole('link', { name: /14oz Bagasse Bowl/ })).getByRole('list', { name: 'Manufacturer stages' })).toBeTruthy();
     expect(findSimilar).toHaveBeenCalledWith({ productType: 'BWL', material: 'CBG', capacity: 'Z0014' });
     expect(save).not.toHaveBeenCalled();
   });

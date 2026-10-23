@@ -42,7 +42,7 @@ Lit icons draw themselves once when the card appears, and again on hover; nothin
 | Phase | Steps | Status |
 |---|---|---|
 | 1. Stage counts in the API | 4 / 4 | Done — every SavedSpecId carries its stage counts (#75); the icons are phase 2 |
-| 2. Icons on the cards | 0 / 6 | Not started |
+| 2. Icons on the cards | 4 / 6 | In progress — steps 2.1 to 2.4 built; step 2.5 is this phase's pull request, then reyxdz's staging check (2.6) |
 
 Two pull requests, as reyxdz decided on 2026-10-23: phase 1 is "Part of #73",
 and phase 2 is "Closes #73". Stop for the owner after each.
@@ -175,31 +175,31 @@ One pull request, "Closes #73". Screenshots use invented data only.
 
 ### Step 2.1 — The type and the adapter
 
-- [ ] **Action.** `ManufacturerStageCounts` and the optional `manufacturerStages` in the frontend domain; the HTTP adapter maps it, and leaves it out when the API sends none. Adapter tests for both.
-- [ ] **Verify.** `npm --prefix frontend run test` passes.
+- [x] **Action.** `ManufacturerStageCounts` and the optional `manufacturerStages` in the frontend domain; the HTTP adapter maps it, and leaves it out when the API sends none. Adapter tests for both.
+- [x] **Verify.** `npm --prefix frontend run test` passes.
 
 ### Step 2.2 — Five animated icons
 
-- [ ] **Action.** The five icons, made as DESIGN.md "Icons" says, in `icons.tsx` and `icons/index.ts`, with their stroke counts in `icons.test.tsx`, and shown in `/theme`'s Icons section.
-- [ ] **Verify.** The icon tests pass; `npm run design:check` exits 0.
+- [x] **Action.** The five icons, made as DESIGN.md "Icons" says, in `icons.tsx` and `icons/index.ts`, with their stroke counts in `icons.test.tsx`, and shown in `/theme`'s Icons section.
+- [x] **Verify.** The icon tests pass; `npm run design:check` exits 0.
 
 ### Step 2.3 — Lit state and words
 
-- [ ] **Action.** `stage-icons.ts`. Tests:
+- [x] **Action.** `stage-icons.ts`. Tests:
   - 2, 2, 1, 1 lights the four stage icons, and the fifth says "2 manufacturers recorded";
   - 1, 0, 0, 0 lights only the first, which says "Specifications received: 1 manufacturer", and the others say "{Stage}: none";
   - 0, 0, 0, 0 lights only the fifth, "No manufacturers yet".
-- [ ] **Verify.** The tests pass.
+- [x] **Verify.** The tests pass.
 
 ### Step 2.4 — The row on every card
 
-- [ ] **Action.** `StageIcons`, and `SpecIdSummary` rendering it after the facts. Tests:
+- [x] **Action.** `StageIcons`, and `SpecIdSummary` rendering it after the facts. Tests:
   - each icon carries its words as its accessible name and hover text;
   - lit and unlit icons differ;
   - with reduced motion no icon animates;
   - a `SavedSpecId` with no `manufacturerStages` shows no row;
   - the library, Search's results and a pasted code's result all show the row.
-- [ ] **Verify.** The tests pass; `npm run design:check` exits 0.
+- [x] **Verify.** The tests pass; `npm run design:check` exits 0.
 
 ### Step 2.5 — Browser check, screenshots and the pull request
 

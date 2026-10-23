@@ -141,6 +141,16 @@ export interface SavedSpecId extends DecodedSpecId {
   /** Null until the first change. */
   updatedBy: Staff | null;
   updatedAt: Date | null;
+  /** How far its manufacturers have come (#73). Absent from an API older than #75. */
+  manufacturerStages?: ManufacturerStageCounts;
+}
+
+/** How many of a Spec ID's manufacturers have reached each stage, at it or later (#73). */
+export interface ManufacturerStageCounts {
+  specificationsReceived: number;
+  quoted: number;
+  sampling: number;
+  inProduction: number;
 }
 
 /** A Spec ID that once had a code. */
