@@ -158,7 +158,7 @@ describe('the app, signed in', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
     expect(signOut).toHaveBeenCalledTimes(1);
-    expect(await screen.findByRole('heading', { level: 1, name: "Source One's Staff Hub." })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' })).toBeTruthy();
   });
 });
 
@@ -206,11 +206,36 @@ describe('the sign-in gate', () => {
 
   it('shows the branded landing when signed out at /', async () => {
     const router = renderAt('/', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
-    expect(await screen.findByRole('heading', { level: 1, name: "Source One's Staff Hub." })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' })).toBeTruthy();
     expect(router.state.location.pathname).toBe('/');
+    expect(screen.getByLabelText('Email')).toBeTruthy();
+    expect(screen.getByLabelText('Password')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
     expect(screen.queryByText('Create an account')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Create an account' })).toBeNull();
+  });
+
+  it('signs in from the front door and opens Atlas', async () => {
+    let signedIn = false;
+    const signIn = vi.fn<AccountsGateway['signIn']>().mockImplementation(async () => {
+      signedIn = true;
+      return account();
+    });
+    const router = renderAt(
+      '/',
+      fakeAccountsGateway({
+        signIn,
+        me: async () => {
+          if (!signedIn) throw SIGNED_OUT;
+          return account();
+        },
+      }),
+    );
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'ada@sourceone.global' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'a long enough password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/atlas'));
+    expect(signIn).toHaveBeenCalledWith({ email: 'ada@sourceone.global', password: 'a long enough password' });
   });
 
   it('keeps the public pages open without a session', async () => {
