@@ -43,13 +43,15 @@ export function Sidebar({
   const initials = accountInitials(account.firstName, account.lastName);
   const email = account.email.trim();
 
+  // z-20 sits above the page. Folded labels reach over the content, and the
+  // page's transform and filter — and a skeleton's — would paint over them.
   return (
     <m.aside
       aria-label="Main"
       initial={false}
       animate={{ width: collapsed ? SIDEBAR_WIDTH.collapsed : SIDEBAR_WIDTH.expanded }}
       transition={{ duration: duration.slow, ease: ease.emphasized }}
-      className="sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-border bg-surface md:flex"
+      className="sticky top-0 z-20 hidden h-dvh shrink-0 flex-col border-r border-border bg-surface md:flex"
     >
       <div className={cn('flex h-14 shrink-0 items-center', collapsed ? 'justify-center' : 'px-5')}>
         <Link to="/" aria-label="Source One Gateway, home" className="rounded-control text-ink">
