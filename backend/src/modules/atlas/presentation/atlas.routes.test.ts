@@ -9,11 +9,14 @@ import { FindSpecIdByCode } from '../application/find-spec-id-by-code.js';
 import { GetDictionary } from '../application/get-dictionary.js';
 import { GetSavedSpecId } from '../application/get-saved-spec-id.js';
 import { GetSpecIdHistory } from '../application/get-spec-id-history.js';
+import { GetSpecIdManufacturers } from '../application/get-spec-id-manufacturers.js';
 import { ListSavedSpecIds } from '../application/list-saved-spec-ids.js';
 import { ReadSpecIdText } from '../application/read-spec-id-text.js';
 import { SaveSpecId } from '../application/save-spec-id.js';
+import { SetManufacturerStage } from '../application/set-manufacturer-stage.js';
 import { UpdateSpecId } from '../application/update-spec-id.js';
 import { InMemoryDictionaryRepository } from '../application/testing/in-memory-dictionary-repository.js';
+import { InMemorySourcingRepository } from '../application/testing/in-memory-sourcing-repository.js';
 import { InMemorySpecIdRepository } from '../application/testing/in-memory-spec-id-repository.js';
 import { ILLUSTRATIVE, ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1, withSlot } from '../domain/testing/spec-id-codes.js';
 import { AtlasController } from './atlas.controller.js';
@@ -35,6 +38,7 @@ function setup() {
   const dictionaries = new InMemoryDictionaryRepository();
   const specIds = new InMemorySpecIdRepository();
   specIds.nameSaver(STAFF.id, STAFF.fullName);
+  const sourcing = new InMemorySourcingRepository();
   const controller = new AtlasController(
     new GetDictionary(dictionaries),
     new DecodeSpecId(dictionaries),
@@ -60,6 +64,15 @@ function setup() {
       library: new ListSavedSpecIds(dictionaries, specIds),
     },
     new ReadSpecIdText(dictionaries),
+    {
+      list: new GetSpecIdManufacturers(specIds, sourcing),
+      setStage: new SetManufacturerStage(
+        specIds,
+        sourcing,
+        new FixedClock(new Date('2026-10-18T08:00:00.000Z')),
+        new SequentialIdGenerator(),
+      ),
+    },
   );
   // Atlas route shape only — production mounts Atlas behind the session gate.
   return createApp({

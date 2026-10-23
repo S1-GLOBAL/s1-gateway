@@ -60,6 +60,8 @@ Request bodies are JSON, at most **100 kB**.
 | GET | `/atlas/saved/:id` | session | 200 `{ data: SavedSpecId }` | 401, 404 `SPEC_ID_NOT_FOUND` |
 | PATCH | `/atlas/saved/:id` | session | 200 `{ data: SavedSpecId }` | 401, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED`, 404 `SPEC_ID_NOT_FOUND`, 409 `SPEC_ID_CHANGED`, 409 `SPEC_ID_EXISTS` |
 | GET | `/atlas/saved/:id/history` | session | 200 `{ data: SpecIdChange[] }`, newest first | 401, 404 `SPEC_ID_NOT_FOUND` |
+| GET | `/atlas/saved/:id/manufacturers` | session | 200 `{ data: SpecIdManufacturers }` | 401, 404 `SPEC_ID_NOT_FOUND` |
+| PUT | `/atlas/saved/:id/manufacturers/:manufacturerId/stage` | admin | 200 `{ data: SpecIdManufacturer }` | 401, 403 `NOT_ALLOWED`, 400 `VALIDATION_FAILED`, 404 `SPEC_ID_NOT_FOUND`, 404 `MANUFACTURER_NOT_FOUND` |
 
 When `mustChangePassword` is true, every session route except
 `GET /auth/me`, `POST /auth/sign-out` and `POST /auth/change-password`
@@ -266,8 +268,28 @@ its creation last: `kind` (`created` or `updated`), `changedBy`,
 ("Not known", "Doesn't apply", "62 mm"). `corrected` is true when a known
 value was replaced.
 
-Nothing replaces or deletes a saved Spec ID: `PUT` and `DELETE` on any Atlas
-path answer 404 ([ADR 0022](../decisions/0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md)).
+`GET /atlas/saved/:id/manufacturers` answers a `SpecIdManufacturers`: the
+Spec ID's `{ id, name, code }` and `manufacturers`, each manufacturer once,
+by name, as `{ id, name, country, stage, stageSet, quotes }` (#57). Quotes come
+from the verified-list import, each value as the workbook shows it, null when
+empty ([ADR 0027](../decisions/0027-manufacturers-and-quotes-live-in-atlas-behind-sign-in.md)).
+`stage` is the one an admin set, `sampling` or `in-production`; with none,
+`quoted` when any quote's `fobPerUnit` or `fobPerCase` holds a digit (`N/A`,
+`-` and `/` are not prices), else `specifications-received`. `stageSet` is the
+last change an admin made, `{ by, at, stage }` with `stage` null once cleared,
+or null when none was made.
+
+`PUT /atlas/saved/:id/manufacturers/:manufacturerId/stage` takes
+`{ stage: "sampling" | "in-production" | null }`; `null` clears it, handing the
+stage back to the quotes. Only admins may call it: anyone else is answered 403
+`NOT_ALLOWED` by the admin gate, and nothing is recorded. Every change is
+recorded with who, when, and the stage before and after; setting the stage a
+manufacturer already has records nothing. A manufacturer with no quote on that
+Spec ID, or a `:manufacturerId` that is not an id, answers 404
+`MANUFACTURER_NOT_FOUND`. The verified-list import never changes a stage.
+
+Nothing replaces or deletes a saved Spec ID ([ADR 0022](../decisions/0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md)):
+there is no `PUT` or `DELETE` for one. The one Atlas `PUT` sets a manufacturer's stage.
 
 ## Error codes
 
@@ -296,5 +318,6 @@ path answer 404 ([ADR 0022](../decisions/0022-saved-spec-ids-can-be-edited-and-e
 | `SPEC_ID_EXISTS` | 409 | That Spec ID is already saved. `details.existing` is the saved Spec ID; nothing new was saved |
 | `SPEC_ID_NOT_FOUND` | 404 | No saved Spec ID has, or had, this code; or none has this id |
 | `SPEC_ID_CHANGED` | 409 | The Spec ID changed since the `version` the change was started from; nothing was saved |
+| `MANUFACTURER_NOT_FOUND` | 404 | The manufacturer has no quote on this Spec ID, or the id is not one |
 | `NOT_FOUND` | 404 | No route matches the method and path |
 | `INTERNAL_ERROR` | 500 | An unexpected failure. Logged in full on the server; the response says nothing more |

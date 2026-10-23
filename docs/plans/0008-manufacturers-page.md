@@ -1,6 +1,6 @@
 # 0008. Manufacturers on each Spec ID, with stages admins set
 
-- **Status:** Ready
+- **Status:** In progress
 - **Owner:** Rey Denzo
 - **Related:** [#57](https://github.com/S1-GLOBAL/s1-gateway/issues/57) ·
   [ADR 0027](../decisions/0027-manufacturers-and-quotes-live-in-atlas-behind-sign-in.md) ·
@@ -50,7 +50,7 @@ and this plan is corrected.
 
 | Phase | Steps | Status |
 |---|---|---|
-| 1. Stages and the two routes | 0 / 6 | Not started |
+| 1. Stages and the two routes | 6 / 6 | Done — the stage table and both routes (#69); the page is phase 2 |
 | 2. The Manufacturers page | 0 / 7 | Not started |
 
 Two pull requests, as reyxdz decided on 2026-10-23: phase 1 is "Part of #57",
@@ -92,7 +92,7 @@ Rows are only ever inserted.
 | `stage_before` | `varchar(16)` | yes | `sampling`, `in-production`, or null for none |
 | `stage_after` | `varchar(16)` | yes | the same; null is a cleared stage |
 | `changed_by` | `uuid` | no | FK → `accounts.id` |
-| `changed_at` | `timestamptz` | no | the application's clock |
+| `changed_at` | `timestamptz` | no | the application's clock, or 1ms later when that clock is not after the change it replaces |
 
 A check constraint keeps both stage columns to the two values or null, and an
 index on `(spec_id, manufacturer_id, changed_at)` finds the newest change.
@@ -104,7 +104,7 @@ so a re-import leaves every stage as it was (#57; the test moved here from #56).
 | Method | Does |
 |---|---|
 | `currentStages(specId)` | Each manufacturer's newest change on that Spec ID, with the changer's full name: `{ change: StageChange; changedByName: string }[]` |
-| `recordStageChange(input)` | In one transaction: locks the manufacturer's row (`SELECT … FOR UPDATE`), reads its newest change on that Spec ID, and, when `stageAfter` differs from it, inserts a change with that as `stageBefore`. Answers the change, or null when nothing changed *(technical call: two admins at once cannot record a wrong "before")* |
+| `recordStageChange(input)` | In one transaction: locks the manufacturer's row (`SELECT … FOR UPDATE`), reads its newest change on that Spec ID, and, when `stageAfter` differs from it, inserts a change with that as `stageBefore`. Its time is the clock, or 1ms later when that clock is not after the change it replaces, so a read returns this change. Answers the change, or null when nothing changed *(technical call: two admins at once cannot record a wrong "before")* |
 | `quotesOf(specId)` | Already there (#64) |
 
 Both adapters, Drizzle and in-memory, as #64's `replaceQuotes` has them.
@@ -198,38 +198,38 @@ One pull request, "Part of #57". Every test uses invented manufacturers and pric
 
 ### Step 1.1 — The table
 
-- [ ] **Action.** `atlas_manufacturer_stage_changes` as the design gives it, in `database-schema.ts`, and migration `0014` from `npm --prefix backend run db:generate -- --name atlas_manufacturer_stage_changes`. Add the table to `resetTables` in `backend/src/test/database.ts` and to the truncate in `backend/src/atlas.db.test.ts`.
-- [ ] **Verify.** `npm run db:generate` run again prints "No schema changes, nothing to migrate"; `npm test` passes.
+- [x] **Action.** `atlas_manufacturer_stage_changes` as the design gives it, in `database-schema.ts`, and migration `0014` from `npm --prefix backend run db:generate -- --name atlas_manufacturer_stage_changes`. Add the table to `resetTables` in `backend/src/test/database.ts` and to the truncate in `backend/src/atlas.db.test.ts`.
+- [x] **Verify.** `npm run db:generate` run again prints "No schema changes, nothing to migrate"; `npm test` passes.
 
 ### Step 1.2 — Stages in the domain
 
-- [ ] **Action.** `domain/sourcing/stage.ts` as designed. Tests: a quote with a per-unit price is `quoted`; one with only a per-case price is `quoted`; one with neither is `specifications-received`; `N/A`, `-` and `/` are not prices; an admin-set `sampling` wins over `quoted`; `null` hands back to the quotes.
-- [ ] **Verify.** From `backend/`: `npx vitest run --config vitest.unit.config.ts src/modules/atlas/domain/sourcing` passes.
+- [x] **Action.** `domain/sourcing/stage.ts` as designed. Tests: a quote with a per-unit price is `quoted`; one with only a per-case price is `quoted`; one with neither is `specifications-received`; `N/A`, `-` and `/` are not prices; an admin-set `sampling` wins over `quoted`; `null` hands back to the quotes.
+- [x] **Verify.** From `backend/`: `npx vitest run --config vitest.unit.config.ts src/modules/atlas/domain/sourcing` passes.
 
 ### Step 1.3 — The repository
 
-- [ ] **Action.** `currentStages` and `recordStageChange` on `SourcingRepository`, with the Drizzle and in-memory adapters. Database tests:
+- [x] **Action.** `currentStages` and `recordStageChange` on `SourcingRepository`, with the Drizzle and in-memory adapters. Database tests:
   - a change records who, when, before and after;
   - the same stage twice records one change;
   - clearing records `null` after;
   - after a stage is set, `replaceQuotes` with the same rows leaves `currentStages` unchanged;
   - two changes in a row each record the stage they replaced.
-- [ ] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
+- [x] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
 
 ### Step 1.4 — The use cases
 
-- [ ] **Action.** `GetSpecIdManufacturers` and `SetManufacturerStage`, and `ManufacturerNotFoundError`. Tests with the in-memory adapters:
+- [x] **Action.** `GetSpecIdManufacturers` and `SetManufacturerStage`, and `ManufacturerNotFoundError`. Tests with the in-memory adapters:
   - a manufacturer with three quotes on one Spec ID appears once, with three quotes;
   - one with a per-unit price is Quoted, one with none is Specifications received;
   - an admin-set Sampling shows over Quoted, and clearing it shows Quoted again;
   - an unknown id answers `SpecIdNotFoundError`;
   - a manufacturer whose quotes are on another Spec ID answers `ManufacturerNotFoundError`;
   - `stageSet` names who made the last change, and when.
-- [ ] **Verify.** The tests pass.
+- [x] **Verify.** The tests pass.
 
 ### Step 1.5 — Contract, routes and wiring
 
-- [ ] **Action.**
+- [x] **Action.**
   - The contract types above.
   - A body schema in `atlas.schemas.ts`, and the two handlers in `atlas.controller.ts`; `MANUFACTURER_NOT_FOUND` maps to 404.
   - `createAtlasAdminRouter` in `atlas.routes.ts`, whose comment changes to "the one PUT sets a manufacturer's stage, admins only".
@@ -240,12 +240,12 @@ One pull request, "Part of #57". Every test uses invented manufacturers and pric
   - `PUT` as staff who are not admins answers 403 `NOT_ALLOWED` and records nothing;
   - as an admin it answers 200 and records who, when, before and after;
   - `{ "stage": "quoted" }` answers 400 `VALIDATION_FAILED`.
-- [ ] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
+- [x] **Verify.** `npm test` passes; `npm run arch:check` exits 0.
 
 ### Step 1.6 — Docs and the pull request
 
-- [ ] **Action.** `api.md` documents both routes, their access and statuses; `data-model.md` documents `atlas_manufacturer_stage_changes`. Open the pull request "Part of #57".
-- [ ] **Verify.** CI and `pr-audit` pass.
+- [x] **Action.** `api.md` documents both routes, their access and statuses; `data-model.md` documents `atlas_manufacturer_stage_changes`. Open the pull request "Part of #57".
+- [x] **Verify.** CI and `pr-audit` pass.
 
 ---
 

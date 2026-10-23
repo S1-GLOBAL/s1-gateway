@@ -1,7 +1,16 @@
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { Database } from '../../../shared/infrastructure/database/connection.js';
+import { accountsTable } from '../../accounts/index.js';
 import { manufacturerKey } from '../domain/sourcing/manufacturer.js';
-import type { QuoteRecord, QuoteToRecord, SourcingRepository } from '../domain/sourcing/sourcing-repository.js';
+import type {
+  QuoteRecord,
+  QuoteToRecord,
+  SourcingRepository,
+  StageChangeRecord,
+  StageChangeToRecord,
+} from '../domain/sourcing/sourcing-repository.js';
+import { recordedAt, type AdminStage, type StageChange } from '../domain/sourcing/stage.js';
+import { atlasManufacturerStageChanges } from './atlas-manufacturer-stage-changes.table.js';
 import { atlasManufacturers } from './atlas-manufacturers.table.js';
 import { atlasQuotes } from './atlas-quotes.table.js';
 
@@ -83,4 +92,60 @@ export class DrizzleSourcingRepository implements SourcingRepository {
       manufacturer: { id: manufacturer.id, name: manufacturer.name, country: manufacturer.country, createdAt: manufacturer.createdAt },
     }));
   }
+
+  async currentStages(specId: string): Promise<StageChangeRecord[]> {
+    const rows = await this.db
+      .selectDistinctOn([atlasManufacturerStageChanges.manufacturerId], {
+        change: atlasManufacturerStageChanges,
+        changedByName: accountsTable.fullName,
+      })
+      .from(atlasManufacturerStageChanges)
+      .innerJoin(accountsTable, eq(atlasManufacturerStageChanges.changedBy, accountsTable.id))
+      .where(eq(atlasManufacturerStageChanges.specId, specId))
+      .orderBy(
+        atlasManufacturerStageChanges.manufacturerId,
+        desc(atlasManufacturerStageChanges.changedAt),
+        desc(atlasManufacturerStageChanges.id),
+      );
+    return rows.map(({ change, changedByName }) => ({ change: toStageChange(change), changedByName }));
+  }
+
+  async recordStageChange(input: StageChangeToRecord): Promise<StageChange | null> {
+    return this.db.transaction(async (tx) => {
+      // Two admins at once: the second waits here, then reads the first one's change as its "before".
+      await tx
+        .select({ id: atlasManufacturers.id })
+        .from(atlasManufacturers)
+        .where(eq(atlasManufacturers.id, input.manufacturerId))
+        .for('update');
+      const [newest] = await tx
+        .select({ stageAfter: atlasManufacturerStageChanges.stageAfter, changedAt: atlasManufacturerStageChanges.changedAt })
+        .from(atlasManufacturerStageChanges)
+        .where(
+          and(
+            eq(atlasManufacturerStageChanges.specId, input.specId),
+            eq(atlasManufacturerStageChanges.manufacturerId, input.manufacturerId),
+          ),
+        )
+        .orderBy(desc(atlasManufacturerStageChanges.changedAt), desc(atlasManufacturerStageChanges.id))
+        .limit(1);
+      const stageBefore = (newest?.stageAfter ?? null) as AdminStage | null;
+      if (stageBefore === input.stageAfter) return null;
+      const change: StageChange = { ...input, stageBefore, changedAt: recordedAt(newest?.changedAt ?? null, input.changedAt) };
+      await tx.insert(atlasManufacturerStageChanges).values(change);
+      return change;
+    });
+  }
+}
+
+function toStageChange(row: typeof atlasManufacturerStageChanges.$inferSelect): StageChange {
+  return {
+    id: row.id,
+    specId: row.specId,
+    manufacturerId: row.manufacturerId,
+    stageBefore: row.stageBefore as AdminStage | null,
+    stageAfter: row.stageAfter as AdminStage | null,
+    changedBy: row.changedBy,
+    changedAt: row.changedAt,
+  };
 }

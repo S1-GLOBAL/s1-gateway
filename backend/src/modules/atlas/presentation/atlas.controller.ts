@@ -7,6 +7,8 @@ import type {
   SpecIdChange,
   SpecIdLibraryPage,
   SpecIdLookup,
+  SpecIdManufacturer,
+  SpecIdManufacturers,
   SpecIdTextReading,
 } from '../../../contracts/atlas.js';
 import type { UseCase } from '../../../shared/application/use-case.js';
@@ -26,13 +28,17 @@ import type {
   SaveSpecIdInput,
   SavedSpecIdDto,
   SavedSpecIdIdInput,
+  SetManufacturerStageInput,
   SimilarSpecIdsDto,
   SpecIdChangeDto,
   SpecIdLibraryPageDto,
   SpecIdLookupDto,
+  SpecIdManufacturerDto,
+  SpecIdManufacturersDto,
   SpecIdTextReadingDto,
   UpdateSpecIdInput,
 } from '../application/atlas.dto.js';
+import { ManufacturerNotFoundError } from '../domain/sourcing/sourcing.errors.js';
 import {
   SpecIdNotFoundError,
   type InvalidLookupError,
@@ -43,9 +49,11 @@ import {
 import {
   decodeSpecIdRequestSchema,
   encodeSpecIdRequestSchema,
+  manufacturerIdSchema,
   readSpecIdTextRequestSchema,
   saveSpecIdRequestSchema,
   savedSpecIdIdSchema,
+  setManufacturerStageRequestSchema,
   updateSpecIdRequestSchema,
 } from './atlas.schemas.js';
 
@@ -61,13 +69,16 @@ type UpdateResult = Result<
 type HistoryResult = Result<SpecIdChangeDto[], SpecIdNotFoundError>;
 type LibraryResult = Result<SpecIdLibraryPageDto, InvalidLookupError>;
 type ReadResult = Result<SpecIdTextReadingDto, InvalidLookupError | InvalidSpecIdError>;
+type ManufacturersResult = Result<SpecIdManufacturersDto, SpecIdNotFoundError>;
+type SetStageResult = Result<SpecIdManufacturerDto, SpecIdNotFoundError | ManufacturerNotFoundError>;
 
 type AtlasErrorCode =
   | InvalidSpecIdError['code']
   | SpecIdExistsError['code']
   | SpecIdNotFoundError['code']
   | SpecIdChangedError['code']
-  | InvalidLookupError['code'];
+  | InvalidLookupError['code']
+  | ManufacturerNotFoundError['code'];
 
 const STATUS_BY_CODE: Record<AtlasErrorCode, number> = {
   INVALID_SPEC_ID: 400,
@@ -75,6 +86,7 @@ const STATUS_BY_CODE: Record<AtlasErrorCode, number> = {
   SPEC_ID_NOT_FOUND: 404,
   SPEC_ID_CHANGED: 409,
   VALIDATION_FAILED: 400,
+  MANUFACTURER_NOT_FOUND: 404,
 };
 
 /** The use cases behind the saved Spec ID routes: one by id, a change, its history, the library. */
@@ -83,6 +95,12 @@ export interface SavedSpecIdUseCases {
   update: UseCase<UpdateSpecIdInput, UpdateResult>;
   history: UseCase<SavedSpecIdIdInput, HistoryResult>;
   library: UseCase<ListSavedSpecIdsInput, LibraryResult>;
+}
+
+/** The use cases behind a Spec ID's manufacturers (#57): reading them, and an admin setting a stage. */
+export interface ManufacturerUseCases {
+  list: UseCase<SavedSpecIdIdInput, ManufacturersResult>;
+  setStage: UseCase<SetManufacturerStageInput, SetStageResult>;
 }
 
 /** The signed-in staff member a request comes from: who a saved Spec ID is saved by. */
@@ -100,6 +118,7 @@ export class AtlasController {
     private readonly signedInStaff: SignedInStaff,
     private readonly saved: SavedSpecIdUseCases,
     private readonly readSpecIdText: UseCase<ReadSpecIdTextInput, ReadResult>,
+    private readonly manufacturerUseCases: ManufacturerUseCases,
   ) {}
 
   dictionary = async (_req: Request, res: Response): Promise<void> => {
@@ -170,6 +189,24 @@ export class AtlasController {
     sendData(res, 200, history);
   };
 
+  manufacturers = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.manufacturerUseCases.list.execute({ id: savedSpecIdOf(req) });
+    if (!result.ok) throw toHttpError(result.error);
+    const manufacturers: SpecIdManufacturers = result.value;
+    sendData(res, 200, manufacturers);
+  };
+
+  /** Admins only: the route is mounted behind the admin gate. */
+  setManufacturerStage = async (req: Request, res: Response): Promise<void> => {
+    const id = savedSpecIdOf(req);
+    const manufacturerId = manufacturerIdOf(req);
+    const { stage } = parseBody(setManufacturerStageRequestSchema, req.body);
+    const result = await this.manufacturerUseCases.setStage.execute({ id, manufacturerId, stage, by: this.signedInStaff(req) });
+    if (!result.ok) throw toHttpError(result.error);
+    const manufacturer: SpecIdManufacturer = result.value;
+    sendData(res, 200, manufacturer);
+  };
+
   findSimilar = async (req: Request, res: Response): Promise<void> => {
     const result = await this.findSimilarSpecIds.execute({ ...req.query });
     if (!result.ok) throw toHttpError(result.error);
@@ -188,6 +225,13 @@ function sendDecoded(res: Response, result: SpecIdResult): void {
 function savedSpecIdOf(req: Request): string {
   const parsed = savedSpecIdIdSchema.safeParse(req.params.id);
   if (!parsed.success) throw toHttpError(new SpecIdNotFoundError('id'));
+  return parsed.data;
+}
+
+/** The `:manufacturerId` of a stage route. Anything that is not an id names no manufacturer: 404, before any query. */
+function manufacturerIdOf(req: Request): string {
+  const parsed = manufacturerIdSchema.safeParse(req.params.manufacturerId);
+  if (!parsed.success) throw toHttpError(new ManufacturerNotFoundError());
   return parsed.data;
 }
 

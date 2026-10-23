@@ -1,13 +1,32 @@
 import { type Manufacturer, manufacturerKey } from '../../domain/sourcing/manufacturer.js';
 import type { Quote } from '../../domain/sourcing/quote.js';
-import type { QuoteRecord, QuoteToRecord, SourcingRepository } from '../../domain/sourcing/sourcing-repository.js';
+import type {
+  QuoteRecord,
+  QuoteToRecord,
+  SourcingRepository,
+  StageChangeRecord,
+  StageChangeToRecord,
+} from '../../domain/sourcing/sourcing-repository.js';
+import { recordedAt, type StageChange } from '../../domain/sourcing/stage.js';
 
 /** The SourcingRepository contract, in memory. A test double, never used in production. */
 export class InMemorySourcingRepository implements SourcingRepository {
   private readonly manufacturers = new Map<string, Manufacturer>();
   private quotes: Quote[] = [];
+  private readonly stageChanges: StageChange[] = [];
+  private readonly changerNames = new Map<string, string>();
   /** How many times `replaceQuotes` was called. */
   replaced = 0;
+
+  /** Teaches the fake a changer's name, as the real repository reads it from accounts. */
+  nameChanger(accountId: string, fullName: string): void {
+    this.changerNames.set(accountId, fullName);
+  }
+
+  /** Every stage change held, oldest first. */
+  get allStageChanges(): StageChange[] {
+    return [...this.stageChanges];
+  }
 
   /** Every manufacturer held, in the order first added. */
   get allManufacturers(): Manufacturer[] {
@@ -45,5 +64,20 @@ export class InMemorySourcingRepository implements SourcingRepository {
           (a.quote.values.itemName ?? '').localeCompare(b.quote.values.itemName ?? '') ||
           a.quote.id.localeCompare(b.quote.id),
       );
+  }
+
+  async currentStages(specId: string): Promise<StageChangeRecord[]> {
+    const newest = new Map<string, StageChange>();
+    for (const change of this.stageChanges) if (change.specId === specId) newest.set(change.manufacturerId, change);
+    return [...newest.values()].map((change) => ({ change, changedByName: this.changerNames.get(change.changedBy) ?? '' }));
+  }
+
+  async recordStageChange(input: StageChangeToRecord): Promise<StageChange | null> {
+    const newest = this.stageChanges.filter((change) => change.specId === input.specId && change.manufacturerId === input.manufacturerId).at(-1);
+    const stageBefore = newest?.stageAfter ?? null;
+    if (stageBefore === input.stageAfter) return null;
+    const change: StageChange = { ...input, stageBefore, changedAt: recordedAt(newest?.changedAt ?? null, input.changedAt) };
+    this.stageChanges.push(change);
+    return change;
   }
 }

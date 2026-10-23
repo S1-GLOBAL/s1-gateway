@@ -6,6 +6,7 @@ import type {
   ReadSpecIdTextRequest,
   MeasurementFact,
   SaveSpecIdRequest,
+  SetManufacturerStageRequest,
   SpecIdFacts,
   UpdateSpecIdRequest,
 } from '../../../contracts/atlas.js';
@@ -76,3 +77,11 @@ export const updateSpecIdRequestSchema = z.object({
 
 /** A saved Spec ID's id: anything else names no Spec ID, so it is answered 404 before any query. */
 export const savedSpecIdIdSchema = z.guid();
+
+/** `stage` is required: `null` clears it, and any other value is refused (#57). */
+export const setManufacturerStageRequestSchema = z.object({
+  stage: z.enum(['sampling', 'in-production']).nullable(),
+}) satisfies z.ZodType<SetManufacturerStageRequest>;
+
+/** A manufacturer's id: anything else names no manufacturer, so it is answered 404 before any query. */
+export const manufacturerIdSchema = z.guid();

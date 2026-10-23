@@ -270,3 +270,41 @@ export interface SpecIdTextReading {
   conflicts: TextConflict[];
   decoded: DecodedSpecId | null;
 }
+
+/** A manufacturer's stage on a Spec ID (#57): the quotes give the first two, an admin the last two. */
+export type ManufacturerStage = 'specifications-received' | 'quoted' | 'sampling' | 'in-production';
+
+/** One verified-list row's quote, each value as the workbook shows it; null when empty. */
+export interface ManufacturerQuote {
+  itemName: string | null;
+  fobPerUnit: string | null;
+  fobPerCase: string | null;
+  fobTotal: string | null;
+  moldCost: string | null;
+  moldLeadTime: string | null;
+  sampleLeadTime: string | null;
+  productionLeadTime: string | null;
+}
+
+/** A manufacturer on one Spec ID, once, with its stage and every quote. */
+export interface SpecIdManufacturer {
+  id: string;
+  name: string;
+  country: string | null;
+  stage: ManufacturerStage;
+  /** The last change an admin made, if any; a cleared stage still shows who cleared it. ISO 8601 `at`. */
+  stageSet: { by: SavedBy; at: string; stage: 'sampling' | 'in-production' | null } | null;
+  quotes: ManufacturerQuote[];
+}
+
+/** `GET /atlas/saved/:id/manufacturers`. */
+export interface SpecIdManufacturers {
+  specId: { id: string; name: string; code: string };
+  /** By name. */
+  manufacturers: SpecIdManufacturer[];
+}
+
+/** `PUT /atlas/saved/:id/manufacturers/:manufacturerId/stage`, admins only. `null` clears the stage. */
+export interface SetManufacturerStageRequest {
+  stage: 'sampling' | 'in-production' | null;
+}
