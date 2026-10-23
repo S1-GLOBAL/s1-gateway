@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { AtlasDictionary, SlotKey, SlotRule } from '../domain/atlas';
 import { DictionaryBrowser } from './DictionaryBrowser';
@@ -128,35 +128,27 @@ describe('DictionaryBrowser', () => {
     expect(within(screen.getByRole('article', { name: 'Nominal capacity' })).getAllByRole('definition')).toHaveLength(5);
   });
 
-  it("shows which slots apply to each product type, in the specification's words", () => {
+  it("shows which slots apply to the chosen product type, in the specification's words", () => {
     render(<DictionaryBrowser dictionary={dictionary} />);
 
     expect(screen.getByRole('heading', { name: 'Which slots apply' })).toBeTruthy();
-    const table = screen.getByRole('table');
-    expect(within(table).getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
-      'Slot',
-      'Bowl lid BLD',
-      'Bowl BWL',
-      'Cup lid CLD',
-      'Stand-up pouch SUP',
-    ]);
+    const productType = screen.getByRole('combobox', { name: 'Product type' });
+    expect((productType as HTMLSelectElement).value).toBe('BLD');
+
+    const table = screen.getByRole('table', { name: 'Which slots apply' });
+    expect(within(table).getAllByRole('columnheader').map((header) => header.textContent)).toEqual(['Slot', 'Rule']);
     expect(within(table).getAllByRole('row')).toHaveLength(15);
 
-    const topDiameter = within(table).getByRole('row', { name: /Top diameter/ });
-    expect(within(topDiameter).getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
-      'Round only',
-      'Round only',
-      'Round only',
-      'X',
-    ]);
-    const basisWeight = within(table).getByRole('row', { name: /Basis weight/ });
-    expect(within(basisWeight).getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
-      'Paper family only',
-      'Paper family only',
-      'Paper family only',
-      'Applies',
-    ]);
-    const length = within(table).getByRole('row', { name: /Length/ });
-    expect(within(length).getAllByRole('cell')[0]?.textContent).toBe('Non-round only');
+    const cell = (slot: string) =>
+      within(within(table).getByRole('row', { name: new RegExp(slot) })).getByRole('cell').textContent;
+    expect(cell('Top diameter')).toBe('Round only');
+    expect(cell('Basis weight')).toBe('Paper family only');
+    expect(cell('Length')).toBe('Non-round only');
+
+    fireEvent.change(productType, { target: { value: 'SUP' } });
+
+    expect(cell('Top diameter')).toBe('X');
+    expect(cell('Basis weight')).toBe('Applies');
+    expect(cell('Length')).toBe('X');
   });
 });

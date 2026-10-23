@@ -1,5 +1,4 @@
 import { Package } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { ErrorState } from '@/shared/ui/ErrorState';
@@ -7,7 +6,7 @@ import { SkeletonBlock, SkeletonRegion } from '@/shared/ui/Skeleton';
 import type { useSpecIdLibrary } from '../../application/use-spec-id-library';
 import { lowerFirst } from '../../domain/lower-first';
 import { NewSpecIdLink } from './NewSpecIdLink';
-import { SpecIdSummary } from './SpecIdSummary';
+import { SpecIdCard } from './SpecIdCard';
 
 /** When no saved name matches the search: Search reads the facts instead. */
 export const NO_NAMES_MATCH = 'No names match. Press Search to read the facts from your text.';
@@ -74,12 +73,7 @@ export function LibraryList({ library, q, productTypeName, timeZone }: LibraryLi
       <ul className="flex flex-col gap-3">
         {items.map((saved) => (
           <li key={saved.id}>
-            <Link
-              to={`/atlas/${saved.id}/manufacturers`}
-              className="block rounded-surface border border-border bg-surface p-5 shadow-sm transition-colors duration-150 ease-standard hover:bg-surface-raised"
-            >
-              <SpecIdSummary saved={saved} timeZone={timeZone} />
-            </Link>
+            <SpecIdCard saved={saved} timeZone={timeZone} />
           </li>
         ))}
       </ul>
