@@ -50,7 +50,7 @@ and this plan is corrected.
 
 | Phase | Steps | Status |
 |---|---|---|
-| 1. Stages and the two routes | 5 / 6 | In progress — steps 1.1 to 1.5 built; step 1.6 is this phase's pull request |
+| 1. Stages and the two routes | 6 / 6 | Done — the stage table and both routes (#69); the page is phase 2 |
 | 2. The Manufacturers page | 0 / 7 | Not started |
 
 Two pull requests, as reyxdz decided on 2026-10-23: phase 1 is "Part of #57",
@@ -244,8 +244,8 @@ One pull request, "Part of #57". Every test uses invented manufacturers and pric
 
 ### Step 1.6 — Docs and the pull request
 
-- [ ] **Action.** `api.md` documents both routes, their access and statuses; `data-model.md` documents `atlas_manufacturer_stage_changes`. Open the pull request "Part of #57".
-- [ ] **Verify.** CI and `pr-audit` pass.
+- [x] **Action.** `api.md` documents both routes, their access and statuses; `data-model.md` documents `atlas_manufacturer_stage_changes`. Open the pull request "Part of #57".
+- [x] **Verify.** CI and `pr-audit` pass.
 
 ---
 
