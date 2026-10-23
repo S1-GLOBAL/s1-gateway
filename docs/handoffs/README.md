@@ -17,6 +17,8 @@ checking its "ground truth" section against `main` first.
 | [Save a new Spec ID from Search](./issue-48-save-from-search.md) | #48 | Complete |
 | [Order Search results by closeness](./issue-50-order-by-closeness.md) | #50 | Complete |
 | [Read fractions, colour counts and capacity ranges](./issue-58-reader-fractions-ranges-colours.md) | #58 | Complete |
+| [Manufacturers on each Spec ID, phase 1: stages and the two routes](./issue-57-phase-1-stages-and-routes.md) | #57 | Complete |
+| [Manufacturers on each Spec ID, phase 2: the page](./issue-57-phase-2-manufacturers-page.md) | #57 | Ready |
 
 Name a new handoff `issue-<number>-<short-title>.md` and add a row here. A handoff
 for a plan with no issue is named `plan-<number>-<short-title>.md`.
