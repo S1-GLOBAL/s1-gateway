@@ -7,7 +7,7 @@ export const duration = {
   fast: 0.12,
   base: 0.2,
   slow: 0.32,
-  /** Cover, and the reveal after it. The hold between them is `fast`. */
+  /** The wipe. The hold before it is `fast`. */
   curtain: 0.6,
 } as const;
 

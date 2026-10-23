@@ -47,117 +47,117 @@ export const routes: RouteObject[] = [
   {
     element: <DoorTransition />,
     children: [
-  // Outside the shell: bare layout, no navigation.
-  {
-    path: '/',
-    element: (
-      <RouteBoundary skeleton={<LandingPageSkeleton />}>
-        <LandingPage />
-      </RouteBoundary>
-    ),
-  },
-  {
-    path: 'sign-in',
-    element: (
-      <RouteBoundary skeleton={<AuthPageSkeleton />}>
-        <SignInPage />
-      </RouteBoundary>
-    ),
-  },
-  {
-    path: 'sign-up',
-    element: (
-      <RouteBoundary skeleton={<AuthPageSkeleton />}>
-        <SignUpPage />
-      </RouteBoundary>
-    ),
-  },
-  {
-    path: 'register',
-    element: (
-      <RouteBoundary skeleton={<AuthPageSkeleton />}>
-        <RegisterPage />
-      </RouteBoundary>
-    ),
-  },
-  {
-    path: 'reset-password',
-    element: (
-      <RouteBoundary skeleton={<AuthPageSkeleton />}>
-        <ResetPasswordPage />
-      </RouteBoundary>
-    ),
-  },
-  {
-    path: 'change-password',
-    element: (
-      <RequireAuth allowMustChangePassword>
-        <RouteBoundary skeleton={<AuthPageSkeleton />}>
-          <ChangePasswordPage />
-        </RouteBoundary>
-      </RequireAuth>
-    ),
-  },
-  // Inside the shell: signed in only.
-  {
-    element: (
-      <RequireAuth>
-        <AppShell />
-      </RequireAuth>
-    ),
-    children: [
+      // Outside the shell: bare layout, no navigation.
       {
-        path: 'theme',
+        path: '/',
         element: (
-          <RouteBoundary skeleton={<ThemePageSkeleton />}>
-            <ThemePage />
+          <RouteBoundary skeleton={<LandingPageSkeleton />}>
+            <LandingPage />
           </RouteBoundary>
         ),
       },
       {
-        path: 'atlas',
+        path: 'sign-in',
         element: (
-          <RouteBoundary skeleton={<AtlasPageSkeleton />}>
-            <AtlasPage />
-          </RouteBoundary>
-        ),
-      },
-      // A static segment outranks `:id`, so `new` is never read as an id.
-      {
-        path: 'atlas/new',
-        element: (
-          <RouteBoundary skeleton={<NewSpecIdPageSkeleton />}>
-            <NewSpecIdPage />
+          <RouteBoundary skeleton={<AuthPageSkeleton />}>
+            <SignInPage />
           </RouteBoundary>
         ),
       },
       {
-        path: 'atlas/:id',
+        path: 'sign-up',
         element: (
-          <RouteBoundary skeleton={<SpecIdPageSkeleton />}>
-            <SpecIdPage />
+          <RouteBoundary skeleton={<AuthPageSkeleton />}>
+            <SignUpPage />
           </RouteBoundary>
         ),
       },
       {
-        path: 'atlas/:id/manufacturers',
+        path: 'register',
         element: (
-          <RouteBoundary skeleton={<ManufacturersPageSkeleton />}>
-            <ManufacturersPage />
+          <RouteBoundary skeleton={<AuthPageSkeleton />}>
+            <RegisterPage />
           </RouteBoundary>
         ),
       },
       {
-        path: 'accounts',
+        path: 'reset-password',
         element: (
-          <RouteBoundary skeleton={<AccountsPageSkeleton />}>
-            <AccountsPage />
+          <RouteBoundary skeleton={<AuthPageSkeleton />}>
+            <ResetPasswordPage />
           </RouteBoundary>
         ),
       },
-      { path: '*', element: <NotFoundPage /> },
-    ],
-  },
+      {
+        path: 'change-password',
+        element: (
+          <RequireAuth allowMustChangePassword>
+            <RouteBoundary skeleton={<AuthPageSkeleton />}>
+              <ChangePasswordPage />
+            </RouteBoundary>
+          </RequireAuth>
+        ),
+      },
+      // Inside the shell: signed in only.
+      {
+        element: (
+          <RequireAuth>
+            <AppShell />
+          </RequireAuth>
+        ),
+        children: [
+          {
+            path: 'theme',
+            element: (
+              <RouteBoundary skeleton={<ThemePageSkeleton />}>
+                <ThemePage />
+              </RouteBoundary>
+            ),
+          },
+          {
+            path: 'atlas',
+            element: (
+              <RouteBoundary skeleton={<AtlasPageSkeleton />}>
+                <AtlasPage />
+              </RouteBoundary>
+            ),
+          },
+          // A static segment outranks `:id`, so `new` is never read as an id.
+          {
+            path: 'atlas/new',
+            element: (
+              <RouteBoundary skeleton={<NewSpecIdPageSkeleton />}>
+                <NewSpecIdPage />
+              </RouteBoundary>
+            ),
+          },
+          {
+            path: 'atlas/:id',
+            element: (
+              <RouteBoundary skeleton={<SpecIdPageSkeleton />}>
+                <SpecIdPage />
+              </RouteBoundary>
+            ),
+          },
+          {
+            path: 'atlas/:id/manufacturers',
+            element: (
+              <RouteBoundary skeleton={<ManufacturersPageSkeleton />}>
+                <ManufacturersPage />
+              </RouteBoundary>
+            ),
+          },
+          {
+            path: 'accounts',
+            element: (
+              <RouteBoundary skeleton={<AccountsPageSkeleton />}>
+                <AccountsPage />
+              </RouteBoundary>
+            ),
+          },
+          { path: '*', element: <NotFoundPage /> },
+        ],
+      },
     ],
   },
 ];

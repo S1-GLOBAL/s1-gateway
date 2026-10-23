@@ -51,7 +51,7 @@ ready, then it is gone.
 ## Alternatives considered
 
 **The same curtain between hub pages.** Rejected: the skeleton and the short
-fade already say where you went, and 1.3s on every click is too much for a
+fade already say where you went, and 720ms on every click is too much for a
 tool.
 
 **A curtain no longer than 320ms, so ADR 0012 could stay untouched.** Rejected:
@@ -70,4 +70,4 @@ server that is still waking, and only then takes 600ms to clear. A new door
 screen needs a line in `doorStage` and, if it should announce itself, a label.
 Entering the hub without the welcome flag stays instant, so session redirects
 do not perform. The screen tells the curtain when it can be shown
-(`useDoorHold`); a door screen that forgets to leaves the wash up.
+(`useDoorHold`); a door screen that forgets to call it leaves the wash up.

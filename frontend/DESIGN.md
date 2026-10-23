@@ -98,10 +98,10 @@ Tokens in `src/shared/ui/motion.ts` (seconds) and `theme.css` (CSS):
 | `duration.fast` | 120ms | Hover, press, leaving |
 | `duration.base` | 200ms | Toggles, small arrivals |
 | `duration.slow` | 320ms | Pages inside the hub, panels, the sidebar |
-| `duration.curtain` | 600ms | The door curtain's cover, and its reveal |
+| `duration.curtain` | 600ms | The door curtain's wipe |
 | `ease.standard` / `ease-standard` | `0.2, 0, 0, 1` | Most movement |
 | `ease.emphasized` / `ease-emphasized` | `0.05, 0.7, 0.1, 1` | Arrivals, the nav pill, the curtain's reveal |
-| `ease.exit` / `ease-exit` | `0.3, 0, 1, 1` | Leaving, the curtain's cover |
+| `ease.exit` / `ease-exit` | `0.3, 0, 1, 1` | Leaving |
 
 - Animate with `motion` through `import * as m from 'motion/react-m'` — never
   `motion.div`, which `<LazyMotion strict>` rejects.
