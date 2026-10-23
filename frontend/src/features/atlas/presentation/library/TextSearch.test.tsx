@@ -152,8 +152,10 @@ describe('AtlasLibrary, Search', () => {
     expect(screen.getByRole('link', { name: /Bagasse bowl, size unknown/ }).getAttribute('href')).toBe(
       `/atlas/${might.id}/manufacturers`,
     );
-    // The fits card shows its stage icons (#73).
-    expect(within(screen.getByRole('link', { name: /14oz Bagasse Bowl/ })).getByRole('list', { name: 'Manufacturer stages' })).toBeTruthy();
+    // The fits card shows its stage icons (#73). Copy sits beside the code, outside the link.
+    const fitsCard = screen.getByRole('link', { name: /14oz Bagasse Bowl/ }).parentElement!;
+    expect(within(fitsCard).getByRole('list', { name: 'Manufacturer stages' })).toBeTruthy();
+    expect(within(fitsCard).getByRole('button', { name: 'Copy code' })).toBeTruthy();
     expect(findSimilar).toHaveBeenCalledWith({ productType: 'BWL', material: 'CBG', capacity: 'Z0014' });
     expect(save).not.toHaveBeenCalled();
   });

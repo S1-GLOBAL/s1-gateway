@@ -6,7 +6,7 @@ import { useSimilarSpecIds } from '../../application/use-similar-spec-ids';
 import type { DecodedSpecId, SavedSpecId, SlotRuleEntry } from '../../domain/atlas';
 import { knownCriteria } from '../../domain/known-criteria';
 import { SaveFromSearch } from './SaveFromSearch';
-import { SpecIdSummary } from './SpecIdSummary';
+import { SpecIdCard } from './SpecIdCard';
 
 const LINK =
   'inline-flex items-center gap-1.5 self-start text-sm font-medium text-accent-ink underline-offset-4 hover:underline';
@@ -77,12 +77,7 @@ function Group({ title, items, timeZone }: { title: string; items: SavedSpecId[]
       <ul className="flex flex-col gap-3">
         {items.map((saved) => (
           <li key={saved.id}>
-            <Link
-              to={`/atlas/${saved.id}/manufacturers`}
-              className="block rounded-surface border border-border bg-surface p-5 shadow-sm transition-colors duration-150 ease-standard hover:bg-surface-raised"
-            >
-              <SpecIdSummary saved={saved} timeZone={timeZone} />
-            </Link>
+            <SpecIdCard saved={saved} timeZone={timeZone} />
           </li>
         ))}
       </ul>
