@@ -161,10 +161,46 @@
   }
 }
 
+/*
+ * Door curtain — ADR 0028. Off the bottom until its rise runs. The rise and
+ * the rise away are started inline from the motion tokens, so they begin on
+ * the first frame rather than after the motion chunk loads.
+ */
+.door-curtain[data-phase='enter'] {
+  transform: translate3d(0, 100%, 0);
+}
+
+.door-curtain[data-phase='hold'] {
+  transform: translate3d(0, 0, 0);
+}
+
+@keyframes door-curtain-in {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes door-curtain-out {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, -100%, 0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .skeleton-block {
     background-image: none;
     animation: skeleton-pulse 2s ease-in-out infinite;
+  }
+
+  .door-curtain {
+    animation: none !important;
+    transform: none !important;
   }
 
   ::view-transition-old(root),

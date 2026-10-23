@@ -10,8 +10,9 @@ export interface DoorHoldApi {
 export const DoorHoldContext = createContext<DoorHoldApi | null>(null);
 
 /**
- * The door curtain stays covered while `waiting` is true, and wipes once this
- * screen can be shown. Pass false for a screen that has nothing to load.
+ * The door curtain stays up while `waiting` is true. Once this screen can be
+ * shown it still holds for the minimum still time, then rises away. Pass false
+ * for a screen that has nothing to load.
  * Outside the curtain, this does nothing.
  */
 export function useDoorHold(waiting: boolean) {

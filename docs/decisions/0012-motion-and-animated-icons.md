@@ -42,7 +42,7 @@ link, a button, a card — sets `initial="rest"`, `whileHover="active"`,
 also plays once when its route becomes active. Nothing loops.
 
 **Durations and easings are tokens** (`frontend/src/shared/ui/motion.ts`):
-120ms, 200ms, 320ms, and 600ms for the door curtain; standard, emphasized and exit curves.
+120ms, 200ms, 320ms, 600ms for the door curtain's travel, and 2 seconds for its still hold; standard, emphasized and exit curves.
 
 **Reduced motion is honoured** with `MotionConfig reducedMotion="user"`:
 movement and blur go, opacity fades stay, icons stay still.

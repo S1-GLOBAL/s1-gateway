@@ -1,14 +1,16 @@
 /**
  * Motion tokens — ADR 0012. Seconds, because that is what `motion` takes.
- * The door curtain is the one longer duration (ADR 0028).
- * The same curves exist as CSS custom properties in styles/theme.css.
+ * The door curtain travels longer than a hub transition, and then holds still
+ * (ADR 0028). The same curves exist as CSS custom properties in styles/theme.css.
  */
 export const duration = {
   fast: 0.12,
   base: 0.2,
   slow: 0.32,
-  /** The wipe. The hold before it is `fast`. */
+  /** Rise from the bottom, and the rise away. The still time between them is `curtainHold`. */
   curtain: 0.6,
+  /** How long the curtain stays still, so the line can be read. */
+  curtainHold: 2,
 } as const;
 
 export const ease = {

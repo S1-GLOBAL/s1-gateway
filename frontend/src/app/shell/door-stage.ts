@@ -64,8 +64,8 @@ export function bootTrack(pathname: string): DoorTrack {
 
 /**
  * Advance the track when the path changes. A real crossing replaces the curtain.
- * Anything else leaves the current one alone, so a covered landing can finish
- * wiping after it redirects into the hub.
+ * Anything else leaves the current one alone, so a landing that is still
+ * rising away can finish after it redirects into the hub.
  */
 export function nextDoorTrack(track: DoorTrack, pathname: string, state: unknown): DoorTrack {
   if (track.path === pathname) return track;
