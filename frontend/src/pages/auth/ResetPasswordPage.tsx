@@ -8,7 +8,7 @@ export function ResetPasswordPage() {
   const token = params.get('token');
 
   const footer = (
-    <Link to="/sign-in" className={AUTH_LINK}>
+    <Link to="/" className={AUTH_LINK}>
       Back to sign in
     </Link>
   );
@@ -25,7 +25,7 @@ export function ResetPasswordPage() {
 
   return (
     <AuthLayout title="Reset your password" description="Choose a new password for your account." footer={footer}>
-      <ResetPasswordForm token={token} onReset={() => navigate('/sign-in', { replace: true })} />
+      <ResetPasswordForm token={token} onReset={() => navigate('/', { replace: true })} />
     </AuthLayout>
   );
 }

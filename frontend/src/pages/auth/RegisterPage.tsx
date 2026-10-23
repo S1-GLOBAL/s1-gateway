@@ -42,7 +42,7 @@ function Registration({ token }: { token: string }) {
   }
 
   function registered(account: Account) {
-    navigate('/sign-in', { replace: true, state: { registered: true, email: account.email } });
+    navigate('/', { replace: true, state: { registered: true, email: account.email } });
   }
 
   return (

@@ -140,7 +140,7 @@ async function main(): Promise<number> {
       console.error(created.error);
       return 1;
     }
-    console.log(`Created ${created.value.fullName} <${created.value.email}>, an approved admin. Sign in at ${env.value.CORS_ORIGIN}/sign-in.`);
+    console.log(`Created ${created.value.fullName} <${created.value.email}>, an approved admin. Sign in at ${env.value.CORS_ORIGIN}/.`);
     return 0;
   } finally {
     await connection.close();

@@ -1,8 +1,8 @@
 import * as m from 'motion/react-m';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDoorHold } from '@/app/shell/door-hold';
 import { WELCOME_INTO_HUB } from '@/app/shell/door-stage';
-import { isSignInRequired, SignInForm, useSession } from '@/features/accounts';
+import { isSignInRequired, safeNextPath, SignInForm, useSession } from '@/features/accounts';
 import { ThemeSwitch } from '@/features/appearance';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
@@ -11,14 +11,29 @@ import { RefreshIcon } from '@/shared/ui/icons';
 import { ease } from '@/shared/ui/motion';
 import { LandingPageSkeleton } from './LandingPageSkeleton';
 
+/** What another page hands over when it sends someone back to the form. */
+interface FrontDoorState {
+  sessionEnded?: boolean;
+  /** Set by the registration page, with the new account's email. */
+  registered?: boolean;
+  email?: string;
+}
+
 /**
- * The signed-out front door. Brand on one plane, the sign-in form on the other.
- * When the session check fails for a reason other than signed-out, the same
- * page shows a calm unavailable note — never a raw API ErrorState.
+ * The signed-out front door, and the only sign-in form. Brand on one plane,
+ * the form on the other. When the session check fails for a reason other than
+ * signed-out, the same page shows a calm unavailable note — never a raw API
+ * ErrorState.
  */
 export function LandingPage() {
   const session = useSession();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [params] = useSearchParams();
+  const next = safeNextPath(params.get('next'));
+  const state = location.state as FrontDoorState | null;
+  const sessionEnded = state?.sessionEnded === true;
+  const registered = state?.registered === true;
   useDoorHold(session.isPending);
 
   if (session.isPending) {
@@ -59,6 +74,16 @@ export function LandingPage() {
                 <Logo variant="mark" height={40} />
               </span>
               <p className="text-base text-ink-muted">Use your Source One email and password.</p>
+              {sessionEnded ? (
+                <p role="status" className="rounded-control bg-info-soft px-3 py-2 text-sm text-info">
+                  Your session ended. Sign in again.
+                </p>
+              ) : null}
+              {registered ? (
+                <p role="status" className="rounded-control bg-success-soft px-3 py-2 text-sm text-success">
+                  Your account is ready. Sign in.
+                </p>
+              ) : null}
               {unavailable ? (
                 <div className="flex flex-col gap-3">
                   <p role="status" className="text-sm text-ink-muted">
@@ -70,7 +95,12 @@ export function LandingPage() {
                   </Button>
                 </div>
               ) : null}
-              <SignInForm onSignedIn={() => navigate('/atlas', { replace: true, state: WELCOME_INTO_HUB })} />
+              <SignInForm
+                defaultEmail={registered ? state?.email : undefined}
+                onSignedIn={() =>
+                  navigate(next === '/' ? '/atlas' : next, { replace: true, state: WELCOME_INTO_HUB })
+                }
+              />
             </Card>
           </div>
         </div>

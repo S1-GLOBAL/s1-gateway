@@ -124,7 +124,7 @@ app/            providers, routes, the shell, the PWA's prompt and banner
 bar and the phone's bottom bar once. Only the content region changes between
 those pages, with a short fade
 ([ADR 0012](../decisions/0012-motion-and-animated-icons.md)).
-Crossing the signed-out door — the landing, sign-in, registration, and
+Crossing the signed-out door — the landing, registration, and
 entering or leaving the hub — is a full-screen curtain
 ([ADR 0028](../decisions/0028-the-door-is-a-full-screen-curtain.md)).
 A cold open of the landing or an invite link keeps that curtain up until

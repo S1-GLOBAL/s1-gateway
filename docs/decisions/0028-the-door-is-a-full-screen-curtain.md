@@ -7,9 +7,9 @@
 
 ## Context
 
-The signed-out door is a few screens: the landing (the sign-in form lives on
-it), the separate sign-in page an invite or a finished session still opens,
-and registration. Staff asked for the same kind of transition a studio site
+The signed-out door is the landing, where the only sign-in form lives, and
+registration. An old `/sign-in` address opens that same landing. Staff asked
+for the same kind of transition a studio site
 uses when it changes page: a full-screen wash in the brand colour, the mark,
 and the name of the screen you are heading to. They named the words.
 
@@ -25,9 +25,8 @@ line beside it is mono:
 
 | You are opening | The line |
 |---|---|
-| The landing, including back from sign-in and signing out | Source One |
+| The landing, including signing out and an old `/sign-in` address | Source One |
 | Registration, including a fresh invite link | Source One Internal Registration |
-| The sign-in page | Sign in |
 | The hub, only after a sign-in just succeeded | welcome back! |
 
 The wash is `bg-accent`, with the mark (never the wordmark) and a mono line.
@@ -39,10 +38,10 @@ that redirects cannot run twice against a page that is still leaving. The
 travel is CSS and starts on the first frame. The motion feature chunk loads
 after first paint, and a curtain that waited for it appeared all at once.
 
-A cold open of the landing, sign-in, or an invite link rises the same way
-and stays until the screen can be shown. The landing waits for the session
-check. Registration waits for the invite. Sign-in waits until its page is
-up. A server that is still waking, or a link whose invite has not loaded,
+A cold open of the landing or an invite link rises the same way and stays
+until the screen can be shown. The landing waits for the session check.
+Registration waits for the invite. An old `/sign-in` address is that same
+landing. A server that is still waking, or a link whose invite has not loaded,
 stays on the wash instead of a skeleton. When the answer is in — the form,
 the dead-link sentence, or try again — the wash still finishes its 2 seconds,
 then rises away. Refreshing a hub page does not do this.

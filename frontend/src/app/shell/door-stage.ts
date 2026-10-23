@@ -17,8 +17,9 @@ export const WELCOME_INTO_HUB = { welcome: true } as const;
 const PLAIN = new Set(['/sign-up', '/reset-password', '/change-password']);
 
 export function doorStage(pathname: string): DoorStage {
-  if (pathname === '/') return { key: 'landing', label: 'Source One' };
-  if (pathname === '/sign-in') return { key: 'sign-in', label: 'Sign in' };
+  // `/sign-in` is the old address of this same door. Sharing the key means a
+  // redirect onto `/` does not play a second curtain.
+  if (pathname === '/' || pathname === '/sign-in') return { key: 'landing', label: 'Source One' };
   if (pathname === '/register') return { key: 'register', label: 'Source One Internal Registration' };
   if (PLAIN.has(pathname)) return { key: pathname, label: null };
   return { key: 'hub', label: 'welcome back!' };
@@ -52,7 +53,7 @@ export interface DoorTrack {
 }
 
 /**
- * The first paint. The landing, sign-in and an invite link start covered.
+ * The first paint. The landing and an invite link start covered.
  * A hub address does not: "welcome back!" is only for a sign-in just completed.
  */
 export function bootTrack(pathname: string): DoorTrack {
