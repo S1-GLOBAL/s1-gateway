@@ -120,12 +120,17 @@ shared/ui/      primitives and animated icons, no domain knowledge
 app/            providers, routes, the shell, the PWA's prompt and banner
 ```
 
-**The shell never moves; pages do.** `app/shell/` draws the sidebar, the top
+**The shell never moves between its own pages.** `app/shell/` draws the sidebar, the top
 bar and the phone's bottom bar once. Only the content region changes between
-pages, with a short transition
-([ADR 0012](../decisions/0012-motion-and-animated-icons.md)). The routes
-table, `app/routes.tsx`, is the one place a page is registered, lazily, with
-its skeleton.
+those pages, with a short fade
+([ADR 0012](../decisions/0012-motion-and-animated-icons.md)).
+Crossing the signed-out door — the landing, sign-in, registration, and
+entering or leaving the hub — is a full-screen curtain
+([ADR 0028](../decisions/0028-the-door-is-a-full-screen-curtain.md)).
+A cold open of the landing or an invite link keeps that curtain up until
+the session or the invite has arrived.
+The routes table, `app/routes.tsx`, is the one place a page is registered,
+lazily, with its skeleton.
 
 **Loading is a skeleton of the page; failure is a sentence.** Pages read data
 with suspense queries, so one `Suspense` per route covers code and data, and

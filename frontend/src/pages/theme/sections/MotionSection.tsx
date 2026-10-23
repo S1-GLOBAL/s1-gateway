@@ -7,6 +7,7 @@ const TOKENS = [
   { name: 'duration-fast', value: '120ms', use: 'Hover, press, leaving', seconds: duration.fast, curve: ease.standard },
   { name: 'duration-base', value: '200ms', use: 'Toggles, small arrivals', seconds: duration.base, curve: ease.standard },
   { name: 'duration-slow', value: '320ms', use: 'Pages, panels', seconds: duration.slow, curve: ease.standard },
+  { name: 'duration-curtain', value: '600ms', use: 'The door curtain', seconds: duration.curtain, curve: ease.emphasized },
   { name: 'ease-standard', value: '0.2, 0, 0, 1', use: 'Most movement', seconds: 0.6, curve: ease.standard },
   { name: 'ease-emphasized', value: '0.05, 0.7, 0.1, 1', use: 'Arrivals, the nav pill', seconds: 0.6, curve: ease.emphasized },
   { name: 'ease-exit', value: '0.3, 0, 1, 1', use: 'Leaving', seconds: 0.6, curve: ease.exit },
@@ -36,7 +37,7 @@ export function MotionSection() {
     <ShowcaseSection
       index={8}
       title="Motion"
-      description="Short, and only where it explains where something came from or went. Press a track to play its token."
+      description="Short inside the hub. The door curtain is the long one. Press a track to play its token."
     >
       <ul className="flex flex-col divide-y divide-border rounded-surface border border-border bg-surface">
         {TOKENS.map((token) => (

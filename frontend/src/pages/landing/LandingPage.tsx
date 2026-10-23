@@ -1,5 +1,7 @@
 import * as m from 'motion/react-m';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { useDoorHold } from '@/app/shell/door-hold';
+import { WELCOME_INTO_HUB } from '@/app/shell/door-stage';
 import { isSignInRequired, SignInForm, useSession } from '@/features/accounts';
 import { ThemeSwitch } from '@/features/appearance';
 import { Button } from '@/shared/ui/Button';
@@ -17,6 +19,7 @@ import { LandingPageSkeleton } from './LandingPageSkeleton';
 export function LandingPage() {
   const session = useSession();
   const navigate = useNavigate();
+  useDoorHold(session.isPending);
 
   if (session.isPending) {
     return <LandingPageSkeleton />;
@@ -67,7 +70,7 @@ export function LandingPage() {
                   </Button>
                 </div>
               ) : null}
-              <SignInForm onSignedIn={() => navigate('/atlas', { replace: true })} />
+              <SignInForm onSignedIn={() => navigate('/atlas', { replace: true, state: WELCOME_INTO_HUB })} />
             </Card>
           </div>
         </div>
