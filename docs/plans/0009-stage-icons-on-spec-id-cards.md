@@ -42,7 +42,7 @@ Lit icons draw themselves once when the card appears, and again on hover; nothin
 | Phase | Steps | Status |
 |---|---|---|
 | 1. Stage counts in the API | 4 / 4 | Done — every SavedSpecId carries its stage counts (#75); the icons are phase 2 |
-| 2. Icons on the cards | 4 / 6 | In progress — steps 2.1 to 2.4 built; step 2.5 is this phase's pull request, then reyxdz's staging check (2.6) |
+| 2. Icons on the cards | 5 / 6 | In progress — the icons on every card (#76); step 2.6 is reyxdz's staging check |
 
 Two pull requests, as reyxdz decided on 2026-10-23: phase 1 is "Part of #73",
 and phase 2 is "Closes #73". Stop for the owner after each.
@@ -203,11 +203,11 @@ One pull request, "Closes #73". Screenshots use invented data only.
 
 ### Step 2.5 — Browser check, screenshots and the pull request
 
-- [ ] **Action.**
+- [x] **Action.**
   - With invented manufacturers in a throwaway local database, as plan 0008's phase 2 did, look at the library and Search: light and dark, 390px with the bottom bar, and the sidebar folded.
   - Take the screenshots, and confirm hover texts and that the lit icons match each Spec ID's Manufacturers page.
   - Open the pull request "Closes #73".
-- [ ] **Verify.** CI and `pr-audit` pass.
+- [x] **Verify.** CI and `pr-audit` pass.
 
 ### Step 2.6 — Staging (reyxdz)
 
