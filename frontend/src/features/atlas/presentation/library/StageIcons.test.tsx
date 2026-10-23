@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { savedFor, ILLUSTRATIVE } from '../../application/testing/atlas-fixtures';
 import { SpecIdSummary } from './SpecIdSummary';
@@ -64,5 +64,35 @@ describe('SpecIdSummary with stage icons', () => {
     render(<SpecIdSummary saved={savedFor(ILLUSTRATIVE, 'Invented lid')} />);
 
     expect(screen.queryByRole('list', { name: 'Manufacturer stages' })).toBeNull();
+  });
+
+  it('copies the code from the button beside it', async () => {
+    const writeText = vi.fn(async () => undefined);
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    render(<SpecIdSummary saved={savedFor(ILLUSTRATIVE, 'Invented lid')} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy code' }));
+    });
+
+    expect(writeText).toHaveBeenCalledWith(ILLUSTRATIVE);
+    expect(screen.getByRole('button', { name: 'Copied' })).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
+
+  it('leaves the code selectable when the clipboard refuses', async () => {
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      clipboard: { writeText: vi.fn(async () => Promise.reject(new Error('refused'))) },
+    });
+    render(<SpecIdSummary saved={savedFor(ILLUSTRATIVE, 'Invented lid')} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy code' }));
+    });
+
+    expect(screen.getByRole('button', { name: 'Copy code' })).toBeTruthy();
+    expect(screen.getByText(ILLUSTRATIVE)).toBeTruthy();
+    vi.unstubAllGlobals();
   });
 });

@@ -85,9 +85,10 @@ describe('AtlasLibrary, the list', () => {
     const lid = saved(1, { updatedBy: ben, updatedAt: new Date('2026-10-17T14:32:00Z'), manufacturerStages: { specificationsReceived: 2, quoted: 1, sampling: 0, inProduction: 0 } });
     renderLibrary({ library: async () => ({ items: [lid], nextCursor: null }) });
 
-    const [card] = await waitFor(() => cards());
+    const [link] = await waitFor(() => cards());
+    const card = link?.parentElement;
     // A card opens the Spec ID's manufacturers first (#57).
-    expect(card?.getAttribute('href')).toBe(`/atlas/${lid.id}/manufacturers`);
+    expect(link?.getAttribute('href')).toBe(`/atlas/${lid.id}/manufacturers`);
     expect(within(card!).getByText('Lid 1')).toBeTruthy();
     expect(within(card!).getByText(ILLUSTRATIVE)).toBeTruthy();
     expect(within(card!).getByText('Bowl lid · APS · CL · RD · DM · 0090 · 0033')).toBeTruthy();
@@ -95,6 +96,9 @@ describe('AtlasLibrary, the list', () => {
     expect(within(card!).getByText('Last updated by Ben Invented on 17 October 2026')).toBeTruthy();
     // How far its manufacturers have come (#73).
     expect(within(card!).getByRole('list', { name: 'Manufacturer stages' })).toBeTruthy();
+    // Copy sits beside the code, outside the link, so it does not open the card.
+    expect(link?.querySelector('button')).toBeNull();
+    expect(within(card!).getByRole('button', { name: 'Copy code' })).toBeTruthy();
   });
 
   it('marks a Spec ID with nothing missing as Complete', async () => {
