@@ -1,7 +1,9 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { savedFor, ILLUSTRATIVE } from '../../application/testing/atlas-fixtures';
 import { COPIED_MS } from './CopyCodeButton';
+import { SpecIdCard } from './SpecIdCard';
 import { SpecIdSummary } from './SpecIdSummary';
 import { StageIcons } from './StageIcons';
 
@@ -18,18 +20,24 @@ afterEach(() => {
 
 const row = () => within(screen.getByRole('list', { name: 'Manufacturer stages' }));
 
+function Reached() {
+  const { pathname } = useLocation();
+  return <p>{pathname}</p>;
+}
+
 describe('StageIcons', () => {
-  it('names each icon with its words, as hover text and for a screen reader, and lights those reached', () => {
+  it('names each icon with its words, shown on hover and to a screen reader, and lights those reached', () => {
     render(<StageIcons counts={{ specificationsReceived: 2, quoted: 2, sampling: 1, inProduction: 0 }} />);
 
     const items = row().getAllByRole('listitem');
     expect(items.map((item) => [item.getAttribute('aria-label'), item.getAttribute('title'), item.getAttribute('data-lit')])).toEqual([
-      ['Specifications received: 2 manufacturers', 'Specifications received: 2 manufacturers', 'true'],
-      ['Quoted: 2 manufacturers', 'Quoted: 2 manufacturers', 'true'],
-      ['Sampling: 1 manufacturer', 'Sampling: 1 manufacturer', 'true'],
-      ['In production: none', 'In production: none', 'false'],
-      ['2 manufacturers recorded', '2 manufacturers recorded', 'false'],
+      ['Specifications received: 2 manufacturers', null, 'true'],
+      ['Quoted: 2 manufacturers', null, 'true'],
+      ['Sampling: 1 manufacturer', null, 'true'],
+      ['In production: none', null, 'false'],
+      ['2 manufacturers recorded', null, 'false'],
     ]);
+    for (const item of items) expect(within(item).getByText(item.getAttribute('aria-label')!)).toBeTruthy();
     expect(items[0]?.className).toContain('text-accent-ink');
     expect(items[3]?.className).toContain('text-ink-subtle');
   });
@@ -61,6 +69,24 @@ describe('SpecIdSummary with stage icons', () => {
     const before = screen.getByRole('list', { name: 'Manufacturer stages' });
     fireEvent.mouseEnter(screen.getByText('Invented lid').closest('div')!.parentElement!);
     expect(screen.getByRole('list', { name: 'Manufacturer stages' })).not.toBe(before);
+  });
+
+  it('opens the manufacturers page when a stage icon is clicked', () => {
+    const saved = savedFor(ILLUSTRATIVE, 'Invented lid', {
+      manufacturerStages: { specificationsReceived: 1, quoted: 0, sampling: 0, inProduction: 0 },
+    });
+    render(
+      <MemoryRouter>
+        <Routes>
+          <Route path="/" element={<SpecIdCard saved={saved} />} />
+          <Route path="/atlas/:id/manufacturers" element={<Reached />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByText('Specifications received: 1 manufacturer'));
+
+    expect(screen.getByText(`/atlas/${saved.id}/manufacturers`)).toBeTruthy();
   });
 
   it('shows no row for a Spec ID from an API that sends no stages', () => {
