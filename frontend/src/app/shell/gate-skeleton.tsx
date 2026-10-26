@@ -62,7 +62,7 @@ export function GateSkeleton() {
             )}
           >
             <SkeletonBlock className="size-8 shrink-0" order={0} />
-            <span className={cn('min-w-0 flex-col gap-1', collapsed ? 'sr-only' : 'flex flex-1')}>
+            <span className={cn('min-w-0', collapsed ? 'sr-only' : 'flex-1')}>
               <SkeletonText size="sm" className="w-24" order={1} />
               <SkeletonText size="xs" className="w-32" order={2} />
             </span>
