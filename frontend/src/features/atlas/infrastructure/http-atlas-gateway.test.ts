@@ -368,6 +368,17 @@ describe('HttpAtlasGateway, the library', () => {
     expect(sent[0]?.params).toEqual({ productType: 'BLD', page: 2 });
   });
 
+  it('asks for the first page without a page key, and reads an older answer that has no total', async () => {
+    const sent: Sent[] = [];
+    const page = await gatewayAnswering(200, { data: { items: [wireSaved], nextCursor: null } }, sent).library({
+      q: 'lid',
+      productType: '',
+      page: 1,
+    });
+    expect(sent).toEqual([{ method: 'get', url: '/atlas/saved', body: undefined, params: { q: 'lid' } }]);
+    expect(page).toMatchObject({ page: 1, pageSize: 20, total: 1 });
+  });
+
   it('rejects a refused search with an AppError whose fields name the key', async () => {
     const fields = { q: ['Search text must be at most 120 characters.'] };
     const gateway = gatewayAnswering(400, {
