@@ -68,6 +68,9 @@ full lockup.
 
 While the curtain is mounted the document does not scroll, and the reserved
 scrollbar gutter is dropped, so the wash is the only thing in the window.
+The route has already changed underneath, so the destination stays behind a
+full accent cover until the rise has finished. It shows only as the curtain
+leaves.
 
 Door crossings take 600ms to cover, hold the name for at least 2 seconds,
 then take 600ms to clear. That is deliberate and limited to those crossings.

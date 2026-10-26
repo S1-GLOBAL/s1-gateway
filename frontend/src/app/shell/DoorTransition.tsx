@@ -13,7 +13,9 @@ import { bootTrack, nextDoorTrack, type DoorTrack } from './door-stage';
  * stays as it is.
  *
  * Every play rises from the bottom, stays still for at least `curtainHold`
- * (longer, while the screen is not ready), then rises off the top. The travel
+ * (longer, while the screen is not ready), then rises off the top. The route
+ * has already changed, so a full accent cover sits behind the rising curtain
+ * and the next screen stays hidden until that rise has finished. The travel
  * is CSS, from the first frame — the motion chunk loads later, and waiting
  * for it made the wash appear all at once.
  */
@@ -64,7 +66,9 @@ export function DoorTransition() {
 
   return (
     <DoorHoldContext.Provider value={api.current}>
-      {outlet}
+      <div aria-hidden={track.curtain ? true : undefined} inert={track.curtain ? true : undefined}>
+        {outlet}
+      </div>
       {track.curtain ? (
         <CurtainReveal
           key={track.curtain.playId}
@@ -123,16 +127,21 @@ function CurtainReveal({ label, held, onDone }: { label: string; held: boolean; 
   const phase = left ? 'exit' : risen ? 'hold' : 'enter';
   const quiet = phase === 'exit';
   return (
-    <div
-      role={quiet ? undefined : 'status'}
-      aria-label={quiet ? undefined : label}
-      aria-hidden={quiet ? true : undefined}
-      data-phase={phase}
-      className="door-curtain fixed inset-0 z-50 flex items-center justify-center bg-accent"
-      style={reduce ? undefined : { animation: phase === 'exit' ? slide('door-curtain-out', ease.exit) : slide('door-curtain-in', ease.emphasized) }}
-    >
-      <CurtainLockup label={label} />
-    </div>
+    <>
+      {phase === 'enter' ? (
+        <div aria-hidden="true" data-door-cover="" className="fixed inset-0 z-40 bg-accent" />
+      ) : null}
+      <div
+        role={quiet ? undefined : 'status'}
+        aria-label={quiet ? undefined : label}
+        aria-hidden={quiet ? true : undefined}
+        data-phase={phase}
+        className="door-curtain fixed inset-0 z-50 flex items-center justify-center bg-accent"
+        style={reduce ? undefined : { animation: phase === 'exit' ? slide('door-curtain-out', ease.exit) : slide('door-curtain-in', ease.emphasized) }}
+      >
+        <CurtainLockup label={label} />
+      </div>
+    </>
   );
 }
 

@@ -44,6 +44,8 @@ describe('the door curtain', () => {
 
     const curtain = () => screen.getByRole('status', { name: 'Source One' });
     expect(curtain().getAttribute('data-phase')).toBe('enter');
+    expect(document.querySelector('[data-door-cover]')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'The page' })).toBeNull();
     expect(document.documentElement.classList.contains('door-curtain-open')).toBe(true);
 
     act(() => vi.advanceTimersByTime(duration.curtain * 1000 - 1));
@@ -51,6 +53,7 @@ describe('the door curtain', () => {
 
     act(() => vi.advanceTimersByTime(1));
     expect(curtain().getAttribute('data-phase')).toBe('hold');
+    expect(document.querySelector('[data-door-cover]')).toBeNull();
 
     act(() => vi.advanceTimersByTime(duration.curtainHold * 1000 - 1));
     expect(curtain().getAttribute('data-phase')).toBe('hold');
@@ -81,6 +84,8 @@ describe('the door curtain', () => {
     const curtain = screen.getByRole('status', { name: 'Source One' });
     expect(curtain.getAttribute('data-phase')).toBe('hold');
     expect(curtain.getAttribute('style')).toBeNull();
+    expect(document.querySelector('[data-door-cover]')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'The page' })).toBeNull();
     expect(document.documentElement.classList.contains('door-curtain-open')).toBe(true);
 
     act(() => vi.advanceTimersByTime(duration.curtainHold * 1000 - 1));
