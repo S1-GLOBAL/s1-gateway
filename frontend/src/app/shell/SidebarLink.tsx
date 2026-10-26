@@ -1,6 +1,8 @@
 import * as m from 'motion/react-m';
+import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/shared/ui/cn';
+import { useIconTrigger } from '@/shared/ui/motion';
 import { isInPlace, type NavItem } from '../nav';
 
 const MotionLink = m.create(Link);
@@ -14,15 +16,17 @@ export function SidebarLink({ item, collapsed }: { item: NavItem; collapsed: boo
   const { pathname } = useLocation();
   const current = isInPlace(item, pathname);
   const Icon = item.icon;
+  const { play, trigger } = useIconTrigger();
+
+  useEffect(() => {
+    if (current) play();
+  }, [current, play]);
 
   return (
     <MotionLink
       to={item.path}
       aria-current={current ? 'page' : undefined}
-      initial="rest"
-      animate={current ? 'active' : 'rest'}
-      whileHover="active"
-      whileFocus="active"
+      {...trigger}
       className={cn(
         'group relative flex h-9 items-center gap-3 rounded-control px-2.5 text-sm font-medium outline-offset-0',
         current ? 'text-on-accent' : 'text-ink-muted hover:bg-surface-sunken hover:text-ink',

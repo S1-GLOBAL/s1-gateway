@@ -18,7 +18,11 @@ import {
 import type { AtlasDictionary, SavedSpecId, SlotKey } from '../../domain/atlas';
 import { AtlasLibrary, SEARCH_WAIT_MS } from './AtlasLibrary';
 
-const EMPTY = { items: [], nextCursor: null };
+const EMPTY = { items: [], page: 1, pageSize: 20, total: 0 };
+
+function pageOf(items: SavedSpecId[], total = items.length, page = 1) {
+  return { items, page, pageSize: 20, total };
+}
 const NOT_FOUND = new AppError('SPEC_ID_NOT_FOUND', 'No saved Spec ID has this code. Check it, or build and save it.');
 
 /** A saved Spec ID as the library answers it: three slots not known. */
@@ -29,7 +33,7 @@ function saved(index: number, overrides: Partial<SavedSpecId> = {}): SavedSpecId
 
 function renderLibrary(overrides: Partial<AtlasGateway> = {}, dictionary: AtlasDictionary = s1Dictionary) {
   const gateway = gatewayWith({ library: vi.fn(async () => EMPTY), ...overrides });
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 60_000 } } });
   render(
     <QueryClientProvider client={queryClient}>
       <AtlasGatewayProvider gateway={gateway}>
@@ -65,25 +69,58 @@ afterEach(() => {
 });
 
 describe('AtlasLibrary, the list', () => {
-  it('shows 20 cards, and Show more loads the next page', async () => {
+  it('shows the last page on the first paint, and a jump loads that page in one request', async () => {
     const first = Array.from({ length: 20 }, (_, index) => saved(index + 1));
-    const library = vi.fn<AtlasGateway['library']>(async ({ cursor }) =>
-      cursor === 'page-2' ? { items: [saved(21)], nextCursor: null } : { items: first, nextCursor: 'page-2' },
+    const library = vi.fn<AtlasGateway['library']>(async ({ page }) =>
+      page === 3 ? pageOf([saved(41)], 41, 3) : pageOf(first, 41, 1),
     );
     renderLibrary({ library });
 
     await waitFor(() => expect(cards()).toHaveLength(20));
-    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    expect(screen.getByRole('button', { name: 'Page 1' }).getAttribute('aria-current')).toBe('page');
+    expect(screen.getByRole('button', { name: 'Page 3' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Page 4' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Previous page' }).hasAttribute('disabled')).toBe(true);
 
-    await waitFor(() => expect(cards()).toHaveLength(21));
-    expect(library).toHaveBeenLastCalledWith({ q: '', productType: '', cursor: 'page-2' });
-    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Page 3' }));
+
+    await waitFor(() => expect(cards()).toHaveLength(1));
+    expect(screen.getByText('Lid 41')).toBeTruthy();
+    expect(screen.queryByText('Lid 1')).toBeNull();
+    expect(library).toHaveBeenLastCalledWith({ q: '', productType: '', page: 3 });
+    expect(library.mock.calls.map((call) => call[0].page)).toEqual([1, 3]);
+    expect(screen.getByRole('button', { name: 'Page 3' }).getAttribute('aria-current')).toBe('page');
+    expect(screen.getByRole('button', { name: 'Next page' }).hasAttribute('disabled')).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Page 1' }));
+
+    await waitFor(() => expect(cards()).toHaveLength(20));
+    expect(screen.getByText('Lid 1')).toBeTruthy();
+    expect(library.mock.calls.map((call) => call[0].page)).toEqual([1, 3]);
+  });
+
+  it('keeps Try again when a page fails to load', async () => {
+    const first = Array.from({ length: 20 }, (_, index) => saved(index + 1));
+    const library = vi
+      .fn<AtlasGateway['library']>()
+      .mockResolvedValueOnce(pageOf(first, 41, 1))
+      .mockRejectedValueOnce(new AppError('NETWORK', 'Cannot reach the server. Check your connection and try again.'))
+      .mockResolvedValueOnce(pageOf([saved(41)], 41, 3));
+    renderLibrary({ library });
+
+    await waitFor(() => expect(cards()).toHaveLength(20));
+    fireEvent.click(screen.getByRole('button', { name: 'Page 3' }));
+
+    expect(await screen.findByText('Cannot reach the server. Check your connection and try again.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(screen.getByText('Lid 41')).toBeTruthy());
   });
 
   it('shows each Spec ID with its code, its facts in plain words, what is missing and its last change', async () => {
     const ben = { id: '00000000-0000-4000-8000-0000000000bb', fullName: 'Ben Invented' };
     const lid = saved(1, { updatedBy: ben, updatedAt: new Date('2026-10-17T14:32:00Z'), manufacturerStages: { specificationsReceived: 2, quoted: 1, sampling: 0, inProduction: 0 } });
-    renderLibrary({ library: async () => ({ items: [lid], nextCursor: null }) });
+    renderLibrary({ library: async () => pageOf([lid]) });
 
     const [link] = await waitFor(() => cards());
     const card = link?.parentElement;
@@ -99,6 +136,7 @@ describe('AtlasLibrary, the list', () => {
     // Copy sits beside the code, outside the link, so it does not open the card.
     expect(link?.querySelector('button')).toBeNull();
     expect(within(card!).getByRole('button', { name: 'Copy code' })).toBeTruthy();
+    expect(screen.queryByRole('navigation', { name: 'Spec ID pages' })).toBeNull();
   });
 
   it('marks a Spec ID with nothing missing as Complete', async () => {
@@ -108,7 +146,7 @@ describe('AtlasLibrary, the list', () => {
       ['thickness', '030'],
       ['print', 'NP'],
     ].reduce((code, [key, raw]) => withSlot(code, key as SlotKey, raw ?? ''), ILLUSTRATIVE);
-    renderLibrary({ library: async () => ({ items: [saved(1, { code: complete, slots: readCode(complete).slots })], nextCursor: null }) });
+    renderLibrary({ library: async () => pageOf([saved(1, { code: complete, slots: readCode(complete).slots })]) });
     expect(await screen.findByText('Complete')).toBeTruthy();
   });
 
@@ -126,7 +164,7 @@ describe('AtlasLibrary, the list', () => {
     act(() => vi.advanceTimersByTime(1));
     vi.useRealTimers();
 
-    await waitFor(() => expect(library).toHaveBeenLastCalledWith({ q: 'lid', productType: '', cursor: undefined }));
+    await waitFor(() => expect(library).toHaveBeenLastCalledWith({ q: 'lid', productType: '', page: 1 }));
     expect(library).toHaveBeenCalledTimes(2);
     expect(SEARCH_WAIT_MS).toBe(250);
   });
@@ -191,7 +229,7 @@ describe('AtlasLibrary, the list', () => {
     chooseProductType('Bowl lid');
 
     expect(await screen.findByText('No bowl lid Spec IDs yet.')).toBeTruthy();
-    expect(library).toHaveBeenLastCalledWith({ q: '', productType: 'BLD', cursor: undefined });
+    expect(library).toHaveBeenLastCalledWith({ q: '', productType: 'BLD', page: 1 });
     expect(screen.getByRole('radio', { name: 'All' })).toBeTruthy();
   });
 
@@ -241,7 +279,7 @@ describe('AtlasLibrary, the list', () => {
     const library = vi
       .fn<AtlasGateway['library']>()
       .mockRejectedValueOnce(new AppError('NETWORK', 'Cannot reach the server. Check your connection and try again.'))
-      .mockResolvedValue({ items: [saved(1)], nextCursor: null });
+      .mockResolvedValue(pageOf([saved(1)]));
     renderLibrary({ library });
 
     expect(await screen.findByText('Cannot reach the server. Check your connection and try again.')).toBeTruthy();

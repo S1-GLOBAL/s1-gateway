@@ -280,10 +280,9 @@ describe('DrizzleSpecIdRepository, the library', () => {
   it('pages 21 Spec IDs as 20, newest first, then the 21st newest', async () => {
     await saveLids(21);
 
-    const first = await repository.list({ limit: 20 });
-    const last = first.at(-1)?.savedSpecId;
-    if (!last) throw new Error('no first page');
-    const second = await repository.list({ limit: 20, after: { lastChangedAt: last.lastChangedAt, id: last.id } });
+    const first = await repository.list({ limit: 20, offset: 0 });
+    const second = await repository.list({ limit: 20, offset: 20 });
+    expect(await repository.count({})).toBe(21);
 
     expect(first.map((record) => record.savedSpecId.name)).toEqual(
       Array.from({ length: 20 }, (_, index) => `Lid ${21 - index}`),

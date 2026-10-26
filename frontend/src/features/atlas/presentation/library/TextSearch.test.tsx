@@ -31,7 +31,7 @@ const READ_BOWL: SpecIdTextReading = {
   decoded: bowl,
 };
 
-const EMPTY = { items: [], nextCursor: null };
+const EMPTY = { items: [], page: 1, pageSize: 20, total: 0 };
 
 function renderLibrary(overrides: Partial<AtlasGateway> = {}) {
   const gateway = gatewayWith({ library: vi.fn(async () => EMPTY), ...overrides });
