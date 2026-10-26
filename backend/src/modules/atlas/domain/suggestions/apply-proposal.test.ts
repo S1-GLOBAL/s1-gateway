@@ -65,6 +65,17 @@ describe('applyProposal', () => {
     expect(next.live('productType', 'CUP')).toBeUndefined();
   });
 
+  it('reads a code a later change brings back as itself, deleted or renamed away before', () => {
+    const deleted = applyProposal(dictionary, { slot: 'material', code: 'APS' }, { kind: 'delete', replacement: null }, STAMP);
+    const added = applyProposal(deleted, { slot: 'material', code: 'APS' }, { kind: 'add', meaning: 'Polymer, invented', searchWords: [], rules: null }, LATER);
+    expect(added.live('material', 'APS')).toBe('APS');
+
+    const renamed = applyProposal(dictionary, { slot: 'material', code: 'APS' }, { kind: 'edit', newCode: 'APZ', meaning: null, searchWords: null }, STAMP);
+    const taken = applyProposal(renamed, { slot: 'material', code: 'APP' }, { kind: 'edit', newCode: 'APS', meaning: null, searchWords: null }, LATER);
+    expect(taken.live('material', 'APS')).toBe('APS');
+    expect(taken.live('material', 'APP')).toBe('APS');
+  });
+
   it('changes only the rules a rules change names', () => {
     const next = applyProposal(dictionary, { slot: 'productType', code: 'CUP' }, { kind: 'rules', rules: { coating: 'never' } }, STAMP);
     expect(next.ruleFor('CUP', 'coating')).toBe('never');

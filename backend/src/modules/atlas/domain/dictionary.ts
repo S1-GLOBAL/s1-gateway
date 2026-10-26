@@ -76,14 +76,14 @@ export class Dictionary {
   }
 
   /**
-   * The live letters of a code that once meant something: a renamed code's
-   * new letters, the code itself while it exists, undefined once deleted.
-   * Code that names an S2 0.1.0 code reads it through this (ADR 0031).
+   * The live letters of a code that once meant something: the code itself
+   * while it exists, else a renamed code's new letters, undefined once
+   * deleted. Code that names an S2 0.1.0 code reads it through this (ADR 0031).
    */
   live(slot: DictionarySlotKey, code: string): string | undefined {
     const key = `${slot}:${code}`;
-    if (this.liveLetters.has(key)) return this.liveLetters.get(key) ?? undefined;
-    return this.meanings.has(key) ? code : undefined;
+    if (this.meanings.has(key)) return code;
+    return this.liveLetters.get(key) ?? undefined;
   }
 
   /** Every rename, by list then old code. */
