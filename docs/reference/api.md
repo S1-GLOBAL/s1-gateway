@@ -63,6 +63,13 @@ Request bodies are JSON, at most **100 kB**.
 | GET | `/atlas/saved/:id/history` | session | 200 `{ data: SpecIdChange[] }`, newest first | 401, 404 `SPEC_ID_NOT_FOUND` |
 | GET | `/atlas/saved/:id/manufacturers` | session | 200 `{ data: SpecIdManufacturers }` | 401, 404 `SPEC_ID_NOT_FOUND` |
 | PUT | `/atlas/saved/:id/manufacturers/:manufacturerId/stage` | admin | 200 `{ data: SpecIdManufacturer }` | 401, 403 `NOT_ALLOWED`, 400 `VALIDATION_FAILED`, 404 `SPEC_ID_NOT_FOUND`, 404 `MANUFACTURER_NOT_FOUND` |
+| GET | `/atlas/dictionary/usage/:slot/:code` | session | 200 `{ data: { count } }`: saved Spec IDs holding that option | 401, 400 `VALIDATION_FAILED` |
+| POST | `/atlas/dictionary/suggestions` | session | 201 `{ data: DictionarySuggestion }` | 401, 400 `VALIDATION_FAILED` |
+| GET | `/atlas/dictionary/suggestions?state=waiting\|decided` | session | 200 `{ data: DictionarySuggestion[] }`: waiting oldest first (the default); decided latest decision first | 401 |
+| GET | `/atlas/dictionary/suggestions/waiting-count` | session | 200 `{ data: { count } }`: waiting suggestions the caller may decide — 0 for staff | 401 |
+| GET | `/atlas/dictionary/suggestions/:id` | session | 200 `{ data: DictionarySuggestionDetail }` | 401, 404 `SUGGESTION_NOT_FOUND` |
+| PUT | `/atlas/dictionary/suggestions/:id` | session | 200 `{ data: DictionarySuggestion }` | 401, 400 `VALIDATION_FAILED`, 403 `NOT_ALLOWED`, 404 `SUGGESTION_NOT_FOUND`, 409 `SUGGESTION_DECIDED`, 409 `SUGGESTION_CHANGED` |
+| POST | `/atlas/dictionary/suggestions/:id/withdraw` | session | 200 `{ data: DictionarySuggestion }` | 401, 403 `NOT_ALLOWED`, 404 `SUGGESTION_NOT_FOUND`, 409 `SUGGESTION_DECIDED`, 409 `SUGGESTION_CHANGED` |
 
 When `mustChangePassword` is true, every session route except
 `GET /auth/me`, `POST /auth/sign-out` and `POST /auth/change-password`
@@ -301,6 +308,46 @@ manufacturer already has records nothing. A manufacturer with no quote on that
 Spec ID, or a `:manufacturerId` that is not an id, answers 404
 `MANUFACTURER_NOT_FOUND`. The verified-list import never changes a stage.
 
+#### Dictionary suggestions
+
+Anyone signed in may suggest a change to the dictionary; nothing in it changes
+until an admin who did not make the suggestion approves it (#95,
+[ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md)).
+Approving and rejecting arrive with plan 0010's phase 2.
+
+`POST /atlas/dictionary/suggestions` takes `{ slot, code, proposal }`: one of
+the thirteen dictionary lists, the option it is about (the new code for an
+add, the product type for a rules change), and a `proposal` by `kind`:
+
+| `kind` | `proposal` |
+|---|---|
+| `add` | `{ meaning, searchWords, rules }` — `rules` holds every ruled field's rule for a new product type, and is null for any other list |
+| `edit` | `{ newCode, meaning, searchWords }` — each null leaves it; at least one is not null; `searchWords` replaces the whole list |
+| `delete` | `{ replacement }` — what saved Spec IDs holding the option become: another code, `Y`, or null when none holds it |
+| `rules` | `{ rules }` — a product type's fields whose rule changes, `{ coating: "never" }` |
+
+Codes are compared in capitals and wording trimmed. Every broken rule is
+answered at once, 400 `VALIDATION_FAILED` with `details.fields` keyed by
+`code`, `newCode`, `meaning`, `searchWords`, `replacement` or `rules`, in
+#95's words: a code of the wrong width or characters, a marker, a code the list
+already has, `RD`'s letters or deletion, a missing replacement, a product type
+that would become not known, a missing or unchanged rule, or a search word in
+the wrong form (2–40 lower-case letters, digits, spaces or hyphens; at most 20)
+or one that already finds another option of that list.
+
+`DictionarySuggestion` is `{ id, kind, slot, code, proposal, state, version,
+suggestedBy, suggestedAt, decidedBy, decidedAt, reason, changeNumber }`.
+`state` is `waiting`, `approved`, `rejected` or `withdrawn`; `version` is
+raised by each edit. `DictionarySuggestionDetail` adds `events`, the trail
+first step first (`{ kind, by, at, proposalBefore, proposalAfter, reason }`,
+`kind` one of `suggested`, `edited`, `withdrawn`, `approved`, `rejected`), and
+`usage`, how many saved Spec IDs hold the option now.
+
+`PUT /atlas/dictionary/suggestions/:id` takes the same body and the `version`
+the suggester read. Only the suggester may edit or withdraw, and only while it
+waits; its `kind`, `slot` and `code` cannot change (400 `VALIDATION_FAILED`
+under `kind`). An edit from an older version answers 409 `SUGGESTION_CHANGED`.
+
 Nothing replaces or deletes a saved Spec ID ([ADR 0022](../decisions/0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md)):
 there is no `PUT` or `DELETE` for one. The one Atlas `PUT` sets a manufacturer's stage.
 
@@ -321,7 +368,7 @@ there is no `PUT` or `DELETE` for one. The one Atlas `PUT` sets a manufacturer's
 | `ACCOUNT_LOCKED` | 423 | Too many wrong passwords; try again in 15 minutes |
 | `SIGN_IN_REQUIRED` | 401 | No valid session cookie |
 | `MUST_CHANGE_PASSWORD` | 403 | Signed in but must change password before continuing |
-| `NOT_ALLOWED` | 403 | Signed in but not an admin; or an admin acting on an admin's or System Admin's account; or anyone disabling, or changing the role of, their own account |
+| `NOT_ALLOWED` | 403 | Signed in but not an admin; or an admin acting on an admin's or System Admin's account; or anyone disabling, or changing the role of, their own account; or editing or withdrawing someone else's dictionary suggestion |
 | `RESET_TOKEN_INVALID` | 400 | Reset link is missing, used, or expired |
 | `ACCOUNT_NOT_FOUND` | 404 | No account with that id |
 | `INVITE_INVALID` | 404 | Invite link is expired, used, revoked or unknown — all answered alike |
@@ -332,5 +379,8 @@ there is no `PUT` or `DELETE` for one. The one Atlas `PUT` sets a manufacturer's
 | `SPEC_ID_NOT_FOUND` | 404 | No saved Spec ID has, or had, this code; or none has this id |
 | `SPEC_ID_CHANGED` | 409 | The Spec ID changed since the `version` the change was started from; nothing was saved |
 | `MANUFACTURER_NOT_FOUND` | 404 | The manufacturer has no quote on this Spec ID, or the id is not one |
+| `SUGGESTION_NOT_FOUND` | 404 | No dictionary suggestion has this id, or the id is not one |
+| `SUGGESTION_DECIDED` | 409 | The suggestion was approved, rejected or withdrawn: it no longer waits |
+| `SUGGESTION_CHANGED` | 409 | The suggestion changed since the `version` the edit was started from; nothing was saved |
 | `NOT_FOUND` | 404 | No route matches the method and path |
 | `INTERNAL_ERROR` | 500 | An unexpected failure. Logged in full on the server; the response says nothing more |

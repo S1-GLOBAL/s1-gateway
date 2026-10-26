@@ -57,7 +57,7 @@ Number sequentially. Never renumber.
 | [0018](./0018-staff-sign-in-with-admin-approval.md) | Staff sign-in with admin approval | Accepted; partly superseded by 0023 and 0030 |
 | [0019](./0019-the-s1-spec-id-format.md) | The S1 Spec ID format | Accepted; partly superseded by 0022, 0024 and 0025 |
 | [0020](./0020-atlas-is-built-in-typescript-in-the-gateway.md) | Atlas is built in TypeScript in the Gateway | Accepted |
-| [0021](./0021-the-atlas-dictionary-changes-only-by-migration.md) | The Atlas dictionary lives in Postgres and changes only by migration | Accepted; partly superseded by 0022 and 0024 |
+| [0021](./0021-the-atlas-dictionary-changes-only-by-migration.md) | The Atlas dictionary lives in Postgres and changes only by migration | Superseded by 0031 |
 | [0022](./0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md) | Saved Spec IDs can be edited, and every change is recorded | Accepted |
 | [0023](./0023-accounts-are-created-by-invite-only.md) | Accounts are created by invite only | Accepted |
 | [0024](./0024-spec-ids-move-to-the-s2-format.md) | Spec IDs move to the S2 format | Accepted; partly superseded by 0025 |
@@ -67,4 +67,4 @@ Number sequentially. Never renumber.
 | [0028](./0028-the-door-is-a-full-screen-curtain.md) | The door is a full-screen curtain | Accepted |
 | [0029](./0029-the-library-is-numbered-pages.md) | The library is numbered pages | Accepted |
 | [0030](./0030-roles-live-on-the-account.md) | Roles live on the account, and System Admins change them | Accepted |
-| [0031](./0031-the-dictionary-is-edited-by-suggestion-and-approval.md) | The dictionary is edited in the app, by suggestion and approval | Proposed |
+| [0031](./0031-the-dictionary-is-edited-by-suggestion-and-approval.md) | The dictionary is edited in the app, by suggestion and approval | Accepted |

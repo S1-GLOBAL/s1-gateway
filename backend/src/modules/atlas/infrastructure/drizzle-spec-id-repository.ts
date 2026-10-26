@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, inArray, ne, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, like, ne, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { err, ok, type Result } from '../../../shared/domain/result.js';
 import type { Database } from '../../../shared/infrastructure/database/connection.js';
@@ -9,7 +9,7 @@ import type { SavedSpecId } from '../domain/saved-spec-id.js';
 import type { SimilarCriteria } from '../domain/similar-match.js';
 import { SEARCHABLE_SLOTS } from '../domain/similar-match.js';
 import type { SpecIdChange } from '../domain/spec-id-change.js';
-import { NOT_KNOWN, slotDefinition } from '../domain/slots.js';
+import { NOT_KNOWN, slotDefinition, type DictionarySlotKey } from '../domain/slots.js';
 import { SpecIdChangedError, SpecIdExistsError } from '../domain/spec-id.errors.js';
 import type {
   FormerHolderRecord,
@@ -108,6 +108,15 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
       .where(and(...conditions))
       .orderBy(desc(atlasSpecIds.savedAt), asc(atlasSpecIds.code));
     return rows.map(toRecord);
+  }
+
+  async usageOf(slot: DictionarySlotKey, code: string): Promise<number> {
+    // A dictionary code is the same in the short and the long form (ADR 0025): only markers differ.
+    // A capacity holds its unit as its first letter, and no unit is a marker.
+    const column = atlasSpecIds[slot];
+    const holds = slot === 'capacity' ? like(column, `${code}%`) : eq(column, code);
+    const [row] = await this.db.select({ total: count() }).from(atlasSpecIds).where(holds);
+    return Number(row?.total ?? 0);
   }
 
   async count(filter: LibraryFilter): Promise<number> {

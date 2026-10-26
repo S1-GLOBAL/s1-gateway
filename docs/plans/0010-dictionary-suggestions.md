@@ -1,6 +1,6 @@
 # 0010. The dictionary, edited by suggestion and approval
 
-- **Status:** Draft
+- **Status:** In progress
 - **Owner:** Rey Denzo
 - **Related:** [#95](https://github.com/S1-GLOBAL/s1-gateway/issues/95) ·
   [ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md) ·
@@ -58,7 +58,7 @@ corrected.
 
 | Phase | Steps | Status |
 |---|---|---|
-| 1. Suggestions and their trail | 0 / 7 | Not started |
+| 1. Suggestions and their trail | 7 / 7 | Done — the suggestion rules, their two tables and the session routes; approving is phase 2 |
 | 2. Approving and rejecting | 0 / 10 | Not started |
 | 3. Renames and search words in the reader | 0 / 5 | Not started |
 | 4. The Dictionary changes page | 0 / 6 | Not started |
@@ -246,8 +246,8 @@ Reject, withdraw and edit are small use cases over the same repository.
 | GET | `/dictionary` | session | As today, plus `change` |
 | GET | `/dictionary/usage/:slot/:code` | session | `{ count }` saved Spec IDs with that value |
 | POST | `/dictionary/suggestions` | session | 201 the suggestion; 400 with field problems |
-| GET | `/dictionary/suggestions?state=waiting\|decided` | session | Suggestions, newest first, each with suggester and decider names |
-| GET | `/dictionary/suggestions/:id` | session | One suggestion, its events oldest first, its usage, and for a waiting one the codes it would rewrite (before → after) |
+| GET | `/dictionary/suggestions?state=waiting\|decided` | session | Suggestions, each with suggester and decider names: waiting oldest first, so the longest wait is seen first; decided latest decision first |
+| GET | `/dictionary/suggestions/:id` | session | One suggestion, its events oldest first, its usage; phase 2 adds, for a waiting one, the codes it would rewrite (before → after) |
 | PUT | `/dictionary/suggestions/:id` | session | The suggester only, while waiting; raises `version` |
 | POST | `/dictionary/suggestions/:id/withdraw` | session | The suggester only, while waiting |
 | GET | `/dictionary/suggestions/waiting-count` | session | `{ count }` waiting suggestions the caller may decide: 0 for staff; for an admin, all but their own |
@@ -279,38 +279,38 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 
 ### Step 1.1 — The proposal rules, test first
 
-- [ ] **Action.** Write `domain/suggestions/proposal.test.ts` covering every row of #95's rules table, each failing alone and all together; then `proposal.ts` with `Proposal`, `SuggestionKind` and `checkProposal`. Code format by slot width from `SLOTS` in `domain/slots.ts` (capacity's unit: 1). Search words are checked against `WORD_LIST` and the approved words passed in.
-- [ ] **Verify.** `npx vitest run --config vitest.unit.config.ts src/modules/atlas/domain/suggestions` (from `backend/`) passes; the `RD` rows answer #95's exact copy.
+- [x] **Action.** Write `domain/suggestions/proposal.test.ts` covering every row of #95's rules table, each failing alone and all together; then `proposal.ts` with `Proposal`, `SuggestionKind` and `checkProposal`. Code format by slot width from `SLOTS` in `domain/slots.ts` (capacity's unit: 1). Search words are checked against `WORD_LIST` and the approved words passed in.
+- [x] **Verify.** `npx vitest run --config vitest.unit.config.ts src/modules/atlas/domain/suggestions` (from `backend/`) passes; the `RD` rows answer #95's exact copy.
 
 ### Step 1.2 — The suggestion entity
 
-- [ ] **Action.** `domain/suggestions/suggestion.ts`: `Suggestion` with `suggest`, `edit(by, proposal)` (suggester only, waiting only, raises `version`, answers an `edited` event), `withdraw(by)`, and `restore`; `SuggestionEvent`. Tests first in `suggestion.test.ts`.
-- [ ] **Verify.** Tests pass: editing or withdrawing someone else's answers `NotAllowedError`; editing a decided one answers `SuggestionDecidedError`.
+- [x] **Action.** `domain/suggestions/suggestion.ts`: `Suggestion` with `suggest`, `edit(by, proposal)` (suggester only, waiting only, raises `version`, answers an `edited` event), `withdraw(by)`, and `restore`; `SuggestionEvent`. Tests first in `suggestion.test.ts`.
+- [x] **Verify.** Tests pass: editing or withdrawing someone else's answers `NotAllowedError`; editing a decided one answers `SuggestionDecidedError`.
 
 ### Step 1.3 — Two tables and their migration
 
-- [ ] **Action.** `atlas-dictionary-suggestions.table.ts` and `atlas-dictionary-suggestion-events.table.ts` as in Design (the suggestions' `change_number` FK comes in phase 2); export them; add them to `resetTables`; `npm run db:generate -- --name atlas_dictionary_suggestions`. Read the SQL.
-- [ ] **Verify.** `git ls-files -o backend/drizzle | grep -c "\.sql$"` prints `1`; `npm run db:migrate` applies it.
+- [x] **Action.** `atlas-dictionary-suggestions.table.ts` and `atlas-dictionary-suggestion-events.table.ts` as in Design (the suggestions' `change_number` FK comes in phase 2); export them; add them to `resetTables`; `npm run db:generate -- --name atlas_dictionary_suggestions`. Read the SQL.
+- [x] **Verify.** `git ls-files -o backend/drizzle | grep -c "\.sql$"` prints `1`; `npm run db:migrate` applies it.
 
 ### Step 1.4 — The repository
 
-- [ ] **Action.** Port `domain/suggestions/suggestion-repository.ts` (`add`, `save(suggestion, event, expectedVersion)`, `findById`, `list(state)`, `events(id)`, `waitingCountFor(accountId)`), the in-memory fake, and `infrastructure/drizzle-suggestion-repository.ts` with a `.db.test.ts`. Add `usageOf(slot, code)` to `SpecIdRepository`, its fake and adapter, counting short and long forms (`old-codes.ts`'s `storedForms`).
-- [ ] **Verify.** `npm test` (from the root, with `npm run db:up`) passes the new db tests.
+- [x] **Action.** Port `domain/suggestions/suggestion-repository.ts` (`add`, `save(suggestion, event, expectedVersion)`, `findById`, `list(state)`, `events(id)`, `waitingCountFor(accountId)`), the in-memory fake, and `infrastructure/drizzle-suggestion-repository.ts` with a `.db.test.ts`. Add `usageOf(slot, code)` to `SpecIdRepository`, its fake and adapter. A dictionary code is the same in the short and the long form (only markers differ, ADR 0025), so one comparison counts both; a capacity matches by its unit letter.
+- [x] **Verify.** `npm test` (from the root, with `npm run db:up`) passes the new db tests.
 
 ### Step 1.5 — The use cases
 
-- [ ] **Action.** `suggest-dictionary-change.ts`, `edit-dictionary-suggestion.ts`, `withdraw-dictionary-suggestion.ts`, `list-dictionary-suggestions.ts`, `get-dictionary-suggestion.ts`, `count-waiting-suggestions.ts`, `get-dictionary-usage.ts`, each with its test first.
-- [ ] **Verify.** Unit tests pass, including: a suggestion changes nothing in `GET /dictionary`; a staff member's waiting count is 0; an admin's excludes their own.
+- [x] **Action.** `suggest-dictionary-change.ts`, `edit-dictionary-suggestion.ts`, `withdraw-dictionary-suggestion.ts`, `list-dictionary-suggestions.ts`, `get-dictionary-suggestion.ts`, `count-waiting-suggestions.ts`, `get-dictionary-usage.ts`, with `suggestion.dto.ts` and `suggestion-context.ts`; tests in `dictionary-suggestions.test.ts`.
+- [x] **Verify.** Unit tests pass, including: a suggestion changes nothing in `GET /dictionary`; a staff member's waiting count is 0; an admin's excludes their own.
 
 ### Step 1.6 — Contract, routes and wiring
 
-- [ ] **Action.** Types in `backend/src/contracts/atlas.ts`; request schemas; controller handlers; the session routes of Design's table (not approve and reject); wiring in `modules/atlas/index.ts`; HTTP tests in `presentation/`. `SignedInStaff` (`atlas/index.ts`) now also passes `isAdmin`.
-- [ ] **Verify.** `npm run typecheck && npm run lint && npm run arch:check && npm run test:unit` exit 0.
+- [x] **Action.** Types in `backend/src/contracts/atlas.ts`; request schemas; the session routes of Design's table (not approve and reject) in their own `DictionarySuggestionsController` and `createDictionarySuggestionsRouter`, mounted on `/atlas/dictionary` *(the Atlas controller already takes ten use cases)*, with an asker closure passing `{ id, isAdmin }`; wiring in `modules/atlas/index.ts`; HTTP tests in `presentation/dictionary-suggestions.routes.test.ts`; and `backend/src/atlas-dictionary.db.test.ts`, which phase 2 extends.
+- [x] **Verify.** `npm run typecheck && npm run lint && npm run arch:check && npm run test:unit` exit 0.
 
 ### Step 1.7 — Docs, then the pull request
 
-- [ ] **Action.** `api.md` (the routes so far) and `data-model.md` (two tables; also fix `atlas_dictionary_values.slot`'s note, which lists 7 of the 13 slots). Mark ADR 0031 Accepted, ADR 0021 "Superseded by 0031", and both rows in `docs/decisions/README.md`. Open "Part of #95".
-- [ ] **Verify.** `npm run docs:check` passes; `npm run check:pr -- --body-file <file>` passes. Stop for the owner.
+- [x] **Action.** `api.md` (the routes so far) and `data-model.md` (two tables; also fix `atlas_dictionary_values.slot`'s note, which lists 7 of the 13 slots). Mark ADR 0031 Accepted, ADR 0021 "Superseded by 0031", and both rows in `docs/decisions/README.md`. Open "Part of #95".
+- [x] **Verify.** `npm run docs:check` passes; `npm run check:pr -- --body-file <file>` passes. Stop for the owner.
 
 ---
 

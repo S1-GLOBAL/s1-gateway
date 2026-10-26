@@ -322,3 +322,107 @@ export interface SpecIdManufacturers {
 export interface SetManufacturerStageRequest {
   stage: 'sampling' | 'in-production' | null;
 }
+
+/* Dictionary suggestions (#95, ADR 0031). */
+
+/** The thirteen slots whose values the dictionary holds. */
+export type DictionarySlotKey =
+  | 'productType'
+  | 'material'
+  | 'coating'
+  | 'colourClarity'
+  | 'shape'
+  | 'profile'
+  | 'capacity'
+  | 'wall'
+  | 'print'
+  | 'lidOpening'
+  | 'handle'
+  | 'wrap'
+  | 'window';
+
+export type DictionarySuggestionKind = 'add' | 'edit' | 'delete' | 'rules';
+
+/** What a suggestion asks for, by kind. Field rules are keyed by the ruled slots, `coating` to `window`. */
+export type DictionaryProposal =
+  | {
+      kind: 'add';
+      meaning: string;
+      searchWords: readonly string[];
+      /** Every ruled field's rule, for a new product type; null for any other list. */
+      rules: Readonly<Partial<Record<SlotKey, SlotRule>>> | null;
+    }
+  | {
+      kind: 'edit';
+      /** Null leaves each as it is; at least one is not null. */
+      newCode: string | null;
+      meaning: string | null;
+      /** The whole new list, replacing today's. */
+      searchWords: readonly string[] | null;
+    }
+  | {
+      kind: 'delete';
+      /** What saved Spec IDs holding the option become: another code, `Y`, or null when none holds it. */
+      replacement: string | null;
+    }
+  | { kind: 'rules'; rules: Readonly<Partial<Record<SlotKey, SlotRule>>> };
+
+/** `POST /atlas/dictionary/suggestions`. `code` is the option it is about: the new code for an add. */
+export interface SuggestDictionaryChangeRequest {
+  slot: DictionarySlotKey;
+  code: string;
+  proposal: DictionaryProposal;
+}
+
+/** `PUT /atlas/dictionary/suggestions/:id`: the suggester's edit, from the version they read. */
+export interface EditDictionarySuggestionRequest extends SuggestDictionaryChangeRequest {
+  version: number;
+}
+
+export type DictionarySuggestionState = 'waiting' | 'approved' | 'rejected' | 'withdrawn';
+
+/** A suggestion, as the lists answer it. Dates are ISO 8601. */
+export interface DictionarySuggestion {
+  id: string;
+  kind: DictionarySuggestionKind;
+  slot: DictionarySlotKey;
+  code: string;
+  proposal: DictionaryProposal;
+  state: DictionarySuggestionState;
+  /** Raised on each edit. */
+  version: number;
+  suggestedBy: SavedBy;
+  suggestedAt: string;
+  /** Who approved or rejected it. */
+  decidedBy: SavedBy | null;
+  /** When it was approved, rejected or withdrawn. */
+  decidedAt: string | null;
+  /** Why it was rejected. */
+  reason: string | null;
+  /** The dictionary change it became, once approved. */
+  changeNumber: number | null;
+}
+
+export interface DictionarySuggestionEvent {
+  kind: 'suggested' | 'edited' | 'withdrawn' | 'approved' | 'rejected';
+  by: SavedBy;
+  at: string;
+  /** An edit's proposal before it. */
+  proposalBefore: DictionaryProposal | null;
+  /** What a suggestion or an edit asks for. */
+  proposalAfter: DictionaryProposal | null;
+  /** A rejection's reason. */
+  reason: string | null;
+}
+
+/** `GET /atlas/dictionary/suggestions/:id`: one suggestion, its trail (first step first), and its option's use today. */
+export interface DictionarySuggestionDetail extends DictionarySuggestion {
+  events: DictionarySuggestionEvent[];
+  /** How many saved Spec IDs hold the option now. */
+  usage: number;
+}
+
+/** `GET /atlas/dictionary/usage/:slot/:code` and `GET /atlas/dictionary/suggestions/waiting-count`. */
+export interface DictionaryCount {
+  count: number;
+}
