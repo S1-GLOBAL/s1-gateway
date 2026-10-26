@@ -1,7 +1,9 @@
 # 0018. Staff sign-in with admin approval
 
 - **Status:** Accepted; partly superseded by [0023](./0023-accounts-are-created-by-invite-only.md):
-  open sign-up, its pending queue for new accounts and its sign-up rate limit no longer hold
+  open sign-up, its pending queue for new accounts and its sign-up rate limit no longer hold;
+  and by [0030](./0030-roles-live-on-the-account.md): an admin is an account's stored role,
+  not an address in `ACCOUNT_ADMIN_EMAILS`
 - **Date:** 2026-10-16
 - **Related:** [Issue #5](https://github.com/S1-GLOBAL/s1-gateway/issues/5)
 

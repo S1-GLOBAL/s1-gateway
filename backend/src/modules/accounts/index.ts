@@ -14,6 +14,8 @@ import { ListInvites } from './application/list-invites.js';
 import { RegisterWithInvite } from './application/register-with-invite.js';
 import { ResetPasswordWithToken } from './application/reset-password-with-token.js';
 import { RevokeInvite } from './application/revoke-invite.js';
+import { SeedSystemAdmins } from './application/seed-system-admins.js';
+import { SetAccountRole } from './application/set-account-role.js';
 import { SignIn } from './application/sign-in.js';
 import { SignOut } from './application/sign-out.js';
 import { DrizzleAccountInviteRepository } from './infrastructure/drizzle-account-invite-repository.js';
@@ -32,7 +34,6 @@ export interface AccountsModuleDependencies {
   db: Database;
   clock: Clock;
   ids: IdGenerator;
-  accountAdminEmails: readonly string[];
   corsOrigin: string;
   cookieSecure: boolean;
 }
@@ -58,7 +59,6 @@ export function buildAccountsModule(deps: AccountsModuleDependencies): AccountsH
     new GetMe(accounts, sessions, tokens, deps.clock),
     new ChangePassword(accounts, sessions, passwordHasher, tokens, deps.clock),
     new ResetPasswordWithToken(accounts, resetTokens, sessions, passwordHasher, tokens, deps.clock),
-    deps.accountAdminEmails,
     deps.cookieSecure,
     {
       get: new GetInvite(invites, tokens, deps.clock),
@@ -71,7 +71,7 @@ export function buildAccountsModule(deps: AccountsModuleDependencies): AccountsH
     new ApproveAccount(accounts, deps.clock),
     new DisableAccount(accounts, sessions),
     new CreatePasswordResetLink(accounts, resetTokens, sessions, tokens, deps.clock, deps.ids),
-    deps.accountAdminEmails,
+    new SetAccountRole(accounts),
     deps.corsOrigin,
     {
       create: new CreateInvite(accounts, invites, tokens, deps.clock, deps.ids),
@@ -86,7 +86,6 @@ export function buildAccountsModule(deps: AccountsModuleDependencies): AccountsH
     findAccountById: (id) => accounts.findById(id),
     hashToken: (token) => tokens.hash(token),
     clock: deps.clock,
-    accountAdminEmails: deps.accountAdminEmails,
     cookieSecure: deps.cookieSecure,
   };
 
@@ -97,8 +96,17 @@ export function buildAccountsModule(deps: AccountsModuleDependencies): AccountsH
       { path: '/accounts', router: createAccountsRouter(accountsController), access: 'admin' },
     ],
     sessionGate: createSessionGate(gateDeps),
-    adminGate: createAdminGate(gateDeps),
+    adminGate: createAdminGate(),
   };
+}
+
+/**
+ * Run once as the API starts: while no account is a System Admin, makes each
+ * approved account in `ACCOUNT_ADMIN_EMAILS` one (ADR 0030). Returns the
+ * emails it promoted.
+ */
+export function seedSystemAdmins(db: Database, emails: readonly string[]): Promise<string[]> {
+  return new SeedSystemAdmins(new DrizzleAccountRepository(db)).execute({ emails });
 }
 
 /** The accounts table, for another module's foreign key and joins (atlas). Nothing else. */

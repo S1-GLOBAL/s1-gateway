@@ -1,9 +1,9 @@
 import type { Clock } from '../../../shared/application/ports/clock.js';
 import type { IdGenerator } from '../../../shared/application/ports/id-generator.js';
 import type { UseCase } from '../../../shared/application/use-case.js';
-import { ok, type Result } from '../../../shared/domain/result.js';
+import { err, ok, type Result } from '../../../shared/domain/result.js';
 import type { AccountRepository } from '../domain/account-repository.js';
-import { AccountNotFoundError } from '../domain/account.errors.js';
+import { AccountNotFoundError, NotAllowedError } from '../domain/account.errors.js';
 import { PasswordResetToken } from '../domain/password-reset-token.js';
 import type { PasswordResetTokenRepository } from '../domain/password-reset-token-repository.js';
 import type { SessionRepository } from '../domain/session-repository.js';
@@ -12,6 +12,8 @@ import { toAccountDto, type AccountDto } from './account.dto.js';
 
 export interface CreatePasswordResetLinkInput {
   accountId: string;
+  /** The id of the admin asking for the link. */
+  requestedBy: string;
 }
 
 export interface CreatePasswordResetLinkOutput {
@@ -21,8 +23,11 @@ export interface CreatePasswordResetLinkOutput {
   expiresAt: string;
 }
 
+export type CreatePasswordResetLinkError = AccountNotFoundError | NotAllowedError;
+
+/** Only a System Admin resets an admin's password. */
 export class CreatePasswordResetLink
-  implements UseCase<CreatePasswordResetLinkInput, Result<CreatePasswordResetLinkOutput, AccountNotFoundError>>
+  implements UseCase<CreatePasswordResetLinkInput, Result<CreatePasswordResetLinkOutput, CreatePasswordResetLinkError>>
 {
   constructor(
     private readonly accounts: AccountRepository,
@@ -35,9 +40,11 @@ export class CreatePasswordResetLink
 
   async execute(
     input: CreatePasswordResetLinkInput,
-  ): Promise<Result<CreatePasswordResetLinkOutput, AccountNotFoundError>> {
+  ): Promise<Result<CreatePasswordResetLinkOutput, CreatePasswordResetLinkError>> {
     const account = await this.accounts.findById(input.accountId);
-    if (!account) return { ok: false, error: new AccountNotFoundError() };
+    if (!account) return err(new AccountNotFoundError());
+    const admin = await this.accounts.findById(input.requestedBy);
+    if (!admin?.mayManage(account)) return err(new NotAllowedError());
 
     // A new link makes every prior unused one unredeemable, and ends any
     // session the account currently holds.

@@ -30,6 +30,7 @@ describe('DrizzleAccountRepository', () => {
     expect(stored?.email).toBe('staff@sourceone.global');
     expect(stored?.fullName).toBe('Staff Member');
     expect(stored?.status).toBe('approved');
+    expect(stored?.role).toBe('staff');
     expect(stored?.mustChangePassword).toBe(false);
     expect(stored?.failedSignInCount).toBe(0);
     expect(stored?.lockedUntil).toBeNull();
@@ -38,6 +39,18 @@ describe('DrizzleAccountRepository', () => {
     expect(stored?.approvedAt?.toISOString()).toBe(CREATED_AT.toISOString());
     expect(stored?.firstName).toBe('Staff');
     expect(stored?.lastName).toBe('Member');
+  });
+
+  it('saves a changed role', async () => {
+    const staff = account('11111111-1111-4111-8111-111111111111', 'staff@sourceone.global', true);
+    await repository.add(staff);
+    await repository.save(staff.withRole('system-admin'));
+    expect((await repository.findById(staff.id))?.role).toBe('system-admin');
+  });
+
+  it('refuses a role the check constraint does not know', async () => {
+    await repository.add(account('11111111-1111-4111-8111-111111111111', 'staff@sourceone.global', true));
+    await expect(connection.db.update(accounts).set({ role: 'owner' })).rejects.toThrow();
   });
 
   it('writes full_name as "First Last"', async () => {

@@ -15,7 +15,6 @@ const app = composeApp({
   clock: new FixedClock(new Date('2026-10-14T08:00:00.000Z')),
   ids: new SequentialIdGenerator(),
   corsOrigin: 'http://localhost:5173',
-  accountAdminEmails: [ADMIN],
   cookieSecure: false,
 });
 

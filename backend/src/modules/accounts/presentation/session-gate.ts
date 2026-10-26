@@ -27,7 +27,6 @@ export interface SessionGateDeps {
   findAccountById(id: string): Promise<Account | null>;
   hashToken(token: string): string;
   clock: Clock;
-  accountAdminEmails: readonly string[];
   /** Matches the Secure flag used when the cookie was first set. */
   cookieSecure: boolean;
 }
@@ -81,11 +80,11 @@ export function createSessionGate(deps: SessionGateDeps): RequestHandler {
   };
 }
 
-export function createAdminGate(deps: Pick<SessionGateDeps, 'accountAdminEmails'>): RequestHandler {
-  const admins = new Set(deps.accountAdminEmails);
+/** Admins and System Admins pass. The role is the account's, read fresh by the session gate on every request. */
+export function createAdminGate(): RequestHandler {
   return (req, _res, next) => {
     const auth = (req as AuthenticatedRequest).auth;
-    if (!auth || !admins.has(auth.account.email)) {
+    if (!auth?.account.isAdmin) {
       next(toHttp(new NotAllowedError(), 403));
       return;
     }

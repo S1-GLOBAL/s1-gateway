@@ -15,7 +15,6 @@ export interface AppDependencies {
   clock: Clock;
   ids: IdGenerator;
   corsOrigin: string;
-  accountAdminEmails: readonly string[];
   cookieSecure: boolean;
   requestLogger?: RequestHandler;
 }
@@ -26,7 +25,6 @@ export function composeApp(deps: AppDependencies): Express {
     db: deps.db,
     clock: deps.clock,
     ids: deps.ids,
-    accountAdminEmails: deps.accountAdminEmails,
     corsOrigin: deps.corsOrigin,
     cookieSecure: deps.cookieSecure,
   });

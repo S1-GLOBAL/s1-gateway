@@ -25,6 +25,8 @@ export const accounts = pgTable(
     passwordHash: text('password_hash').notNull(),
     mustChangePassword: boolean('must_change_password').notNull().default(false),
     status: text('status').notNull(),
+    /** 'staff', 'admin' or 'system-admin' (ADR 0030). */
+    role: text('role').notNull().default('staff'),
     failedSignInCount: integer('failed_sign_in_count').notNull().default(0),
     lockedUntil: timestamp('locked_until', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
@@ -34,6 +36,7 @@ export const accounts = pgTable(
   (table) => [
     uniqueIndex('accounts_email_unique').on(table.email),
     check('accounts_status_check', sql`${table.status} in ('pending', 'approved', 'disabled')`),
+    check('accounts_role_check', sql`${table.role} in ('staff', 'admin', 'system-admin')`),
   ],
 );
 

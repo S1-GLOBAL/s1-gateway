@@ -54,7 +54,7 @@ async function expectNothingWritten(
 }
 
 describe('RegisterWithInvite', () => {
-  it('creates an approved account with the email of the invite, named "First Last"', async () => {
+  it('creates an approved staff account with the email of the invite, named "First Last"', async () => {
     const { register } = await setup();
     const result = await register.execute(input);
     expect(result).toEqual({
@@ -66,6 +66,7 @@ describe('RegisterWithInvite', () => {
         lastName: 'Lovelace',
         fullName: 'Ada Lovelace',
         status: 'approved',
+        role: 'staff',
         mustChangePassword: false,
         createdAt: NOW.toISOString(),
       },

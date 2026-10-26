@@ -1,4 +1,4 @@
-import { Account, type AccountStatus } from '../domain/account.js';
+import { Account, type AccountRole, type AccountStatus } from '../domain/account.js';
 import { splitFullName, type PersonName } from '../domain/person-name.js';
 import type { accounts } from './accounts.table.js';
 
@@ -13,6 +13,7 @@ export function toDomain(row: AccountRow): Account {
     passwordHash: row.passwordHash,
     mustChangePassword: row.mustChangePassword,
     status: row.status as AccountStatus,
+    role: row.role as AccountRole,
     failedSignInCount: row.failedSignInCount,
     lockedUntil: row.lockedUntil,
     createdAt: row.createdAt,
@@ -31,6 +32,7 @@ export function toRow(account: Account): NewAccountRow {
     passwordHash: account.passwordHash,
     mustChangePassword: account.mustChangePassword,
     status: account.status,
+    role: account.role,
     failedSignInCount: account.failedSignInCount,
     lockedUntil: account.lockedUntil,
     createdAt: account.createdAt,

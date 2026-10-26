@@ -1,4 +1,4 @@
-import type { Account, AccountStatus } from '../domain/account.js';
+import type { Account, AccountRole, AccountStatus } from '../domain/account.js';
 
 /** An account as the application hands it outward. Never a password hash or a token. */
 export interface AccountDto {
@@ -9,6 +9,7 @@ export interface AccountDto {
   /** "First Last". */
   fullName: string;
   status: AccountStatus;
+  role: AccountRole;
   mustChangePassword: boolean;
   createdAt: string;
 }
@@ -21,6 +22,7 @@ export function toAccountDto(account: Account): AccountDto {
     lastName: account.lastName,
     fullName: account.fullName,
     status: account.status,
+    role: account.role,
     mustChangePassword: account.mustChangePassword,
     createdAt: account.createdAt.toISOString(),
   };

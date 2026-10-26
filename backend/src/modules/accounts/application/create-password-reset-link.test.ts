@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FixedClock, SequentialIdGenerator } from '../../../shared/application/testing/fakes.js';
-import { Account } from '../domain/account.js';
-import { AccountNotFoundError } from '../domain/account.errors.js';
+import { Account, type AccountRole } from '../domain/account.js';
+import { AccountNotFoundError, NotAllowedError } from '../domain/account.errors.js';
 import { PasswordResetToken, RESET_TOKEN_TTL_MS } from '../domain/password-reset-token.js';
 import { Session } from '../domain/session.js';
 import { InMemoryAccountRepository } from './testing/in-memory-account-repository.js';
@@ -13,18 +13,24 @@ import { CreatePasswordResetLink } from './create-password-reset-link.js';
 const CREATED_AT = new Date('2026-10-16T00:00:00.000Z');
 const NOW = new Date('2026-10-16T09:00:00.000Z');
 
+async function add(accounts: InMemoryAccountRepository, id: string, role: AccountRole = 'staff'): Promise<void> {
+  const registered = Account.register(
+    { email: `${id}@sourceone.global`, firstName: 'Staff', lastName: 'Member', passwordHash: 'hash', autoApprove: true, role },
+    id,
+    CREATED_AT,
+  );
+  await accounts.add(registered.value);
+}
+
 async function setup() {
   const accounts = new InMemoryAccountRepository();
   const resetTokens = new InMemoryPasswordResetTokenRepository();
   const sessions = new InMemorySessionRepository();
 
-  const registered = Account.register(
-    { email: 'staff@sourceone.global', firstName: 'Staff', lastName: 'Member', passwordHash: 'hash', autoApprove: true },
-    'account-1',
-    CREATED_AT,
-  );
-  if (!registered.ok) throw new Error('setup failed');
-  await accounts.add(registered.value);
+  await add(accounts, 'account-1');
+  await add(accounts, 'admin-1', 'admin');
+  await add(accounts, 'admin-2', 'admin');
+  await add(accounts, 'system-1', 'system-admin');
   await sessions.add(Session.create('account-1', 'hash(session-token)', 'session-1', CREATED_AT));
 
   const useCase = new CreatePasswordResetLink(
@@ -41,7 +47,7 @@ async function setup() {
 describe('CreatePasswordResetLink', () => {
   it('creates a 24-hour token and reports it unhashed', async () => {
     const { useCase } = await setup();
-    const result = await useCase.execute({ accountId: 'account-1' });
+    const result = await useCase.execute({ accountId: 'account-1', requestedBy: 'admin-1' });
     expect(result.ok).toBe(true);
     expect(result.ok && result.value.token).toBe('token-1');
     expect(result.ok && result.value.expiresAt).toBe(new Date(NOW.getTime() + RESET_TOKEN_TTL_MS).toISOString());
@@ -49,7 +55,7 @@ describe('CreatePasswordResetLink', () => {
 
   it('ends every open session for the account', async () => {
     const { sessions, useCase } = await setup();
-    await useCase.execute({ accountId: 'account-1' });
+    await useCase.execute({ accountId: 'account-1', requestedBy: 'admin-1' });
     expect(await sessions.findByTokenHash('hash(session-token)')).toBeNull();
   });
 
@@ -58,7 +64,7 @@ describe('CreatePasswordResetLink', () => {
     const priorToken = PasswordResetToken.create('account-1', 'hash(old-token)', 'reset-0', CREATED_AT);
     await resetTokens.add(priorToken);
 
-    await useCase.execute({ accountId: 'account-1' });
+    await useCase.execute({ accountId: 'account-1', requestedBy: 'admin-1' });
 
     expect(await resetTokens.findByTokenHash('hash(old-token)')).toBeNull();
   });
@@ -75,7 +81,23 @@ describe('CreatePasswordResetLink', () => {
       new FixedClock(NOW),
       new SequentialIdGenerator(),
     );
-    const result = await useCase.execute({ accountId: 'unknown' });
+    const result = await useCase.execute({ accountId: 'unknown', requestedBy: 'admin-1' });
     expect(!result.ok && result.error).toBeInstanceOf(AccountNotFoundError);
+  });
+
+  it("refuses an admin a link for another admin's or a System Admin's account, and ends no session", async () => {
+    const { sessions, useCase } = await setup();
+    await sessions.add(Session.create('admin-2', 'hash(admin-token)', 'session-2', CREATED_AT));
+    for (const accountId of ['admin-2', 'system-1']) {
+      const result = await useCase.execute({ accountId, requestedBy: 'admin-1' });
+      expect(!result.ok && result.error).toBeInstanceOf(NotAllowedError);
+    }
+    expect(await sessions.findByTokenHash('hash(admin-token)')).not.toBeNull();
+  });
+
+  it("gives a System Admin a link for an admin's account", async () => {
+    const { useCase } = await setup();
+    const result = await useCase.execute({ accountId: 'admin-2', requestedBy: 'system-1' });
+    expect(result.ok).toBe(true);
   });
 });

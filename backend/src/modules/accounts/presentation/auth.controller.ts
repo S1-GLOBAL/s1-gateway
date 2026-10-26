@@ -1,5 +1,5 @@
 import type { ErrorRequestHandler, Request, Response } from 'express';
-import type { Account as AccountContract, InviteDetails } from '../../../contracts/accounts.js';
+import type { InviteDetails } from '../../../contracts/accounts.js';
 import type { UseCase } from '../../../shared/application/use-case.js';
 import type { Result } from '../../../shared/domain/result.js';
 import { HttpError } from '../../../shared/presentation/http/http-error.js';
@@ -18,6 +18,7 @@ import type {
 import type { SignInError, SignInInput, SignInOutput } from '../application/sign-in.js';
 import type { SignOutInput } from '../application/sign-out.js';
 import { InviteInvalidError, SignInRequiredError } from '../domain/account.errors.js';
+import { toAccountContract } from './account-contract.js';
 import { clearSessionCookie, setSessionCookie } from './cookies.js';
 import {
   changePasswordRequestSchema,
@@ -66,10 +67,6 @@ function readCookie(req: Request, name: string): string | undefined {
   return undefined;
 }
 
-function toContract(account: AccountDto, isAdmin: boolean): AccountContract {
-  return { ...account, isAdmin };
-}
-
 export class AuthController {
   constructor(
     private readonly signIn: UseCase<SignInInput, Result<SignInOutput, SignInError>>,
@@ -83,7 +80,6 @@ export class AuthController {
       ResetPasswordWithTokenInput,
       Result<void, ResetPasswordWithTokenError>
     >,
-    private readonly adminEmails: readonly string[],
     private readonly cookieSecure: boolean,
     private readonly invites: PublicInviteUseCases,
   ) {}
@@ -96,11 +92,7 @@ export class AuthController {
       throw new HttpError(SIGN_IN_STATUS[error.code], error.code, error.message, error.details);
     }
     setSessionCookie(res, result.value.sessionToken, this.cookieSecure);
-    sendData(
-      res,
-      200,
-      toContract(result.value.account, this.adminEmails.includes(result.value.account.email)),
-    );
+    sendData(res, 200, toAccountContract(result.value.account));
   };
 
   signOutHandler = async (req: Request, res: Response): Promise<void> => {
@@ -116,7 +108,7 @@ export class AuthController {
     if (!result.ok) {
       throw new HttpError(401, result.error.code, result.error.message, result.error.details);
     }
-    sendData(res, 200, toContract(result.value, this.adminEmails.includes(result.value.email)));
+    sendData(res, 200, toAccountContract(result.value));
   };
 
   changePasswordHandler = async (req: Request, res: Response): Promise<void> => {
@@ -174,6 +166,6 @@ export class AuthController {
       const { error } = result;
       throw new HttpError(REGISTER_STATUS[error.code], error.code, error.message, error.details);
     }
-    sendData(res, 201, toContract(result.value, this.adminEmails.includes(result.value.email)));
+    sendData(res, 201, toAccountContract(result.value));
   };
 }

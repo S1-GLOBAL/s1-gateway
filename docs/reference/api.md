@@ -35,15 +35,16 @@ Request bodies are JSON, at most **100 kB**.
 | GET | `/health` | public | 200 `{ data: { status: "ok" } }` | — |
 | POST | `/auth/sign-in` | public | 200 `{ data: Account }` + session cookie | 401 `SIGN_IN_FAILED`, 403 `ACCOUNT_PENDING`, 403 `ACCOUNT_DISABLED`, 423 `ACCOUNT_LOCKED` |
 | POST | `/auth/sign-out` | session (missing session → 204) | 204, clear cookie | — |
-| GET | `/auth/me` | session | 200 `{ data: Account }` (`isAdmin` set) | 401 `SIGN_IN_REQUIRED` |
+| GET | `/auth/me` | session | 200 `{ data: Account }` | 401 `SIGN_IN_REQUIRED` |
 | POST | `/auth/change-password` | session | 204 | 400 `VALIDATION_FAILED`, 401 |
 | POST | `/auth/reset-password` | public | 204 | 400 `RESET_TOKEN_INVALID`, 400 `VALIDATION_FAILED` |
 | GET | `/auth/invites/:token` | public | 200 `{ data: { email, expiresAt } }` | 404 `INVITE_INVALID` |
 | POST | `/auth/register` | public | 201 `{ data: Account }`, approved (no cookie) | 400 `VALIDATION_FAILED`, 404 `INVITE_INVALID`, 409 `ACCOUNT_EXISTS` |
 | GET | `/accounts` | admin | 200 `{ data: { pending, approved, disabled } }` | 401, 403 `NOT_ALLOWED` |
-| POST | `/accounts/:id/approve` | admin | 200 `{ data: Account }` | 404 `ACCOUNT_NOT_FOUND`, 401, 403 |
-| POST | `/accounts/:id/disable` | admin | 200 `{ data: Account }`; sessions ended | 404, 401, 403 |
-| POST | `/accounts/:id/reset-password` | admin | 200 `{ data: { resetUrl, expiresAt } }` | 404, 401, 403 |
+| POST | `/accounts/:id/approve` | admin | 200 `{ data: Account }` | 404 `ACCOUNT_NOT_FOUND`, 401, 403 (also for an admin's or System Admin's account, unless the caller is a System Admin) |
+| POST | `/accounts/:id/disable` | admin | 200 `{ data: Account }`; sessions ended | 404, 401, 403 (as approve, and for the caller's own account) |
+| POST | `/accounts/:id/reset-password` | admin | 200 `{ data: { resetUrl, expiresAt } }` | 404, 401, 403 (as approve) |
+| PUT | `/accounts/:id/role` | System Admin | 200 `{ data: Account }`. Body `{ role }`: `staff`, `admin` or `system-admin` | 400 `VALIDATION_FAILED`, 404, 401, 403 (for an admin, and for the caller's own account) |
 | POST | `/accounts/invites` | admin | 201 `{ data: { invite: AccountInvite, inviteUrl } }` | 400 `EMAIL_NOT_ALLOWED`, 400 `VALIDATION_FAILED`, 409 `ACCOUNT_EXISTS`, 401, 403 |
 | GET | `/accounts/invites` | admin | 200 `{ data: AccountInvite[] }`: unused, unrevoked and unexpired, newest first | 401, 403 |
 | POST | `/accounts/invites/:id/revoke` | admin | 200 `{ data: AccountInvite }` | 404 `INVITE_NOT_FOUND`, 401, 403 |
@@ -77,9 +78,10 @@ returns 403 `MUST_CHANGE_PASSWORD`.
 | `lastName` | string | 0–40 characters. Registering requires one; it is empty only for an account from before names were split whose full name was one word |
 | `fullName` | string | 1–81 characters: `"First Last"`, or the first name alone when the last is empty |
 | `status` | string | `pending`, `approved` or `disabled` |
+| `role` | string | `staff`, `admin` or `system-admin` ([ADR 0030](../decisions/0030-roles-live-on-the-account.md)). An admin manages staff and invites; a System Admin manages everyone and changes roles |
 | `mustChangePassword` | boolean | |
 | `createdAt` | string | ISO 8601 |
-| `isAdmin` | boolean | Present on `/auth/me` (and account lists); true when the email is in `ACCOUNT_ADMIN_EMAILS` |
+| `isAdmin` | boolean | `role` is `admin` or `system-admin`. Kept for a web app cached from before `role` |
 
 ### Invites
 
@@ -319,7 +321,7 @@ there is no `PUT` or `DELETE` for one. The one Atlas `PUT` sets a manufacturer's
 | `ACCOUNT_LOCKED` | 423 | Too many wrong passwords; try again in 15 minutes |
 | `SIGN_IN_REQUIRED` | 401 | No valid session cookie |
 | `MUST_CHANGE_PASSWORD` | 403 | Signed in but must change password before continuing |
-| `NOT_ALLOWED` | 403 | Signed in but not an admin |
+| `NOT_ALLOWED` | 403 | Signed in but not an admin; or an admin acting on an admin's or System Admin's account; or anyone disabling, or changing the role of, their own account |
 | `RESET_TOKEN_INVALID` | 400 | Reset link is missing, used, or expired |
 | `ACCOUNT_NOT_FOUND` | 404 | No account with that id |
 | `INVITE_INVALID` | 404 | Invite link is expired, used, revoked or unknown — all answered alike |

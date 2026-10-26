@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FixedClock } from '../../../shared/application/testing/fakes.js';
-import { Account } from './account.js';
+import { Account, type AccountRole } from './account.js';
 
 const createdAt = new Date('2026-10-16T00:00:00.000Z');
 const id = '00000000-0000-4000-8000-000000000001';
@@ -116,5 +116,56 @@ describe('Account', () => {
     account = account.recordSuccessfulSignIn();
     expect(account.failedSignInCount).toBe(0);
     expect(account.lockedUntil).toBeNull();
+  });
+});
+
+describe('Account roles', () => {
+  function withRole(role: AccountRole, accountId: string): Account {
+    const result = Account.register(
+      { email: `${accountId}@sourceone.global`, firstName: 'Ada', lastName: 'Lovelace', passwordHash: 'hash', autoApprove: true, role },
+      accountId,
+      createdAt,
+    );
+    return result.value;
+  }
+
+  const staff = withRole('staff', 'staff-1');
+  const admin = withRole('admin', 'admin-1');
+  const systemAdmin = withRole('system-admin', 'system-1');
+
+  it('registers as staff unless a role is given', () => {
+    expect(pendingAccount().role).toBe('staff');
+    expect(pendingAccount().isAdmin).toBe(false);
+    expect(systemAdmin.role).toBe('system-admin');
+  });
+
+  it('counts an admin and a System Admin as admins, and only the second as a System Admin', () => {
+    expect([admin.isAdmin, admin.isSystemAdmin]).toEqual([true, false]);
+    expect([systemAdmin.isAdmin, systemAdmin.isSystemAdmin]).toEqual([true, true]);
+  });
+
+  it('lets an admin manage staff, but not another admin or a System Admin', () => {
+    expect(admin.mayManage(staff)).toBe(true);
+    expect(admin.mayManage(withRole('admin', 'admin-2'))).toBe(false);
+    expect(admin.mayManage(systemAdmin)).toBe(false);
+  });
+
+  it('lets a System Admin manage anyone, and staff no one', () => {
+    expect([staff, admin, withRole('system-admin', 'system-2')].every((target) => systemAdmin.mayManage(target))).toBe(true);
+    expect(staff.mayManage(withRole('staff', 'staff-2'))).toBe(false);
+  });
+
+  it('lets only a System Admin change a role, and never their own', () => {
+    expect(systemAdmin.mayChangeRoleOf(staff)).toBe(true);
+    expect(systemAdmin.mayChangeRoleOf(withRole('system-admin', 'system-2'))).toBe(true);
+    expect(systemAdmin.mayChangeRoleOf(systemAdmin)).toBe(false);
+    expect(admin.mayChangeRoleOf(staff)).toBe(false);
+  });
+
+  it('changes the role and nothing else', () => {
+    const promoted = staff.withRole('admin');
+    expect(promoted.role).toBe('admin');
+    expect(promoted.email).toBe(staff.email);
+    expect(staff.role).toBe('staff');
   });
 });

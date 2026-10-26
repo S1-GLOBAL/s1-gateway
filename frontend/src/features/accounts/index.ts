@@ -2,6 +2,7 @@ export type {
   Account,
   AccountInvite,
   AccountLists,
+  AccountRole,
   AccountStatus,
   CreatedInvite,
   InviteDetails,

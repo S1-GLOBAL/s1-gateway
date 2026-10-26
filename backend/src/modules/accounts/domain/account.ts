@@ -1,5 +1,13 @@
 export type AccountStatus = 'pending' | 'approved' | 'disabled';
 
+/**
+ * What an account may do beyond using the Gateway. An admin manages staff and
+ * invites; a System Admin manages everyone, and is the only one who changes a
+ * role (ADR 0030).
+ */
+export const ACCOUNT_ROLES = ['staff', 'admin', 'system-admin'] as const;
+export type AccountRole = (typeof ACCOUNT_ROLES)[number];
+
 export const FAILED_SIGN_IN_LIMIT = 5;
 export const LOCKOUT_MINUTES = 15;
 
@@ -11,6 +19,7 @@ export interface AccountProps {
   readonly passwordHash: string;
   readonly mustChangePassword: boolean;
   readonly status: AccountStatus;
+  readonly role: AccountRole;
   readonly failedSignInCount: number;
   readonly lockedUntil: Date | null;
   readonly createdAt: Date;
@@ -25,6 +34,8 @@ export interface RegisterAccountInput {
   passwordHash: string;
   autoApprove: boolean;
   mustChangePassword?: boolean;
+  /** Staff when left out. */
+  role?: AccountRole;
 }
 
 export interface RegisterInvitedAccountInput {
@@ -53,6 +64,7 @@ export class Account {
         passwordHash: input.passwordHash,
         mustChangePassword: input.mustChangePassword ?? false,
         status: approved ? 'approved' : 'pending',
+        role: input.role ?? 'staff',
         failedSignInCount: 0,
         lockedUntil: null,
         createdAt,
@@ -72,6 +84,7 @@ export class Account {
       passwordHash: input.passwordHash,
       mustChangePassword: false,
       status: 'approved',
+      role: 'staff',
       failedSignInCount: 0,
       lockedUntil: null,
       createdAt,
@@ -118,6 +131,36 @@ export class Account {
     return this.props.status;
   }
 
+  get role(): AccountRole {
+    return this.props.role;
+  }
+
+  /** An admin or a System Admin: either may reach the admin routes. */
+  get isAdmin(): boolean {
+    return this.props.role !== 'staff';
+  }
+
+  get isSystemAdmin(): boolean {
+    return this.props.role === 'system-admin';
+  }
+
+  /**
+   * Whether this account may approve, disable or reset `target`: an admin
+   * only staff, a System Admin anyone.
+   */
+  mayManage(target: Account): boolean {
+    return this.isSystemAdmin || (this.isAdmin && target.role === 'staff');
+  }
+
+  /**
+   * Whether this account may change `target`'s role: a System Admin only, and
+   * never their own. Since only a System Admin can demote or disable another,
+   * and none their own account, one always remains.
+   */
+  mayChangeRoleOf(target: Account): boolean {
+    return this.isSystemAdmin && target.id !== this.id;
+  }
+
   get failedSignInCount(): number {
     return this.props.failedSignInCount;
   }
@@ -149,6 +192,10 @@ export class Account {
       approvedBy,
       approvedAt,
     });
+  }
+
+  withRole(role: AccountRole): Account {
+    return new Account({ ...this.props, role });
   }
 
   disable(): Account {

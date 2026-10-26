@@ -1,5 +1,14 @@
 export type AccountStatus = 'pending' | 'approved' | 'disabled';
 
+/** An admin manages staff and invites; a System Admin manages everyone and changes roles (ADR 0030). */
+export type AccountRole = 'staff' | 'admin' | 'system-admin';
+
+export const ROLE_LABELS: Record<AccountRole, string> = {
+  staff: 'Staff',
+  admin: 'Admin',
+  'system-admin': 'System Admin',
+};
+
 export interface Account {
   id: string;
   email: string;
@@ -10,7 +19,24 @@ export interface Account {
   status: AccountStatus;
   mustChangePassword: boolean;
   createdAt: Date;
+  role: AccountRole;
+  /** An admin or a System Admin. */
   isAdmin: boolean;
+}
+
+/*
+ * The API's rules, so the Accounts page offers only what it would allow. The
+ * API still decides: it refuses anything else with NOT_ALLOWED.
+ */
+
+/** Approving, disabling and resetting: an admin only staff, a System Admin anyone. */
+export function mayManage(actor: Account, target: Account): boolean {
+  return actor.role === 'system-admin' || (actor.role === 'admin' && target.role === 'staff');
+}
+
+/** A System Admin only, and never on their own account. */
+export function mayChangeRoleOf(actor: Account, target: Account): boolean {
+  return actor.role === 'system-admin' && actor.id !== target.id;
 }
 
 export interface AccountLists {

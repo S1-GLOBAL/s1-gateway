@@ -14,6 +14,7 @@ const wireAccount = {
   status: 'approved',
   mustChangePassword: false,
   createdAt: '2026-10-16T08:00:00.000Z',
+  role: 'staff',
   isAdmin: false,
 };
 
@@ -36,6 +37,22 @@ function gatewayAnswering(status: number, data: unknown, sent: Sent[] = []): Htt
   };
   return new HttpAccountsGateway(axios.create({ adapter }));
 }
+
+describe('HttpAccountsGateway roles', () => {
+  it('sets a role with a PUT to the account, and reads the role back', async () => {
+    const sent: Sent[] = [];
+    const answer = { data: { ...wireAccount, role: 'system-admin', isAdmin: true } };
+    const account = await gatewayAnswering(200, answer, sent).setAccountRole('a1', 'system-admin');
+    expect(sent).toEqual([{ method: 'put', url: '/accounts/a1/role', body: { role: 'system-admin' } }]);
+    expect(account).toMatchObject({ role: 'system-admin', isAdmin: true });
+  });
+
+  it('reads an admin from an API that sends only isAdmin, during a release', async () => {
+    const { role: _role, ...beforeRoles } = wireAccount;
+    const account = await gatewayAnswering(200, { data: { ...beforeRoles, isAdmin: true } }).me();
+    expect(account).toMatchObject({ role: 'admin', isAdmin: true });
+  });
+});
 
 describe('HttpAccountsGateway invites', () => {
   it('creates an invite and returns it with its link, the expiry as a Date', async () => {

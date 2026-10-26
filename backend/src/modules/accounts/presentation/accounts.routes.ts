@@ -11,6 +11,7 @@ export function createAccountsRouter(controller: AccountsController): Router {
   router.post('/:id/approve', controller.approve);
   router.post('/:id/disable', controller.disable);
   router.post('/:id/reset-password', controller.resetPassword);
+  router.put('/:id/role', controller.setRole);
   router.get('/invites', controller.listInvites);
   router.post('/invites', controller.createInvite);
   router.post('/invites/:id/revoke', controller.revokeInvite);

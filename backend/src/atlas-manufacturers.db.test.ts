@@ -21,7 +21,6 @@ const app = composeApp({
   clock: new FixedClock(NOW),
   ids: new SequentialIdGenerator(),
   corsOrigin: 'http://localhost:5173',
-  accountAdminEmails: [ADMIN],
   cookieSecure: false,
 });
 
@@ -29,8 +28,12 @@ let admin: ReturnType<typeof request.agent>;
 let staff: ReturnType<typeof request.agent>;
 let adminId: string;
 
-/** Signs in an account made like the admin, but only `email` in its own list: the app's list decides who is an admin. */
-async function signedIn(email: string, firstName: string): Promise<ReturnType<typeof request.agent>> {
+/** Signs in an account made like the admin; `role` then says what it may do. */
+async function signedIn(
+  email: string,
+  firstName: string,
+  role: 'staff' | 'system-admin',
+): Promise<ReturnType<typeof request.agent>> {
   const created = await createAdmin(connection.db, {
     email,
     firstName,
@@ -40,6 +43,7 @@ async function signedIn(email: string, firstName: string): Promise<ReturnType<ty
     accountAdminEmails: [email],
   });
   if (!created.ok) throw new Error(created.error);
+  await connection.db.execute(sql`update accounts set role = ${role} where email = ${email}`);
   const agent = request.agent(app);
   const signIn = await agent.post('/api/v1/auth/sign-in').send({ email, password: PASSWORD });
   if (signIn.status !== 200) throw new Error(`sign-in failed: ${signIn.status}`);
@@ -48,8 +52,8 @@ async function signedIn(email: string, firstName: string): Promise<ReturnType<ty
 
 beforeAll(async () => {
   await resetTables(connection.db);
-  admin = await signedIn(ADMIN, 'Ada');
-  staff = await signedIn(STAFF, 'Ben');
+  admin = await signedIn(ADMIN, 'Ada', 'system-admin');
+  staff = await signedIn(STAFF, 'Ben', 'staff');
   adminId = (await admin.get('/api/v1/auth/me')).body.data.id;
 });
 beforeEach(async () => {

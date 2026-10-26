@@ -11,6 +11,7 @@ export function account(overrides: Partial<Account> = {}): Account {
     status: 'approved',
     mustChangePassword: false,
     createdAt: new Date(0),
+    role: 'staff',
     isAdmin: false,
     ...overrides,
   };
@@ -39,6 +40,7 @@ export function fakeAccountsGateway(overrides: Partial<AccountsGateway> = {}): A
     listAccounts: async () => empty,
     approveAccount: async () => account(),
     disableAccount: async () => account({ status: 'disabled' }),
+    setAccountRole: async (id, role) => account({ id, role, isAdmin: role !== 'staff' }),
     createPasswordResetLink: async () => ({
       resetUrl: 'https://gateway.example/reset-password?token=abc',
       expiresAt: new Date(0),

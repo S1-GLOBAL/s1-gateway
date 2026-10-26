@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { composeApp } from './compose.js';
+import { seedSystemAdmins } from './modules/accounts/index.js';
 import { parseEnv } from './shared/infrastructure/config/env.js';
 import { CryptoIdGenerator } from './shared/infrastructure/crypto-id-generator.js';
 import { connectDatabase } from './shared/infrastructure/database/connection.js';
@@ -18,13 +19,15 @@ const pino = createPino({ level: env.LOG_LEVEL, pretty: env.NODE_ENV === 'develo
 const logger = new PinoLogger(pino);
 const database = connectDatabase(env.DATABASE_URL);
 
+const seeded = await seedSystemAdmins(database.db, env.accountAdminEmails);
+if (seeded.length > 0) logger.info('Made the first System Admins from ACCOUNT_ADMIN_EMAILS', { emails: seeded });
+
 const app = composeApp({
   db: database.db,
   logger,
   clock: new SystemClock(),
   ids: new CryptoIdGenerator(),
   corsOrigin: env.CORS_ORIGIN,
-  accountAdminEmails: env.accountAdminEmails,
   cookieSecure: env.NODE_ENV === 'production',
   requestLogger: createRequestLogger(pino),
 });
