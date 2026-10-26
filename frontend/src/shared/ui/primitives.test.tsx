@@ -40,6 +40,7 @@ describe('SourceOneName', () => {
     const name = screen.getByText('Source One');
     expect(name.className).toContain('font-mono');
     expect(name.className).toContain('text-md');
+    expect(name.className).toContain('font-semibold');
     expect(screen.queryByRole('img', { name: 'Source One' })).toBeNull();
   });
 });
