@@ -1,6 +1,7 @@
 import type { Result } from '../../../shared/domain/result.js';
 import type { SavedSpecId } from './saved-spec-id.js';
 import type { SimilarCriteria } from './similar-match.js';
+import type { DictionarySlotKey } from './slots.js';
 import type { SpecIdChange } from './spec-id-change.js';
 import type { SpecIdChangedError, SpecIdExistsError } from './spec-id.errors.js';
 
@@ -72,4 +73,9 @@ export interface SpecIdRepository {
   history(id: string): Promise<SpecIdChangeRecord[]>;
   /** Each Spec ID that once had `code`, by its newest change away from it, newest first. */
   formerHolders(code: string): Promise<FormerHolderRecord[]>;
+  /**
+   * How many saved Spec IDs hold dictionary option `code` in `slot`: for
+   * capacity, a value with that unit. A suggestion shows it (#95).
+   */
+  usageOf(slot: DictionarySlotKey, code: string): Promise<number>;
 }

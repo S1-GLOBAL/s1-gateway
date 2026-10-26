@@ -320,3 +320,28 @@ describe('DrizzleSpecIdRepository, the library', () => {
     expect(await repository.list({ productType: 'BWL', limit: 20 })).toEqual([]);
   });
 });
+
+describe('DrizzleSpecIdRepository.usageOf', () => {
+  it('counts the saved Spec IDs holding a dictionary option, and a capacity by its unit', async () => {
+    await add(lid('11111111-1111-4111-8111-111111111111', 'Lid one', '2026-10-14T08:00:00.000Z', '90'));
+    await add(lid('22222222-2222-4222-8222-222222222222', 'Lid two', '2026-10-14T09:00:00.000Z', '95', 'FL'));
+    expect(await repository.usageOf('material', 'APS')).toBe(2);
+    expect(await repository.usageOf('profile', 'FL')).toBe(1);
+    expect(await repository.usageOf('material', 'APP')).toBe(0);
+    expect(await repository.usageOf('capacity', 'Z')).toBe(0);
+
+    const cup = SpecId.build({ productType: 'CUP', material: 'APP', shape: 'RD', capacity: { unit: 'Z', value: '16' } }, s2Dictionary());
+    if (!cup.ok) throw new Error(`setup failed: ${JSON.stringify(cup.error.issues)}`);
+    await add(
+      SavedSpecId.restore({
+        id: '33333333-3333-4333-8333-333333333333',
+        specId: cup.value,
+        name: 'Cup',
+        dictionaryRelease: 'S2 0.1.0',
+        savedBy: SAVER_ID,
+        savedAt: new Date('2026-10-14T10:00:00.000Z'),
+      }),
+    );
+    expect(await repository.usageOf('capacity', 'Z')).toBe(1);
+  });
+});

@@ -1,6 +1,7 @@
 # 0021. The Atlas dictionary lives in Postgres and changes only by migration
 
-- **Status:** Accepted; partly superseded by [0022](./0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md):
+- **Status:** Superseded by [0031](./0031-the-dictionary-is-edited-by-suggestion-and-approval.md):
+  the dictionary is edited in the app, by suggestion and approval. Before that, partly superseded by [0022](./0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md):
   "or a saved Spec ID" no longer holds — saved Spec IDs can be changed, and every change is recorded;
   and by [0024](./0024-spec-ids-move-to-the-s2-format.md): one migration converts every saved code to S2
 - **Date:** 2026-10-16

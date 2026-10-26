@@ -1,6 +1,7 @@
 import { err, ok, type Result } from '../../../../shared/domain/result.js';
 import type { SavedSpecId } from '../../domain/saved-spec-id.js';
 import { classifyMatch, type SimilarCriteria } from '../../domain/similar-match.js';
+import type { DictionarySlotKey } from '../../domain/slots.js';
 import type { SpecIdChange } from '../../domain/spec-id-change.js';
 import { SpecIdChangedError, SpecIdExistsError } from '../../domain/spec-id.errors.js';
 import type {
@@ -71,6 +72,10 @@ export class InMemorySpecIdRepository implements SpecIdRepository {
       .map((saved) => this.record(saved));
   }
 
+  async usageOf(slot: DictionarySlotKey, code: string): Promise<number> {
+    return [...this.saved.values()].filter((saved) => holds(saved.specId.slot(slot), slot, code)).length;
+  }
+
   async count(filter: LibraryFilter): Promise<number> {
     return this.matching(filter).length;
   }
@@ -138,4 +143,9 @@ function compare(a: string, b: string): number {
   if (a < b) return -1;
   if (a > b) return 1;
   return 0;
+}
+
+/** A capacity holds its unit as its first letter; every other dictionary slot holds the code itself. */
+function holds(value: string, slot: DictionarySlotKey, code: string): boolean {
+  return slot === 'capacity' ? value.startsWith(code) : value === code;
 }

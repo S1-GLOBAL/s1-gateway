@@ -1,6 +1,6 @@
 # 0031. The dictionary is edited in the app, by suggestion and approval
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-27
 - **Related:** [Issue #95](https://github.com/S1-GLOBAL/s1-gateway/issues/95) ·
   [Plan 0010](../plans/0010-dictionary-suggestions.md) ·

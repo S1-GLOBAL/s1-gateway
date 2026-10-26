@@ -19,3 +19,5 @@ export { atlasSpecIdChanges } from './modules/atlas/infrastructure/atlas-spec-id
 export { atlasManufacturers } from './modules/atlas/infrastructure/atlas-manufacturers.table.js';
 export { atlasQuotes } from './modules/atlas/infrastructure/atlas-quotes.table.js';
 export { atlasManufacturerStageChanges } from './modules/atlas/infrastructure/atlas-manufacturer-stage-changes.table.js';
+export { atlasDictionarySuggestions } from './modules/atlas/infrastructure/atlas-dictionary-suggestions.table.js';
+export { atlasDictionarySuggestionEvents } from './modules/atlas/infrastructure/atlas-dictionary-suggestion-events.table.js';
