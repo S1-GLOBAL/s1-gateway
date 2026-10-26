@@ -2,7 +2,7 @@
 @import './theme.css';
 
 @layer base {
-  /* The scrollbar's space is always reserved, so short and long pages share one width. */
+  /* Reserved so short and long pages share one width. The door curtain drops it while it is up. */
   html {
     background-color: var(--color-canvas);
     scrollbar-gutter: stable;
