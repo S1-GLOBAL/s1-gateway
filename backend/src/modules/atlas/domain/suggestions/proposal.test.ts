@@ -91,6 +91,8 @@ describe('checkProposal: search words', () => {
       '“a”: use 2–40 lower-case letters, digits, spaces or hyphens.',
     ]);
     expect(issuesOf(...addMaterial('AZZ', 'Invented', ['pp/ps'])).searchWords?.[0]).toContain('“pp/ps”');
+    expect(issuesOf(...addMaterial('AZZ', 'Invented', ['a'.repeat(40)]))).toEqual({});
+    expect(issuesOf(...addMaterial('AZZ', 'Invented', ['a'.repeat(41)])).searchWords?.[0]).toContain('use 2–40');
     const many = Array.from({ length: 21 }, (_, i) => `word ${i}`);
     expect(issuesOf(...addMaterial('AZZ', 'Invented', many)).searchWords).toEqual(['An option can have at most 20 search words.']);
   });
@@ -183,6 +185,10 @@ describe('checkProposal: delete', () => {
     expect(issuesOf({ slot: 'productType', code: 'CUP' }, remove(null), { usage: 2 }).replacement).toEqual([message]);
     expect(issuesOf({ slot: 'productType', code: 'CUP' }, remove('Y'), { usage: 2 }).replacement).toEqual([message]);
     expect(issuesOf({ slot: 'productType', code: 'CUP' }, remove('BWL'), { usage: 2 })).toEqual({});
+  });
+
+  it('refuses to delete an option that does not exist', () => {
+    expect(issuesOf({ slot: 'material', code: 'AQQ' }, remove(null)).code).toEqual(['Material has no option AQQ.']);
   });
 
   it('never deletes RD', () => {

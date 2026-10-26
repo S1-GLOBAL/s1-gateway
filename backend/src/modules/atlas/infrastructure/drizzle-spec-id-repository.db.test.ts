@@ -329,5 +329,19 @@ describe('DrizzleSpecIdRepository.usageOf', () => {
     expect(await repository.usageOf('profile', 'FL')).toBe(1);
     expect(await repository.usageOf('material', 'APP')).toBe(0);
     expect(await repository.usageOf('capacity', 'Z')).toBe(0);
+
+    const cup = SpecId.build({ productType: 'CUP', material: 'APP', shape: 'RD', capacity: { unit: 'Z', value: '16' } }, s2Dictionary());
+    if (!cup.ok) throw new Error(`setup failed: ${JSON.stringify(cup.error.issues)}`);
+    await add(
+      SavedSpecId.restore({
+        id: '33333333-3333-4333-8333-333333333333',
+        specId: cup.value,
+        name: 'Cup',
+        dictionaryRelease: 'S2 0.1.0',
+        savedBy: SAVER_ID,
+        savedAt: new Date('2026-10-14T10:00:00.000Z'),
+      }),
+    );
+    expect(await repository.usageOf('capacity', 'Z')).toBe(1);
   });
 });

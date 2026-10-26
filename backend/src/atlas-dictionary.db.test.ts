@@ -39,8 +39,16 @@ afterAll(() => connection.close());
 
 describe('Dictionary suggestions, composed over Postgres', () => {
   it('refuses every suggestion route without a session', async () => {
-    for (const path of [SUGGESTIONS, `${SUGGESTIONS}/waiting-count`, '/api/v1/atlas/dictionary/usage/material/APS']) {
-      const response = await request(app).get(path);
+    const id = '00000000-0000-4000-8000-0000000000ff';
+    for (const response of [
+      await request(app).get(SUGGESTIONS),
+      await request(app).post(SUGGESTIONS).send({}),
+      await request(app).get(`${SUGGESTIONS}/waiting-count`),
+      await request(app).get(`${SUGGESTIONS}/${id}`),
+      await request(app).put(`${SUGGESTIONS}/${id}`).send({}),
+      await request(app).post(`${SUGGESTIONS}/${id}/withdraw`),
+      await request(app).get('/api/v1/atlas/dictionary/usage/material/APS'),
+    ]) {
       expect(response.status).toBe(401);
       expect(response.body.error.code).toBe('SIGN_IN_REQUIRED');
     }
