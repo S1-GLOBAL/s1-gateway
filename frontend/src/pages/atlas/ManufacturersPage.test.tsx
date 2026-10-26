@@ -70,10 +70,13 @@ describe('ManufacturersPage', () => {
     expect(screen.getByRole('region', { name: 'Quoted' })).toBeTruthy();
   });
 
-  it('shows an admin the stage buttons', async () => {
+  it('shows no button that changes a manufacturer stage, including for an admin', async () => {
     renderAt(async () => list([acme]), true);
 
-    expect(await screen.findByRole('button', { name: 'Mark as sampling' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Quoted' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Mark as sampling' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Mark as in production' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Clear stage' })).toBeNull();
   });
 
   it('shows staff who are not admins no stage buttons', async () => {
@@ -81,6 +84,8 @@ describe('ManufacturersPage', () => {
 
     expect(await screen.findByRole('region', { name: 'Quoted' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Mark as sampling' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Mark as in production' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Clear stage' })).toBeNull();
   });
 
   it('says no manufacturers are recorded yet, with the circle-slash and Open Spec ID', async () => {

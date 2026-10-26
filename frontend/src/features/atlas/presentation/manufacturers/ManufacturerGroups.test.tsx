@@ -1,14 +1,7 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import { AppError } from '@/shared/application/app-error';
-import type { AtlasGateway } from '../../application/atlas-gateway';
-import { AtlasGatewayProvider } from '../../application/atlas-gateway-context';
-import { gatewayWith } from '../../application/testing/atlas-fixtures';
+import { render, screen, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import type { ManufacturerQuote, SpecIdManufacturer } from '../../domain/atlas';
 import { ManufacturerGroups } from './ManufacturerGroups';
-
-const SPEC = '00000000-0000-4000-8000-000000000001';
 
 /** Invented: never a Source One manufacturer, item or price (ADR 0027). */
 const quote = (overrides: Partial<ManufacturerQuote> = {}): ManufacturerQuote => ({
@@ -40,22 +33,15 @@ const borealis: SpecIdManufacturer = {
   quotes: [quote({ fobPerUnit: 'N/A', fobPerCase: null })],
 };
 
-function renderGroups(isAdmin: boolean, overrides: Partial<AtlasGateway> = {}) {
-  const gateway = gatewayWith(overrides);
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <AtlasGatewayProvider gateway={gateway}>
-        <ManufacturerGroups specId={SPEC} manufacturers={[acme, borealis]} isAdmin={isAdmin} timeZone="UTC" />
-      </AtlasGatewayProvider>
-    </QueryClientProvider>,
-  );
+function renderGroups() {
+  render(<ManufacturerGroups manufacturers={[acme, borealis]} timeZone="UTC" />);
 }
 
 const card = (name: string) => within(screen.getByRole('article', { name }));
 
 describe('ManufacturerGroups', () => {
   it("shows each manufacturer once in its group, with its country, stage and every quote under #57's labels", () => {
-    renderGroups(false);
+    renderGroups();
 
     expect(screen.getAllByRole('region').map((region) => region.getAttribute('aria-label'))).toEqual(['Quoted', 'Sampling']);
     const acmeCard = card('Acme Packaging');
@@ -73,41 +59,18 @@ describe('ManufacturerGroups', () => {
   });
 
   it('says who set a stage, and when', () => {
-    renderGroups(false);
+    renderGroups();
 
     expect(card('Borealis Boxes').getByText('Set to Sampling by Ada Admin on 23 October 2026')).toBeTruthy();
     expect(card('Acme Packaging').queryByText(/^Set to/)).toBeNull();
   });
 
-  it('shows staff who are not admins no stage buttons', () => {
-    renderGroups(false);
+  it('shows no button that changes a manufacturer stage', () => {
+    renderGroups();
 
+    expect(screen.queryByRole('button', { name: 'Mark as sampling' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Mark as in production' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Clear stage' })).toBeNull();
     expect(screen.queryByRole('button')).toBeNull();
-  });
-
-  it('shows an admin Mark as sampling and Mark as in production, and Clear stage only once a stage is set', () => {
-    renderGroups(true);
-
-    const buttonsOf = (name: string) => card(name).getAllByRole('button').map((button) => button.textContent);
-    expect(buttonsOf('Acme Packaging')).toEqual(['Mark as sampling', 'Mark as in production']);
-    expect(buttonsOf('Borealis Boxes')).toEqual(['Mark as sampling', 'Mark as in production', 'Clear stage']);
-  });
-
-  it('sets and clears a stage, and shows the message when the server refuses', async () => {
-    const setManufacturerStage = vi.fn(async () => {
-      throw new AppError('NOT_ALLOWED', 'You are not allowed to do that.');
-    });
-    renderGroups(true, { setManufacturerStage });
-
-    fireEvent.click(card('Acme Packaging').getByRole('button', { name: 'Mark as sampling' }));
-    expect(await card('Acme Packaging').findByRole('alert')).toHaveProperty('textContent', 'You are not allowed to do that.');
-    fireEvent.click(card('Borealis Boxes').getByRole('button', { name: 'Clear stage' }));
-
-    await waitFor(() =>
-      expect(setManufacturerStage.mock.calls).toEqual([
-        [SPEC, 'acme', 'sampling'],
-        [SPEC, 'borealis', null],
-      ]),
-    );
   });
 });
