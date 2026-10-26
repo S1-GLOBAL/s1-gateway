@@ -58,3 +58,8 @@ same branch, and code-loading and data-loading need two different fallbacks.
 A new page is not finished until it has a skeleton. Data hooks used by pages
 are suspense hooks; components that should not suspend (a form submitting)
 keep using mutations and normal queries.
+
+While the session itself is still loading, the gate draws the shell and that
+route's skeleton. The person's name stays a block, and the admin Accounts
+link stays out, until the session answers. A hub refresh does not play the
+door curtain.

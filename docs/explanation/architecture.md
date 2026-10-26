@@ -137,6 +137,8 @@ lazily, with its skeleton.
 with suspense queries, so one `Suspense` per route covers code and data, and
 one error boundary per route turns any failure into `ErrorState` with Try
 again ([ADR 0013](../decisions/0013-loading-states-are-page-shaped-skeletons.md)).
+While `/auth/me` is still in flight, the gate draws that same shell and the
+route's skeleton, so a slow session check does not flash a blank canvas.
 
 **The theme is a feature like any other.** `features/appearance` owns the
 preference (domain), its ports and `useTheme` (application), `localStorage`
