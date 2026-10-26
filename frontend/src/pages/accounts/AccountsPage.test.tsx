@@ -9,7 +9,14 @@ import { account, fakeAccountsGateway, invite } from '@/test/fake-accounts-gatew
 import { AccountsPage } from './AccountsPage';
 import { AccountsPageSkeleton } from './AccountsPageSkeleton';
 
-const admin = account({ id: 'admin', fullName: 'Rey Admin', email: 'admin@sourceone.global', isAdmin: true });
+const admin = account({ id: 'admin', fullName: 'Rey Admin', email: 'admin@sourceone.global', role: 'admin', isAdmin: true });
+const systemAdmin = account({
+  id: 'system',
+  fullName: 'Sam System',
+  email: 'system@sourceone.global',
+  role: 'system-admin',
+  isAdmin: true,
+});
 const grace = account({ id: 'g1', fullName: 'Grace Hopper', email: 'grace@sourceone.global', status: 'pending' });
 const alan = account({ id: 'a2', fullName: 'Alan Turing', email: 'alan@sourceone.global' });
 const edsger = account({ id: 'e1', fullName: 'Edsger Dijkstra', email: 'edsger@sourceone.global', status: 'disabled' });
@@ -127,11 +134,72 @@ describe('AccountsPage', () => {
     expect(disableAccount).toHaveBeenCalledWith('a2');
   });
 
-  it('does not offer to disable yourself', async () => {
-    renderPage({ listAccounts: async () => ({ ...EMPTY, approved: [admin] }) });
-    const row = (await (await section('Approved')).findByText('Rey Admin')).closest('li')!;
+  it('does not offer to disable yourself, or to change your own role', async () => {
+    renderPage({ me: async () => systemAdmin, listAccounts: async () => ({ ...EMPTY, approved: [systemAdmin] }) });
+    const row = (await (await section('Approved')).findByText('Sam System')).closest('li')!;
     expect(within(row).queryByRole('button', { name: 'Disable' })).toBeNull();
+    expect(within(row).queryByRole('button', { name: 'Change role' })).toBeNull();
     expect(within(row).getByRole('button', { name: 'Reset password' })).toBeTruthy();
+  });
+
+  it('shows each admin and System Admin by their role', async () => {
+    renderPage({ listAccounts: async () => ({ ...EMPTY, approved: [systemAdmin, admin, alan] }) });
+    const approved = await section('Approved');
+    expect((await approved.findByText('Sam System')).closest('li')!.textContent).toContain('System Admin');
+    expect(approved.getByText('Rey Admin').closest('li')!.textContent).toContain('Admin');
+    expect(approved.getByText('Alan Turing').closest('li')!.textContent).not.toContain('Admin');
+  });
+
+  it("offers an admin nothing on another admin's or a System Admin's account, and no role changes at all", async () => {
+    const other = account({ id: 'admin-2', fullName: 'Ada Admin', role: 'admin', isAdmin: true });
+    const disabledAdmin = account({ id: 'admin-3', fullName: 'Old Admin', role: 'admin', isAdmin: true, status: 'disabled' });
+    renderPage({ listAccounts: async () => ({ ...EMPTY, approved: [admin, other, systemAdmin, alan], disabled: [disabledAdmin] }) });
+
+    const approved = await section('Approved');
+    for (const name of ['Ada Admin', 'Sam System']) {
+      expect(within((await approved.findByText(name)).closest('li')!).queryAllByRole('button')).toEqual([]);
+    }
+    expect(within(approved.getByText('Alan Turing').closest('li')!).getByRole('button', { name: 'Disable' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Change role' })).toBeNull();
+    expect(within((await section('Disabled')).getByText('Old Admin').closest('li')!).queryAllByRole('button')).toEqual([]);
+  });
+
+  it('lets a System Admin make staff an admin, and says so', async () => {
+    const setAccountRole = vi
+      .fn<AccountsGateway['setAccountRole']>()
+      .mockResolvedValue({ ...alan, role: 'admin', isAdmin: true });
+    renderPage({
+      me: async () => systemAdmin,
+      listAccounts: async () => ({ ...EMPTY, approved: [systemAdmin, admin, alan] }),
+      setAccountRole,
+    });
+
+    const row = (await (await section('Approved')).findByText('Alan Turing')).closest('li')!;
+    fireEvent.click(within(row).getByRole('button', { name: 'Change role' }));
+    const sheet = within(await screen.findByRole('dialog', { name: 'Change role' }));
+    expect(sheet.getByRole('button', { name: 'Save role' })).toHaveProperty('disabled', true);
+    fireEvent.change(sheet.getByLabelText('Role'), { target: { value: 'admin' } });
+    expect(sheet.getByText('Also invites people, and approves, disables and resets staff.')).toBeTruthy();
+    fireEvent.click(sheet.getByRole('button', { name: 'Save role' }));
+
+    expect(await screen.findByText('Alan Turing is now an admin.')).toBeTruthy();
+    expect(setAccountRole).toHaveBeenCalledWith('a2', 'admin');
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Change role' })).toBeNull());
+  });
+
+  it('shows why a role change failed, in the sheet', async () => {
+    const setAccountRole = vi
+      .fn<AccountsGateway['setAccountRole']>()
+      .mockRejectedValue(new AppError('NOT_ALLOWED', 'You are not allowed to do that.'));
+    renderPage({ me: async () => systemAdmin, listAccounts: async () => ({ ...EMPTY, approved: [systemAdmin, admin] }), setAccountRole });
+
+    const row = (await (await section('Approved')).findByText('Rey Admin')).closest('li')!;
+    fireEvent.click(within(row).getByRole('button', { name: 'Change role' }));
+    const sheet = within(await screen.findByRole('dialog', { name: 'Change role' }));
+    fireEvent.change(sheet.getByLabelText('Role'), { target: { value: 'staff' } });
+    fireEvent.click(sheet.getByRole('button', { name: 'Save role' }));
+
+    expect((await sheet.findByRole('alert')).textContent).toBe('You are not allowed to do that.');
   });
 
   it('shows why an action failed', async () => {

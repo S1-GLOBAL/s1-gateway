@@ -34,7 +34,7 @@ describe('createAdmin refuses', () => {
     const result = await createAdmin(untouchable, { ...INPUT, email: 'staff@sourceone.global' });
     expect(result).toEqual({
       ok: false,
-      error: '--email: staff@sourceone.global is not in ACCOUNT_ADMIN_EMAILS, so it would not be an admin.',
+      error: '--email: staff@sourceone.global is not in ACCOUNT_ADMIN_EMAILS, so it would not be a System Admin.',
     });
   });
 

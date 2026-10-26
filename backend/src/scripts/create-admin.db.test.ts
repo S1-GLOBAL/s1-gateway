@@ -18,7 +18,7 @@ const INPUT: CreateAdminInput = {
 };
 
 describe('createAdmin', () => {
-  it('creates an approved admin with both names, the password stored only as its hash', async () => {
+  it('creates an approved System Admin with both names, the password stored only as its hash', async () => {
     const result = await createAdmin(connection.db, INPUT);
 
     expect(result.ok && result.value).toEqual({
@@ -27,7 +27,13 @@ describe('createAdmin', () => {
       fullName: 'Admin User',
     });
     const stored = await new DrizzleAccountRepository(connection.db).findByEmail('admin@sourceone.global');
-    expect(stored).toMatchObject({ status: 'approved', firstName: 'Admin', lastName: 'User', mustChangePassword: false });
+    expect(stored).toMatchObject({
+      status: 'approved',
+      role: 'system-admin',
+      firstName: 'Admin',
+      lastName: 'User',
+      mustChangePassword: false,
+    });
     expect(stored?.passwordHash).not.toContain(INPUT.password);
     expect(await new ScryptPasswordHasher().verify(INPUT.password, stored!.passwordHash)).toBe(true);
   });

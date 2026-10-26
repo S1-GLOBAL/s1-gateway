@@ -20,6 +20,7 @@ import { RegisterWithInvite } from '../application/register-with-invite.js';
 import { ResetPasswordWithToken } from '../application/reset-password-with-token.js';
 import { RevokeInvite } from '../application/revoke-invite.js';
 import { SignIn } from '../application/sign-in.js';
+import { SetAccountRole } from '../application/set-account-role.js';
 import { SignOut } from '../application/sign-out.js';
 import { FakePasswordHasher } from '../application/testing/fake-password-hasher.js';
 import { FakeTokenGenerator } from '../application/testing/fake-token-generator.js';
@@ -27,7 +28,7 @@ import { InMemoryAccountInviteRepository } from '../application/testing/in-memor
 import { InMemoryAccountRepository } from '../application/testing/in-memory-account-repository.js';
 import { InMemoryPasswordResetTokenRepository } from '../application/testing/in-memory-password-reset-token-repository.js';
 import { InMemorySessionRepository } from '../application/testing/in-memory-session-repository.js';
-import { Account } from '../domain/account.js';
+import { Account, type AccountRole } from '../domain/account.js';
 import { AccountInvite, INVITE_TTL_MS } from '../domain/account-invite.js';
 import { CreateTool } from '../../tools/application/create-tool.js';
 import { ListTools } from '../../tools/application/list-tools.js';
@@ -41,6 +42,7 @@ import { createPublicAuthRouter, createSessionAuthRouter } from './auth.routes.j
 import { createAdminGate, createSessionGate, SESSION_COOKIE } from './session-gate.js';
 
 const ADMIN = 'admin@sourceone.global';
+const SYSTEM_ADMIN = 'system@sourceone.global';
 const STAFF = 'staff@sourceone.global';
 const PASSWORD = 'correct-horse';
 
@@ -53,7 +55,6 @@ function setup() {
   const tokens = new FakeTokenGenerator();
   const clock = new FixedClock(new Date('2026-10-16T12:00:00.000Z'));
   const ids = new SequentialIdGenerator();
-  const adminEmails = [ADMIN];
 
   const authController = new AuthController(
     new SignIn(accounts, sessions, hasher, tokens, clock, ids),
@@ -61,7 +62,6 @@ function setup() {
     new GetMe(accounts, sessions, tokens, clock),
     new ChangePassword(accounts, sessions, hasher, tokens, clock),
     new ResetPasswordWithToken(accounts, resetTokens, sessions, hasher, tokens, clock),
-    adminEmails,
     false,
     {
       get: new GetInvite(invites, tokens, clock),
@@ -74,7 +74,7 @@ function setup() {
     new ApproveAccount(accounts, clock),
     new DisableAccount(accounts, sessions),
     new CreatePasswordResetLink(accounts, resetTokens, sessions, tokens, clock, ids),
-    adminEmails,
+    new SetAccountRole(accounts),
     'http://localhost:5173',
     {
       create: new CreateInvite(accounts, invites, tokens, clock, ids),
@@ -95,7 +95,6 @@ function setup() {
     findAccountById: (id: string) => accounts.findById(id),
     hashToken: (token: string) => tokens.hash(token),
     clock,
-    accountAdminEmails: adminEmails,
     cookieSecure: false,
   };
 
@@ -104,7 +103,7 @@ function setup() {
     logger,
     corsOrigin: 'http://localhost:5173',
     sessionGate: createSessionGate(gateDeps),
-    adminGate: createAdminGate(gateDeps),
+    adminGate: createAdminGate(),
     modules: [
       buildHealthModule(),
       { path: '/auth', router: createPublicAuthRouter(authController), access: 'public' },
@@ -119,12 +118,16 @@ function setup() {
 
 type TestApp = ReturnType<typeof setup>;
 
-/** An account added straight to the repository: no route creates one without an invite. */
+/**
+ * An account added straight to the repository: no route creates one without an
+ * invite. ADMIN is an admin and SYSTEM_ADMIN a System Admin unless `role` says otherwise.
+ */
 async function seedAccount(
   context: TestApp,
   email: string,
-  options: { approved?: boolean; firstName?: string; lastName?: string } = {},
+  options: { approved?: boolean; firstName?: string; lastName?: string; role?: AccountRole } = {},
 ): Promise<void> {
+  const role = options.role ?? (email === ADMIN ? 'admin' : email === SYSTEM_ADMIN ? 'system-admin' : 'staff');
   const registered = Account.register(
     {
       email,
@@ -132,6 +135,7 @@ async function seedAccount(
       lastName: options.lastName ?? 'Person',
       passwordHash: await context.hasher.hash(PASSWORD),
       autoApprove: options.approved ?? true,
+      role,
     },
     `00000000-0000-4000-8000-${String((await context.accounts.list()).length + 900).padStart(12, '0')}`,
     context.clock.now(),
@@ -163,7 +167,7 @@ describe('auth and accounts HTTP', () => {
 
     const me = await agent.get('/api/v1/auth/me');
     expect(me.status).toBe(200);
-    expect(me.body.data.isAdmin).toBe(true);
+    expect(me.body.data).toMatchObject({ role: 'admin', isAdmin: true });
     const renewedCookie = me.headers['set-cookie'];
     const renewedHeader = Array.isArray(renewedCookie) ? renewedCookie.join(';') : (renewedCookie ?? '');
     expect(renewedHeader).toContain(SESSION_COOKIE);
@@ -247,6 +251,105 @@ describe('auth and accounts HTTP', () => {
       .send({ token, newPassword: 'another-password' });
     expect(again.status).toBe(400);
     expect(again.body.error.code).toBe('RESET_TOKEN_INVALID');
+  });
+});
+
+describe('roles HTTP', () => {
+  async function signedIn(context: TestApp, email: string) {
+    const agent = request.agent(context.app);
+    const response = await agent.post('/api/v1/auth/sign-in').send({ email, password: PASSWORD });
+    expect(response.status).toBe(200);
+    return agent;
+  }
+
+  async function withEveryone() {
+    const context = setup();
+    for (const email of [SYSTEM_ADMIN, ADMIN, STAFF]) await seedAccount(context, email);
+    const idOf = async (email: string) => (await context.accounts.findByEmail(email))!.id;
+    return { ...context, idOf };
+  }
+
+  it("lets a System Admin promote staff to admin, which opens the admin routes on the staff member's next request", async () => {
+    const context = await withEveryone();
+    const systemAdmin = await signedIn(context, SYSTEM_ADMIN);
+    const staff = await signedIn(context, STAFF);
+    expect((await staff.get('/api/v1/accounts')).status).toBe(403);
+
+    const promoted = await systemAdmin.put(`/api/v1/accounts/${await context.idOf(STAFF)}/role`).send({ role: 'admin' });
+
+    expect(promoted.status).toBe(200);
+    expect(promoted.body.data).toMatchObject({ email: STAFF, role: 'admin', isAdmin: true });
+    expect((await staff.get('/api/v1/accounts')).status).toBe(200);
+  });
+
+  it('lets a System Admin demote an admin, which closes the admin routes at once', async () => {
+    const context = await withEveryone();
+    const systemAdmin = await signedIn(context, SYSTEM_ADMIN);
+    const admin = await signedIn(context, ADMIN);
+
+    const demoted = await systemAdmin.put(`/api/v1/accounts/${await context.idOf(ADMIN)}/role`).send({ role: 'staff' });
+
+    expect(demoted.status).toBe(200);
+    expect(demoted.body.data.role).toBe('staff');
+    expect((await admin.get('/api/v1/accounts')).status).toBe(403);
+  });
+
+  it('refuses an admin changing a role with 403 NOT_ALLOWED, and changes nothing', async () => {
+    const context = await withEveryone();
+    const admin = await signedIn(context, ADMIN);
+
+    const refused = await admin.put(`/api/v1/accounts/${await context.idOf(STAFF)}/role`).send({ role: 'admin' });
+
+    expect(refused.status).toBe(403);
+    expect(refused.body.error.code).toBe('NOT_ALLOWED');
+    expect((await context.accounts.findByEmail(STAFF))?.role).toBe('staff');
+  });
+
+  it('refuses a System Admin changing their own role', async () => {
+    const context = await withEveryone();
+    const systemAdmin = await signedIn(context, SYSTEM_ADMIN);
+
+    const refused = await systemAdmin.put(`/api/v1/accounts/${await context.idOf(SYSTEM_ADMIN)}/role`).send({ role: 'staff' });
+
+    expect(refused.status).toBe(403);
+    expect(refused.body.error.code).toBe('NOT_ALLOWED');
+  });
+
+  it('answers 400 VALIDATION_FAILED for a role that does not exist, and 404 for an unknown account', async () => {
+    const context = await withEveryone();
+    const systemAdmin = await signedIn(context, SYSTEM_ADMIN);
+
+    const invalid = await systemAdmin.put(`/api/v1/accounts/${await context.idOf(STAFF)}/role`).send({ role: 'owner' });
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.error.code).toBe('VALIDATION_FAILED');
+
+    const unknown = await systemAdmin.put('/api/v1/accounts/00000000-0000-4000-8000-0000000000ff/role').send({ role: 'admin' });
+    expect(unknown.status).toBe(404);
+    expect(unknown.body.error.code).toBe('ACCOUNT_NOT_FOUND');
+  });
+
+  it("refuses an admin disabling or resetting a System Admin's account, and still lets them invite", async () => {
+    const context = await withEveryone();
+    const admin = await signedIn(context, ADMIN);
+    const id = await context.idOf(SYSTEM_ADMIN);
+
+    for (const action of ['disable', 'reset-password']) {
+      const refused = await admin.post(`/api/v1/accounts/${id}/${action}`);
+      expect(refused.status).toBe(403);
+      expect(refused.body.error.code).toBe('NOT_ALLOWED');
+    }
+    expect((await context.accounts.findByEmail(SYSTEM_ADMIN))?.status).toBe('approved');
+    expect((await admin.post('/api/v1/accounts/invites').send({ email: 'ada@sourceone.global' })).status).toBe(201);
+  });
+
+  it("lets a System Admin disable an admin's account", async () => {
+    const context = await withEveryone();
+    const systemAdmin = await signedIn(context, SYSTEM_ADMIN);
+
+    const disabled = await systemAdmin.post(`/api/v1/accounts/${await context.idOf(ADMIN)}/disable`);
+
+    expect(disabled.status).toBe(200);
+    expect(disabled.body.data.status).toBe('disabled');
   });
 });
 
@@ -484,6 +587,7 @@ describe('invite and register HTTP', () => {
       fullName: 'Ada Lovelace',
       status: 'approved',
       mustChangePassword: false,
+      role: 'staff',
       isAdmin: false,
     });
 

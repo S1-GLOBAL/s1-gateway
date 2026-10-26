@@ -16,8 +16,8 @@ matter, and a client-rendered SPA is enough
 ## 2. The Gateway requires sign-in
 
 **Every route of the API except `/health` and `/auth/*` needs a session.**
-There is no open sign-up: an admin (an address in `ACCOUNT_ADMIN_EMAILS`)
-invites a staff member by their `@sourceone.global` email, and the link works
+There is no open sign-up: an admin or a System Admin
+([ADR 0030](../decisions/0030-roles-live-on-the-account.md)) invites a staff member by their `@sourceone.global` email, and the link works
 once, for 7 days. The person gives a first name, a last name and a password,
 and can sign in at once — the invite is the approval
 ([ADR 0023](../decisions/0023-accounts-are-created-by-invite-only.md)). A

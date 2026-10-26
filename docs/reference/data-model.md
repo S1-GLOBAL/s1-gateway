@@ -38,6 +38,7 @@ Defined in `backend/src/modules/accounts/infrastructure/accounts.table.ts`.
 | `password_hash` | `text` | no | — | `scrypt$…` — never a plain password |
 | `must_change_password` | `boolean` | no | `false` | |
 | `status` | `text` | no | — | Check: `pending`, `approved`, `disabled` |
+| `role` | `text` | no | `'staff'` | Check: `staff`, `admin`, `system-admin` ([ADR 0030](../decisions/0030-roles-live-on-the-account.md)). Set by a System Admin, or when the API starts with no System Admin |
 | `failed_sign_in_count` | `integer` | no | `0` | |
 | `locked_until` | `timestamptz` | yes | — | Set after five failed sign-ins |
 | `created_at` | `timestamptz` | no | — | |
@@ -50,6 +51,7 @@ Defined in `backend/src/modules/accounts/infrastructure/accounts.table.ts`.
 |---|---|---|
 | `accounts_email_unique` | `email`, unique | One account per company mailbox |
 | `accounts_status_check` | check | Status is one of the three allowed values |
+| `accounts_role_check` | check | Role is one of the three allowed values |
 
 ## `sessions`
 

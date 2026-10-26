@@ -54,7 +54,7 @@ Number sequentially. Never renumber.
 | [0015](./0015-pull-requests-merge-by-squash-only.md) | Pull requests merge into `main` by squash only | Accepted |
 | [0016](./0016-the-repository-lives-in-the-s1-global-organisation.md) | The repository lives in the S1-GLOBAL organisation | Accepted |
 | [0017](./0017-staging-deploys-every-commit-on-main.md) | Staging deploys every commit on `main`: Vercel, Render and Supabase | Accepted |
-| [0018](./0018-staff-sign-in-with-admin-approval.md) | Staff sign-in with admin approval | Accepted; partly superseded by 0023 |
+| [0018](./0018-staff-sign-in-with-admin-approval.md) | Staff sign-in with admin approval | Accepted; partly superseded by 0023 and 0030 |
 | [0019](./0019-the-s1-spec-id-format.md) | The S1 Spec ID format | Accepted; partly superseded by 0022, 0024 and 0025 |
 | [0020](./0020-atlas-is-built-in-typescript-in-the-gateway.md) | Atlas is built in TypeScript in the Gateway | Accepted |
 | [0021](./0021-the-atlas-dictionary-changes-only-by-migration.md) | The Atlas dictionary lives in Postgres and changes only by migration | Accepted; partly superseded by 0022 and 0024 |
@@ -66,3 +66,4 @@ Number sequentially. Never renumber.
 | [0027](./0027-manufacturers-and-quotes-live-in-atlas-behind-sign-in.md) | Manufacturers and quotes live in Atlas, behind sign-in, and never in the repository | Accepted |
 | [0028](./0028-the-door-is-a-full-screen-curtain.md) | The door is a full-screen curtain | Accepted |
 | [0029](./0029-the-library-is-numbered-pages.md) | The library is numbered pages | Accepted |
+| [0030](./0030-roles-live-on-the-account.md) | Roles live on the account, and System Admins change them | Accepted |

@@ -2,6 +2,9 @@
 
 export type AccountStatus = 'pending' | 'approved' | 'disabled';
 
+/** An admin manages staff and invites; a System Admin manages everyone and changes roles (ADR 0030). */
+export type AccountRole = 'staff' | 'admin' | 'system-admin';
+
 export interface Account {
   id: string;
   email: string;
@@ -11,11 +14,12 @@ export interface Account {
   /** "First Last". */
   fullName: string;
   status: AccountStatus;
+  role: AccountRole;
   mustChangePassword: boolean;
   /** ISO 8601. */
   createdAt: string;
-  /** Present on `/auth/me` when the caller is in ACCOUNT_ADMIN_EMAILS. */
-  isAdmin?: boolean;
+  /** `role` is `admin` or `system-admin`. Kept for a web app cached from before `role` existed. */
+  isAdmin: boolean;
 }
 
 export interface SignInRequest {
@@ -37,6 +41,11 @@ export interface AccountLists {
   pending: Account[];
   approved: Account[];
   disabled: Account[];
+}
+
+/** `PUT /accounts/:id/role`, System Admins only, never on their own account. */
+export interface SetAccountRoleRequest {
+  role: AccountRole;
 }
 
 export interface PasswordResetLink {

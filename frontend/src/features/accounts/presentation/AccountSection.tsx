@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Badge } from '@/shared/ui/Badge';
-import type { Account } from '../domain/account';
+import { ROLE_LABELS, type Account } from '../domain/account';
 
 export interface AccountSectionProps {
   id: string;
@@ -34,7 +34,7 @@ export function AccountSection({ id, title, empty, accounts, actions }: AccountS
               <div className="flex min-w-0 flex-col gap-0.5">
                 <p className="flex items-center gap-2 text-md font-medium text-ink">
                   <span className="truncate">{account.fullName}</span>
-                  {account.isAdmin && <Badge tone="accent">Admin</Badge>}
+                  {account.role !== 'staff' && <Badge tone="accent">{ROLE_LABELS[account.role]}</Badge>}
                 </p>
                 <p className="truncate font-mono text-xs text-ink-muted">{account.email}</p>
               </div>

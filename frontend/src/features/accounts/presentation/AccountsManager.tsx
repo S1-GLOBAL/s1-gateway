@@ -8,12 +8,27 @@ import { useInvites } from '../application/use-invites';
 import { useListAccounts } from '../application/use-list-accounts';
 import { useMe } from '../application/use-me';
 import { useRevokeInvite } from '../application/use-revoke-invite';
-import type { Account, AccountInvite, CreatedInvite } from '../domain/account';
+import {
+  mayChangeRoleOf,
+  mayManage,
+  type Account,
+  type AccountInvite,
+  type AccountRole,
+  type CreatedInvite,
+} from '../domain/account';
 import { AccountSection } from './AccountSection';
 import { FormAlert } from './FormAlert';
 import { InvitedSection } from './InvitedSection';
 import { InviteForm } from './InviteForm';
 import { LinkNotice, type LinkNoticeProps } from './LinkNotice';
+import { RoleForm } from './RoleForm';
+
+/** How the notice names a role: "Ada Lovelace is now an admin." */
+const NOW_A: Record<AccountRole, string> = {
+  staff: 'staff',
+  admin: 'an admin',
+  'system-admin': 'a System Admin',
+};
 
 export interface AccountsManagerProps {
   /** Whether the Invite form is open. The page's Invite button opens it. */
@@ -23,7 +38,10 @@ export interface AccountsManagerProps {
   timeZone?: string;
 }
 
-/** Invites, and pending, approved and disabled accounts, and what an admin can do to each. Admin only. */
+/**
+ * Invites, and pending, approved and disabled accounts, and what the viewer
+ * may do to each: an admin to staff, a System Admin to anyone (ADR 0030). Admin only.
+ */
 export function AccountsManager({ inviting, onInvitingEnd, timeZone }: AccountsManagerProps) {
   const { data: me } = useMe();
   const { data: lists } = useListAccounts();
@@ -36,6 +54,7 @@ export function AccountsManager({ inviting, onInvitingEnd, timeZone }: AccountsM
   const [notice, setNotice] = useState<string | null>(null);
   const [link, setLink] = useState<Omit<LinkNoticeProps, 'onDismiss'> | null>(null);
   const [failure, setFailure] = useState<string | undefined>();
+  const [changingRole, setChangingRole] = useState<Account | null>(null);
 
   const busy = approve.isPending || disable.isPending || createLink.isPending || revoke.isPending;
 
@@ -79,6 +98,16 @@ export function AccountsManager({ inviting, onInvitingEnd, timeZone }: AccountsM
     });
   }
 
+  function changeRole(account: Account) {
+    begin();
+    setChangingRole(account);
+  }
+
+  function roleChanged(changed: Account) {
+    setChangingRole(null);
+    setNotice(`${changed.fullName} is now ${NOW_A[changed.role]}.`);
+  }
+
   function resetPassword(account: Account) {
     begin();
     createLink.mutate(account.id, {
@@ -108,11 +137,13 @@ export function AccountsManager({ inviting, onInvitingEnd, timeZone }: AccountsM
         title="Pending"
         empty="No accounts are waiting for approval."
         accounts={lists.pending}
-        actions={(account) => (
-          <Button size="sm" disabled={busy} onClick={() => approveAccount(account)}>
-            Approve
-          </Button>
-        )}
+        actions={(account) =>
+          mayManage(me, account) && (
+            <Button size="sm" disabled={busy} onClick={() => approveAccount(account)}>
+              Approve
+            </Button>
+          )
+        }
       />
       <AccountSection
         id="approved"
@@ -121,10 +152,17 @@ export function AccountsManager({ inviting, onInvitingEnd, timeZone }: AccountsM
         accounts={lists.approved}
         actions={(account) => (
           <>
-            <Button size="sm" variant="secondary" disabled={busy} onClick={() => resetPassword(account)}>
-              Reset password
-            </Button>
-            {account.id !== me.id && (
+            {mayChangeRoleOf(me, account) && (
+              <Button size="sm" variant="secondary" disabled={busy} onClick={() => changeRole(account)}>
+                Change role
+              </Button>
+            )}
+            {mayManage(me, account) && (
+              <Button size="sm" variant="secondary" disabled={busy} onClick={() => resetPassword(account)}>
+                Reset password
+              </Button>
+            )}
+            {mayManage(me, account) && account.id !== me.id && (
               <Button size="sm" variant="secondary" disabled={busy} onClick={() => disableAccount(account)}>
                 Disable
               </Button>
@@ -137,16 +175,26 @@ export function AccountsManager({ inviting, onInvitingEnd, timeZone }: AccountsM
         title="Disabled"
         empty="No disabled accounts."
         accounts={lists.disabled}
-        actions={(account) => (
-          <Button size="sm" variant="secondary" disabled={busy} onClick={() => approveAccount(account)}>
-            Approve again
-          </Button>
-        )}
+        actions={(account) =>
+          mayManage(me, account) && (
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => approveAccount(account)}>
+              Approve again
+            </Button>
+          )
+        }
       />
 
       <Sheet open={inviting} onClose={onInvitingEnd} title="Invite">
         {/* Mounted only while open, so each opening starts from an empty form. */}
         {inviting && <InviteForm onCreated={invited} />}
+      </Sheet>
+      <Sheet
+        open={changingRole !== null}
+        onClose={() => setChangingRole(null)}
+        title="Change role"
+        description={changingRole?.fullName}
+      >
+        {changingRole && <RoleForm account={changingRole} onChanged={roleChanged} />}
       </Sheet>
     </div>
   );

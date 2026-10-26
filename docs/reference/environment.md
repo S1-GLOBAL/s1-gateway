@@ -16,7 +16,7 @@ A missing or invalid value stops the process with the variable's name.
 | `LOG_LEVEL` | `info` | Pino level: `fatal`, `error`, `warn`, `info`, `debug`, `trace` or `silent` |
 | `DATABASE_URL` | — (required) | `postgres://` or `postgresql://` URL. Locally `postgres://s1gateway:s1gateway@localhost:5436/s1_gateway` |
 | `CORS_ORIGIN` | `http://localhost:5173` | The SPA's origin, allowed by CORS |
-| `ACCOUNT_ADMIN_EMAILS` | — (required) | Comma-separated `@sourceone.global` addresses that may invite staff, and approve, disable and reset accounts. `npm run db:create-admin` accepts only these. Trimmed and lower-cased at boot. Every entry must match `/^[^@]+@sourceone\.global$/` or the API refuses to start |
+| `ACCOUNT_ADMIN_EMAILS` | — (required) | Comma-separated `@sourceone.global` addresses: the first System Admins. When the API starts and no approved account is a System Admin, each approved account listed here becomes one; once one exists, roles change only in the app ([ADR 0030](../decisions/0030-roles-live-on-the-account.md)). `npm run db:create-admin` accepts only these. Trimmed and lower-cased at boot. Every entry must match `/^[^@]+@sourceone\.global$/` or the API refuses to start |
 
 ### `npm run db:create-admin` only
 
@@ -53,7 +53,7 @@ one lives, and how to change it: [Deploy to staging](../guides/deploy-to-staging
 | `LOG_LEVEL` | Render | `info` |
 | `DATABASE_URL` | Render | Supabase's session pooler URL, port 5432, ending `?sslmode=require` |
 | `CORS_ORIGIN` | Render | The Vercel staging address |
-| `ACCOUNT_ADMIN_EMAILS` | Render | Your `@sourceone.global` admin address(es), comma-separated |
+| `ACCOUNT_ADMIN_EMAILS` | Render | Your `@sourceone.global` address(es), comma-separated: the first System Admins |
 | `PORT` | — | Set by Render; do not set it |
 | `VITE_API_URL` | — | Leave unset. `frontend/vercel.json` forwards `/api/*` to Render, so the default `/api/v1` works |
 

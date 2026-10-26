@@ -2,8 +2,9 @@
  * `npm run db:create-admin -- --email <address> --first-name <name> --last-name <name>`,
  * with the password in `ADMIN_PASSWORD` for that one run.
  *
- * Creates an approved admin for local development and tests. With accounts
- * created only by invite (ADR 0023) it is the only way into an empty database. It uses
+ * Creates an approved System Admin for local development and tests (ADR 0030).
+ * With accounts created only by invite (ADR 0023) it is the only way into an
+ * empty database. It uses
  * the accounts module's own rules, repository and hasher, and never starts
  * the HTTP app. It refuses to run with `NODE_ENV=production`, and refuses an
  * address that is not in `ACCOUNT_ADMIN_EMAILS`.
@@ -51,7 +52,7 @@ export async function createAdmin(db: Database, input: CreateAdminInput): Promis
   const email = normalizeCompanyEmail(input.email);
   if (!email.ok) return err(`--email: ${email.error.message}`);
   if (!input.accountAdminEmails.includes(email.value)) {
-    return err(`--email: ${email.value} is not in ACCOUNT_ADMIN_EMAILS, so it would not be an admin.`);
+    return err(`--email: ${email.value} is not in ACCOUNT_ADMIN_EMAILS, so it would not be a System Admin.`);
   }
 
   const firstName = normalizeFirstName(input.firstName);
@@ -70,6 +71,7 @@ export async function createAdmin(db: Database, input: CreateAdminInput): Promis
       lastName: lastName.value,
       passwordHash: await new ScryptPasswordHasher().hash(password.value),
       autoApprove: true,
+      role: 'system-admin',
     },
     new CryptoIdGenerator().next(),
     new SystemClock().now(),
@@ -140,7 +142,7 @@ async function main(): Promise<number> {
       console.error(created.error);
       return 1;
     }
-    console.log(`Created ${created.value.fullName} <${created.value.email}>, an approved admin. Sign in at ${env.value.CORS_ORIGIN}/.`);
+    console.log(`Created ${created.value.fullName} <${created.value.email}>, an approved System Admin. Sign in at ${env.value.CORS_ORIGIN}/.`);
     return 0;
   } finally {
     await connection.close();

@@ -1,6 +1,7 @@
 import type {
   Account,
   AccountInvite,
+  AccountRole,
   AccountLists,
   CreatedInvite,
   InviteDetails,
@@ -23,6 +24,8 @@ export interface AccountsGateway {
   approveAccount(id: string): Promise<Account>;
   disableAccount(id: string): Promise<Account>;
   createPasswordResetLink(id: string): Promise<PasswordResetLink>;
+  /** System Admins only; rejects with NOT_ALLOWED on their own account. */
+  setAccountRole(id: string, role: AccountRole): Promise<Account>;
   createInvite(email: string): Promise<CreatedInvite>;
   listInvites(): Promise<AccountInvite[]>;
   revokeInvite(id: string): Promise<AccountInvite>;

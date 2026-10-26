@@ -1,6 +1,5 @@
 import type { Request, Response } from 'express';
 import type {
-  Account as AccountContract,
   AccountInvite as AccountInviteContract,
   CreateInviteResponse,
   PasswordResetLink,
@@ -12,18 +11,33 @@ import { parseBody } from '../../../shared/presentation/http/parse-body.js';
 import { sendData } from '../../../shared/presentation/http/respond.js';
 import type { AccountDto } from '../application/account.dto.js';
 import type { AccountInviteDto } from '../application/account-invite.dto.js';
-import type { ApproveAccountInput } from '../application/approve-account.js';
+import type { ApproveAccountError, ApproveAccountInput } from '../application/approve-account.js';
 import type { CreateInviteError, CreateInviteInput, CreateInviteOutput } from '../application/create-invite.js';
 import type {
+  CreatePasswordResetLinkError,
   CreatePasswordResetLinkInput,
   CreatePasswordResetLinkOutput,
 } from '../application/create-password-reset-link.js';
-import type { DisableAccountInput } from '../application/disable-account.js';
+import type { DisableAccountError, DisableAccountInput } from '../application/disable-account.js';
 import type { AccountsByStatus } from '../application/list-accounts.js';
 import type { RevokeInviteInput } from '../application/revoke-invite.js';
-import { AccountNotFoundError, InviteNotFoundError } from '../domain/account.errors.js';
-import { createInviteRequestSchema, inviteIdSchema } from './accounts.schemas.js';
+import type { SetAccountRoleError, SetAccountRoleInput } from '../application/set-account-role.js';
+import { AccountNotFoundError, InviteNotFoundError, NotAllowedError } from '../domain/account.errors.js';
+import { toAccountContract } from './account-contract.js';
+import { createInviteRequestSchema, inviteIdSchema, setAccountRoleRequestSchema } from './accounts.schemas.js';
 import { requireAuth } from './session-gate.js';
+
+/** Approving, disabling, resetting and changing a role all fail the same two ways. */
+type AccountActionError = AccountNotFoundError | NotAllowedError;
+
+const ACCOUNT_ACTION_STATUS: Record<AccountActionError['code'], number> = {
+  ACCOUNT_NOT_FOUND: 404,
+  NOT_ALLOWED: 403,
+};
+
+function toAccountActionError(error: AccountActionError): HttpError {
+  return new HttpError(ACCOUNT_ACTION_STATUS[error.code], error.code, error.message, error.details);
+}
 
 const CREATE_INVITE_STATUS: Record<CreateInviteError['code'], number> = {
   EMAIL_NOT_ALLOWED: 400,
@@ -37,10 +51,6 @@ export interface InviteUseCases {
   revoke: UseCase<RevokeInviteInput, Result<AccountInviteDto, InviteNotFoundError>>;
 }
 
-function toContract(account: AccountDto, isAdmin: boolean): AccountContract {
-  return { ...account, isAdmin };
-}
-
 function toInviteContract(invite: AccountInviteDto): AccountInviteContract {
   return { id: invite.id, email: invite.email, expiresAt: invite.expiresAt };
 }
@@ -52,19 +62,13 @@ function toNotFound(error: InviteNotFoundError): HttpError {
 export class AccountsController {
   constructor(
     private readonly listAccounts: UseCase<void, AccountsByStatus>,
-    private readonly approveAccount: UseCase<
-      ApproveAccountInput,
-      Result<AccountDto, AccountNotFoundError>
-    >,
-    private readonly disableAccount: UseCase<
-      DisableAccountInput,
-      Result<AccountDto, AccountNotFoundError>
-    >,
+    private readonly approveAccount: UseCase<ApproveAccountInput, Result<AccountDto, ApproveAccountError>>,
+    private readonly disableAccount: UseCase<DisableAccountInput, Result<AccountDto, DisableAccountError>>,
     private readonly createPasswordResetLink: UseCase<
       CreatePasswordResetLinkInput,
-      Result<CreatePasswordResetLinkOutput, AccountNotFoundError>
+      Result<CreatePasswordResetLinkOutput, CreatePasswordResetLinkError>
     >,
-    private readonly adminEmails: readonly string[],
+    private readonly setAccountRole: UseCase<SetAccountRoleInput, Result<AccountDto, SetAccountRoleError>>,
     private readonly corsOrigin: string,
     private readonly invites: InviteUseCases,
   ) {}
@@ -72,9 +76,9 @@ export class AccountsController {
   list = async (_req: Request, res: Response): Promise<void> => {
     const lists = await this.listAccounts.execute();
     sendData(res, 200, {
-      pending: lists.pending.map((account) => toContract(account, this.isAdmin(account.email))),
-      approved: lists.approved.map((account) => toContract(account, this.isAdmin(account.email))),
-      disabled: lists.disabled.map((account) => toContract(account, this.isAdmin(account.email))),
+      pending: lists.pending.map(toAccountContract),
+      approved: lists.approved.map(toAccountContract),
+      disabled: lists.disabled.map(toAccountContract),
     });
   };
 
@@ -84,25 +88,36 @@ export class AccountsController {
       accountId: String(req.params.id),
       approvedBy: auth.account.id,
     });
-    if (!result.ok) {
-      throw new HttpError(404, result.error.code, result.error.message, result.error.details);
-    }
-    sendData(res, 200, toContract(result.value, this.isAdmin(result.value.email)));
+    if (!result.ok) throw toAccountActionError(result.error);
+    sendData(res, 200, toAccountContract(result.value));
   };
 
   disable = async (req: Request, res: Response): Promise<void> => {
-    const result = await this.disableAccount.execute({ accountId: String(req.params.id) });
-    if (!result.ok) {
-      throw new HttpError(404, result.error.code, result.error.message, result.error.details);
-    }
-    sendData(res, 200, toContract(result.value, this.isAdmin(result.value.email)));
+    const auth = requireAuth(req);
+    const result = await this.disableAccount.execute({ accountId: String(req.params.id), disabledBy: auth.account.id });
+    if (!result.ok) throw toAccountActionError(result.error);
+    sendData(res, 200, toAccountContract(result.value));
+  };
+
+  setRole = async (req: Request, res: Response): Promise<void> => {
+    const auth = requireAuth(req);
+    const body = parseBody(setAccountRoleRequestSchema, req.body);
+    const result = await this.setAccountRole.execute({
+      accountId: String(req.params.id),
+      role: body.role,
+      changedBy: auth.account.id,
+    });
+    if (!result.ok) throw toAccountActionError(result.error);
+    sendData(res, 200, toAccountContract(result.value));
   };
 
   resetPassword = async (req: Request, res: Response): Promise<void> => {
-    const result = await this.createPasswordResetLink.execute({ accountId: String(req.params.id) });
-    if (!result.ok) {
-      throw new HttpError(404, result.error.code, result.error.message, result.error.details);
-    }
+    const auth = requireAuth(req);
+    const result = await this.createPasswordResetLink.execute({
+      accountId: String(req.params.id),
+      requestedBy: auth.account.id,
+    });
+    if (!result.ok) throw toAccountActionError(result.error);
     const body: PasswordResetLink = {
       resetUrl: `${this.origin()}/reset-password?token=${encodeURIComponent(result.value.token)}`,
       expiresAt: result.value.expiresAt,
@@ -142,9 +157,5 @@ export class AccountsController {
   /** The SPA's origin, where the reset and invite links open. */
   private origin(): string {
     return this.corsOrigin.replace(/\/$/, '');
-  }
-
-  private isAdmin(email: string): boolean {
-    return this.adminEmails.includes(email);
   }
 }

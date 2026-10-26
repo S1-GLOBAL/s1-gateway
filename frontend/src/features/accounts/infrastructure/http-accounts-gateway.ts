@@ -8,6 +8,7 @@ import type {
   InviteDetails as InviteDetailsContract,
   PasswordResetLink as PasswordResetLinkContract,
   RegisterRequest,
+  SetAccountRoleRequest,
 } from '@contracts/accounts';
 import type { AxiosInstance } from 'axios';
 import { toAppError } from '@/shared/infrastructure/to-app-error';
@@ -16,6 +17,7 @@ import type {
   Account,
   AccountInvite,
   AccountLists,
+  AccountRole,
   CreatedInvite,
   InviteDetails,
   PasswordResetLink,
@@ -104,6 +106,16 @@ export class HttpAccountsGateway implements AccountsGateway {
     }
   }
 
+  async setAccountRole(id: string, role: AccountRole): Promise<Account> {
+    try {
+      const body: SetAccountRoleRequest = { role };
+      const response = await this.http.put<DataEnvelope<AccountContract>>(`/accounts/${id}/role`, body);
+      return toAccount(response.data.data);
+    } catch (error) {
+      throw toAppError(error);
+    }
+  }
+
   async createPasswordResetLink(id: string): Promise<PasswordResetLink> {
     try {
       const response = await this.http.post<DataEnvelope<PasswordResetLinkContract>>(
@@ -173,6 +185,8 @@ function toInvite(contract: AccountInviteContract): AccountInvite {
 }
 
 function toAccount(contract: AccountContract): Account {
+  // An API from before roles sends only `isAdmin`, during a release.
+  const role: AccountRole = contract.role ?? (contract.isAdmin ? 'admin' : 'staff');
   return {
     id: contract.id,
     email: contract.email,
@@ -183,6 +197,7 @@ function toAccount(contract: AccountContract): Account {
     status: contract.status,
     mustChangePassword: contract.mustChangePassword,
     createdAt: new Date(contract.createdAt),
-    isAdmin: contract.isAdmin === true,
+    role,
+    isAdmin: role !== 'staff',
   };
 }
