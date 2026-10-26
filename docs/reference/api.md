@@ -70,8 +70,8 @@ Request bodies are JSON, at most **100 kB**.
 | GET | `/atlas/dictionary/suggestions/:id` | session | 200 `{ data: DictionarySuggestionDetail }` | 401, 404 `SUGGESTION_NOT_FOUND` |
 | PUT | `/atlas/dictionary/suggestions/:id` | session | 200 `{ data: DictionarySuggestion }` | 401, 400 `VALIDATION_FAILED`, 403 `NOT_ALLOWED`, 404 `SUGGESTION_NOT_FOUND`, 409 `SUGGESTION_DECIDED`, 409 `SUGGESTION_CHANGED` |
 | POST | `/atlas/dictionary/suggestions/:id/withdraw` | session | 200 `{ data: DictionarySuggestion }` | 401, 403 `NOT_ALLOWED`, 404 `SUGGESTION_NOT_FOUND`, 409 `SUGGESTION_DECIDED`, 409 `SUGGESTION_CHANGED` |
-| POST | `/atlas/dictionary/suggestions/:id/approve` | admin | 200 `{ data: DictionaryChangeApproved }`. Body `{ version }` | 401, 403 `NOT_ALLOWED`, 400 `VALIDATION_FAILED`, 404 `SUGGESTION_NOT_FOUND`, 409 `SUGGESTION_DECIDED`, `SUGGESTION_CHANGED`, `SUGGESTION_OUT_OF_DATE`, `SPEC_IDS_WOULD_CLASH`, `SPEC_ID_WOULD_BE_INVALID`, `DICTIONARY_CHANGED`, `SPEC_ID_CHANGED` |
-| POST | `/atlas/dictionary/suggestions/:id/reject` | admin | 200 `{ data: DictionarySuggestion }`. Body `{ reason }` | 401, 403 `NOT_ALLOWED`, 400 `VALIDATION_FAILED`, 404 `SUGGESTION_NOT_FOUND`, 409 `SUGGESTION_DECIDED`, `SUGGESTION_CHANGED` |
+| POST | `/atlas/dictionary/suggestions/:id/approve` | admin | 200 `{ data: DictionaryChangeApproved }`. Body `{ version }` | 401, 403 `NOT_ALLOWED`, 400 `VALIDATION_FAILED`, 404 `SUGGESTION_NOT_FOUND`, 409 `SUGGESTION_DECIDED`, 409 `SUGGESTION_CHANGED`, 409 `SUGGESTION_OUT_OF_DATE`, 409 `SPEC_IDS_WOULD_CLASH`, 409 `SPEC_ID_WOULD_BE_INVALID`, 409 `DICTIONARY_CHANGED`, 409 `SPEC_ID_CHANGED` |
+| POST | `/atlas/dictionary/suggestions/:id/reject` | admin | 200 `{ data: DictionarySuggestion }`. Body `{ reason }` | 401, 403 `NOT_ALLOWED`, 400 `VALIDATION_FAILED`, 404 `SUGGESTION_NOT_FOUND`, 409 `SUGGESTION_DECIDED`, 409 `SUGGESTION_CHANGED` |
 
 When `mustChangePassword` is true, every session route except
 `GET /auth/me`, `POST /auth/sign-out` and `POST /auth/change-password`
@@ -158,13 +158,14 @@ each marker as wide as its slot), and reads it as the short code it converts
 to. A marker written wide in a short code (`0000`, `XX`) is read as its letter.
 No route issues anything but short codes.
 
-`AtlasDictionary` is `{ release, approvedOn, slots, rules }`. `slots` holds the
+`AtlasDictionary` is `{ release, approvedOn, slots, rules, change }`. `slots` holds the
 thirteen dictionary slots in code order (`productType` to `profile`, then
 `capacity` for its unit letters, then `wall`, `print`, `lidOpening`, `handle`,
 `wrap` and `window`), each `{ key, name, values: { code, meaning }[] }`.
 `rules` holds one `{ productType, slot, rule }` per product type and ruled
 slot, where `rule` is `applies`, `never`, `round_only`, `non_round_only` or
-`paper_only`.
+`paper_only`. `change` is the latest approved dictionary change,
+`{ number, at }`, or null before the first.
 
 `DecodedSpecId` is `{ code, dictionaryRelease, slots }`, with all 25 slots in
 order:
@@ -288,7 +289,8 @@ its creation last: `kind` (`created` or `updated`), `changedBy`,
 `nameAfter`, and `slots`, every slot the change altered as
 `{ key, name, before, after, corrected }`, with meanings as people read them
 ("Not known", "Doesn't apply", "62 mm"). `corrected` is true when a known
-value was replaced.
+value was replaced. `dictionaryChange` is `{ number, suggestedBy, approvedBy }`
+when an approved dictionary change made the entry, else null.
 
 `GET /atlas/saved/:id/manufacturers` answers a `SpecIdManufacturers`: the
 Spec ID's `{ id, name, code }` and `manufacturers`, each manufacturer once,

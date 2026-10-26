@@ -112,7 +112,7 @@ approves leaves the next test the dictionary the migration made)*.
 | `decided_by` | `uuid` | yes | FK → `accounts.id`; set on approve and reject |
 | `decided_at` | `timestamptz` | yes | Set on approve, reject and withdraw |
 | `reason` | `varchar(500)` | yes | Required when rejected |
-| `change_number` | `integer` | yes | FK → `atlas_dictionary_changes.number`; set when approved |
+| `change_number` | `integer` | yes | Set when approved. *As built:* no FK; `atlas_dictionary_changes.suggestion_id` holds the link, unique |
 
 Index on `(state, suggested_at)`. Check: `decided_by` and `reason` agree with `state`.
 
@@ -295,7 +295,7 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 
 ### Step 1.3 — Two tables and their migration
 
-- [x] **Action.** `atlas-dictionary-suggestions.table.ts` and `atlas-dictionary-suggestion-events.table.ts` as in Design (the suggestions' `change_number` FK comes in phase 2); export them; add them to `resetTables`; `npm run db:generate -- --name atlas_dictionary_suggestions`. Read the SQL.
+- [x] **Action.** `atlas-dictionary-suggestions.table.ts` and `atlas-dictionary-suggestion-events.table.ts` as in Design (the suggestions' `change_number` has no FK: phase 2 put the link on `atlas_dictionary_changes.suggestion_id`); export them; add them to `resetTables`; `npm run db:generate -- --name atlas_dictionary_suggestions`. Read the SQL.
 - [x] **Verify.** `git ls-files -o backend/drizzle | grep -c "\.sql$"` prints `1`; `npm run db:migrate` applies it.
 
 ### Step 1.4 — The repository
@@ -344,8 +344,8 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 
 ### Step 2.5 — The change store
 
-- [x] **Action.** Port `domain/suggestions/dictionary-change-store.ts` (`apply(plan)`, `reject(...)`), the in-memory fake, and `infrastructure/drizzle-dictionary-change-store.ts` doing step 7 of Design's approval in one transaction under the advisory lock.
-- [x] **Verify.** db tests: a rename of a code used by 3 saved Spec IDs rewrites all 3, each with a history entry carrying the change number and `version` + 1; a Spec ID whose version moved on rolls back everything, the dictionary included.
+- [x] **Action.** Port `domain/suggestions/dictionary-change-store.ts` (`apply(plan)`; *as built,* rejecting saves through the suggestion repository instead), the in-memory fake, and `infrastructure/drizzle-dictionary-change-store.ts` doing step 7 of Design's approval in one transaction under the advisory lock.
+- [x] **Verify.** Tests: a rename of a code used by 3 saved Spec IDs rewrites all 3, each with a history entry carrying the change number and `version` + 1 (unit; 2 Spec IDs over Postgres); a db test: a Spec ID whose version moved on rolls back everything, the dictionary included.
 
 ### Step 2.6 — Approve and reject
 
@@ -354,7 +354,7 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 
 ### Step 2.7 — The admin routes
 
-- [x] **Action.** Approve and reject in `createAtlasAdminRouter`; HTTP tests that a staff member gets 403 from the gate, and an admin deciding their own gets 403 with #95's copy.
+- [x] **Action.** Approve and reject in `createDictionarySuggestionsAdminRouter`, mounted on `/atlas/dictionary` behind the admin gate; HTTP tests that a staff member gets 403 from the gate, and an admin deciding their own gets 403 with #95's copy.
 - [x] **Verify.** HTTP tests pass.
 
 ### Step 2.8 — History names the change
@@ -378,7 +378,7 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 
 ### Step 3.1 — Hardcoded codes follow renames
 
-- [ ] **Action.** Every site in Design's list goes through `dictionary.live` or `original`. Pass the dictionary where a function lacks it (`size-rulings.ts`).
+- [ ] **Action.** Every site in Design's list goes through `dictionary.live`. Pass the dictionary where a function lacks it (`size-rulings.ts`).
 - [ ] **Verify.** `git grep -nE "'(RD|RC|CUP|BWL|TRY)'" -- backend/src/modules/atlas/domain ':!*.test.ts'` prints only the constant tables the `live` calls read; the reader's existing tests pass unchanged.
 
 ### Step 3.2 — Renamed codes in the reader's tests

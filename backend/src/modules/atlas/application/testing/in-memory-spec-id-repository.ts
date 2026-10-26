@@ -2,7 +2,6 @@ import { err, ok, type Result } from '../../../../shared/domain/result.js';
 import type { SavedSpecId } from '../../domain/saved-spec-id.js';
 import { classifyMatch, type SimilarCriteria } from '../../domain/similar-match.js';
 import type { DictionarySlotKey } from '../../domain/slots.js';
-import { holdsOption } from '../../domain/suggestions/apply-proposal.js';
 import type { SpecIdChange } from '../../domain/spec-id-change.js';
 import { SpecIdChangedError, SpecIdExistsError } from '../../domain/spec-id.errors.js';
 import type {
@@ -14,6 +13,7 @@ import type {
   SpecIdChangeRecord,
   SpecIdRepository,
 } from '../../domain/spec-id-repository.js';
+import { holdsOption } from '../../domain/suggestions/apply-proposal.js';
 
 /** The SpecIdRepository contract, in memory. A test double, never used in production. */
 export class InMemorySpecIdRepository implements SpecIdRepository {

@@ -65,7 +65,7 @@ describe('applyProposal', () => {
     expect(next.live('productType', 'CUP')).toBeUndefined();
   });
 
-  it("changes only the rules a rules change names", () => {
+  it('changes only the rules a rules change names', () => {
     const next = applyProposal(dictionary, { slot: 'productType', code: 'CUP' }, { kind: 'rules', rules: { coating: 'never' } }, STAMP);
     expect(next.ruleFor('CUP', 'coating')).toBe('never');
     expect(next.ruleFor('CUP', 'wall')).toBe(dictionary.ruleFor('CUP', 'wall'));
@@ -102,7 +102,7 @@ describe('rewriteSpecId', () => {
     expect(approve({ slot: 'capacity', code: 'Z' }, { kind: 'delete', replacement: 'Y' }, cup).code).toBe(cup.code.replace(`.${capacity}.`, '.Y.'));
   });
 
-  it("turns a field to X when its rule becomes never, and from X to Y when it starts to apply", () => {
+  it('turns a field to X when its rule becomes never, and from X to Y when it starts to apply', () => {
     const cup = built(CUP);
     const never = approve({ slot: 'productType', code: 'CUP' }, { kind: 'rules', rules: { wall: 'never' } }, cup);
     expect(SpecId.restoreCode(never.code).slot('wall')).toBe('X');

@@ -230,7 +230,7 @@ describe('approving and rejecting', () => {
     expect(again.body.error.code).toBe('SUGGESTION_DECIDED');
   });
 
-  it("rejects with a reason, and answers 400 under reason without one, naming the suggester", async () => {
+  it('rejects with a reason, and answers 400 under reason without one, naming the suggester', async () => {
     const app = setup();
     const { id } = await suggested(app);
 
