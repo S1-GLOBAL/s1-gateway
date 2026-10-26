@@ -243,6 +243,18 @@ describe('approving and rejecting', () => {
     expect(rejected.body.data).toMatchObject({ state: 'rejected', reason: 'Already APP.', decidedBy: { fullName: 'Ben Invented' } });
   });
 
+  it('answers 400 under reason to a reason of 501 characters, and rejects with one of 500', async () => {
+    const app = setup();
+    const { id } = await suggested(app);
+
+    const long = await request(app).post(`${BASE}/suggestions/${id}/reject`).set('x-asker', 'ben').send({ reason: 'a'.repeat(501) });
+    expect(long.status).toBe(400);
+    expect(long.body.error.details.fields.reason).toEqual(['Keep it to 500 characters.']);
+
+    const longest = await request(app).post(`${BASE}/suggestions/${id}/reject`).set('x-asker', 'ben').send({ reason: 'a'.repeat(500) });
+    expect(longest.status).toBe(200);
+  });
+
   it("answers a rejection with no reason at all in #95's words", async () => {
     const app = setup();
     const { id } = await suggested(app);
