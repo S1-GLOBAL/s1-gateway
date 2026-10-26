@@ -163,6 +163,21 @@ describe('the app, signed in', () => {
 });
 
 describe('the sign-in gate', () => {
+  it('draws the shell and the Atlas skeleton while the session is still loading', async () => {
+    renderAt('/atlas', fakeAccountsGateway({ me: () => new Promise<never>(() => undefined) }));
+    expect(await screen.findByRole('status', { name: 'Loading Atlas' })).toBeTruthy();
+    expect(screen.getAllByRole('navigation', { name: 'Main' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Atlas' }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: 'Accounts' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
+  });
+
+  it('draws the change-password form, not the shell, while the session is still loading', async () => {
+    renderAt('/change-password', fakeAccountsGateway({ me: () => new Promise<never>(() => undefined) }));
+    expect(await screen.findByRole('status', { name: 'Loading the page' })).toBeTruthy();
+    expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();
+  });
+
   it('sends someone signed out to the landing, remembering where they were going', async () => {
     const router = renderAt('/theme', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' })).toBeTruthy();

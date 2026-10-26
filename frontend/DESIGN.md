@@ -141,6 +141,9 @@ Tokens in `src/shared/ui/motion.ts` (seconds) and `theme.css` (CSS):
 - Every page has a skeleton beside it (`<Page>Skeleton.tsx`) built from
   `SkeletonRegion`, `SkeletonBlock` and `SkeletonText`, laid out exactly like
   the page. It is the route's fallback in `src/app/routes.tsx`.
+- While the session is still loading, the gate draws the shell around that
+  route's skeleton. The person's name stays a block, and Accounts stays out,
+  until the session answers.
 - Skeletons are invisible for 150ms; blocks fade in top to bottom (`order`);
   one shimmer sweeps all of them.
 - A failure is `ErrorState`: a sentence, and Try again. Never a blank page,
