@@ -35,9 +35,11 @@ describe('Logo', () => {
 });
 
 describe('SourceOneName', () => {
-  it('writes the name beside a silent mark', () => {
+  it('writes the name in the door face, a step above a sidebar label', () => {
     render(<SourceOneName />);
-    expect(screen.getByText('Source One')).toBeTruthy();
+    const name = screen.getByText('Source One');
+    expect(name.className).toContain('font-mono');
+    expect(name.className).toContain('text-md');
     expect(screen.queryByRole('img', { name: 'Source One' })).toBeNull();
   });
 });
