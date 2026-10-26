@@ -50,7 +50,7 @@ export function StageIcons({ counts }: { counts: ManufacturerStageCounts }) {
             className={
               lit
                 ? 'group/stage relative inline-flex text-accent-ink'
-                : 'group/stage relative inline-flex text-ink-subtle opacity-40'
+                : 'group/stage relative inline-flex text-ink-subtle'
             }
           >
             <span
@@ -63,7 +63,8 @@ export function StageIcons({ counts }: { counts: ManufacturerStageCounts }) {
               <Icon size={16} />
             ) : (
               // Its own state, always at rest: the row's animation never reaches it.
-              <m.span initial="rest" animate="rest" className="inline-flex">
+              // The fade stays on the icon, so the words above it stay solid.
+              <m.span initial="rest" animate="rest" className="inline-flex opacity-40">
                 <Icon size={16} />
               </m.span>
             )}

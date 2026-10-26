@@ -42,6 +42,16 @@ describe('StageIcons', () => {
     expect(items[3]?.className).toContain('text-ink-subtle');
   });
 
+  it('keeps an unlit icon\'s words at full strength', () => {
+    render(<StageIcons counts={{ specificationsReceived: 2, quoted: 2, sampling: 1, inProduction: 0 }} />);
+
+    const unlit = row().getAllByRole('listitem')[3];
+    const words = within(unlit!).getByText('In production: none');
+    expect(unlit!.className).not.toContain('opacity-40');
+    expect(words.closest('.opacity-40')).toBeNull();
+    expect(unlit!.querySelector('.opacity-40')).toBeTruthy();
+  });
+
   it('lights only the fifth for a Spec ID with no manufacturers', () => {
     render(<StageIcons counts={{ specificationsReceived: 0, quoted: 0, sampling: 0, inProduction: 0 }} />);
 
