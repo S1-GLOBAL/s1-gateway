@@ -1,3 +1,4 @@
+import * as m from 'motion/react-m';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ThemeSwitch } from '@/features/appearance';
@@ -11,6 +12,7 @@ import { ThemePageSkeleton } from '@/pages/theme/ThemePageSkeleton';
 import { cn } from '@/shared/ui/cn';
 import { Logo } from '@/shared/ui/Logo';
 import { SidebarIcon } from '@/shared/ui/icons';
+import { iconTrigger } from '@/shared/ui/motion';
 import { SkeletonBlock, SkeletonRegion, SkeletonText } from '@/shared/ui/Skeleton';
 import { navItemFor, navItemsFor } from '../nav';
 import { BottomNav } from './BottomNav';
@@ -65,7 +67,8 @@ export function GateSkeleton() {
               <SkeletonText size="xs" className="w-32" order={2} />
             </span>
           </div>
-          <button
+          <m.button
+            {...iconTrigger}
             type="button"
             onClick={toggleCollapsed}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -73,7 +76,7 @@ export function GateSkeleton() {
             className="inline-flex size-9 shrink-0 items-center justify-center rounded-control text-ink-muted transition-colors duration-150 ease-standard hover:bg-surface-sunken hover:text-ink"
           >
             <SidebarIcon collapsed={collapsed} />
-          </button>
+          </m.button>
         </div>
       </div>
 
