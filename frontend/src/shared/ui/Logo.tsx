@@ -46,14 +46,14 @@ export function Logo({ variant = 'wordmark', height = 28, className, decorative 
 }
 
 /**
- * The mark, then the name in type. The landing header and the open sidebar
- * use this. The wordmark image stays the brand specimen.
+ * The mark, then the name in the door's mono face, a step above a sidebar
+ * label. The landing header and the open sidebar use this.
  */
 export function SourceOneName({ height = 22, className }: { height?: number; className?: string }) {
   return (
     <span className={cn('inline-flex items-center gap-2 text-ink', className)}>
       <Logo variant="mark" height={height} decorative />
-      <span className="text-sm font-semibold">Source One</span>
+      <span className="font-mono text-md">Source One</span>
     </span>
   );
 }
