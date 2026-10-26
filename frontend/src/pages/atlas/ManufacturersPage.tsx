@@ -1,5 +1,4 @@
 import { Link, useParams } from 'react-router-dom';
-import { useMe } from '@/features/accounts';
 import { BackToAtlas, ManufacturerGroups, useSpecIdManufacturers } from '@/features/atlas';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { NoManufacturersIcon } from '@/shared/ui/icons';
@@ -15,7 +14,6 @@ const SECONDARY_LINK =
 export function ManufacturersPage() {
   const { id = '' } = useParams();
   const { data } = useSpecIdManufacturers(id);
-  const { data: me } = useMe();
 
   if (!data) {
     return (
@@ -55,7 +53,7 @@ export function ManufacturersPage() {
           action={openSpecId}
         />
       ) : (
-        <ManufacturerGroups specId={data.specId.id} manufacturers={data.manufacturers} isAdmin={me.isAdmin} />
+        <ManufacturerGroups manufacturers={data.manufacturers} />
       )}
     </div>
   );

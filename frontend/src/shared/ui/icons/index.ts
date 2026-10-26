@@ -15,6 +15,7 @@ export {
   RefreshIcon,
   SamplingIcon,
   SidebarIcon,
+  SignOutIcon,
   SpecsReceivedIcon,
   SunIcon,
   ThemeIcon,

@@ -1,15 +1,10 @@
 import { Badge } from '@/shared/ui/Badge';
-import { Button } from '@/shared/ui/Button';
-import { useSetManufacturerStage } from '../../application/use-set-manufacturer-stage';
-import type { AdminStage, ManufacturerQuote, ManufacturerStage, SpecIdManufacturer } from '../../domain/atlas';
+import type { ManufacturerQuote, ManufacturerStage, SpecIdManufacturer } from '../../domain/atlas';
 import { formatSavedDate } from '../../domain/format-saved-date';
 import { manufacturerGroups, shownLeadTime, shownValue, stageName } from '../../domain/manufacturer-groups';
 
 export interface ManufacturerGroupsProps {
-  specId: string;
   manufacturers: SpecIdManufacturer[];
-  /** Shows the stage buttons. The server refuses anyone else anyway. */
-  isAdmin: boolean;
   /** For tests: the day a stage was set, in this time zone rather than the viewer's. */
   timeZone?: string;
 }
@@ -33,8 +28,11 @@ const QUOTE_FIELDS: readonly { key: keyof ManufacturerQuote; label: string; lead
   { key: 'moldLeadTime', label: 'Mold lead time', leadTime: true },
 ];
 
-/** A Spec ID's manufacturers in their stage's group, from Specifications received to In production (#57). */
-export function ManufacturerGroups({ specId, manufacturers, isAdmin, timeZone }: ManufacturerGroupsProps) {
+/**
+ * A Spec ID's manufacturers in their stage's group, from Specifications received
+ * to In production (#57). The stage is shown, and nothing here changes it.
+ */
+export function ManufacturerGroups({ manufacturers, timeZone }: ManufacturerGroupsProps) {
   return (
     <div className="flex flex-col gap-10">
       {manufacturerGroups(manufacturers).map((group) => (
@@ -49,7 +47,7 @@ export function ManufacturerGroups({ specId, manufacturers, isAdmin, timeZone }:
           <ul className="flex flex-col gap-3">
             {group.manufacturers.map((manufacturer) => (
               <li key={manufacturer.id}>
-                <ManufacturerCard specId={specId} manufacturer={manufacturer} isAdmin={isAdmin} timeZone={timeZone} />
+                <ManufacturerCard manufacturer={manufacturer} timeZone={timeZone} />
               </li>
             ))}
           </ul>
@@ -59,21 +57,8 @@ export function ManufacturerGroups({ specId, manufacturers, isAdmin, timeZone }:
   );
 }
 
-function ManufacturerCard({
-  specId,
-  manufacturer,
-  isAdmin,
-  timeZone,
-}: {
-  specId: string;
-  manufacturer: SpecIdManufacturer;
-  isAdmin: boolean;
-  timeZone?: string;
-}) {
-  const setStage = useSetManufacturerStage(specId);
+function ManufacturerCard({ manufacturer, timeZone }: { manufacturer: SpecIdManufacturer; timeZone?: string }) {
   const set = manufacturer.stageSet;
-  const choose = (stage: AdminStage | null) => setStage.mutate({ manufacturerId: manufacturer.id, stage });
-  const choosing = (stage: AdminStage | null) => setStage.isPending && setStage.variables?.stage === stage;
 
   return (
     <article
@@ -113,33 +98,6 @@ function ManufacturerCard({
           </li>
         ))}
       </ul>
-
-      {isAdmin && (
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" loading={choosing('sampling')} disabled={setStage.isPending} onClick={() => choose('sampling')}>
-            Mark as sampling
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            loading={choosing('in-production')}
-            disabled={setStage.isPending}
-            onClick={() => choose('in-production')}
-          >
-            Mark as in production
-          </Button>
-          {set?.stage && (
-            <Button variant="ghost" size="sm" loading={choosing(null)} disabled={setStage.isPending} onClick={() => choose(null)}>
-              Clear stage
-            </Button>
-          )}
-        </div>
-      )}
-      {setStage.isError && (
-        <p role="alert" className="text-sm text-danger">
-          {setStage.error.message}
-        </p>
-      )}
     </article>
   );
 }

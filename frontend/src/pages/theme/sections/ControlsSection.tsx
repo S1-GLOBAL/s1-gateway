@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { CheckIcon, PlusIcon, ToolsIcon } from '@/shared/ui/icons';
+import { Pagination } from '@/shared/ui/Pagination';
 import { SegmentedControl } from '@/shared/ui/SegmentedControl';
 import { SelectField } from '@/shared/ui/SelectField';
 import { TextField } from '@/shared/ui/TextField';
@@ -18,6 +19,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 
 export function ControlsSection() {
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [page, setPage] = useState(1);
 
   return (
     <ShowcaseSection
@@ -77,6 +79,9 @@ export function ControlsSection() {
               { value: 'list', label: 'List' },
             ]}
           />
+        </Row>
+        <Row label="Pages">
+          <Pagination page={page} pageCount={8} onPageChange={setPage} />
         </Row>
       </div>
     </ShowcaseSection>

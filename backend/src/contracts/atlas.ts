@@ -185,10 +185,14 @@ export interface SimilarSpecIds {
 
 /** `GET /atlas/saved`: one page of the library, newest change first. */
 export interface SpecIdLibraryPage {
-  /** At most 20. */
+  /** At most `pageSize`. */
   items: SavedSpecId[];
-  /** Pass as `cursor` for the next page; null on the last page. */
-  nextCursor: string | null;
+  /** The page this response is, starting at 1. A request past the end is the last page. */
+  page: number;
+  /** How many Spec IDs a page holds. 20. */
+  pageSize: number;
+  /** How many match `q` and `productType`. */
+  total: number;
 }
 
 /** `PATCH /atlas/saved/:id`. */

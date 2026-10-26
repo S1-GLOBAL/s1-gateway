@@ -65,3 +65,4 @@ Number sequentially. Never renumber.
 | [0026](./0026-raw-text-is-read-by-rules-and-a-public-word-list.md) | Raw text is read by rules and a public word list | Accepted |
 | [0027](./0027-manufacturers-and-quotes-live-in-atlas-behind-sign-in.md) | Manufacturers and quotes live in Atlas, behind sign-in, and never in the repository | Accepted |
 | [0028](./0028-the-door-is-a-full-screen-curtain.md) | The door is a full-screen curtain | Accepted |
+| [0029](./0029-the-library-is-numbered-pages.md) | The library is numbered pages | Accepted |

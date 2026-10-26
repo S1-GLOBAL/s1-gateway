@@ -28,6 +28,7 @@ export function AtlasLibrary({ dictionary, timeZone }: { dictionary: AtlasDictio
   const [text, setText] = useState('');
   const [asked, setAsked] = useState('');
   const [productType, setProductType] = useState('');
+  const [page, setPage] = useState(1);
   /** The text Search read, until the text changes; null while the name list shows. */
   const [searched, setSearched] = useState<string | null>(null);
   const reading = useReadText();
@@ -39,7 +40,16 @@ export function AtlasLibrary({ dictionary, timeZone }: { dictionary: AtlasDictio
 
   const code = asPastedCode(asked);
   const namesAsked = code === null && asked.length <= NAME_SEARCH_MAX_LENGTH;
-  const library = useSpecIdLibrary({ q: asked, productType }, namesAsked);
+  const filterKey = `${asked}\0${productType}`;
+  const [filterSeen, setFilterSeen] = useState(filterKey);
+  const requestedPage = filterSeen === filterKey ? page : 1;
+  const library = useSpecIdLibrary({ q: asked, productType, page: requestedPage }, namesAsked);
+  if (filterSeen !== filterKey) {
+    setFilterSeen(filterKey);
+    if (page !== 1) setPage(1);
+  } else if (library.data && !library.isPlaceholderData && library.data.page !== requestedPage) {
+    setPage(library.data.page);
+  }
   const lookup = useCodeLookup(code);
   const productTypes = dictionary.slots.find((slot) => slot.key === 'productType')?.values ?? [];
   const typed = text.trim();
@@ -99,6 +109,8 @@ export function AtlasLibrary({ dictionary, timeZone }: { dictionary: AtlasDictio
           library={library}
           q={asked}
           productTypeName={productTypes.find((value) => value.code === productType)?.meaning}
+          page={requestedPage}
+          onPageChange={setPage}
           timeZone={timeZone}
         />
       ) : (

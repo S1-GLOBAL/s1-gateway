@@ -156,12 +156,23 @@ export class HttpAtlasGateway implements AtlasGateway {
   }
 
   async library(query: LibraryQuery): Promise<SpecIdLibraryPage> {
-    // Only what was asked: the server refuses an unknown key, and an empty cursor.
-    const params = Object.fromEntries(Object.entries(query).filter(([, value]) => value !== undefined && value !== ''));
+    // Only what was asked: the server refuses an unknown key, and an empty value.
+    // Page 1 is left off. An API from before numbered pages rejects `page`, and
+    // both treat a missing page as the first (ADR 0017).
+    const params = Object.fromEntries(
+      Object.entries(query).filter(([key, value]) => {
+        if (value === undefined || value === '') return false;
+        if (key === 'page' && value === 1) return false;
+        return true;
+      }),
+    );
     try {
       const response = await this.http.get<DataEnvelope<SpecIdLibraryPageContract>>('/atlas/saved', { params });
-      const { items, nextCursor } = response.data.data;
-      return { items: items.map(toSavedSpecId), nextCursor };
+      const { items, page, pageSize, total } = response.data.data;
+      const saved = items.map(toSavedSpecId);
+      // That older API answers `{ items, nextCursor }` and omits the rest.
+      // The first page still renders; numbered pages wait for this API.
+      return { items: saved, page: page ?? 1, pageSize: pageSize ?? 20, total: total ?? saved.length };
     } catch (error) {
       throw toAppError(error);
     }

@@ -503,3 +503,27 @@ export function NoManufacturersIcon(props: IconProps) {
     </IconSvg>
   );
 }
+
+/* ------------------------------------------------------------- Sign out -- */
+
+/** The doorway stays. The arrow steps out and comes back. */
+const stepOut: Variants = {
+  rest: { x: 0, opacity: 1 },
+  active: {
+    x: [0, 4, 0],
+    opacity: [1, 0, 1],
+    transition: { duration: 0.5, times: [0, 0.45, 1], ease: ease.standard },
+  },
+};
+
+export function SignOutIcon(props: IconProps) {
+  return (
+    <IconSvg {...props}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <m.g variants={stepOut}>
+        <path d="M16 17 21 12 16 7" />
+        <line x1="21" x2="9" y1="12" y2="12" />
+      </m.g>
+    </IconSvg>
+  );
+}
