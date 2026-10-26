@@ -127,8 +127,10 @@ Tokens in `src/shared/ui/motion.ts` (seconds) and `theme.css` (CSS):
 - **Animated icons** live in `src/shared/ui/icons/`. Each stroke is its own
   `m.*` element with `rest` and `active` variants; `active` always ends on the
   rest pose. An icon never animates itself — the element it sits in does,
-  with `{...iconTrigger}` from `motion.ts` (`Button` and `SegmentedControl`
-  already do). Sizes: 16 in buttons, 18 in the sidebar, 20 in tiles.
+  with `useIconTrigger()` from `motion.ts` (`Button` and `SegmentedControl`
+  already do). A hover or focus that ends early still lets the sequence
+  finish, so a stroke is never left half-drawn. Sizes: 16 in buttons, 18 in
+  the sidebar, 20 in tiles.
 - **Static icons** come from `lucide-react` at `strokeWidth={1.75}`.
 - Every icon is `aria-hidden`; the element around it carries the label.
 - A new animated icon: copy one from `icons.tsx`, take the paths from

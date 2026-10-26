@@ -2,7 +2,7 @@ import * as m from 'motion/react-m';
 import { useId } from 'react';
 import { cn } from '@/shared/ui/cn';
 import { ExternalLinkIcon } from '@/shared/ui/icons';
-import { iconTrigger } from '@/shared/ui/motion';
+import { useIconTrigger } from '@/shared/ui/motion';
 import { isWebUrl } from '../domain/is-web-url';
 import type { Tool } from '../domain/tool';
 import { toolHost } from '../domain/tool-host';
@@ -22,6 +22,7 @@ export function ToolCard({ tool }: { tool: Tool }) {
   const nameId = useId();
   const descriptionId = useId();
   const linkable = isWebUrl(tool.url);
+  const { trigger } = useIconTrigger();
 
   const body = (
     <>
@@ -56,7 +57,7 @@ export function ToolCard({ tool }: { tool: Tool }) {
 
   return (
     <m.a
-      {...iconTrigger}
+      {...trigger}
       href={tool.url}
       target="_blank"
       rel="noopener noreferrer"
