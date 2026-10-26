@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { isSignInRequired, takePriorSessionEnded, useSession } from '@/features/accounts';
-import { SkeletonBlock, SkeletonRegion } from '@/shared/ui/Skeleton';
 import { useDoorHold } from './door-hold';
+import { GateSkeleton } from './gate-skeleton';
 
 export interface RequireAuthProps {
   /** The change-password page itself must open for someone who has to change it. */
@@ -22,6 +22,7 @@ export function RequireAuth({ allowMustChangePassword = false, children }: Requi
   const location = useLocation();
   useDoorHold(session.isPending);
 
+  // The shell and this route's skeleton. A hub refresh does not play the curtain (ADR 0028).
   if (session.isPending) return <GateSkeleton />;
 
   if (session.isError) {
@@ -38,14 +39,4 @@ export function RequireAuth({ allowMustChangePassword = false, children }: Requi
   }
 
   return children;
-}
-
-/** Blank canvas until we know who is here; invisible when the answer is quick (ADR 0013). */
-function GateSkeleton() {
-  return (
-    <SkeletonRegion label="the Gateway" className="flex min-h-dvh flex-col gap-6 bg-canvas p-6">
-      <SkeletonBlock className="h-8 w-40" order={0} />
-      <SkeletonBlock className="h-64 w-full" order={1} />
-    </SkeletonRegion>
-  );
 }
