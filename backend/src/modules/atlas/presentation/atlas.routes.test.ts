@@ -485,7 +485,7 @@ describe('saved Spec IDs by id', () => {
 });
 
 describe('GET /api/v1/atlas/saved', () => {
-  it('answers a page of the library with no next cursor', async () => {
+  it('answers the first page of the library and how many match', async () => {
     const own = setup();
     await request(own).post('/api/v1/atlas/spec-ids').send({ name: 'Illustrative lid', facts: FACTS });
 
@@ -493,16 +493,14 @@ describe('GET /api/v1/atlas/saved', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.items.map((item: { name: string }) => item.name)).toEqual(['Illustrative lid']);
-    expect(response.body.data.nextCursor).toBeNull();
+    expect(response.body.data).toMatchObject({ page: 1, pageSize: 20, total: 1 });
   });
 
-  it('answers 400 VALIDATION_FAILED to a cursor it did not write', async () => {
-    const response = await request(app).get('/api/v1/atlas/saved?cursor=not-a-cursor');
+  it('answers 400 VALIDATION_FAILED to a page that is not a whole number', async () => {
+    const response = await request(app).get('/api/v1/atlas/saved?page=no');
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe('VALIDATION_FAILED');
-    expect(response.body.error.details.fields.cursor).toEqual([
-      'Not a page of this list. Start again from the first page.',
-    ]);
+    expect(response.body.error.details.fields.page).toEqual(['Page must be a whole number from 1.']);
   });
 });
 

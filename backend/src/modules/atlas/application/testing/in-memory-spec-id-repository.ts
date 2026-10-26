@@ -5,6 +5,7 @@ import type { SpecIdChange } from '../../domain/spec-id-change.js';
 import { SpecIdChangedError, SpecIdExistsError } from '../../domain/spec-id.errors.js';
 import type {
   FormerHolderRecord,
+  LibraryFilter,
   LibraryQuery,
   SavedSpecIdRecord,
   SpecIdChangeRecord,
@@ -70,16 +71,23 @@ export class InMemorySpecIdRepository implements SpecIdRepository {
       .map((saved) => this.record(saved));
   }
 
+  async count(filter: LibraryFilter): Promise<number> {
+    return this.matching(filter).length;
+  }
+
   async list(query: LibraryQuery): Promise<SavedSpecIdRecord[]> {
-    const q = query.q?.toLowerCase();
-    const { after } = query;
+    const offset = query.offset ?? 0;
+    return this.matching(query)
+      .sort(newestChangeFirst)
+      .slice(offset, offset + query.limit)
+      .map((saved) => this.record(saved));
+  }
+
+  private matching(filter: LibraryFilter): SavedSpecId[] {
+    const q = filter.q?.toLowerCase();
     return [...this.saved.values()]
       .filter((saved) => q === undefined || saved.name.toLowerCase().includes(q))
-      .filter((saved) => query.productType === undefined || saved.specId.slot('productType') === query.productType)
-      .sort(newestChangeFirst)
-      .filter((saved) => after === undefined || newestChangeFirst(saved, after) > 0)
-      .slice(0, query.limit)
-      .map((saved) => this.record(saved));
+      .filter((saved) => filter.productType === undefined || saved.specId.slot('productType') === filter.productType);
   }
 
   async history(id: string): Promise<SpecIdChangeRecord[]> {

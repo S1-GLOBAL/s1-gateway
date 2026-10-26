@@ -258,6 +258,6 @@ describe('Atlas, composed over Postgres', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.items.map((item: { name: string }) => item.name)).toEqual(['Illustrative lid']);
-    expect(response.body.data.nextCursor).toBeNull();
+    expect(response.body.data).toMatchObject({ page: 1, pageSize: 20, total: 1 });
   });
 });
