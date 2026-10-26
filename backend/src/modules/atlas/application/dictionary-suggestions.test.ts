@@ -203,4 +203,18 @@ describe('GetDictionaryUsage', () => {
     expect(!refused.ok && refused.error).toBeInstanceOf(InvalidSuggestionError);
     expect(await context.usage.execute({ slot: 'material', code: 'A' })).toEqual({ ok: true, value: 0 });
   });
+
+  it('counts 0 for a marker or a wildcard, which no option can be', async () => {
+    const context = setup();
+    // A lid has no capacity: it holds the marker X there.
+    const saved = await context.save.execute({
+      name: 'Invented lid',
+      facts: { productType: 'BLD', material: 'APS', shape: 'RD' },
+      savedBy: ADA,
+    });
+    if (!saved.ok) throw saved.error;
+    for (const code of ['X', 'Y', '%', '_']) {
+      expect(await context.usage.execute({ slot: 'capacity', code })).toEqual({ ok: true, value: 0 });
+    }
+  });
 });

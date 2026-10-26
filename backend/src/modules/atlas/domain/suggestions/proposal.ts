@@ -105,6 +105,16 @@ export function isDictionarySlot(value: string): value is DictionarySlotKey {
   return (DICTIONARY_SLOTS as readonly string[]).includes(value);
 }
 
+/** Whether `code` could be an option of `slot`: its characters and width, and not a marker (ADR 0025). */
+export function isOptionCode(slot: DictionarySlotKey, code: string): boolean {
+  const characters = slot === 'capacity' ? /^[A-Z]$/ : /^[A-Z0-9]+$/;
+  return characters.test(code) && code.length === codeWidth(slot) && !isMarker(code);
+}
+
+function isMarker(code: string): boolean {
+  return code === NOT_KNOWN || /^0+$/.test(code) || /^X+$/.test(code);
+}
+
 /** A code as people type it: trimmed and in capitals. */
 export function normaliseCode(code: string): string {
   return code.trim().toUpperCase();
@@ -234,7 +244,7 @@ function codeProblems(slot: DictionarySlotKey, code: string, dictionary: Diction
   const characters = slot === 'capacity' ? /^[A-Z]$/ : /^[A-Z0-9]+$/;
   if (!characters.test(code)) return [slot === 'capacity' ? messages.codeWidth(1) : messages.codeCharacters()];
   if (code.length !== width) return [messages.codeWidth(width)];
-  if (code === NOT_KNOWN || /^0+$/.test(code) || /^X+$/.test(code)) return [messages.codeIsMarker(code)];
+  if (isMarker(code)) return [messages.codeIsMarker(code)];
   const meaning = dictionary.meaningOf(slot, code);
   return meaning === undefined ? [] : [messages.codeTaken(code, meaning)];
 }
