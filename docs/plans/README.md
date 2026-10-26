@@ -69,3 +69,4 @@ does not exist yet, say so and mark the plan blocked rather than inventing it.
 | [0007](./0007-search-atlas-with-raw-product-text.md) | Search Atlas with raw product text | Complete |
 | [0008](./0008-manufacturers-page.md) | Manufacturers on each Spec ID, with stages admins set | In progress |
 | [0009](./0009-stage-icons-on-spec-id-cards.md) | Stage icons on every Spec ID card | In progress |
+| [0010](./0010-dictionary-suggestions.md) | The dictionary, edited by suggestion and approval | Draft |

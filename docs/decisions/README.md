@@ -67,3 +67,4 @@ Number sequentially. Never renumber.
 | [0028](./0028-the-door-is-a-full-screen-curtain.md) | The door is a full-screen curtain | Accepted |
 | [0029](./0029-the-library-is-numbered-pages.md) | The library is numbered pages | Accepted |
 | [0030](./0030-roles-live-on-the-account.md) | Roles live on the account, and System Admins change them | Accepted |
+| [0031](./0031-the-dictionary-is-edited-by-suggestion-and-approval.md) | The dictionary is edited in the app, by suggestion and approval | Proposed |
