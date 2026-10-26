@@ -109,7 +109,12 @@ export interface SavedSpecIdDto extends DecodedSpecIdDto {
 
 export interface SpecIdLibraryPageDto {
   items: SavedSpecIdDto[];
-  nextCursor: string | null;
+  /** The page this response is, starting at 1. A request past the end is the last page. */
+  page: number;
+  /** How many Spec IDs a page holds. */
+  pageSize: number;
+  /** How many match the search and product type. */
+  total: number;
 }
 
 export interface SlotChangeDto {

@@ -56,7 +56,7 @@ Request bodies are JSON, at most **100 kB**.
 | POST | `/atlas/spec-ids` | session | 201 `{ data: SavedSpecId }` | 401 `SIGN_IN_REQUIRED`, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED`, 409 `SPEC_ID_EXISTS` |
 | GET | `/atlas/spec-ids/:code` | session | 200 `{ data: SpecIdLookup }` | 401, 404 `SPEC_ID_NOT_FOUND` |
 | GET | `/atlas/spec-ids?<slot>=<value>…` | session | 200 `{ data: SimilarSpecIds }` | 401, 400 `VALIDATION_FAILED` |
-| GET | `/atlas/saved?q=&productType=&cursor=` | session | 200 `{ data: SpecIdLibraryPage }` | 401, 400 `VALIDATION_FAILED` |
+| GET | `/atlas/saved?q=&productType=&page=` | session | 200 `{ data: SpecIdLibraryPage }` | 401, 400 `VALIDATION_FAILED` |
 | GET | `/atlas/saved/:id` | session | 200 `{ data: SavedSpecId }` | 401, 404 `SPEC_ID_NOT_FOUND` |
 | PATCH | `/atlas/saved/:id` | session | 200 `{ data: SavedSpecId }` | 401, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED`, 404 `SPEC_ID_NOT_FOUND`, 409 `SPEC_ID_CHANGED`, 409 `SPEC_ID_EXISTS` |
 | GET | `/atlas/saved/:id/history` | session | 200 `{ data: SpecIdChange[] }`, newest first | 401, 404 `SPEC_ID_NOT_FOUND` |
@@ -252,13 +252,15 @@ newest first. When none has it now but one once did, it answers the last one
 that did, with `replacedCode` set to the code asked for. It answers 404 only
 when no Spec ID has or had the code.
 
-`GET /atlas/saved` is the library: `{ items, nextCursor }`, 20 Spec IDs per
-page, newest change first. `q` matches part of the name, ignoring case and
-surrounding spaces (`%` and `_` mean themselves; at most 120 characters).
-`productType` is a product type code. Pass `nextCursor` back as `cursor` for
-the next page; it is null on the last page. An unknown key, a repeated key, a
-product type not in the dictionary or a cursor the server did not write
-answers 400 `VALIDATION_FAILED` with `details.fields` keyed as asked.
+`GET /atlas/saved` is the library: `{ items, page, pageSize, total }`, 20 Spec IDs
+per page, newest change first ([ADR 0029](../decisions/0029-the-library-is-numbered-pages.md)).
+`q` matches part of the name, ignoring case and surrounding spaces (`%` and `_`
+mean themselves; at most 120 characters). `productType` is a product type code.
+`page` starts at 1 and is the first page when omitted. `total` is how many
+match the search and product type, so the last page is known at once. A `page`
+past the end answers that last page. An unknown key, a repeated key, a product
+type not in the dictionary or a page that is not a whole number from 1 answers
+400 `VALIDATION_FAILED` with `details.fields` keyed as asked.
 
 `PATCH /atlas/saved/:id` takes `{ name, facts, version }`, where `version` is
 the one the change was started from. It rebuilds the code from the facts, as

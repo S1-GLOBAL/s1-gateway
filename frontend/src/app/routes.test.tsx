@@ -34,7 +34,7 @@ const atlasGateway: AtlasGateway = {
   history: pending,
   manufacturers: pending,
   setManufacturerStage: pending,
-  library: async () => ({ items: [], nextCursor: null }),
+  library: async () => ({ items: [], page: 1, pageSize: 20, total: 0 }),
 };
 
 function renderAt(path: string, gateway: AccountsGateway = fakeAccountsGateway()) {

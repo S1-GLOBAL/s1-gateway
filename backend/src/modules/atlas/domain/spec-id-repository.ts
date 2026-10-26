@@ -24,18 +24,17 @@ export interface FormerHolderRecord {
   until: Date;
 }
 
-/** Where a library page starts: after this Spec ID, in the library's order. */
-export interface LibraryCursor {
-  lastChangedAt: Date;
-  id: string;
-}
-
-export interface LibraryQuery {
+/** The part of a library query that chooses which Spec IDs match, before a page is cut. */
+export interface LibraryFilter {
   /** Part of the name, matched ignoring case, with `%` and `_` meaning themselves. */
   q?: string;
   /** A product type code. */
   productType?: string;
-  after?: LibraryCursor;
+}
+
+export interface LibraryQuery extends LibraryFilter {
+  /** Rows to skip. Omitted means the start of the list. */
+  offset?: number;
   limit: number;
 }
 
@@ -65,6 +64,8 @@ export interface SpecIdRepository {
    * slot chosen, every one.
    */
   findCandidates(criteria: SimilarCriteria): Promise<SavedSpecIdRecord[]>;
+  /** How many Spec IDs match, ignoring the page. */
+  count(filter: LibraryFilter): Promise<number>;
   /** At most `limit` Spec IDs, newest change first, then by id descending. */
   list(query: LibraryQuery): Promise<SavedSpecIdRecord[]>;
   /** Every history entry of one Spec ID, newest first. */

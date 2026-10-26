@@ -47,7 +47,7 @@ async function setup(count: number) {
 }
 
 describe('ListSavedSpecIds', () => {
-  it('answers 20, newest first, and a cursor whose page holds the 21st newest', async () => {
+  it('answers 20, newest first, and the total, and page 2 holds the 21st newest', async () => {
     const { list } = await setup(21);
 
     const first = await list.execute({});
@@ -55,25 +55,35 @@ describe('ListSavedSpecIds', () => {
     expect(first.value.items).toHaveLength(20);
     expect(first.value.items[0]?.name).toBe('Lid 21');
     expect(first.value.items[19]?.name).toBe('Lid 2');
-    expect(first.value.nextCursor).not.toBeNull();
+    expect(first.value).toMatchObject({ page: 1, pageSize: 20, total: 21 });
 
-    const second = await list.execute({ cursor: first.value.nextCursor });
+    const second = await list.execute({ page: '2' });
     if (!second.ok) throw second.error;
     expect(second.value.items.map((item) => item.name)).toEqual(['Lid 1']);
-    expect(second.value.nextCursor).toBeNull();
+    expect(second.value.page).toBe(2);
+    expect(second.value.total).toBe(21);
   });
 
-  it('answers no cursor when exactly 20 are saved', async () => {
+  it('answers the last page when the number asked for is past the end', async () => {
+    const { list } = await setup(21);
+    const result = await list.execute({ page: '50' });
+    if (!result.ok) throw result.error;
+    expect(result.value.items.map((item) => item.name)).toEqual(['Lid 1']);
+    expect(result.value.page).toBe(2);
+    expect(result.value.total).toBe(21);
+  });
+
+  it('answers one page when exactly 20 are saved', async () => {
     const { list } = await setup(20);
     const result = await list.execute({});
     if (!result.ok) throw result.error;
     expect(result.value.items).toHaveLength(20);
-    expect(result.value.nextCursor).toBeNull();
+    expect(result.value).toMatchObject({ page: 1, pageSize: 20, total: 20 });
   });
 
   it('answers an empty page when nothing is saved', async () => {
     const { list } = await setup(0);
-    expect(await list.execute({})).toEqual({ ok: true, value: { items: [], nextCursor: null } });
+    expect(await list.execute({})).toEqual({ ok: true, value: { items: [], page: 1, pageSize: 20, total: 0 } });
   });
 
   it('puts a Spec ID changed last first', async () => {
@@ -116,7 +126,7 @@ describe('ListSavedSpecIds', () => {
     const result = await list.execute({
       colour: 'CL',
       productType: 'QQQ',
-      cursor: 'not-a-cursor',
+      page: '0',
       q: ['a', 'b'],
     });
 
@@ -125,7 +135,7 @@ describe('ListSavedSpecIds', () => {
       fields: {
         colour: ['Not a filter of the library.'],
         productType: ['Product type: QQQ is not in the dictionary.'],
-        cursor: ['Not a page of this list. Start again from the first page.'],
+        page: ['Page must be a whole number from 1.'],
         q: ['Choose one value.'],
       },
     });
