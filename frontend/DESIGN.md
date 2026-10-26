@@ -168,8 +168,9 @@ Tokens in `src/shared/ui/motion.ts` (seconds) and `theme.css` (CSS):
   (from the portal, `source-one-portal/frontend/public/logo.png`). `<Logo>`
   draws them as a mask in the current text colour.
 - The landing header and the open sidebar show the mark beside the words
-  "Source One", in the door's mono face at `text-md` (`SourceOneName`), a step
-  above the sidebar labels. The folded rail and phones show the mark alone.
+  "Source One", in the door's mono face at `text-md font-semibold`
+  (`SourceOneName`), a step above the sidebar labels. The folded rail and
+  phones show the mark alone.
   The wordmark image stays the brand specimen.
 - `public/brand/app-icon.png` (the mark in lime on `#0b0c0b`) is the source of
   every PWA icon. After changing it, run `npm run pwa:icons` in `frontend/`.

@@ -53,7 +53,7 @@ export function SourceOneName({ height = 22, className }: { height?: number; cla
   return (
     <span className={cn('inline-flex items-center gap-2 text-ink', className)}>
       <Logo variant="mark" height={height} decorative />
-      <span className="font-mono text-md">Source One</span>
+      <span className="font-mono text-md font-semibold">Source One</span>
     </span>
   );
 }
