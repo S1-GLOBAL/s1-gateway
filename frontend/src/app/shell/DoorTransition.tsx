@@ -56,7 +56,10 @@ export function DoorTransition() {
   const playId = track.curtain?.playId;
   useLayoutEffect(() => {
     if (playId === undefined) return;
+    const root = document.documentElement;
+    root.classList.add('door-curtain-open');
     window.scrollTo(0, 0);
+    return () => root.classList.remove('door-curtain-open');
   }, [playId]);
 
   return (

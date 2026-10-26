@@ -13,6 +13,7 @@ vi.mock('motion/react', async (importOriginal) => ({
 
 afterEach(() => {
   reduced.value = false;
+  document.documentElement.classList.remove('door-curtain-open');
   vi.useRealTimers();
 });
 
@@ -43,6 +44,7 @@ describe('the door curtain', () => {
 
     const curtain = () => screen.getByRole('status', { name: 'Source One' });
     expect(curtain().getAttribute('data-phase')).toBe('enter');
+    expect(document.documentElement.classList.contains('door-curtain-open')).toBe(true);
 
     act(() => vi.advanceTimersByTime(duration.curtain * 1000 - 1));
     expect(curtain().getAttribute('data-phase')).toBe('enter');
@@ -59,6 +61,7 @@ describe('the door curtain', () => {
 
     act(() => vi.advanceTimersByTime(duration.curtain * 1000));
     expect(document.querySelector('.door-curtain')).toBeNull();
+    expect(document.documentElement.classList.contains('door-curtain-open')).toBe(false);
     expect(screen.getByRole('heading', { name: 'The page' })).toBeTruthy();
   });
 
@@ -78,11 +81,13 @@ describe('the door curtain', () => {
     const curtain = screen.getByRole('status', { name: 'Source One' });
     expect(curtain.getAttribute('data-phase')).toBe('hold');
     expect(curtain.getAttribute('style')).toBeNull();
+    expect(document.documentElement.classList.contains('door-curtain-open')).toBe(true);
 
     act(() => vi.advanceTimersByTime(duration.curtainHold * 1000 - 1));
     expect(screen.getByRole('status', { name: 'Source One' })).toBeTruthy();
 
     act(() => vi.advanceTimersByTime(1));
     expect(document.querySelector('.door-curtain')).toBeNull();
+    expect(document.documentElement.classList.contains('door-curtain-open')).toBe(false);
   });
 });
