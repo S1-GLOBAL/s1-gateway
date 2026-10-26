@@ -115,9 +115,10 @@ Tokens in `src/shared/ui/motion.ts` (seconds) and `theme.css` (CSS):
   when the screen is not ready yet. It does not play between hub pages. A cold
   open of the landing or an invite link rises the same way. The rise
   is CSS, from the first frame, because the motion chunk loads after first paint.
-- Nothing shifts sideways between pages. The root always reserves the
+- Nothing shifts sideways between pages. The root reserves the
   scrollbar's space (`scrollbar-gutter: stable` in `src/styles/index.css`), so
-  a page that scrolls and one that does not have the same width.
+  a page that scrolls and one that does not have the same width. The door
+  curtain drops that gutter while it is mounted (ADR 0028).
 - Every animation respects reduced motion (`MotionConfig reducedMotion="user"`).
   The curtain's rise and rise away are skipped: the wash stays still for the
   same minimum, then it is gone.

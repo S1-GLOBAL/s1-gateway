@@ -2,7 +2,7 @@
 @import './theme.css';
 
 @layer base {
-  /* The scrollbar's space is always reserved, so short and long pages share one width. */
+  /* Reserved so short and long pages share one width. The door curtain drops it while it is up. */
   html {
     background-color: var(--color-canvas);
     scrollbar-gutter: stable;
@@ -165,7 +165,19 @@
  * Door curtain — ADR 0028. Off the bottom until its rise runs. The rise and
  * the rise away are started inline from the motion tokens, so they begin on
  * the first frame rather than after the motion chunk loads.
+ *
+ * The document keeps a scrollbar gutter on every page. Drop it while the
+ * curtain is up, or that strip stays visible beside the wash.
  */
+html.door-curtain-open,
+html.door-curtain-open body {
+  overflow: hidden;
+}
+
+html.door-curtain-open {
+  scrollbar-gutter: auto;
+}
+
 .door-curtain[data-phase='enter'] {
   transform: translate3d(0, 100%, 0);
 }
