@@ -145,7 +145,12 @@ describe('the app, signed in', () => {
     expect(within(sidebar).getByText('Ada Lovelace')).toBeTruthy();
     expect(within(sidebar).getByText('ada@sourceone.global')).toBeTruthy();
     expect(within(sidebar).getByText('AL')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy();
+    const signOut = await screen.findByRole('button', { name: 'Sign out' });
+    const header = signOut.closest('header');
+    if (!header) throw new Error('Sign out is not in the top bar');
+    const theme = within(header).getByRole('radiogroup', { name: 'Theme' });
+    expect(theme.compareDocumentPosition(signOut) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(signOut.className.split(/\s+/)).toEqual(expect.arrayContaining(['bg-surface', 'border-border-strong', 'shadow-sm']));
   });
 
   it('signs out, and lands on the landing', async () => {

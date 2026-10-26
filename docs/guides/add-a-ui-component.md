@@ -26,8 +26,9 @@ not optional. The running app shows every existing primitive at `/theme`.
 - **Merge classes with `cn`** from `shared/ui/cn.ts`, so a caller's
   `className` overrides the component's.
 - **Animate with `m.*`** from `motion/react-m`, with durations and easings from
-  `shared/ui/motion.ts`. Anything that holds an animated icon spreads
-  `{...iconTrigger}` so the icon plays on hover and focus.
+  `shared/ui/motion.ts`. Anything that holds an animated icon calls
+  `useIconTrigger()` and spreads `trigger`, so the icon plays on hover and
+  focus and finishes even if the pointer leaves early.
 - **A component receives domain types**, never contract types. The gateway has
   already mapped them.
 - **Errors**: `error.fields[name]` under the input it is about; otherwise

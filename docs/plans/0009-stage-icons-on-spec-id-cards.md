@@ -104,7 +104,7 @@ The use cases that take a `SourcingRepository` for this get it in `backend/src/m
 | Type | `features/atlas/domain/atlas.ts` | `SavedSpecId.manufacturerStages?: ManufacturerStageCounts`: optional, so a card from an older API leaves the row out |
 | Five icons | `shared/ui/icons/icons.tsx`, `index.ts`, `icons.test.tsx`, and `/theme`'s Icons section | `SpecsReceivedIcon` (lucide `file-text`), `QuotedIcon` (`receipt`), `SamplingIcon` (`flask-conical`), `InProductionIcon` (`factory`), `NoManufacturersIcon` (`circle-slash`), each stroke its own `m.path` with `rest` and `active` variants, as DESIGN.md "Icons" says |
 | Labels | `features/atlas/domain/stage-icons.ts` | The five icons' lit state and hover text from the counts (the copy below) |
-| `StageIcons` | `features/atlas/presentation/library/StageIcons.tsx` | The row: lit icons `text-accent-ink`, unlit `text-ink-subtle` at reduced opacity. Lit icons play `active` once on mount and on the card's hover (`iconTrigger`); unlit never move; reduced motion stops all of it |
+| `StageIcons` | `features/atlas/presentation/library/StageIcons.tsx` | The row: lit icons `text-accent-ink`, unlit `text-ink-subtle` at reduced opacity. Lit icons play `active` once on mount and again when the card is hovered (the row remounts under a new `key`); unlit never move; reduced motion stops all of it |
 | The card | `features/atlas/presentation/library/SpecIdSummary.tsx` | Renders `StageIcons` after the facts in words, when `manufacturerStages` is present |
 
 Copy, from #73:

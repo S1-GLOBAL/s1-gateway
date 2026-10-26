@@ -1,7 +1,7 @@
 import * as m from 'motion/react-m';
 import { useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { cn } from './cn';
-import { iconTrigger } from './motion';
+import { useIconTrigger } from './motion';
 
 export interface SegmentedOption<T extends string> {
   value: T;
@@ -18,6 +18,60 @@ export interface SegmentedControlProps<T extends string> {
   /** Show icons only; each label becomes the option's accessible name and tooltip. */
   iconOnly?: boolean;
   className?: string;
+}
+
+function SegmentButton({
+  selected,
+  iconOnly,
+  label,
+  icon,
+  pillId,
+  buttonRef,
+  onChoose,
+  onKeyDown,
+}: {
+  selected: boolean;
+  iconOnly: boolean;
+  label: string;
+  icon?: ReactNode;
+  pillId: string;
+  buttonRef(element: HTMLButtonElement | null): void;
+  onChoose(): void;
+  onKeyDown(event: KeyboardEvent<HTMLButtonElement>): void;
+}) {
+  const { trigger } = useIconTrigger();
+  return (
+    <m.button
+      ref={buttonRef}
+      {...trigger}
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      aria-label={iconOnly ? label : undefined}
+      title={iconOnly ? label : undefined}
+      tabIndex={selected ? 0 : -1}
+      onClick={onChoose}
+      onKeyDown={onKeyDown}
+      className={cn(
+        'relative inline-flex h-7 items-center justify-center gap-1.5 rounded-control text-sm font-medium transition-colors duration-150 ease-standard',
+        iconOnly ? 'w-8' : 'px-3',
+        selected ? 'text-ink' : 'text-ink-muted hover:text-ink',
+      )}
+    >
+      {selected && (
+        <m.span
+          layoutId={pillId}
+          aria-hidden="true"
+          className="absolute inset-0 rounded-control border border-border bg-surface shadow-sm"
+          transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+        />
+      )}
+      <span className="relative inline-flex items-center gap-1.5">
+        {icon}
+        {!iconOnly && label}
+      </span>
+    </m.button>
+  );
 }
 
 /**
@@ -52,44 +106,21 @@ export function SegmentedControl<T extends string>({
       aria-label={label}
       className={cn('inline-flex items-center gap-0.5 rounded-control border border-border bg-surface-sunken p-0.5', className)}
     >
-      {options.map((option, index) => {
-        const selected = option.value === value;
-        return (
-          <m.button
-            key={option.value}
-            ref={(element) => {
-              buttons.current[index] = element;
-            }}
-            {...iconTrigger}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            aria-label={iconOnly ? option.label : undefined}
-            title={iconOnly ? option.label : undefined}
-            tabIndex={selected ? 0 : -1}
-            onClick={() => onChange(option.value)}
-            onKeyDown={(event) => onKeyDown(event, index)}
-            className={cn(
-              'relative inline-flex h-7 items-center justify-center gap-1.5 rounded-control text-sm font-medium transition-colors duration-150 ease-standard',
-              iconOnly ? 'w-8' : 'px-3',
-              selected ? 'text-ink' : 'text-ink-muted hover:text-ink',
-            )}
-          >
-            {selected && (
-              <m.span
-                layoutId={pillId}
-                aria-hidden="true"
-                className="absolute inset-0 rounded-control border border-border bg-surface shadow-sm"
-                transition={{ type: 'spring', stiffness: 500, damping: 40 }}
-              />
-            )}
-            <span className="relative inline-flex items-center gap-1.5">
-              {option.icon}
-              {!iconOnly && option.label}
-            </span>
-          </m.button>
-        );
-      })}
+      {options.map((option, index) => (
+        <SegmentButton
+          key={option.value}
+          selected={option.value === value}
+          iconOnly={iconOnly}
+          label={option.label}
+          icon={option.icon}
+          pillId={pillId}
+          buttonRef={(element) => {
+            buttons.current[index] = element;
+          }}
+          onChoose={() => onChange(option.value)}
+          onKeyDown={(event) => onKeyDown(event, index)}
+        />
+      ))}
     </div>
   );
 }

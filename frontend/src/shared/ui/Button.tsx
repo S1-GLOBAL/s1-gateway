@@ -2,7 +2,7 @@ import type { HTMLMotionProps } from 'motion/react';
 import * as m from 'motion/react-m';
 import type { ReactNode } from 'react';
 import { cn } from './cn';
-import { iconTrigger } from './motion';
+import { useIconTrigger } from './motion';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type Size = 'sm' | 'md';
@@ -28,8 +28,8 @@ export interface ButtonProps extends Omit<HTMLMotionProps<'button'>, 'children'>
 }
 
 /**
- * Any animated icon inside plays when the button is hovered or focused — the
- * button sets the icon states (ADR 0012).
+ * Any animated icon inside plays when the button is hovered, focused or
+ * tapped, and finishes even if the pointer leaves early (ADR 0012).
  */
 export function Button({
   variant = 'primary',
@@ -39,11 +39,15 @@ export function Button({
   disabled,
   className,
   children,
+  onHoverStart,
+  onFocus,
+  onTapStart,
+  onAnimationComplete,
   ...props
 }: ButtonProps) {
+  const { play, trigger } = useIconTrigger();
   return (
     <m.button
-      {...iconTrigger}
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
@@ -56,6 +60,20 @@ export function Button({
         className,
       )}
       {...props}
+      {...trigger}
+      onHoverStart={(event, info) => {
+        play();
+        onHoverStart?.(event, info);
+      }}
+      onFocus={(event) => {
+        play();
+        onFocus?.(event);
+      }}
+      onTapStart={(event, info) => {
+        play();
+        onTapStart?.(event, info);
+      }}
+      onAnimationComplete={onAnimationComplete}
     >
       {loading && (
         <span

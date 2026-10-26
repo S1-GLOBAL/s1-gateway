@@ -1,3 +1,4 @@
+import { LogOut } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useMe, useSignOut } from '@/features/accounts';
 import { ThemeSwitch } from '@/features/appearance';
@@ -33,10 +34,11 @@ export function TopBar() {
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <p className="hidden max-w-40 truncate text-sm text-ink-muted sm:block md:hidden">{me.fullName}</p>
-        <Button variant="ghost" size="sm" loading={signOut.isPending} onClick={leave}>
+        <ThemeSwitch />
+        <Button variant="secondary" size="sm" loading={signOut.isPending} onClick={leave}>
+          <LogOut size={16} strokeWidth={1.75} aria-hidden="true" />
           Sign out
         </Button>
-        <ThemeSwitch />
       </div>
     </header>
   );

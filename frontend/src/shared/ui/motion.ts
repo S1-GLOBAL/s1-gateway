@@ -1,3 +1,6 @@
+import { useAnimationControls, useReducedMotion } from 'motion/react';
+import { useCallback, useRef } from 'react';
+
 /**
  * Motion tokens — ADR 0012. Seconds, because that is what `motion` takes.
  * The door curtain travels longer than a hub transition, and then holds still
@@ -20,12 +23,37 @@ export const ease = {
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 
 /**
- * The two states every animated icon knows. The element an icon sits in sets
- * them — `initial="rest"`, `whileHover="active"`, `whileFocus="active"` — and
- * they propagate down to each stroke.
+ * Plays an animated icon's `active` sequence through to its rest pose.
+ *
+ * `whileHover` would drop the variant the moment the pointer leaves, and a
+ * stroke caught mid-redraw (a `pathLength` of 0, a cover half-scaled) stays
+ * that way. Hover, focus and a tap start the sequence; leaving does not stop
+ * it. Reduced motion never starts it (ADR 0012).
  */
-export const iconTrigger = {
-  initial: 'rest',
-  whileHover: 'active',
-  whileFocus: 'active',
-} as const;
+export function useIconTrigger() {
+  const reduced = useReducedMotion() === true;
+  const reducedRef = useRef(reduced);
+  reducedRef.current = reduced;
+  const controls = useAnimationControls();
+
+  const play = useCallback(() => {
+    if (reducedRef.current) return;
+    try {
+      void controls.start('active');
+    } catch {
+      // The controls mount with the icon. A gesture before that has nothing to play.
+    }
+  }, [controls]);
+
+  return {
+    /** Starts the sequence. A nav item calls this once when its route becomes current. */
+    play,
+    trigger: {
+      initial: 'rest' as const,
+      animate: controls,
+      onHoverStart: play,
+      onFocus: play,
+      onTapStart: play,
+    },
+  };
+}

@@ -37,9 +37,12 @@ a shared layout animation.
 **Icons are hand-written** in `frontend/src/shared/ui/icons/`, drawn from
 Lucide's paths (ISC licence) with **each stroke its own `m.*` element and its
 own variant**. An icon never animates itself: the element it sits in — a nav
-link, a button, a card — sets `initial="rest"`, `whileHover="active"`,
-`whileFocus="active"`, and the variants propagate to the strokes. A nav icon
-also plays once when its route becomes active. Nothing loops.
+link, a button, a card — calls `useIconTrigger()`. That sets `initial="rest"`
+and plays `active` on hover, focus or a tap. Leaving early does not cancel
+the sequence; `active` runs through to its rest pose, and the next gesture
+plays it again. The variants propagate to the strokes. A nav icon also
+plays once when its route becomes active.
+Nothing loops.
 
 **Durations and easings are tokens** (`frontend/src/shared/ui/motion.ts`):
 120ms, 200ms, 320ms, 600ms for the door curtain's travel, and 2 seconds for its still hold; standard, emphasized and exit curves.
