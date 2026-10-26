@@ -25,6 +25,10 @@ const ICONS: Record<StageIconKey, ComponentType<IconProps>> = {
  * row mounts; the card replays them by mounting it again (a new `key`) when
  * hovered. Nothing loops (ADR 0012). Unlit icons never move, and with reduced
  * motion nothing does.
+ *
+ * Each icon's words sit just above it, the same quiet tip as the folded
+ * sidebar. The row takes the pointer so that tip can show: on a card, the
+ * link covers everything else, and a browser `title` never appears.
  */
 export function StageIcons({ counts }: { counts: ManufacturerStageCounts }) {
   const reduced = useReducedMotion() === true;
@@ -34,23 +38,33 @@ export function StageIcons({ counts }: { counts: ManufacturerStageCounts }) {
       data-motion={reduced ? 'off' : 'on'}
       initial="rest"
       animate={reduced ? 'rest' : 'active'}
-      className="flex items-center gap-2"
+      className="pointer-events-auto relative z-10 flex items-center gap-2"
     >
       {stageIcons(counts).map(({ key, lit, label }) => {
         const Icon = ICONS[key];
         return (
           <li
             key={key}
-            title={label}
             aria-label={label}
             data-lit={lit}
-            className={lit ? 'inline-flex text-accent-ink' : 'inline-flex text-ink-subtle opacity-40'}
+            className={
+              lit
+                ? 'group/stage relative inline-flex text-accent-ink'
+                : 'group/stage relative inline-flex text-ink-subtle'
+            }
           >
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 whitespace-nowrap rounded-control bg-ink px-2 py-1 text-xs font-medium text-canvas opacity-0 shadow-md transition-opacity duration-150 ease-standard group-hover/stage:opacity-100"
+            >
+              {label}
+            </span>
             {lit ? (
               <Icon size={16} />
             ) : (
               // Its own state, always at rest: the row's animation never reaches it.
-              <m.span initial="rest" animate="rest" className="inline-flex">
+              // The fade stays on the icon, so the words above it stay solid.
+              <m.span initial="rest" animate="rest" className="inline-flex opacity-40">
                 <Icon size={16} />
               </m.span>
             )}
