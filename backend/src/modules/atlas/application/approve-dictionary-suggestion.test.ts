@@ -106,6 +106,28 @@ describe('ApproveDictionarySuggestion', () => {
     expect(dictionary.slots.find((slot) => slot.key === 'material')?.values.some((value) => value.code === 'APS')).toBe(false);
   });
 
+  it('turns a field a rules change rules out to X on every Spec ID of that product type', async () => {
+    const context = setup();
+    const cup = (value: string): SpecIdFactsInput => ({
+      productType: 'CUP',
+      material: 'BCS',
+      shape: 'RD',
+      wall: 'DW',
+      capacity: { unit: 'Z', value },
+    });
+    const cups = [await saved(context, 'Cup 12', cup('12')), await saved(context, 'Cup 16', cup('16'))];
+    const { id } = await suggested(context, 'productType', 'CUP', { kind: 'rules', rules: { wall: 'never' } });
+
+    const result = await context.approve.execute({ id, version: 1, by: BEN });
+
+    expect(result.ok && result.value.specIdsRewritten).toBe(2);
+    for (const one of cups) {
+      const record = await context.specIds.findById(one.id);
+      expect(record?.savedSpecId.specId.slot('wall')).toBe('X');
+      expect(record?.savedSpecId.version).toBe(2);
+    }
+  });
+
   it('refuses a deletion whose replacement would make two Spec IDs one, naming both, and changes nothing', async () => {
     const context = setup();
     const ps = await saved(context, 'PS lid', lid('90'));
