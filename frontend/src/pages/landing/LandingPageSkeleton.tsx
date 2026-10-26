@@ -6,7 +6,7 @@ export function LandingPageSkeleton() {
     <SkeletonRegion label="the Gateway" className="flex min-h-dvh justify-center bg-canvas p-3 sm:p-4 lg:p-6">
       <div className="flex w-full max-w-6xl flex-1 flex-col overflow-hidden rounded-surface border border-border bg-surface">
         <div className="flex h-14 shrink-0 items-center border-b border-border px-6 sm:px-8">
-          <SkeletonBlock className="h-6 w-36" order={0} />
+          <SkeletonBlock className="h-6 w-32" order={0} />
         </div>
         <div className="flex flex-1 flex-col md:flex-row">
           <div className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-8">

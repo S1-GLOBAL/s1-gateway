@@ -49,6 +49,16 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Accounts' })).toBeTruthy();
   });
 
+  it('writes Source One beside the mark, and drops the name when folded', () => {
+    renderAt('/theme');
+    expect(screen.getByText('Source One')).toBeTruthy();
+    expect(screen.queryByRole('img', { name: 'Source One' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    expect(screen.queryByText('Source One')).toBeNull();
+    expect(screen.getByRole('img', { name: 'Source One' })).toBeTruthy();
+  });
+
   it('shows who is signed in beside the collapse control', () => {
     renderAt('/theme');
     expect(screen.getByText('Ada Lovelace')).toBeTruthy();

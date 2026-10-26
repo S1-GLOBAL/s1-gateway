@@ -2,7 +2,7 @@ import * as m from 'motion/react-m';
 import { Link } from 'react-router-dom';
 import { cn } from '@/shared/ui/cn';
 import { SidebarIcon } from '@/shared/ui/icons';
-import { Logo } from '@/shared/ui/Logo';
+import { Logo, SourceOneName } from '@/shared/ui/Logo';
 import { duration, ease, useIconTrigger } from '@/shared/ui/motion';
 import type { NavItem } from '../nav';
 import { SidebarLink } from './SidebarLink';
@@ -56,8 +56,8 @@ export function Sidebar({
     >
       <div className={cn('flex h-14 shrink-0 items-center', collapsed ? 'justify-center' : 'px-5')}>
         {/* Atlas is home once you're in. `/` is the signed-out door. */}
-        <Link to="/atlas" aria-label="Source One Gateway, home" className="rounded-control text-ink">
-          {collapsed ? <Logo variant="mark" height={22} /> : <Logo variant="wordmark" height={22} />}
+        <Link to="/atlas" aria-label="Source One Gateway, home" className="inline-flex items-center rounded-control text-ink">
+          {collapsed ? <Logo variant="mark" height={22} /> : <SourceOneName height={22} />}
         </Link>
       </div>
 

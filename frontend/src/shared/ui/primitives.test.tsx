@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { Badge } from './Badge';
 import { Button } from './Button';
-import { Logo } from './Logo';
+import { Logo, SourceOneName } from './Logo';
 import { TextField } from './TextField';
 
 describe('Button', () => {
@@ -31,6 +31,14 @@ describe('Logo', () => {
     render(<Logo variant="mark" height={42.4} />);
     const logo = screen.getByRole('img', { name: 'Source One' });
     expect(logo.style.width).toBe('59px');
+  });
+});
+
+describe('SourceOneName', () => {
+  it('writes the name beside a silent mark', () => {
+    render(<SourceOneName />);
+    expect(screen.getByText('Source One')).toBeTruthy();
+    expect(screen.queryByRole('img', { name: 'Source One' })).toBeNull();
   });
 });
 

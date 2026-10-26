@@ -6,7 +6,7 @@ import { isSignInRequired, safeNextPath, SignInForm, useSession } from '@/featur
 import { ThemeSwitch } from '@/features/appearance';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
-import { Logo } from '@/shared/ui/Logo';
+import { Logo, SourceOneName } from '@/shared/ui/Logo';
 import { RefreshIcon } from '@/shared/ui/icons';
 import { ease } from '@/shared/ui/motion';
 import { LandingPageSkeleton } from './LandingPageSkeleton';
@@ -54,9 +54,7 @@ export function LandingPage() {
         className="flex w-full max-w-6xl flex-1 flex-col overflow-hidden rounded-surface border border-border bg-surface shadow-lg"
       >
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-6 sm:px-8">
-          <span className="text-ink">
-            <Logo variant="wordmark" height={22} />
-          </span>
+          <SourceOneName height={22} />
           <ThemeSwitch />
         </header>
 

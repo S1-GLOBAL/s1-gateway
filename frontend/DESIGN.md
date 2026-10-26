@@ -167,6 +167,9 @@ Tokens in `src/shared/ui/motion.ts` (seconds) and `theme.css` (CSS):
 - `public/brand/wordmark.png` and `mark.png` are crops of Source One's logo
   (from the portal, `source-one-portal/frontend/public/logo.png`). `<Logo>`
   draws them as a mask in the current text colour.
+- The landing header and the open sidebar show the mark beside the words
+  "Source One", set in type (`SourceOneName`). The folded rail and phones
+  show the mark alone. The wordmark image stays the brand specimen.
 - `public/brand/app-icon.png` (the mark in lime on `#0b0c0b`) is the source of
   every PWA icon. After changing it, run `npm run pwa:icons` in `frontend/`.
 

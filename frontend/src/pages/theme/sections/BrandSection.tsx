@@ -13,13 +13,13 @@ export function BrandSection() {
           <div className="flex h-36 items-center justify-center rounded-surface border border-border bg-surface px-8 text-ink">
             <Logo variant="wordmark" height={34} />
           </div>
-          <figcaption className="text-xs text-ink-muted">Wordmark — the expanded sidebar</figcaption>
+          <figcaption className="text-xs text-ink-muted">Wordmark — the logo file</figcaption>
         </figure>
         <figure className="flex flex-col gap-3">
           <div className="flex h-36 items-center justify-center rounded-surface border border-border bg-surface text-ink">
             <Logo variant="mark" height={40} />
           </div>
-          <figcaption className="text-xs text-ink-muted">Mark — the rail and phones</figcaption>
+          <figcaption className="text-xs text-ink-muted">Mark — beside the name, on the rail, and on phones</figcaption>
         </figure>
         <figure className="flex flex-col gap-3">
           <div className="flex h-36 items-center justify-center rounded-surface border border-border bg-surface">
