@@ -39,7 +39,7 @@ function renderPage(load: AtlasGateway['dictionary']) {
     history: pending,
     manufacturers: pending,
     setManufacturerStage: pending,
-    library: async () => ({ items: [], nextCursor: null }),
+    library: async () => ({ items: [], page: 1, pageSize: 20, total: 0 }),
   };
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>

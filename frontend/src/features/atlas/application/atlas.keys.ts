@@ -10,6 +10,6 @@ export const atlasKeys = {
   saved: (id: string) => [...atlasKeys.all, 'saved', id] as const,
   history: (id: string) => [...atlasKeys.all, 'history', id] as const,
   manufacturers: (id: string) => [...atlasKeys.all, 'manufacturers', id] as const,
-  library: (filter: { q: string; productType: string }) => [...atlasKeys.all, 'library', filter] as const,
+  library: (request: { q: string; productType: string; page: number }) => [...atlasKeys.all, 'library', request] as const,
   code: (code: string) => [...atlasKeys.all, 'code', code] as const,
 };

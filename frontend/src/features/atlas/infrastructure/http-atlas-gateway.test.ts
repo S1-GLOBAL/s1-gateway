@@ -346,26 +346,26 @@ describe('HttpAtlasGateway, changing a saved Spec ID', () => {
 });
 
 describe('HttpAtlasGateway, the library', () => {
-  it('asks only for what was given, and returns the page with its cursor', async () => {
+  it('asks only for what was given, and returns the page with its total', async () => {
     const sent: Sent[] = [];
-    const page = await gatewayAnswering(200, { data: { items: [wireSaved], nextCursor: 'next' } }, sent).library({
+    const page = await gatewayAnswering(200, { data: { items: [wireSaved], page: 1, pageSize: 20, total: 4 } }, sent).library({
       q: 'lid',
       productType: '',
-      cursor: undefined,
+      page: undefined,
     });
     expect(sent).toEqual([{ method: 'get', url: '/atlas/saved', body: undefined, params: { q: 'lid' } }]);
     expect(page.items[0]?.savedAt).toEqual(new Date('2026-10-16T08:00:00.000Z'));
-    expect(page.nextCursor).toBe('next');
+    expect(page).toMatchObject({ page: 1, pageSize: 20, total: 4 });
   });
 
-  it('passes the product type and the cursor for the next page', async () => {
+  it('passes the product type and the page', async () => {
     const sent: Sent[] = [];
-    await gatewayAnswering(200, { data: { items: [], nextCursor: null } }, sent).library({
+    await gatewayAnswering(200, { data: { items: [], page: 2, pageSize: 20, total: 21 } }, sent).library({
       q: '',
       productType: 'BLD',
-      cursor: 'next',
+      page: 2,
     });
-    expect(sent[0]?.params).toEqual({ productType: 'BLD', cursor: 'next' });
+    expect(sent[0]?.params).toEqual({ productType: 'BLD', page: 2 });
   });
 
   it('rejects a refused search with an AppError whose fields name the key', async () => {

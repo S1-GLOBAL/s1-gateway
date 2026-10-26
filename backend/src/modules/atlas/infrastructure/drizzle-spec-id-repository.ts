@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, inArray, ne, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, ne, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { err, ok, type Result } from '../../../shared/domain/result.js';
 import type { Database } from '../../../shared/infrastructure/database/connection.js';
@@ -13,6 +13,7 @@ import { NOT_KNOWN, slotDefinition } from '../domain/slots.js';
 import { SpecIdChangedError, SpecIdExistsError } from '../domain/spec-id.errors.js';
 import type {
   FormerHolderRecord,
+  LibraryFilter,
   LibraryQuery,
   SavedSpecIdRecord,
   SpecIdChangeRecord,
@@ -109,20 +110,25 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
     return rows.map(toRecord);
   }
 
+  async count(filter: LibraryFilter): Promise<number> {
+    const [row] = await this.db.select({ total: count() }).from(atlasSpecIds).where(and(...this.libraryFilters(filter)));
+    return Number(row?.total ?? 0);
+  }
+
   async list(query: LibraryQuery): Promise<SavedSpecIdRecord[]> {
-    const conditions: SQL[] = [];
-    if (query.q !== undefined) conditions.push(ilike(atlasSpecIds.name, `%${escapeLike(query.q)}%`));
-    if (query.productType !== undefined) conditions.push(eq(atlasSpecIds.productType, query.productType));
-    if (query.after !== undefined) {
-      // Keyset paging: strictly after the last row of the page before, in the same order.
-      const { lastChangedAt: at, id } = query.after;
-      conditions.push(sql`(${lastChangedAt}, ${atlasSpecIds.id}) < (${at.toISOString()}::timestamptz, ${id}::uuid)`);
-    }
     const rows = await this.selectWithNames()
-      .where(and(...conditions))
+      .where(and(...this.libraryFilters(query)))
       .orderBy(desc(lastChangedAt), desc(atlasSpecIds.id))
+      .offset(query.offset ?? 0)
       .limit(query.limit);
     return rows.map(toRecord);
+  }
+
+  private libraryFilters(filter: LibraryFilter): SQL[] {
+    const conditions: SQL[] = [];
+    if (filter.q !== undefined) conditions.push(ilike(atlasSpecIds.name, `%${escapeLike(filter.q)}%`));
+    if (filter.productType !== undefined) conditions.push(eq(atlasSpecIds.productType, filter.productType));
+    return conditions;
   }
 
   async history(id: string): Promise<SpecIdChangeRecord[]> {

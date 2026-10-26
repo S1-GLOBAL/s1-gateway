@@ -156,12 +156,12 @@ export class HttpAtlasGateway implements AtlasGateway {
   }
 
   async library(query: LibraryQuery): Promise<SpecIdLibraryPage> {
-    // Only what was asked: the server refuses an unknown key, and an empty cursor.
+    // Only what was asked: the server refuses an unknown key, and an empty value.
     const params = Object.fromEntries(Object.entries(query).filter(([, value]) => value !== undefined && value !== ''));
     try {
       const response = await this.http.get<DataEnvelope<SpecIdLibraryPageContract>>('/atlas/saved', { params });
-      const { items, nextCursor } = response.data.data;
-      return { items: items.map(toSavedSpecId), nextCursor };
+      const { items, page, pageSize, total } = response.data.data;
+      return { items: items.map(toSavedSpecId), page, pageSize, total };
     } catch (error) {
       throw toAppError(error);
     }
