@@ -243,6 +243,15 @@ describe('approving and rejecting', () => {
     expect(rejected.body.data).toMatchObject({ state: 'rejected', reason: 'Already APP.', decidedBy: { fullName: 'Ben Invented' } });
   });
 
+  it("answers a rejection with no reason at all in #95's words", async () => {
+    const app = setup();
+    const { id } = await suggested(app);
+
+    const missing = await request(app).post(`${BASE}/suggestions/${id}/reject`).set('x-asker', 'ben').send({});
+    expect(missing.status).toBe(400);
+    expect(missing.body.error.details.fields.reason).toEqual(['Say why, so Ada Invented knows what to change.']);
+  });
+
   it('answers 409 SUGGESTION_OUT_OF_DATE when another approval took its code first', async () => {
     const app = setup();
     const first = await suggested(app);
