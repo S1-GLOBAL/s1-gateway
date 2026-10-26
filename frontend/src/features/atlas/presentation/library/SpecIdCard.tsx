@@ -13,6 +13,14 @@ export function SpecIdCard({ saved, timeZone }: { saved: SavedSpecId; timeZone?:
     <div
       className="relative rounded-surface border border-border bg-surface p-5 shadow-sm transition-colors duration-150 ease-standard hover:bg-surface-raised"
       onMouseEnter={() => setHovers((n) => n + 1)}
+      onClick={(event) => {
+        // The stage row sits above the link so its tip can show. A click there still opens the card.
+        if (!(event.target instanceof Element)) return;
+        if (!event.target.closest('[aria-label="Manufacturer stages"]')) return;
+        const link = event.currentTarget.querySelector(':scope > a');
+        if (!(link instanceof HTMLAnchorElement) || link.contains(event.target)) return;
+        link.click();
+      }}
     >
       <Link
         to={`/atlas/${saved.id}/manufacturers`}
