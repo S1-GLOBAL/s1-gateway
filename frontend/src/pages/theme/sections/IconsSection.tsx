@@ -23,7 +23,7 @@ import {
   WifiOffIcon,
   type IconProps,
 } from '@/shared/ui/icons';
-import { iconTrigger } from '@/shared/ui/motion';
+import { useIconTrigger } from '@/shared/ui/motion';
 import { ShowcaseSection } from '../ShowcaseSection';
 
 const ICONS: { name: string; Icon: ComponentType<IconProps>; motion: string }[] = [
@@ -49,6 +49,25 @@ const ICONS: { name: string; Icon: ComponentType<IconProps>; motion: string }[] 
   { name: 'No manufacturers', Icon: NoManufacturersIcon, motion: 'Slash draws on' },
 ];
 
+function IconTile({ name, Icon, motion }: { name: string; Icon: ComponentType<IconProps>; motion: string }) {
+  const { trigger } = useIconTrigger();
+  return (
+    <m.div
+      {...trigger}
+      tabIndex={0}
+      className="flex flex-col items-start gap-4 rounded-surface border border-border bg-surface p-4 transition-colors duration-150 ease-standard hover:border-border-strong"
+    >
+      <span className="inline-flex size-10 items-center justify-center rounded-control bg-accent-soft text-accent-ink">
+        <Icon size={20} />
+      </span>
+      <div className="flex flex-col">
+        <p className="text-sm font-medium text-ink">{name}</p>
+        <p className="text-xs text-ink-muted">{motion}</p>
+      </div>
+    </m.div>
+  );
+}
+
 export function IconsSection() {
   return (
     <ShowcaseSection
@@ -59,19 +78,7 @@ export function IconsSection() {
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
         {ICONS.map(({ name, Icon, motion }) => (
           <li key={name}>
-            <m.div
-              {...iconTrigger}
-              tabIndex={0}
-              className="flex flex-col items-start gap-4 rounded-surface border border-border bg-surface p-4 transition-colors duration-150 ease-standard hover:border-border-strong"
-            >
-              <span className="inline-flex size-10 items-center justify-center rounded-control bg-accent-soft text-accent-ink">
-                <Icon size={20} />
-              </span>
-              <div className="flex flex-col">
-                <p className="text-sm font-medium text-ink">{name}</p>
-                <p className="text-xs text-ink-muted">{motion}</p>
-              </div>
-            </m.div>
+            <IconTile name={name} Icon={Icon} motion={motion} />
           </li>
         ))}
       </ul>

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { cn } from '@/shared/ui/cn';
 import { SidebarIcon } from '@/shared/ui/icons';
 import { Logo } from '@/shared/ui/Logo';
-import { duration, ease, iconTrigger } from '@/shared/ui/motion';
+import { duration, ease, useIconTrigger } from '@/shared/ui/motion';
 import type { NavItem } from '../nav';
 import { SidebarLink } from './SidebarLink';
 
@@ -42,6 +42,7 @@ export function Sidebar({
 }) {
   const initials = accountInitials(account.firstName, account.lastName);
   const email = account.email.trim();
+  const { trigger } = useIconTrigger();
 
   // z-20 sits above the page. Folded labels reach over the content, and the
   // page's transform and filter — and a skeleton's — would paint over them.
@@ -111,7 +112,7 @@ export function Sidebar({
           )}
         </div>
         <m.button
-          {...iconTrigger}
+          {...trigger}
           type="button"
           onClick={onToggle}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}

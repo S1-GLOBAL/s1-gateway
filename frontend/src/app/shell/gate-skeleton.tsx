@@ -12,7 +12,7 @@ import { ThemePageSkeleton } from '@/pages/theme/ThemePageSkeleton';
 import { cn } from '@/shared/ui/cn';
 import { Logo } from '@/shared/ui/Logo';
 import { SidebarIcon } from '@/shared/ui/icons';
-import { iconTrigger } from '@/shared/ui/motion';
+import { useIconTrigger } from '@/shared/ui/motion';
 import { SkeletonBlock, SkeletonRegion, SkeletonText } from '@/shared/ui/Skeleton';
 import { navItemFor, navItemsFor } from '../nav';
 import { BottomNav } from './BottomNav';
@@ -28,6 +28,7 @@ import { useSidebarCollapsed } from './use-sidebar-collapsed';
  */
 export function GateSkeleton() {
   const { pathname } = useLocation();
+  const { trigger } = useIconTrigger();
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
   if (pathname === '/change-password') return <AuthPageSkeleton />;
 
@@ -68,7 +69,7 @@ export function GateSkeleton() {
             </span>
           </div>
           <m.button
-            {...iconTrigger}
+            {...trigger}
             type="button"
             onClick={toggleCollapsed}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -95,8 +96,8 @@ export function GateSkeleton() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <SkeletonBlock className="h-8 w-20" order={0} />
             <ThemeSwitch />
+            <SkeletonBlock className="h-8 w-28" order={0} />
           </div>
         </header>
         <main id="content" className="mx-auto w-full max-w-6xl flex-1 px-4 pt-8 pb-28 sm:px-6 md:pb-12">
