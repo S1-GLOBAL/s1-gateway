@@ -21,12 +21,12 @@ export class SuggestionNotFoundError extends DomainError {
   }
 }
 
-/** Only the suggester may edit or withdraw a suggestion; nobody decides their own. */
+/** Only the suggester may edit or withdraw a suggestion. */
 export class SuggestionNotAllowedError extends DomainError {
   override readonly code = 'NOT_ALLOWED';
 
-  constructor(message = 'Only the person who suggested this can change it.') {
-    super(message);
+  constructor() {
+    super('Only the person who suggested this can change it.');
   }
 }
 

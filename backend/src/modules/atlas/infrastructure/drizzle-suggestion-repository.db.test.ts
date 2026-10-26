@@ -109,7 +109,7 @@ describe('DrizzleSuggestionRepository', () => {
     ).rejects.toThrow();
   });
 
-  it("counts the waiting suggestions someone did not make", async () => {
+  it('counts the waiting suggestions someone did not make', async () => {
     await repository.add(suggestion('01111111-1111-4111-8111-111111111111', ADA, '2026-10-27T08:00:00.000Z', 'AZA'));
     await repository.add(suggestion('02222222-2222-4222-8222-222222222222', BEN, '2026-10-27T09:00:00.000Z', 'AZB'));
     await repository.add(suggestion('05555555-5555-4555-8555-555555555555', BEN, '2026-10-27T10:00:00.000Z', 'AZC'));

@@ -24,8 +24,6 @@ import { suggestionMessages as messages } from './suggestion.messages.js';
 
 export type SuggestionKind = 'add' | 'edit' | 'delete' | 'rules';
 
-export const SUGGESTION_KINDS: readonly SuggestionKind[] = ['add', 'edit', 'delete', 'rules'];
-
 /** The option a suggestion is about: the new code for `add`, the product type for `rules`. */
 export interface SuggestionTarget {
   readonly slot: DictionarySlotKey;

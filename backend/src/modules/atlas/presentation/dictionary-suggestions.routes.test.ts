@@ -104,7 +104,7 @@ describe('the suggestion routes', () => {
     ]);
   });
 
-  it("lets the suggester edit from the version they read, and answers 409 SUGGESTION_CHANGED from an old one", async () => {
+  it('lets the suggester edit from the version they read, and answers 409 SUGGESTION_CHANGED from an old one', async () => {
     const app = setup();
     const { id } = await suggested(app);
     const edit = { ...NEW_MATERIAL, proposal: { ...NEW_MATERIAL.proposal, meaning: 'Polymer, renamed' }, version: 1 };

@@ -294,7 +294,7 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 
 ### Step 1.4 — The repository
 
-- [x] **Action.** Port `domain/suggestions/suggestion-repository.ts` (`add`, `save(suggestion, event, expectedVersion)`, `findById`, `list(state)`, `events(id)`, `waitingCountFor(accountId)`), the in-memory fake, and `infrastructure/drizzle-suggestion-repository.ts` with a `.db.test.ts`. Add `usageOf(slot, code)` to `SpecIdRepository`, its fake and adapter. A dictionary code is the same in the short and the long form (only markers differ, ADR 0025), so one comparison counts both; a capacity matches by its unit letter.
+- [x] **Action.** Port `domain/suggestions/suggestion-repository.ts` (`add`, `save(step, expectedVersion)`, `findById`, `list(filter)`, `events(id)`, `countWaitingNotSuggestedBy(accountId)`), the in-memory fake, and `infrastructure/drizzle-suggestion-repository.ts` with a `.db.test.ts`. Add `usageOf(slot, code)` to `SpecIdRepository`, its fake and adapter. A dictionary code is the same in the short and the long form (only markers differ, ADR 0025), so one comparison counts both; a capacity matches by its unit letter.
 - [x] **Verify.** `npm test` (from the root, with `npm run db:up`) passes the new db tests.
 
 ### Step 1.5 — The use cases
