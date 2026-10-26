@@ -2,6 +2,7 @@ import { count } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { FixedClock } from '../../../shared/application/testing/fakes.js';
 import { CryptoIdGenerator } from '../../../shared/infrastructure/crypto-id-generator.js';
+import type { Database } from '../../../shared/infrastructure/database/connection.js';
 import { connectTestDatabase, resetTables } from '../../../test/database.js';
 import { accountsTable } from '../../accounts/index.js';
 import { ApproveDictionarySuggestion } from '../application/approve-dictionary-suggestion.js';
@@ -12,6 +13,7 @@ import { CURRENT_RELEASE } from '../domain/slots.js';
 import type { DictionaryChangeStore } from '../domain/suggestions/dictionary-change-store.js';
 import { DictionaryMovedOnError, SpecIdMovedOnError } from '../domain/suggestions/suggestion.errors.js';
 import { atlasDictionaryChanges } from './atlas-dictionary-changes.table.js';
+import { atlasDictionaryValues } from './atlas-dictionary.table.js';
 import { DrizzleDictionaryChangeStore } from './drizzle-dictionary-change-store.js';
 import { DrizzleDictionaryRepository } from './drizzle-dictionary-repository.js';
 import { DrizzleSourcingRepository } from './drizzle-sourcing-repository.js';
@@ -66,6 +68,42 @@ async function lidAndRename() {
 
 const changeCount = async () => (await connection.db.select({ n: count() }).from(atlasDictionaryChanges))[0]?.n;
 
+/**
+ * `db`, but the first read of the latest change waits for `meanwhile` to run,
+ * after any read of the values already under way: a dictionary read that
+ * straddles another approval's commit.
+ */
+function straddling(db: Database, meanwhile: () => Promise<unknown>): Database {
+  let valuesRead: Promise<unknown> | undefined;
+  let ran = false;
+  // Awaiting a Drizzle query runs its `execute`.
+  type Query = { execute: (...args: unknown[]) => Promise<unknown> };
+  return new Proxy(db, {
+    get(target, property, receiver) {
+      if (property !== 'select') return Reflect.get(target, property, receiver);
+      return (...args: Parameters<Database['select']>) => {
+        const builder = target.select(...args);
+        const from = builder.from.bind(builder);
+        builder.from = ((table: unknown) => {
+          const query = from(table as never) as unknown as Query;
+          const execute = query.execute.bind(query);
+          if (table === atlasDictionaryValues) query.execute = (...given) => (valuesRead = execute(...given));
+          if (table === atlasDictionaryChanges && !ran) {
+            ran = true;
+            query.execute = async (...given) => {
+              await valuesRead;
+              await meanwhile();
+              return execute(...given);
+            };
+          }
+          return query;
+        }) as never;
+        return builder;
+      };
+    },
+  });
+}
+
 describe('DrizzleDictionaryChangeStore', () => {
   it('rolls back everything, the dictionary included, when a Spec ID moved on mid-approval', async () => {
     const { saved, suggestion, update } = await lidAndRename();
@@ -114,6 +152,32 @@ describe('DrizzleDictionaryChangeStore', () => {
 
     expect(!result.ok && result.error).toBeInstanceOf(DictionaryMovedOnError);
     expect(await changeCount()).toBe(1);
+  });
+
+  it('never writes a dictionary read before another approval landed as if it came after', async () => {
+    const { suggestion } = await lidAndRename();
+    const other = await new SuggestDictionaryChange(dictionaries, specIds, suggestions, clock, ids).execute({
+      target: { slot: 'material', code: 'AZZ' },
+      proposal: { kind: 'add', meaning: 'Polymer, invented', searchWords: [], rules: null },
+      by: ADA,
+    });
+    if (!other.ok) throw other.error;
+    const rename = () =>
+      new ApproveDictionarySuggestion(dictionaries, specIds, suggestions, store, clock, ids).execute({ id: suggestion.id, version: 1, by: BEN });
+    const reading = new DrizzleDictionaryRepository(straddling(connection.db, rename));
+
+    const result = await new ApproveDictionarySuggestion(reading, specIds, suggestions, store, clock, ids).execute({
+      id: other.value.id,
+      version: 1,
+      by: BEN,
+    });
+
+    // Either refused as out of date, or made from the dictionary the rename left: never the rename undone.
+    const dictionary = await dictionaries.get(CURRENT_RELEASE);
+    expect(dictionary?.meaningOf('material', 'APZ')).toBe('Polymer, PS (polystyrene)');
+    expect(dictionary?.live('material', 'APS')).toBe('APZ');
+    if (result.ok) expect(dictionary?.meaningOf('material', 'AZZ')).toBe('Polymer, invented');
+    else expect(result.error).toBeInstanceOf(DictionaryMovedOnError);
   });
 
   it('writes the renames and search words an approval gives, read back with the dictionary', async () => {

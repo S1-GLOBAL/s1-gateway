@@ -29,18 +29,21 @@ export class DrizzleDictionaryRepository implements DictionaryRepository {
     if (!releaseRow) return null;
 
     const live = release === CURRENT_RELEASE;
-    const [values, rules, renames, searchWords, [latest]] = await Promise.all([
+    // The latest change first: everything read after it is at least as new, so
+    // an approval landing in between leaves a plan the change store refuses,
+    // never one that writes the older dictionary back.
+    const [latest] = live
+      ? await this.db
+          .select({ number: atlasDictionaryChanges.number, at: atlasDictionaryChanges.approvedAt })
+          .from(atlasDictionaryChanges)
+          .orderBy(desc(atlasDictionaryChanges.number))
+          .limit(1)
+      : [];
+    const [values, rules, renames, searchWords] = await Promise.all([
       this.db.select().from(atlasDictionaryValues).where(eq(atlasDictionaryValues.release, release)),
       this.db.select().from(atlasSlotRules).where(eq(atlasSlotRules.release, release)),
       live ? this.db.select().from(atlasDictionaryRenames) : Promise.resolve([]),
       live ? this.db.select().from(atlasDictionarySearchWords) : Promise.resolve([]),
-      live
-        ? this.db
-            .select({ number: atlasDictionaryChanges.number, at: atlasDictionaryChanges.approvedAt })
-            .from(atlasDictionaryChanges)
-            .orderBy(desc(atlasDictionaryChanges.number))
-            .limit(1)
-        : Promise.resolve([]),
     ]);
     return toDomain(releaseRow, values, rules, { renames, searchWords, latest: latest ?? null });
   }
