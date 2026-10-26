@@ -4,7 +4,9 @@ import { accountsTable } from '../../accounts/index.js';
 import type { Proposal } from '../domain/suggestions/proposal.js';
 import { SuggestionChangedError } from '../domain/suggestions/suggestion.errors.js';
 import { Suggestion } from '../domain/suggestions/suggestion.js';
+import { atlasDictionarySuggestions } from './atlas-dictionary-suggestions.table.js';
 import { DrizzleSuggestionRepository } from './drizzle-suggestion-repository.js';
+import { toSuggestionRow } from './suggestion.mapper.js';
 
 const connection = connectTestDatabase();
 const repository = new DrizzleSuggestionRepository(connection.db);
@@ -95,6 +97,16 @@ describe('DrizzleSuggestionRepository', () => {
 
     expect((await repository.list('waiting')).map((record) => record.suggestion.target.code)).toEqual(['AZA', 'AZC']);
     expect((await repository.list('decided')).map((record) => record.suggestion.target.code)).toEqual(['AZB']);
+  });
+
+  it('refuses a reason on a suggestion that was not rejected', async () => {
+    const row = toSuggestionRow(suggestion('01111111-1111-4111-8111-111111111111', ADA, '2026-10-27T08:00:00.000Z').suggestion);
+    await expect(connection.db.insert(atlasDictionarySuggestions).values({ ...row, reason: 'Duplicate' })).rejects.toThrow();
+    await expect(
+      connection.db
+        .insert(atlasDictionarySuggestions)
+        .values({ ...row, state: 'withdrawn', decidedAt: new Date('2026-10-27T09:00:00.000Z'), reason: 'Duplicate' }),
+    ).rejects.toThrow();
   });
 
   it("counts the waiting suggestions someone did not make", async () => {

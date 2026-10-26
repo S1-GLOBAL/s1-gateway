@@ -26,8 +26,8 @@ CREATE TABLE "atlas_dictionary_suggestions" (
 	"change_number" integer,
 	CONSTRAINT "atlas_dictionary_suggestions_kind_check" CHECK ("atlas_dictionary_suggestions"."kind" in ('add', 'edit', 'delete', 'rules')),
 	CONSTRAINT "atlas_dictionary_suggestions_state_check" CHECK ("atlas_dictionary_suggestions"."state" in ('waiting', 'approved', 'rejected', 'withdrawn')),
-	CONSTRAINT "atlas_dictionary_suggestions_decision_check" CHECK (("atlas_dictionary_suggestions"."state" = 'waiting' and "atlas_dictionary_suggestions"."decided_by" is null and "atlas_dictionary_suggestions"."decided_at" is null)
-        or ("atlas_dictionary_suggestions"."state" = 'withdrawn' and "atlas_dictionary_suggestions"."decided_by" is null and "atlas_dictionary_suggestions"."decided_at" is not null)
+	CONSTRAINT "atlas_dictionary_suggestions_decision_check" CHECK (("atlas_dictionary_suggestions"."state" = 'waiting' and "atlas_dictionary_suggestions"."decided_by" is null and "atlas_dictionary_suggestions"."decided_at" is null and "atlas_dictionary_suggestions"."reason" is null)
+        or ("atlas_dictionary_suggestions"."state" = 'withdrawn' and "atlas_dictionary_suggestions"."decided_by" is null and "atlas_dictionary_suggestions"."decided_at" is not null and "atlas_dictionary_suggestions"."reason" is null)
         or ("atlas_dictionary_suggestions"."state" = 'approved' and "atlas_dictionary_suggestions"."decided_by" is not null and "atlas_dictionary_suggestions"."decided_at" is not null and "atlas_dictionary_suggestions"."reason" is null)
         or ("atlas_dictionary_suggestions"."state" = 'rejected' and "atlas_dictionary_suggestions"."decided_by" is not null and "atlas_dictionary_suggestions"."decided_at" is not null and "atlas_dictionary_suggestions"."reason" is not null))
 );

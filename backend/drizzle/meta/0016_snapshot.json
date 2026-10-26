@@ -1,5 +1,5 @@
 {
-  "id": "77534c38-31ab-4da2-be37-a779368936d2",
+  "id": "5b671a83-a7be-424e-9137-67abcad1554e",
   "prevId": "8a665e0a-d571-4ac7-a87f-7aba2c716128",
   "version": "7",
   "dialect": "postgresql",
@@ -540,7 +540,7 @@
         },
         "atlas_dictionary_suggestions_decision_check": {
           "name": "atlas_dictionary_suggestions_decision_check",
-          "value": "(\"atlas_dictionary_suggestions\".\"state\" = 'waiting' and \"atlas_dictionary_suggestions\".\"decided_by\" is null and \"atlas_dictionary_suggestions\".\"decided_at\" is null)\n        or (\"atlas_dictionary_suggestions\".\"state\" = 'withdrawn' and \"atlas_dictionary_suggestions\".\"decided_by\" is null and \"atlas_dictionary_suggestions\".\"decided_at\" is not null)\n        or (\"atlas_dictionary_suggestions\".\"state\" = 'approved' and \"atlas_dictionary_suggestions\".\"decided_by\" is not null and \"atlas_dictionary_suggestions\".\"decided_at\" is not null and \"atlas_dictionary_suggestions\".\"reason\" is null)\n        or (\"atlas_dictionary_suggestions\".\"state\" = 'rejected' and \"atlas_dictionary_suggestions\".\"decided_by\" is not null and \"atlas_dictionary_suggestions\".\"decided_at\" is not null and \"atlas_dictionary_suggestions\".\"reason\" is not null)"
+          "value": "(\"atlas_dictionary_suggestions\".\"state\" = 'waiting' and \"atlas_dictionary_suggestions\".\"decided_by\" is null and \"atlas_dictionary_suggestions\".\"decided_at\" is null and \"atlas_dictionary_suggestions\".\"reason\" is null)\n        or (\"atlas_dictionary_suggestions\".\"state\" = 'withdrawn' and \"atlas_dictionary_suggestions\".\"decided_by\" is null and \"atlas_dictionary_suggestions\".\"decided_at\" is not null and \"atlas_dictionary_suggestions\".\"reason\" is null)\n        or (\"atlas_dictionary_suggestions\".\"state\" = 'approved' and \"atlas_dictionary_suggestions\".\"decided_by\" is not null and \"atlas_dictionary_suggestions\".\"decided_at\" is not null and \"atlas_dictionary_suggestions\".\"reason\" is null)\n        or (\"atlas_dictionary_suggestions\".\"state\" = 'rejected' and \"atlas_dictionary_suggestions\".\"decided_by\" is not null and \"atlas_dictionary_suggestions\".\"decided_at\" is not null and \"atlas_dictionary_suggestions\".\"reason\" is not null)"
         }
       },
       "isRLSEnabled": false

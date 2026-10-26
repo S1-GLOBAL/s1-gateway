@@ -49,11 +49,11 @@ export const atlasDictionarySuggestions = pgTable(
       'atlas_dictionary_suggestions_state_check',
       sql`${table.state} in ('waiting', 'approved', 'rejected', 'withdrawn')`,
     ),
-    // Waiting has no decision; approved and rejected name who decided; only a rejection has a reason.
+    // Waiting has no decision; withdrawn has a time but no decider; approved and rejected name who decided; only a rejection has a reason.
     check(
       'atlas_dictionary_suggestions_decision_check',
-      sql`(${table.state} = 'waiting' and ${table.decidedBy} is null and ${table.decidedAt} is null)
-        or (${table.state} = 'withdrawn' and ${table.decidedBy} is null and ${table.decidedAt} is not null)
+      sql`(${table.state} = 'waiting' and ${table.decidedBy} is null and ${table.decidedAt} is null and ${table.reason} is null)
+        or (${table.state} = 'withdrawn' and ${table.decidedBy} is null and ${table.decidedAt} is not null and ${table.reason} is null)
         or (${table.state} = 'approved' and ${table.decidedBy} is not null and ${table.decidedAt} is not null and ${table.reason} is null)
         or (${table.state} = 'rejected' and ${table.decidedBy} is not null and ${table.decidedAt} is not null and ${table.reason} is not null)`,
     ),
