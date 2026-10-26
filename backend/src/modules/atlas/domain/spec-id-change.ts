@@ -16,6 +16,8 @@ export interface SpecIdChangeProps {
   /** Null for `created`. */
   readonly nameBefore: string | null;
   readonly nameAfter: string;
+  /** The dictionary change whose approval made it (ADR 0031); null, or left out, for anyone's own edit. */
+  readonly dictionaryChangeNumber?: number | null;
 }
 
 /** One entry in a saved Spec ID's history (ADR 0022). Only ever added, never changed. */
@@ -37,8 +39,11 @@ export class SpecIdChange {
     });
   }
 
-  /** A change from `before` to `after`, made by whoever `after` says last changed it. */
-  static updated(before: SavedSpecId, after: SavedSpecId, id: string): SpecIdChange {
+  /**
+   * A change from `before` to `after`, made by whoever `after` says last
+   * changed it; by approving dictionary change `dictionaryChangeNumber`, when given.
+   */
+  static updated(before: SavedSpecId, after: SavedSpecId, id: string, dictionaryChangeNumber: number | null = null): SpecIdChange {
     const { updatedBy, updatedAt } = after;
     if (updatedBy === null || updatedAt === null) throw new Error('An updated Spec ID names who changed it and when');
     return new SpecIdChange({
@@ -51,6 +56,7 @@ export class SpecIdChange {
       codeAfter: after.specId.code,
       nameBefore: before.name,
       nameAfter: after.name,
+      dictionaryChangeNumber,
     });
   }
 
@@ -94,6 +100,10 @@ export class SpecIdChange {
 
   get nameBefore(): string | null {
     return this.props.nameBefore;
+  }
+
+  get dictionaryChangeNumber(): number | null {
+    return this.props.dictionaryChangeNumber ?? null;
   }
 
   get nameAfter(): string {

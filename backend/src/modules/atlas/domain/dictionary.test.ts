@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Dictionary } from './dictionary.js';
 import { s2Dictionary } from './testing/s2-dictionary.js';
 
 describe('Dictionary', () => {
@@ -32,5 +33,40 @@ describe('Dictionary', () => {
 
   it('refuses to guess a missing rule', () => {
     expect(() => dictionary.ruleFor('ZZZ', 'height')).toThrow();
+  });
+});
+
+describe('Dictionary after approved changes', () => {
+  const seed = s2Dictionary();
+  const changed = new Dictionary(
+    seed.release,
+    seed.approvedOn,
+    [...seed.values().filter((value) => value.code !== 'APS' && value.code !== 'HD'), { slot: 'material', code: 'APZ', meaning: 'Polymer, PS' }],
+    seed.slotRules(),
+    {
+      renames: [
+        { slot: 'material', oldCode: 'APS', newCode: 'APZ', changeNumber: 1 },
+        { slot: 'profile', oldCode: 'HD', newCode: null, changeNumber: 2 },
+      ],
+      searchWords: [
+        { slot: 'material', word: 'styrene', code: 'APZ', changeNumber: 1 },
+        { slot: 'material', word: 'polystyrene', code: 'APZ', changeNumber: 1 },
+      ],
+      change: { number: 2, at: new Date('2026-10-27T10:00:00.000Z') },
+    },
+  );
+
+  it('reads a renamed code as its live letters, a deleted one as gone, and any other as itself', () => {
+    expect(changed.live('material', 'APS')).toBe('APZ');
+    expect(changed.live('profile', 'HD')).toBeUndefined();
+    expect(changed.live('material', 'APP')).toBe('APP');
+    expect(changed.live('material', 'AQQ')).toBeUndefined();
+  });
+
+  it("knows its latest change, and an option's search words in order", () => {
+    expect(changed.change?.number).toBe(2);
+    expect(changed.searchWordsOf('material', 'APZ')).toEqual(['polystyrene', 'styrene']);
+    expect(seed.change).toBeNull();
+    expect(seed.live('material', 'APS')).toBe('APS');
   });
 });

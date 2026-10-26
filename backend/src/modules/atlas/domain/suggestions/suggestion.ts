@@ -1,6 +1,6 @@
 import { err, ok, type Result } from '../../../../shared/domain/result.js';
 import type { Proposal, SuggestionKind, SuggestionTarget } from './proposal.js';
-import { SuggestionDecidedError, SuggestionNotAllowedError } from './suggestion.errors.js';
+import { OwnSuggestionError, SuggestionDecidedError, SuggestionNotAllowedError } from './suggestion.errors.js';
 
 export type SuggestionState = 'waiting' | 'approved' | 'rejected' | 'withdrawn';
 
@@ -160,6 +160,42 @@ export class Suggestion {
     if (refused) return err(refused);
     const suggestion = new Suggestion({ ...this.props, state: 'withdrawn', decidedAt: at });
     return ok({ suggestion, event: this.event(eventId, 'withdrawn', by, at, {}) });
+  }
+
+  /**
+   * An admin who did not suggest it approves it, as dictionary change
+   * `changeNumber` (#95). That the approver is an admin is the route's gate.
+   */
+  approve(
+    by: string,
+    at: Date,
+    eventId: string,
+    changeNumber: number,
+  ): Result<SuggestionStep, OwnSuggestionError | SuggestionDecidedError> {
+    const refused = this.decisionRefusalFor(by);
+    if (refused) return err(refused);
+    const suggestion = new Suggestion({ ...this.props, state: 'approved', decidedBy: by, decidedAt: at, changeNumber });
+    return ok({ suggestion, event: this.event(eventId, 'approved', by, at, {}) });
+  }
+
+  /** An admin who did not suggest it rejects it, saying why: `reason` is already checked. */
+  reject(
+    by: string,
+    reason: string,
+    at: Date,
+    eventId: string,
+  ): Result<SuggestionStep, OwnSuggestionError | SuggestionDecidedError> {
+    const refused = this.decisionRefusalFor(by);
+    if (refused) return err(refused);
+    const suggestion = new Suggestion({ ...this.props, state: 'rejected', decidedBy: by, decidedAt: at, reason });
+    return ok({ suggestion, event: { ...this.event(eventId, 'rejected', by, at, {}), reason } });
+  }
+
+  /** Why `by` may not approve or reject it now, or null when they may. */
+  decisionRefusalFor(by: string): OwnSuggestionError | SuggestionDecidedError | null {
+    if (by === this.suggestedBy) return new OwnSuggestionError();
+    if (this.state !== 'waiting') return new SuggestionDecidedError();
+    return null;
   }
 
   /** Why `by` may not edit or withdraw it now, or null when they may. */

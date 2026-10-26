@@ -44,7 +44,7 @@ function setup() {
     edit: new EditDictionarySuggestion(dictionaries, specIds, suggestions, clock, ids),
     withdraw: new WithdrawDictionarySuggestion(suggestions, clock, ids),
     list: new ListDictionarySuggestions(suggestions),
-    get: new GetDictionarySuggestion(suggestions, specIds),
+    get: new GetDictionarySuggestion(dictionaries, suggestions, specIds),
     count: new CountWaitingSuggestions(suggestions),
     usage: new GetDictionaryUsage(specIds),
     save: new SaveSpecId(dictionaries, specIds, new InMemorySourcingRepository(), clock, ids),

@@ -2,8 +2,10 @@ import { z } from 'zod';
 import type {
   CapacityFact,
   DecodeSpecIdRequest,
+  ApproveDictionarySuggestionRequest,
   DictionaryProposal,
   EditDictionarySuggestionRequest,
+  RejectDictionarySuggestionRequest,
   EncodeSpecIdRequest,
   ReadSpecIdTextRequest,
   MeasurementFact,
@@ -114,6 +116,16 @@ export const suggestDictionaryChangeRequestSchema = z.object({
 export const editDictionarySuggestionRequestSchema = suggestDictionaryChangeRequestSchema.extend({
   version: z.number().int().positive(),
 }) satisfies z.ZodType<EditDictionarySuggestionRequest>;
+
+/** An approval names the version the approver read (#95). */
+export const approveDictionarySuggestionRequestSchema = z.object({
+  version: z.number().int().positive(),
+}) satisfies z.ZodType<ApproveDictionarySuggestionRequest>;
+
+/** Whether the reason is long enough, and its words, are the domain's call. */
+export const rejectDictionarySuggestionRequestSchema = z.object({
+  reason: z.string(),
+}) satisfies z.ZodType<RejectDictionarySuggestionRequest>;
 
 /** A suggestion's id: anything else names no suggestion, so it is answered 404 before any query. */
 export const suggestionIdSchema = z.guid();

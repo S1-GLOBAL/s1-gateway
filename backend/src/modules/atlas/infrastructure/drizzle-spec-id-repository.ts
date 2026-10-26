@@ -19,12 +19,16 @@ import type {
   SpecIdChangeRecord,
   SpecIdRepository,
 } from '../domain/spec-id-repository.js';
+import { atlasDictionaryChanges } from './atlas-dictionary-changes.table.js';
+import { atlasDictionarySuggestions } from './atlas-dictionary-suggestions.table.js';
 import { atlasSpecIdChanges } from './atlas-spec-id-changes.table.js';
 import { atlasSpecIds } from './atlas-spec-ids.table.js';
 import { toChange, toChangeRow, toDomain, toRow } from './saved-spec-id.mapper.js';
 
 /** Whoever last changed a Spec ID: the accounts table a second time. */
 const updater = alias(accountsTable, 'updater');
+const suggester = alias(accountsTable, 'suggester');
+const approver = alias(accountsTable, 'approver');
 
 /** When a Spec ID was saved or last changed: the library's order. */
 const lastChangedAt = sql`coalesce(${atlasSpecIds.updatedAt}, ${atlasSpecIds.savedAt})`;
@@ -111,12 +115,13 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
   }
 
   async usageOf(slot: DictionarySlotKey, code: string): Promise<number> {
-    // A dictionary code is the same in the short and the long form (ADR 0025): only markers differ.
-    // A capacity holds its unit as its first letter, and no unit is a marker.
-    const column = atlasSpecIds[slot];
-    const holds = slot === 'capacity' ? like(column, `${code}%`) : eq(column, code);
-    const [row] = await this.db.select({ total: count() }).from(atlasSpecIds).where(holds);
+    const [row] = await this.db.select({ total: count() }).from(atlasSpecIds).where(holdsOption(slot, code));
     return Number(row?.total ?? 0);
+  }
+
+  async holding(slot: DictionarySlotKey, code: string): Promise<SavedSpecIdRecord[]> {
+    const rows = await this.selectWithNames().where(holdsOption(slot, code)).orderBy(asc(atlasSpecIds.code));
+    return rows.map(toRecord);
   }
 
   async count(filter: LibraryFilter): Promise<number> {
@@ -142,13 +147,35 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
 
   async history(id: string): Promise<SpecIdChangeRecord[]> {
     const rows = await this.db
-      .select({ change: atlasSpecIdChanges, changedByName: accountsTable.fullName })
+      .select({
+        change: atlasSpecIdChanges,
+        changedByName: accountsTable.fullName,
+        suggestedBy: suggester.id,
+        suggestedByName: suggester.fullName,
+        approvedBy: approver.id,
+        approvedByName: approver.fullName,
+      })
       .from(atlasSpecIdChanges)
       .innerJoin(accountsTable, eq(atlasSpecIdChanges.changedBy, accountsTable.id))
+      .leftJoin(atlasDictionaryChanges, eq(atlasSpecIdChanges.dictionaryChangeNumber, atlasDictionaryChanges.number))
+      .leftJoin(atlasDictionarySuggestions, eq(atlasDictionaryChanges.suggestionId, atlasDictionarySuggestions.id))
+      .leftJoin(suggester, eq(atlasDictionarySuggestions.suggestedBy, suggester.id))
+      .leftJoin(approver, eq(atlasDictionaryChanges.approvedBy, approver.id))
       .where(eq(atlasSpecIdChanges.specId, id))
       // `updated` sorts before `created`, so a creation is last even at the same instant.
       .orderBy(desc(atlasSpecIdChanges.changedAt), desc(atlasSpecIdChanges.kind), desc(atlasSpecIdChanges.id));
-    return rows.map((row) => ({ change: toChange(row.change), changedByName: row.changedByName }));
+    return rows.map((row) => {
+      const number = row.change.dictionaryChangeNumber;
+      const dictionaryChange =
+        number !== null && row.suggestedBy !== null && row.approvedBy !== null
+          ? {
+              number,
+              suggestedBy: { id: row.suggestedBy, fullName: row.suggestedByName ?? '' },
+              approvedBy: { id: row.approvedBy, fullName: row.approvedByName ?? '' },
+            }
+          : null;
+      return { change: toChange(row.change), changedByName: row.changedByName, dictionaryChange };
+    });
   }
 
   async formerHolders(code: string): Promise<FormerHolderRecord[]> {
@@ -203,4 +230,14 @@ function toRecord(row: {
 /** `%`, `_` and `\` mean themselves in a search, not LIKE's wildcards. */
 function escapeLike(text: string): string {
   return text.replace(/[\\%_]/g, (character) => `\\${character}`);
+}
+
+/**
+ * A slot holding a dictionary option. A code is the same in the short and the
+ * long form (ADR 0025): only markers differ. A capacity holds its unit as its
+ * first letter, and no unit is a marker or a wildcard (`isOptionCode`).
+ */
+function holdsOption(slot: DictionarySlotKey, code: string): SQL {
+  const column = atlasSpecIds[slot];
+  return slot === 'capacity' ? like(column, `${code}%`) : eq(column, code);
 }

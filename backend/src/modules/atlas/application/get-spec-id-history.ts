@@ -29,7 +29,10 @@ export class GetSpecIdHistory implements UseCase<SavedSpecIdIdInput, Result<Spec
   }
 }
 
-function toSpecIdChangeDto({ change, changedByName }: SpecIdChangeRecord, dictionary: Dictionary): SpecIdChangeDto {
+function toSpecIdChangeDto(
+  { change, changedByName, dictionaryChange }: SpecIdChangeRecord,
+  dictionary: Dictionary,
+): SpecIdChangeDto {
   return {
     kind: change.kind,
     changedBy: { id: change.changedBy, fullName: changedByName },
@@ -39,10 +42,15 @@ function toSpecIdChangeDto({ change, changedByName }: SpecIdChangeRecord, dictio
     nameBefore: change.nameBefore,
     nameAfter: change.nameAfter,
     slots: change.codeBefore === null ? [] : slotChanges(change.codeBefore, change.codeAfter, dictionary),
+    dictionaryChange: dictionaryChange ?? null,
   };
 }
 
-/** Meanings are never reassigned between releases (ADR 0019), so today's dictionary reads both codes. */
+/**
+ * Today's dictionary reads both codes. A code an approved change renamed or
+ * deleted since reads as its letters, and a reworded one in today's words
+ * (ADR 0031).
+ */
 function slotChanges(codeBefore: string, codeAfter: string, dictionary: Dictionary): SlotChangeDto[] {
   const before = SpecId.restoreCode(codeBefore);
   const after = SpecId.restoreCode(codeAfter);

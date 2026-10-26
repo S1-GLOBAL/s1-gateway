@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Proposal } from './proposal.js';
-import { SuggestionDecidedError, SuggestionNotAllowedError } from './suggestion.errors.js';
+import { OwnSuggestionError, SuggestionDecidedError, SuggestionNotAllowedError } from './suggestion.errors.js';
 import { Suggestion } from './suggestion.js';
 
 const AT = new Date('2026-10-27T08:00:00.000Z');
@@ -68,5 +68,29 @@ describe('Suggestion', () => {
     if (!withdrawn.ok) throw new Error('setup failed');
     const edited = withdrawn.value.suggestion.edit('ada', EDITED, LATER, 'e3');
     expect(!edited.ok && edited.error).toBeInstanceOf(SuggestionDecidedError);
+  });
+});
+
+describe('Suggestion: deciding', () => {
+  it('is approved by someone else as a numbered change, with an approved event', () => {
+    const result = suggested().suggestion.approve('ben', LATER, 'e2', 3);
+    expect(result.ok && result.value.suggestion).toMatchObject({ state: 'approved', decidedBy: 'ben', decidedAt: LATER, changeNumber: 3 });
+    expect(result.ok && result.value.event).toMatchObject({ kind: 'approved', by: 'ben', reason: null });
+  });
+
+  it('is rejected by someone else, with the reason on the suggestion and its event', () => {
+    const result = suggested().suggestion.reject('ben', 'Already APP.', LATER, 'e2');
+    expect(result.ok && result.value.suggestion).toMatchObject({ state: 'rejected', decidedBy: 'ben', reason: 'Already APP.' });
+    expect(result.ok && result.value.event).toMatchObject({ kind: 'rejected', reason: 'Already APP.' });
+  });
+
+  it('is never decided by its own suggester, nor decided twice', () => {
+    const { suggestion } = suggested();
+    const own = suggestion.approve('ada', LATER, 'e2', 1);
+    expect(!own.ok && own.error).toBeInstanceOf(OwnSuggestionError);
+    const approved = suggestion.approve('ben', LATER, 'e2', 1);
+    if (!approved.ok) throw approved.error;
+    const twice = approved.value.suggestion.reject('cy', 'Late.', LATER, 'e3');
+    expect(!twice.ok && twice.error).toBeInstanceOf(SuggestionDecidedError);
   });
 });

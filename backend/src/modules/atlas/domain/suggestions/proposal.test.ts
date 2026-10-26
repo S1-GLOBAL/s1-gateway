@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Dictionary } from '../dictionary.js';
 import { RULED_SLOTS, type RuledSlotKey, type SlotRule } from '../slots.js';
 import { s2Dictionary } from '../testing/s2-dictionary.js';
 import { checkProposal, type Proposal, type ProposalContext, type SuggestionTarget } from './proposal.js';
@@ -7,7 +8,7 @@ import type { InvalidSuggestionError } from './suggestion.errors.js';
 const dictionary = s2Dictionary();
 
 function context(overrides: Partial<ProposalContext> = {}): ProposalContext {
-  return { dictionary, usage: 0, approvedWords: [], ...overrides };
+  return { dictionary, usage: 0, ...overrides };
 }
 
 function issuesOf(target: SuggestionTarget, proposal: Proposal, given: Partial<ProposalContext> = {}) {
@@ -116,12 +117,14 @@ describe('checkProposal: search words', () => {
   });
 
   it('refuses a word an approved change gave another option, but not the same option', () => {
-    const approvedWords = [{ slot: 'material' as const, word: 'sugarcane fibre', code: 'CBG' }];
-    expect(issuesOf(...addMaterial('AZZ', 'Invented', ['sugarcane fibre']), { approvedWords }).searchWords).toEqual([
+    const withWords = new Dictionary(dictionary.release, dictionary.approvedOn, dictionary.values(), dictionary.slotRules(), {
+      searchWords: [{ slot: 'material', word: 'sugarcane fibre', code: 'CBG', changeNumber: 1 }],
+    });
+    expect(issuesOf(...addMaterial('AZZ', 'Invented', ['sugarcane fibre']), { dictionary: withWords }).searchWords).toEqual([
       '“sugarcane fibre” already finds CBG (Molded fibre, bagasse).',
     ]);
     expect(
-      issuesOf({ slot: 'material', code: 'CBG' }, { kind: 'edit', newCode: null, meaning: null, searchWords: ['sugarcane fibre', 'cane fibre'] }, { approvedWords }),
+      issuesOf({ slot: 'material', code: 'CBG' }, { kind: 'edit', newCode: null, meaning: null, searchWords: ['sugarcane fibre', 'cane fibre'] }, { dictionary: withWords }),
     ).toEqual({});
   });
 

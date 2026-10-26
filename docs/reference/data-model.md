@@ -120,8 +120,11 @@ holds the raw token; only `token_hash` is stored. Rows are never deleted.
 Each released dictionary, `S1 0.1.0` and `S2 0.1.0` ([ADR 0021](../decisions/0021-the-atlas-dictionary-changes-only-by-migration.md),
 [ADR 0024](../decisions/0024-spec-ids-move-to-the-s2-format.md)).
 Defined in `backend/src/modules/atlas/infrastructure/atlas-dictionary.table.ts`,
-like the two tables below. Filled only by migration; nothing in the
-application writes these three tables.
+like the two tables below. Release `S1 0.1.0` came by migration and never
+changes. The values and rules of `S2 0.1.0` change only when an admin approves
+a dictionary suggestion: the dictionary change store writes the whole release
+again, in the approval's transaction
+([ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md)).
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
@@ -249,6 +252,7 @@ comparing the two codes.
 | `code_after` | `varchar(97)` | no | — | |
 | `name_before` | `varchar(120)` | yes | — | Null for `created` |
 | `name_after` | `varchar(120)` | no | — | |
+| `dictionary_change_number` | `integer` | yes | — | FK `atlas_spec_id_changes_dictionary_change_fk` → `atlas_dictionary_changes.number`: the approved dictionary change that made this change; null for anyone's own edit ([ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md)) |
 
 Migration `0006_backfill_atlas_spec_id_created_changes` gave every Spec ID
 saved before this table existed its `created` entry, from `saved_by` and
@@ -372,7 +376,7 @@ also recorded in `atlas_dictionary_suggestion_events`.
 | `decided_by` | `uuid` | yes | — | FK `atlas_dictionary_suggestions_decided_by_fk` → `accounts.id`: who approved or rejected it |
 | `decided_at` | `timestamptz` | yes | — | When it was approved, rejected or withdrawn |
 | `reason` | `varchar(500)` | yes | — | Why it was rejected |
-| `change_number` | `integer` | yes | — | The dictionary change it became, once approved. Its foreign key arrives with that table (plan 0010, phase 2) |
+| `change_number` | `integer` | yes | — | The dictionary change it became, once approved. It mirrors `atlas_dictionary_changes.suggestion_id`, which holds the foreign key; one each way would make each table's type depend on the other's |
 
 **Constraints and indexes**
 
@@ -406,3 +410,67 @@ Rows are only ever inserted, in the same transaction as the step they record.
 |---|---|---|
 | `atlas_dictionary_suggestion_events_kind_check` | check | One of the five steps |
 | `atlas_dictionary_suggestion_events_suggestion_idx` | `suggestion_id, at` | A suggestion's trail in order |
+
+## `atlas_dictionary_changes`
+
+One row per approved dictionary suggestion: dictionary change #1, #2, #3…
+Defined in
+`backend/src/modules/atlas/infrastructure/atlas-dictionary-changes.table.ts`.
+The next number is the last plus one, taken under the approval's advisory
+lock, so there are no gaps.
+
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `number` | `integer` | no | — | Primary key |
+| `suggestion_id` | `uuid` | no | — | FK `atlas_dictionary_changes_suggestion_id_fk` → `atlas_dictionary_suggestions.id`. Unique |
+| `approved_by` | `uuid` | no | — | FK `atlas_dictionary_changes_approved_by_fk` → `accounts.id` |
+| `approved_at` | `timestamptz` | no | — | |
+| `spec_ids_rewritten` | `integer` | no | — | How many saved Spec IDs the approval rewrote |
+
+**Constraints and indexes**
+
+| Name | On | Why |
+|---|---|---|
+| `atlas_dictionary_changes_suggestion_id_unique` | `suggestion_id`, unique | A suggestion becomes one change at most |
+
+## `atlas_dictionary_renames`
+
+Every code an approved change renamed or deleted, and its live letters now.
+Defined in `backend/src/modules/atlas/infrastructure/atlas-dictionary.table.ts`.
+Flattened: renaming A to B, then B to C, leaves A → C and B → C, so one lookup
+reaches the live letters. Code that names an S2 0.1.0 code reads it through
+this table.
+
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `slot` | `varchar(32)` | no | — | A dictionary slot key |
+| `old_code` | `varchar(5)` | no | — | The letters it had |
+| `new_code` | `varchar(5)` | yes | — | Its live letters; null once deleted |
+| `change_number` | `integer` | no | — | FK `atlas_dictionary_renames_change_number_fk` → `atlas_dictionary_changes.number`: the change that last moved it |
+
+**Constraints and indexes**
+
+| Name | On | Why |
+|---|---|---|
+| `atlas_dictionary_renames_pk` | `slot, old_code`, primary key | One live code per old code |
+
+## `atlas_dictionary_search_words`
+
+Words an approved change gave an option, read in pasted text as that option
+alongside the word list in the code
+([ADR 0026](../decisions/0026-raw-text-is-read-by-rules-and-a-public-word-list.md)).
+Defined in `backend/src/modules/atlas/infrastructure/atlas-dictionary.table.ts`.
+
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `slot` | `varchar(32)` | no | — | A dictionary slot key |
+| `word` | `varchar(40)` | no | — | Lower case, one space between words |
+| `code` | `varchar(5)` | no | — | The option it finds; moved by a rename, deleted with its option |
+| `change_number` | `integer` | no | — | FK `atlas_dictionary_search_words_change_number_fk` → `atlas_dictionary_changes.number`: the change that gave it |
+
+**Constraints and indexes**
+
+| Name | On | Why |
+|---|---|---|
+| `atlas_dictionary_search_words_pk` | `slot, word`, primary key | One meaning per word in each list |
+| `atlas_dictionary_search_words_option_idx` | `slot, code` | An option's words |

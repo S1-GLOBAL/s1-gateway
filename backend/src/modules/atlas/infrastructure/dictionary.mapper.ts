@@ -1,17 +1,63 @@
 import { Dictionary } from '../domain/dictionary.js';
 import type { DictionarySlotKey, RuledSlotKey, SlotRule } from '../domain/slots.js';
-import type { atlasDictionaryReleases, atlasDictionaryValues, atlasSlotRules } from './atlas-dictionary.table.js';
+import type {
+  atlasDictionaryReleases,
+  atlasDictionaryRenames,
+  atlasDictionarySearchWords,
+  atlasDictionaryValues,
+  atlasSlotRules,
+} from './atlas-dictionary.table.js';
 
 type ReleaseRow = typeof atlasDictionaryReleases.$inferSelect;
 type ValueRow = typeof atlasDictionaryValues.$inferSelect;
 type RuleRow = typeof atlasSlotRules.$inferSelect;
+type RenameRow = typeof atlasDictionaryRenames.$inferSelect;
+type SearchWordRow = typeof atlasDictionarySearchWords.$inferSelect;
+type NewValueRow = typeof atlasDictionaryValues.$inferInsert;
+type NewRuleRow = typeof atlasSlotRules.$inferInsert;
 
-/** Rows become a Dictionary here. The migration wrote only slot keys and rules the domain knows. */
-export function toDomain(release: ReleaseRow, values: readonly ValueRow[], rules: readonly RuleRow[]): Dictionary {
+/** What approved changes added: nothing for a release only migrations made. */
+export interface HistoryRows {
+  renames: readonly RenameRow[];
+  searchWords: readonly SearchWordRow[];
+  latest: { number: number; at: Date } | null;
+}
+
+/** Rows become a Dictionary here. Only slot keys and rules the domain knows are ever written. */
+export function toDomain(
+  release: ReleaseRow,
+  values: readonly ValueRow[],
+  rules: readonly RuleRow[],
+  history: HistoryRows = { renames: [], searchWords: [], latest: null },
+): Dictionary {
   return new Dictionary(
     release.release,
     release.approvedOn,
     values.map((row) => ({ slot: row.slot as DictionarySlotKey, code: row.code, meaning: row.meaning })),
     rules.map((row) => ({ productType: row.productType, slot: row.slot as RuledSlotKey, rule: row.rule as SlotRule })),
+    {
+      renames: history.renames.map((row) => ({
+        slot: row.slot as DictionarySlotKey,
+        oldCode: row.oldCode,
+        newCode: row.newCode,
+        changeNumber: row.changeNumber,
+      })),
+      searchWords: history.searchWords.map((row) => ({
+        slot: row.slot as DictionarySlotKey,
+        word: row.word,
+        code: row.code,
+        changeNumber: row.changeNumber,
+      })),
+      change: history.latest,
+    },
   );
+}
+
+/** A dictionary's values and rules as rows of its release, for the change store to write. */
+export function toValueRows(dictionary: Dictionary): NewValueRow[] {
+  return dictionary.values().map(({ slot, code, meaning }) => ({ release: dictionary.release, slot, code, meaning }));
+}
+
+export function toRuleRows(dictionary: Dictionary): NewRuleRow[] {
+  return dictionary.slotRules().map(({ productType, slot, rule }) => ({ release: dictionary.release, productType, slot, rule }));
 }

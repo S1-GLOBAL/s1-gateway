@@ -59,7 +59,7 @@ corrected.
 | Phase | Steps | Status |
 |---|---|---|
 | 1. Suggestions and their trail | 7 / 7 | Done — the suggestion rules, their two tables and the session routes; approving is phase 2 |
-| 2. Approving and rejecting | 0 / 10 | Not started |
+| 2. Approving and rejecting | 10 / 10 | Done — approving rewrites saved Spec IDs in one transaction; rejecting needs a reason; history names the change |
 | 3. Renames and search words in the reader | 0 / 5 | Not started |
 | 4. The Dictionary changes page | 0 / 6 | Not started |
 | 5. Suggesting from the Dictionary sheet | 0 / 6 | Not started |
@@ -77,7 +77,7 @@ app does not call yet. Stop for the owner after each.
 | First | How | Why this way |
 |---|---|---|
 | A change that needs a second person | A suggestion is only ever approved by an admin who is not its suggester, checked in the domain and answered 403 | #95: nobody decides their own |
-| The application writing the dictionary | Only `ApplyDictionarySuggestion` writes the dictionary tables, through one port whose adapter does everything in one transaction | ADR 0031: the change and every Spec ID it rewrites succeed or fail together |
+| The application writing the dictionary | Only `DictionaryChangeStore.apply` writes the dictionary tables: it writes the whole next S2 release, about 800 rows, in one transaction with everything else the approval changes *(as built: simpler and safer than patching rows by kind)* | ADR 0031: the change and every Spec ID it rewrites succeed or fail together |
 | Saved Spec IDs rewritten in bulk by the application | The same versioned update and history entry as one edit (ADR 0022), many in one transaction, each entry linked to the change | Migrations 0011 and 0012 rewrote codes with no history entry; here every rewrite is recorded |
 | A hardcoded code that follows a rename | Code in the reader, the size rulings and the capacity labels keeps naming the S2 0.1.0 codes, and asks the dictionary for each one's live letters | One mechanism for about 60 literal codes, not 60 edits per rename |
 | A nav item with a count | `NavItem` gains an optional badge, read from its own query | The first sidebar count; the admin badge |
@@ -193,7 +193,7 @@ live dictionary. The rules are #95's table; problems carry fields
 | Method | Answers |
 |---|---|
 | `live(slot, code)` | The code's live letters: itself if it exists, its rename if renamed, `undefined` if deleted |
-| `original(slot, code)` | The S2 0.1.0 letters a live code started as, for code keyed by them (the capacity labels) |
+| ~~`original(slot, code)`~~ | Not built: the capacity labels find a live unit's label by asking `live` of each S2 0.1.0 unit, so one direction is enough |
 
 `DrizzleDictionaryRepository.get` also reads `atlas_dictionary_renames`, and
 the latest change (`number`, `approved_at`), which the dictionary contract
@@ -203,7 +203,7 @@ Every hardcoded code goes through `live`: `ROUND_SHAPE` and `PAPER_FAMILY` in
 `domain/slots.ts`; `KEYWORDS` in `domain/reading/keywords.ts`; `WORD_LIST` in
 `domain/reading/word-list.ts`; the product-type sets and `'RD'`/`'RC'` in
 `domain/reading/size-rulings.ts`; `'RD'` in `domain/reading/read-text.ts` and
-`domain/import/verified-row.ts`; `CAPACITY_UNIT_LABELS` through `original`; and
+`domain/import/verified-row.ts`; `CAPACITY_UNIT_LABELS` through `live`, in reverse; and
 `fromS1`'s output in `domain/old-codes.ts`. A keyword or word whose code was
 deleted is skipped. `RD` itself cannot be renamed or deleted, so
 `ROUND_SHAPE` is live by rule, but goes through `live` like the rest.
@@ -236,6 +236,12 @@ deleted is skipped. `RD` itself cannot be renamed or deleted, so
    - inserts each history entry with `dictionary_change_number`;
    - marks the suggestion approved and inserts its `approved` event.
    The unique index on `atlas_spec_ids.code` is the last guard against a clash.
+   *As built:* the store also refuses with `409 DICTIONARY_CHANGED` when
+   another approval landed after the plan was made (it checks the latest
+   change number under the lock), and the plan refuses with
+   `409 SPEC_ID_WOULD_BE_INVALID` when a rewrite would be a code the new
+   dictionary refuses. Planning is shared with a waiting suggestion's page,
+   which shows `rewrites`, or `problem`.
 
 Reject, withdraw and edit are small use cases over the same repository.
 
@@ -318,53 +324,53 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 
 ### Step 2.1 — The rest of the tables
 
-- [ ] **Action.** `atlas-dictionary-changes.table.ts`, `atlas-dictionary-renames.table.ts`, `atlas-dictionary-search-words.table.ts`; the suggestions' `change_number` FK; `atlas_spec_id_changes.dictionary_change_number`. One migration: `npm run db:generate -- --name atlas_dictionary_changes`. Read the SQL: every change is additive.
-- [ ] **Verify.** `npm run db:migrate` applies it to a database holding phase 1's data.
+- [x] **Action.** `atlas-dictionary-changes.table.ts`; the renames and search words beside the values in `atlas-dictionary.table.ts`; `atlas_spec_id_changes.dictionary_change_number`. One migration: `npm run db:generate -- --name atlas_dictionary_changes`. Read the SQL: every change is additive. *As built:* no foreign key on the suggestions' `change_number`: with one each way, each table's type depends on the other's; `atlas_dictionary_changes.suggestion_id` holds it, unique.
+- [x] **Verify.** `npm run db:migrate` applies it to a database holding phase 1's data.
 
 ### Step 2.2 — Tests leave the seeded dictionary as they found it
 
-- [ ] **Action.** The seed copies in `global-setup.ts` and their restore in `resetTables`, as in Design's Data section.
-- [ ] **Verify.** A db test approves a rename, the next test reads `APS` again, and `npm test` passes twice in a row.
+- [x] **Action.** The seed copies in `global-setup.ts` and their restore in `resetTables`, as in Design's Data section.
+- [x] **Verify.** A db test approves a rename, the next test reads `APS` again, and `npm test` passes twice in a row.
 
 ### Step 2.3 — The dictionary reads its changes
 
-- [ ] **Action.** `Dictionary` gains `renames`, `live`, `original` and the latest change; the mapper and `DrizzleDictionaryRepository.get` read them; the dictionary contract gains `change`. Tests first.
-- [ ] **Verify.** A test: after `(APS → PSX)`, `live('material', 'APS')` is `PSX` and `original('material', 'PSX')` is `APS`.
+- [x] **Action.** `Dictionary` gains its renames, its approved search words, `live` and the latest change; the mapper and `DrizzleDictionaryRepository.get` read them, for the live release only; the dictionary contract gains `change`. Tests first.
+- [x] **Verify.** A test: after `(APS → APZ)`, `live('material', 'APS')` is `APZ`; a deleted code is `undefined`.
 
 ### Step 2.4 — Applying a proposal, pure
 
-- [ ] **Action.** `domain/suggestions/apply-proposal.ts`: `applyProposal(dictionary, suggestion): Dictionary` and `rewriteSpecId(saved, suggestion, nextDictionary)`. Tests first, one per kind, including a product type moved by a delete and a rule set to `never`.
-- [ ] **Verify.** Tests pass; a rules change from `applies` to `never` turns the field to `X`, and `never` to `applies` turns `X` to `Y`.
+- [x] **Action.** `domain/suggestions/apply-proposal.ts`: `applyProposal(dictionary, suggestion): Dictionary` and `rewriteSpecId(saved, suggestion, nextDictionary)`. Tests first, one per kind, including a product type moved by a delete and a rule set to `never`.
+- [x] **Verify.** Tests pass; a rules change from `applies` to `never` turns the field to `X`, and `never` to `applies` turns `X` to `Y`.
 
 ### Step 2.5 — The change store
 
-- [ ] **Action.** Port `domain/suggestions/dictionary-change-store.ts` (`apply(plan)`, `reject(...)`), the in-memory fake, and `infrastructure/drizzle-dictionary-change-store.ts` doing step 7 of Design's approval in one transaction under the advisory lock.
-- [ ] **Verify.** db tests: a rename of a code used by 3 saved Spec IDs rewrites all 3, each with a history entry carrying the change number and `version` + 1; a Spec ID whose version moved on rolls back everything, the dictionary included.
+- [x] **Action.** Port `domain/suggestions/dictionary-change-store.ts` (`apply(plan)`, `reject(...)`), the in-memory fake, and `infrastructure/drizzle-dictionary-change-store.ts` doing step 7 of Design's approval in one transaction under the advisory lock.
+- [x] **Verify.** db tests: a rename of a code used by 3 saved Spec IDs rewrites all 3, each with a history entry carrying the change number and `version` + 1; a Spec ID whose version moved on rolls back everything, the dictionary included.
 
 ### Step 2.6 — Approve and reject
 
-- [ ] **Action.** `approve-dictionary-suggestion.ts` and `reject-dictionary-suggestion.ts`, tests first, following Design's seven steps.
-- [ ] **Verify.** Tests: deciding your own answers `NotAllowedError`; a clash answers `SPEC_IDS_WOULD_CLASH` with both codes and changes nothing; a stale suggestion answers `SUGGESTION_OUT_OF_DATE`; rejecting without a reason answers `VALIDATION_FAILED` on `reason`.
+- [x] **Action.** `approve-dictionary-suggestion.ts` and `reject-dictionary-suggestion.ts`, tests first, following Design's seven steps.
+- [x] **Verify.** Tests: deciding your own answers `NOT_ALLOWED` (`OwnSuggestionError`); a clash answers `SPEC_IDS_WOULD_CLASH` with both codes and changes nothing; a stale suggestion answers `SUGGESTION_OUT_OF_DATE`; rejecting without a reason answers `VALIDATION_FAILED` on `reason`.
 
 ### Step 2.7 — The admin routes
 
-- [ ] **Action.** Approve and reject in `createAtlasAdminRouter`; HTTP tests that a staff member gets 403 from the gate, and an admin deciding their own gets 403 with #95's copy.
-- [ ] **Verify.** HTTP tests pass.
+- [x] **Action.** Approve and reject in `createAtlasAdminRouter`; HTTP tests that a staff member gets 403 from the gate, and an admin deciding their own gets 403 with #95's copy.
+- [x] **Verify.** HTTP tests pass.
 
 ### Step 2.8 — History names the change
 
-- [ ] **Action.** `SpecIdChangeRecord` and `GetSpecIdHistory` carry the change number and the suggester's and approver's names; the contract gains `dictionaryChange`.
-- [ ] **Verify.** A db test reads a rewritten Spec ID's history with both names.
+- [x] **Action.** `SpecIdChangeRecord` and `GetSpecIdHistory` carry the change number and the suggester's and approver's names; the contract gains `dictionaryChange`.
+- [x] **Verify.** A db test reads a rewritten Spec ID's history with both names.
 
 ### Step 2.9 — Composed over Postgres
 
-- [ ] **Action.** `backend/src/atlas-dictionary.db.test.ts`: through `composeApp`, a staff member suggests a new material, an admin approves it, and `GET /dictionary` answers it with `change.number` 1; then a rename of a used material rewrites the saved Spec IDs.
-- [ ] **Verify.** `npm test` passes.
+- [x] **Action.** `backend/src/atlas-dictionary.db.test.ts`: through `composeApp`, a staff member suggests a new material, an admin approves it, and `GET /dictionary` answers it with `change.number` 1; then a rename of a used material rewrites the saved Spec IDs.
+- [x] **Verify.** `npm test` passes.
 
 ### Step 2.10 — Docs, then the pull request
 
-- [ ] **Action.** `api.md` and `data-model.md`. Open "Part of #95".
-- [ ] **Verify.** `npm run docs:check` and `check:pr` pass. Stop for the owner.
+- [x] **Action.** `api.md` and `data-model.md`. Open "Part of #95".
+- [x] **Verify.** `npm run docs:check` and `check:pr` pass. Stop for the owner.
 
 ---
 

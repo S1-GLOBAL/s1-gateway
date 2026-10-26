@@ -2,9 +2,11 @@ import { err, ok, type Result } from '../../../../shared/domain/result.js';
 import type { SavedSpecId } from '../../domain/saved-spec-id.js';
 import { classifyMatch, type SimilarCriteria } from '../../domain/similar-match.js';
 import type { DictionarySlotKey } from '../../domain/slots.js';
+import { holdsOption } from '../../domain/suggestions/apply-proposal.js';
 import type { SpecIdChange } from '../../domain/spec-id-change.js';
 import { SpecIdChangedError, SpecIdExistsError } from '../../domain/spec-id.errors.js';
 import type {
+  DictionaryChangeRecord,
   FormerHolderRecord,
   LibraryFilter,
   LibraryQuery,
@@ -18,10 +20,16 @@ export class InMemorySpecIdRepository implements SpecIdRepository {
   private readonly saved = new Map<string, SavedSpecId>();
   private readonly changes: SpecIdChange[] = [];
   private readonly saverNames = new Map<string, string>();
+  private readonly dictionaryChanges = new Map<number, { suggestedBy: string; approvedBy: string }>();
 
   /** Teaches the fake a saver's name, as the real repository reads it from accounts. */
   nameSaver(accountId: string, fullName: string): void {
     this.saverNames.set(accountId, fullName);
+  }
+
+  /** Teaches the fake who suggested and approved dictionary change `number`, as the real one reads it by join. */
+  recordDictionaryChange(number: number, people: { suggestedBy: string; approvedBy: string }): void {
+    this.dictionaryChanges.set(number, people);
   }
 
   /** How many Spec IDs are held. */
@@ -73,7 +81,13 @@ export class InMemorySpecIdRepository implements SpecIdRepository {
   }
 
   async usageOf(slot: DictionarySlotKey, code: string): Promise<number> {
-    return [...this.saved.values()].filter((saved) => holds(saved.specId.slot(slot), slot, code)).length;
+    return (await this.holding(slot, code)).length;
+  }
+
+  async holding(slot: DictionarySlotKey, code: string): Promise<SavedSpecIdRecord[]> {
+    return [...this.saved.values()]
+      .filter((saved) => holdsOption(saved.specId.slot(slot), slot, code))
+      .map((saved) => this.record(saved));
   }
 
   async count(filter: LibraryFilter): Promise<number> {
@@ -99,7 +113,21 @@ export class InMemorySpecIdRepository implements SpecIdRepository {
     return this.changes
       .filter((change) => change.specId === id)
       .reverse()
-      .map((change) => ({ change, changedByName: this.nameOf(change.changedBy) }));
+      .map((change) => ({
+        change,
+        changedByName: this.nameOf(change.changedBy),
+        dictionaryChange: this.dictionaryChangeOf(change.dictionaryChangeNumber),
+      }));
+  }
+
+  private dictionaryChangeOf(number: number | null): DictionaryChangeRecord | null {
+    const people = number === null ? undefined : this.dictionaryChanges.get(number);
+    if (number === null || !people) return null;
+    return {
+      number,
+      suggestedBy: { id: people.suggestedBy, fullName: this.nameOf(people.suggestedBy) },
+      approvedBy: { id: people.approvedBy, fullName: this.nameOf(people.approvedBy) },
+    };
   }
 
   async formerHolders(code: string): Promise<FormerHolderRecord[]> {
@@ -143,9 +171,4 @@ function compare(a: string, b: string): number {
   if (a < b) return -1;
   if (a > b) return 1;
   return 0;
-}
-
-/** A capacity holds its unit as its first letter; every other dictionary slot holds the code itself. */
-function holds(value: string, slot: DictionarySlotKey, code: string): boolean {
-  return slot === 'capacity' ? value.startsWith(code) : value === code;
 }

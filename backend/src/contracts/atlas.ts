@@ -54,6 +54,8 @@ export interface AtlasDictionary {
   /** The thirteen slots whose values the dictionary holds, in code order. */
   slots: DictionarySlot[];
   rules: SlotRuleEntry[];
+  /** The latest approved change, `at` ISO 8601; null before the first (ADR 0031). */
+  change: { number: number; at: string } | null;
 }
 
 export interface DecodedSlot {
@@ -229,6 +231,8 @@ export interface SpecIdChange {
   nameAfter: string;
   /** Empty for `created`, and for a change of name only. */
   slots: SlotChange[];
+  /** The approved dictionary change that made it, with who suggested and who approved it; null for anyone's own edit (ADR 0031). */
+  dictionaryChange: { number: number; suggestedBy: SavedBy; approvedBy: SavedBy } | null;
 }
 
 /** A Spec ID that once had the code asked for. */
@@ -415,11 +419,38 @@ export interface DictionarySuggestionEvent {
   reason: string | null;
 }
 
-/** `GET /atlas/dictionary/suggestions/:id`: one suggestion, its trail (first step first), and its option's use today. */
+/**
+ * `GET /atlas/dictionary/suggestions/:id`: one suggestion, its trail (first
+ * step first), and its option's use today. While it waits, also what
+ * approving it now would rewrite, or why approving it now would be refused;
+ * both null once decided.
+ */
 export interface DictionarySuggestionDetail extends DictionarySuggestion {
   events: DictionarySuggestionEvent[];
   /** How many saved Spec IDs hold the option now. */
   usage: number;
+  /** Each saved Spec ID whose code approving would change, with its code now and after. */
+  rewrites: { id: string; name: string; codeBefore: string; codeAfter: string }[] | null;
+  /** The message approving now would be refused with. */
+  problem: string | null;
+}
+
+/** `POST /atlas/dictionary/suggestions/:id/approve`, admins only: the version the approver read. */
+export interface ApproveDictionarySuggestionRequest {
+  version: number;
+}
+
+/** `POST /atlas/dictionary/suggestions/:id/reject`, admins only. */
+export interface RejectDictionarySuggestionRequest {
+  /** 1–500 characters, shown to the suggester. */
+  reason: string;
+}
+
+/** An approval's answer: the suggestion, the numbered change it became, and how many saved Spec IDs it rewrote. */
+export interface DictionaryChangeApproved {
+  suggestion: DictionarySuggestion;
+  changeNumber: number;
+  specIdsRewritten: number;
 }
 
 /** `GET /atlas/dictionary/usage/:slot/:code` and `GET /atlas/dictionary/suggestions/waiting-count`. */

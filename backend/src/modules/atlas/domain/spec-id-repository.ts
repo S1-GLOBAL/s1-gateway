@@ -17,6 +17,15 @@ export interface SavedSpecIdRecord {
 export interface SpecIdChangeRecord {
   change: SpecIdChange;
   changedByName: string;
+  /** When an approved dictionary change made it: that change, who suggested it and who approved it (ADR 0031). */
+  dictionaryChange?: DictionaryChangeRecord | null;
+}
+
+/** A dictionary change, by number, with the two people in it. */
+export interface DictionaryChangeRecord {
+  number: number;
+  suggestedBy: { id: string; fullName: string };
+  approvedBy: { id: string; fullName: string };
 }
 
 /** A Spec ID that once had a code, and when it stopped having it. */
@@ -78,4 +87,6 @@ export interface SpecIdRepository {
    * capacity, a value with that unit. A suggestion shows it (#95).
    */
   usageOf(slot: DictionarySlotKey, code: string): Promise<number>;
+  /** Every saved Spec ID holding dictionary option `code` in `slot`, as `usageOf` counts them. */
+  holding(slot: DictionarySlotKey, code: string): Promise<SavedSpecIdRecord[]>;
 }

@@ -29,10 +29,31 @@ export interface SuggestionEventDto {
   reason: string | null;
 }
 
-/** One suggestion with its whole trail, and how many saved Spec IDs hold its option today. */
+/** A saved Spec ID approving would rewrite, with its code now and after. */
+export interface RewritePreviewDto {
+  id: string;
+  name: string;
+  codeBefore: string;
+  codeAfter: string;
+}
+
+/**
+ * One suggestion with its whole trail, and how many saved Spec IDs hold its
+ * option today. While it waits, also what approving it now would rewrite, or
+ * why approving it now would be refused; both null once decided.
+ */
 export interface SuggestionDetailDto extends SuggestionDto {
   events: SuggestionEventDto[];
   usage: number;
+  rewrites: RewritePreviewDto[] | null;
+  problem: string | null;
+}
+
+/** An approved suggestion, the change it became, and how many saved Spec IDs it rewrote. */
+export interface ApprovedSuggestionDto {
+  suggestion: SuggestionDto;
+  changeNumber: number;
+  specIdsRewritten: number;
 }
 
 /** Who is asking: the signed-in account. */
@@ -58,6 +79,19 @@ export interface EditDictionarySuggestionInput {
 
 export interface SuggestionIdInput {
   id: string;
+}
+
+export interface ApproveDictionarySuggestionInput {
+  id: string;
+  /** The version the approver read. */
+  version: number;
+  by: Asker;
+}
+
+export interface RejectDictionarySuggestionInput {
+  id: string;
+  reason: string;
+  by: Asker;
 }
 
 export interface WithdrawDictionarySuggestionInput {
