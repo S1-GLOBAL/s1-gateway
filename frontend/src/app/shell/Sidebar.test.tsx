@@ -49,6 +49,14 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Accounts' })).toBeTruthy();
   });
 
+  it('rules the brand row in accent, level with the page header', () => {
+    renderAt('/theme');
+    const row = screen.getByRole('link', { name: 'Source One Gateway, home' }).parentElement;
+    expect(row?.className).toContain('border-b');
+    expect(row?.className).toContain('border-accent');
+    expect(row?.className).toContain('h-14');
+  });
+
   it('writes Source One beside the mark, and drops the name when folded', () => {
     renderAt('/theme');
     expect(screen.getByText('Source One')).toBeTruthy();

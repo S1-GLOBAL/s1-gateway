@@ -54,7 +54,13 @@ export function Sidebar({
       transition={{ duration: duration.slow, ease: ease.emphasized }}
       className="sticky top-0 z-20 hidden h-dvh shrink-0 flex-col border-r border-border bg-surface md:flex"
     >
-      <div className={cn('flex h-14 shrink-0 items-center', collapsed ? 'justify-center' : 'px-5')}>
+      {/* Same height as the top bar, so this accent rule meets its border. */}
+      <div
+        className={cn(
+          'flex h-14 shrink-0 items-center border-b border-accent',
+          collapsed ? 'justify-center' : 'px-5',
+        )}
+      >
         {/* Atlas is home once you're in. `/` is the signed-out door. */}
         <Link to="/atlas" aria-label="Source One Gateway, home" className="inline-flex items-center rounded-control text-ink">
           {collapsed ? <Logo variant="mark" height={22} /> : <SourceOneName height={22} />}
