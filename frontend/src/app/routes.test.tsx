@@ -6,6 +6,7 @@ import { AccountsGatewayProvider, type AccountsGateway } from '@/features/accoun
 import { AtlasGatewayProvider, type AtlasGateway } from '@/features/atlas';
 import { ThemeProvider, type ThemeDocument, type ThemePreferenceStore } from '@/features/appearance';
 import { AppError } from '@/shared/application/app-error';
+import { duration } from '@/shared/ui/motion';
 import { account, fakeAccountsGateway, SIGNED_OUT } from '@/test/fake-accounts-gateway';
 import { routes } from './routes';
 
@@ -58,6 +59,13 @@ function renderAt(path: string, gateway: AccountsGateway = fakeAccountsGateway()
   );
   return router;
 }
+
+/**
+ * The page stays out of the accessibility tree until the curtain has left
+ * (rise, hold, rise away). findByRole gives up after 3 seconds, and the
+ * curtain is still leaving then, so a door page waits longer.
+ */
+const doorLeft = { timeout: (duration.curtain * 2 + duration.curtainHold) * 1000 + 1_000 };
 
 beforeEach(() => {
   sessionStorage.clear();
@@ -158,7 +166,7 @@ describe('the app, signed in', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
     expect(signOut).toHaveBeenCalledTimes(1);
-    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' }, doorLeft)).toBeTruthy();
   });
 });
 
@@ -180,7 +188,7 @@ describe('the sign-in gate', () => {
 
   it('sends someone signed out to the landing, remembering where they were going', async () => {
     const router = renderAt('/theme', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' }, doorLeft)).toBeTruthy();
     expect(router.state.location.pathname).toBe('/');
     expect(router.state.location.search).toBe('?next=%2Ftheme');
     // First visit — never had a session in this tab — so no "session ended" notice.
@@ -190,7 +198,7 @@ describe('the sign-in gate', () => {
   it('says the session ended when this tab had been signed in before', async () => {
     sessionStorage.setItem('s1_gateway.had_session', '1');
     const router = renderAt('/theme', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' }, doorLeft)).toBeTruthy();
     expect(router.state.location.pathname).toBe('/');
     expect(screen.getByText('Your session ended. Sign in again.')).toBeTruthy();
   });
@@ -214,14 +222,14 @@ describe('the sign-in gate', () => {
       }),
     );
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
-    expect(await screen.findByText('The Gateway is temporarily unavailable.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Try again' }, doorLeft)).toBeTruthy();
+    expect(screen.getByText('The Gateway is temporarily unavailable.')).toBeTruthy();
     expect(screen.queryByText('The Gateway could not check your sign-in.')).toBeNull();
   });
 
   it('shows the branded landing when signed out at /', async () => {
     const router = renderAt('/', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' }, doorLeft)).toBeTruthy();
     expect(router.state.location.pathname).toBe('/');
     expect(screen.getByLabelText('Email')).toBeTruthy();
     expect(screen.getByLabelText('Password')).toBeTruthy();
@@ -246,7 +254,8 @@ describe('the sign-in gate', () => {
         },
       }),
     );
-    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'ada@sourceone.global' } });
+    await screen.findByRole('button', { name: 'Sign in' }, doorLeft);
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@sourceone.global' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'a long enough password' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/atlas'));
@@ -269,7 +278,8 @@ describe('the sign-in gate', () => {
         },
       }),
     );
-    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'ada@sourceone.global' } });
+    await screen.findByRole('button', { name: 'Sign in' }, doorLeft);
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@sourceone.global' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'a long enough password' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/theme'));
@@ -290,7 +300,8 @@ describe('the sign-in gate', () => {
         },
       }),
     );
-    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'ada@sourceone.global' } });
+    await screen.findByRole('button', { name: 'Sign in' }, doorLeft);
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@sourceone.global' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'a long enough password' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/atlas'));
@@ -301,7 +312,8 @@ describe('the sign-in gate', () => {
       .fn<AccountsGateway['signIn']>()
       .mockRejectedValue(new AppError('SIGN_IN_FAILED', "That email and password don't match."));
     renderAt('/', fakeAccountsGateway({ signIn, me: async () => Promise.reject(SIGNED_OUT) }));
-    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'ada@sourceone.global' } });
+    await screen.findByRole('button', { name: 'Sign in' }, doorLeft);
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@sourceone.global' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrong' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     expect((await screen.findByRole('alert')).textContent).toBe("That email and password don't match.");
@@ -312,7 +324,7 @@ describe('the sign-in gate', () => {
       '/sign-in?next=%2Ftheme',
       fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }),
     );
-    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Internal tools in one place.' }, doorLeft)).toBeTruthy();
     expect(router.state.location.pathname).toBe('/');
     expect(router.state.location.search).toBe('?next=%2Ftheme');
   });
@@ -350,12 +362,12 @@ describe('the sign-in gate', () => {
     expect(screen.queryByRole('heading', { level: 1, name: 'Create your account' })).toBeNull();
 
     resolveInvite({ email: 'ada@sourceone.global', expiresAt: new Date('2026-10-23T08:00:00.000Z') });
-    expect(await screen.findByRole('heading', { level: 1, name: 'Create your account' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Create your account' }, doorLeft)).toBeTruthy();
   });
 
   it('opens an invite link without a session, outside the shell', async () => {
     const router = renderAt('/register?token=tok', fakeAccountsGateway({ me: async () => Promise.reject(SIGNED_OUT) }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Create your account' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Create your account' }, doorLeft)).toBeTruthy();
     expect(screen.getByText('ada@sourceone.global')).toBeTruthy();
     expect(router.state.location.pathname).toBe('/register');
     expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();

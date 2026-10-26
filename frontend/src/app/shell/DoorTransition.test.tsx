@@ -54,6 +54,7 @@ describe('the door curtain', () => {
     act(() => vi.advanceTimersByTime(1));
     expect(curtain().getAttribute('data-phase')).toBe('hold');
     expect(document.querySelector('[data-door-cover]')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'The page' })).toBeNull();
 
     act(() => vi.advanceTimersByTime(duration.curtainHold * 1000 - 1));
     expect(curtain().getAttribute('data-phase')).toBe('hold');
@@ -61,6 +62,7 @@ describe('the door curtain', () => {
     act(() => vi.advanceTimersByTime(1));
     const leaving = document.querySelector('[data-phase="exit"]');
     expect(leaving?.getAttribute('aria-hidden')).toBe('true');
+    expect(screen.queryByRole('heading', { name: 'The page' })).toBeNull();
 
     act(() => vi.advanceTimersByTime(duration.curtain * 1000));
     expect(document.querySelector('.door-curtain')).toBeNull();
