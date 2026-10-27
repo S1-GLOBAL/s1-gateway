@@ -1,6 +1,7 @@
 import type { Result } from '../../../../shared/domain/result.js';
 import type { Dictionary } from '../dictionary.js';
 import type { SavedSpecId } from '../saved-spec-id.js';
+import type { DictionarySlotKey } from '../slots.js';
 import type { SpecIdChange } from '../spec-id-change.js';
 import type {
   DictionaryMovedOnError,
@@ -15,6 +16,13 @@ export interface SpecIdRewrite {
   readonly saved: SavedSpecId;
   readonly change: SpecIdChange;
   readonly expectedVersion: number;
+}
+
+/** The option an approval rewrites the holders of, and every saved Spec ID holding it when planned, at the version read. */
+export interface OptionHolders {
+  readonly slot: DictionarySlotKey;
+  readonly code: string;
+  readonly specIds: readonly { readonly id: string; readonly version: number }[];
 }
 
 /** Everything one approval writes (ADR 0031): all of it, or none of it. */
@@ -33,6 +41,8 @@ export interface DictionaryChangePlan {
   readonly suggestion: SuggestionStep;
   /** The version the approver saw. */
   readonly suggestionVersion: number;
+  /** Null when the approval rewrites no Spec ID: a new option, or a new wording. */
+  readonly holders: OptionHolders | null;
   readonly rewrites: readonly SpecIdRewrite[];
 }
 
@@ -45,8 +55,9 @@ export type DictionaryChangeError =
 /**
  * The one writer of the dictionary (ADR 0031). `apply` writes a whole plan in
  * one transaction, one approval at a time, or nothing: when another approval
- * landed since `basedOn`, the suggestion or a Spec ID moved on since it was
- * read, or two Spec IDs would end with one code.
+ * landed since `basedOn`, the suggestion moved on since it was read, a
+ * saved Spec ID holding the option was saved, changed or moved away since
+ * `holders` was read, or two Spec IDs would end with one code.
  */
 export interface DictionaryChangeStore {
   apply(plan: DictionaryChangePlan): Promise<Result<void, DictionaryChangeError>>;

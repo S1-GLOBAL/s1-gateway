@@ -5,6 +5,7 @@ import { CURRENT_RELEASE } from '../domain/slots.js';
 import type { SavedSpecIdRecord, SpecIdRepository } from '../domain/spec-id-repository.js';
 import type { SpecId } from '../domain/spec-id.js';
 import { applyProposal, rewriteSpecId, rewritesSpecIds } from '../domain/suggestions/apply-proposal.js';
+import type { OptionHolders } from '../domain/suggestions/dictionary-change-store.js';
 import { checkProposal } from '../domain/suggestions/proposal.js';
 import {
   SpecIdsWouldClashError,
@@ -26,6 +27,8 @@ export interface PlannedChange {
   readonly stamp: DictionaryChangeStamp;
   /** The dictionary the approval would leave. */
   readonly next: Dictionary;
+  /** Every saved Spec ID holding the option, as read; null when the change rewrites none. */
+  readonly holders: OptionHolders | null;
   /** Only the Spec IDs whose code would change. */
   readonly rewrites: readonly PlannedRewrite[];
 }
@@ -58,10 +61,16 @@ export async function planDictionaryChange(
 
   const stamp = { number: (dictionary.change?.number ?? 0) + 1, at };
   const next = applyProposal(dictionary, checked.value.target, checked.value.proposal, stamp);
-  if (!rewritesSpecIds(checked.value.proposal)) return ok({ dictionary, stamp, next, rewrites: [] });
+  if (!rewritesSpecIds(checked.value.proposal)) return ok({ dictionary, stamp, next, holders: null, rewrites: [] });
 
+  const held = await specIds.holding(slot, code);
+  const holders = {
+    slot,
+    code,
+    specIds: held.map(({ savedSpecId }) => ({ id: savedSpecId.id, version: savedSpecId.version })),
+  };
   const rewrites: PlannedRewrite[] = [];
-  for (const record of await specIds.holding(slot, code)) {
+  for (const record of held) {
     const before = record.savedSpecId.specId;
     const after = rewriteSpecId(before, checked.value.target, checked.value.proposal, next);
     if (!after.ok) {
@@ -73,7 +82,7 @@ export async function planDictionaryChange(
 
   const clash = await findClash(specIds, rewrites);
   if (clash) return err(new SpecIdsWouldClashError(clash));
-  return ok({ dictionary, stamp, next, rewrites });
+  return ok({ dictionary, stamp, next, holders, rewrites });
 }
 
 /** Two codes, as they are now, of Spec IDs the rewrites would give one code; undefined when none would. */

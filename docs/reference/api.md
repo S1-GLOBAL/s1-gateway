@@ -378,8 +378,11 @@ Approving is refused, with nothing written, with 409 `SPEC_IDS_WOULD_CLASH`
 (`details.codes`, the two codes now) when two Spec IDs would end with one code;
 409 `SPEC_ID_WOULD_BE_INVALID` (`details.code`) when a rewrite would be a code
 the new dictionary refuses; 409 `DICTIONARY_CHANGED` when another approval
-landed while this one was made; and 409 `SPEC_ID_CHANGED` when a Spec ID it
-rewrites changed meanwhile. Approvals run one at a time.
+landed while this one was made; and 409 `SPEC_ID_CHANGED` when a saved Spec ID
+holding the option was saved, changed, or changed away from it meanwhile.
+Approvals run one at a time, and no Spec ID is saved or changed while one runs:
+a save or change built from the dictionary before an approval is checked again
+against the dictionary it left.
 
 `POST /atlas/dictionary/suggestions/:id/reject` takes `{ reason }`, 1–500
 characters once trimmed, kept on the suggestion and in its trail; without one,
@@ -420,7 +423,7 @@ there is no `PUT` or `DELETE` for one. The one Atlas `PUT` sets a manufacturer's
 | `INVALID_SPEC_ID` | 400 | A Spec ID, or the facts to build one, break a rule of ADR 0019. `details.fields` holds every problem, keyed by slot (`code` for the whole code) |
 | `SPEC_ID_EXISTS` | 409 | That Spec ID is already saved. `details.existing` is the saved Spec ID; nothing new was saved |
 | `SPEC_ID_NOT_FOUND` | 404 | No saved Spec ID has, or had, this code; or none has this id |
-| `SPEC_ID_CHANGED` | 409 | The Spec ID changed since the `version` the change was started from; or a Spec ID an approval rewrites changed while it was being made. Nothing was saved |
+| `SPEC_ID_CHANGED` | 409 | The Spec ID changed since the `version` the change was started from; or a saved Spec ID holding the option an approval changes was saved or changed while it was being made. Nothing was saved |
 | `MANUFACTURER_NOT_FOUND` | 404 | The manufacturer has no quote on this Spec ID, or the id is not one |
 | `SUGGESTION_NOT_FOUND` | 404 | No dictionary suggestion has this id, or the id is not one |
 | `SUGGESTION_DECIDED` | 409 | The suggestion was approved, rejected or withdrawn: it no longer waits |

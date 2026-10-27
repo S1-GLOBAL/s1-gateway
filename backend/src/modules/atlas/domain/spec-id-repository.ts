@@ -4,6 +4,7 @@ import type { SimilarCriteria } from './similar-match.js';
 import type { DictionarySlotKey } from './slots.js';
 import type { SpecIdChange } from './spec-id-change.js';
 import type { SpecIdChangedError, SpecIdExistsError } from './spec-id.errors.js';
+import type { DictionaryMovedOnError } from './suggestions/suggestion.errors.js';
 
 /** A saved Spec ID with the names of who saved it and who last changed it. */
 export interface SavedSpecIdRecord {
@@ -51,11 +52,18 @@ export interface LibraryQuery extends LibraryFilter {
 /**
  * Where saved Spec IDs are kept. It adds, changes and reads; nothing deletes
  * (ADR 0022). Every add and change writes its history entry in the same
- * transaction.
+ * transaction, and is refused with `DictionaryMovedOnError` when a dictionary
+ * change was approved after `dictionaryChange`, the latest change of the
+ * dictionary its code was built from (ADR 0031): built again, it may not be
+ * valid any more.
  */
 export interface SpecIdRepository {
   /** Fails with `SpecIdExistsError` when the code is already saved, also against a simultaneous save. */
-  add(saved: SavedSpecId, created: SpecIdChange): Promise<Result<void, SpecIdExistsError>>;
+  add(
+    saved: SavedSpecId,
+    created: SpecIdChange,
+    dictionaryChange: number | null,
+  ): Promise<Result<void, SpecIdExistsError | DictionaryMovedOnError>>;
   /**
    * Saves `saved` over the row whose version is `expectedVersion`. Fails with
    * `SpecIdChangedError` when that is no longer the current version, and with
@@ -65,7 +73,8 @@ export interface SpecIdRepository {
     saved: SavedSpecId,
     change: SpecIdChange,
     expectedVersion: number,
-  ): Promise<Result<void, SpecIdExistsError | SpecIdChangedError>>;
+    dictionaryChange: number | null,
+  ): Promise<Result<void, SpecIdExistsError | SpecIdChangedError | DictionaryMovedOnError>>;
   findById(id: string): Promise<SavedSpecIdRecord | null>;
   findByCode(code: string): Promise<SavedSpecIdRecord | null>;
   /**

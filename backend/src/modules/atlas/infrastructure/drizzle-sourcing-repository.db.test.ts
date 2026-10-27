@@ -67,7 +67,7 @@ beforeEach(async () => {
     savedBy: SAVER_ID,
     savedAt: IMPORTED_AT,
   });
-  await new DrizzleSpecIdRepository(connection.db).add(cup, SpecIdChange.created(cup, randomUUID()));
+  await new DrizzleSpecIdRepository(connection.db).add(cup, SpecIdChange.created(cup, randomUUID()), null);
 });
 afterAll(() => connection.close());
 
@@ -218,7 +218,7 @@ describe('DrizzleSourcingRepository, stagesOf (#73)', () => {
     const built = SpecId.build({ productType, material }, s2Dictionary());
     if (!built.ok) throw new Error('setup failed');
     const record = SavedSpecId.restore({ id, specId: built.value, name: `Invented ${productType}`, dictionaryRelease: 'S2 0.1.0', savedBy: SAVER_ID, savedAt: IMPORTED_AT });
-    await new DrizzleSpecIdRepository(connection.db).add(record, SpecIdChange.created(record, randomUUID()));
+    await new DrizzleSpecIdRepository(connection.db).add(record, SpecIdChange.created(record, randomUUID()), null);
   }
 
   const on = (specId: string, row: QuoteToRecord): QuoteToRecord => ({ ...row, specId });

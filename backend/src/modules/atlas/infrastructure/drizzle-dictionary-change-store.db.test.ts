@@ -9,7 +9,9 @@ import { ApproveDictionarySuggestion } from '../application/approve-dictionary-s
 import { SaveSpecId } from '../application/save-spec-id.js';
 import { SuggestDictionaryChange } from '../application/suggest-dictionary-change.js';
 import { UpdateSpecId } from '../application/update-spec-id.js';
+import type { DictionaryRepository } from '../domain/dictionary-repository.js';
 import { CURRENT_RELEASE } from '../domain/slots.js';
+import type { SpecIdFactsInput } from '../domain/spec-id.js';
 import type { DictionaryChangeStore } from '../domain/suggestions/dictionary-change-store.js';
 import { DictionaryMovedOnError, SpecIdMovedOnError } from '../domain/suggestions/suggestion.errors.js';
 import { atlasDictionaryChanges } from './atlas-dictionary-changes.table.js';
@@ -196,5 +198,79 @@ describe('DrizzleDictionaryChangeStore', () => {
     expect(dictionary?.live('material', 'APS')).toBe('APZ');
     expect(dictionary?.searchWordsOf('material', 'APP')).toEqual(['polypropylene', 'pp plastic']);
     expect(dictionary?.change?.number).toBe(2);
+  });
+});
+
+describe('Spec IDs written while an approval runs', () => {
+  const lid = (material: string): SpecIdFactsInput => ({
+    productType: 'BLD',
+    material,
+    shape: 'RD',
+    profile: 'DM',
+    topDiameter: { value: '95', unit: 'mm' },
+  });
+  const sourcing = new DrizzleSourcingRepository(connection.db);
+
+  /** The dictionary as it is, but the first read lets `meanwhile` land first: a write built from it is out of date. */
+  function readBefore(meanwhile: () => Promise<unknown>): DictionaryRepository {
+    let landed = false;
+    return {
+      get: async (release) => {
+        const dictionary = await dictionaries.get(release);
+        if (!landed) {
+          landed = true;
+          await meanwhile();
+        }
+        return dictionary;
+      },
+    };
+  }
+
+  it('refuses an approval when a Spec ID came to hold the option meanwhile, writing nothing', async () => {
+    const { suggestion } = await lidAndRename();
+    const racing = {
+      apply: async (plan: Parameters<typeof store.apply>[0]) => {
+        await new SaveSpecId(dictionaries, specIds, sourcing, clock, ids).execute({ name: 'Lid 95', facts: lid('APS'), savedBy: ADA });
+        return store.apply(plan);
+      },
+    };
+
+    const result = await new ApproveDictionarySuggestion(dictionaries, specIds, suggestions, racing, clock, ids).execute({
+      id: suggestion.id,
+      version: 1,
+      by: BEN,
+    });
+
+    expect(!result.ok && result.error).toBeInstanceOf(SpecIdMovedOnError);
+    expect((await dictionaries.get(CURRENT_RELEASE))?.meaningOf('material', 'APS')).toBe('Polymer, PS (polystyrene)');
+    expect(await changeCount()).toBe(0);
+  });
+
+  it('checks a save again against the dictionary an approval left while it was being made', async () => {
+    const { suggestion } = await lidAndRename();
+    const approve = () => new ApproveDictionarySuggestion(dictionaries, specIds, suggestions, store, clock, ids).execute({ id: suggestion.id, version: 1, by: BEN });
+
+    const result = await new SaveSpecId(readBefore(approve), specIds, sourcing, clock, ids).execute({ name: 'Lid 95', facts: lid('APS'), savedBy: ADA });
+
+    expect(!result.ok && result.error.code).toBe('INVALID_SPEC_ID');
+    expect(await specIds.usageOf('material', 'APS')).toBe(0);
+  });
+
+  it('checks a change again against the dictionary an approval left while it was being made', async () => {
+    const { suggestion } = await lidAndRename();
+    const pp = await new SaveSpecId(dictionaries, specIds, sourcing, clock, ids).execute({ name: 'PP lid', facts: lid('APP'), savedBy: ADA });
+    if (!pp.ok) throw pp.error;
+    const approve = () => new ApproveDictionarySuggestion(dictionaries, specIds, suggestions, store, clock, ids).execute({ id: suggestion.id, version: 1, by: BEN });
+
+    const result = await new UpdateSpecId(readBefore(approve), specIds, sourcing, clock, ids).execute({
+      id: pp.value.id,
+      name: 'PP lid',
+      facts: lid('APS'),
+      version: 1,
+      updatedBy: ADA,
+    });
+
+    expect(!result.ok && result.error.code).toBe('INVALID_SPEC_ID');
+    expect(await specIds.usageOf('material', 'APS')).toBe(0);
   });
 });

@@ -19,10 +19,12 @@ import type {
   SpecIdChangeRecord,
   SpecIdRepository,
 } from '../domain/spec-id-repository.js';
+import { DictionaryMovedOnError } from '../domain/suggestions/suggestion.errors.js';
 import { atlasDictionaryChanges } from './atlas-dictionary-changes.table.js';
 import { atlasDictionarySuggestions } from './atlas-dictionary-suggestions.table.js';
 import { atlasSpecIdChanges } from './atlas-spec-id-changes.table.js';
 import { atlasSpecIds } from './atlas-spec-ids.table.js';
+import { lockDictionaryShared } from './dictionary-change-lock.js';
 import { toChange, toChangeRow, toDomain, toRow } from './saved-spec-id.mapper.js';
 
 /** Whoever last changed a Spec ID: the accounts table a second time. */
@@ -39,24 +41,35 @@ class VersionMovedOn extends Error {}
 /** Thrown inside a transaction to roll it back when another Spec ID holds the code in its long form. */
 class HeldInLongForm extends Error {}
 
+/** Thrown inside a transaction to roll it back when the code was built from a dictionary an approval has since changed. */
+class DictionaryMovedOn extends Error {}
+
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 /**
  * Inserts, updates and selects saved Spec IDs, writing each one's history
- * entry in the same transaction. It never deletes (ADR 0022).
+ * entry in the same transaction. It never deletes (ADR 0022). Each insert and
+ * update holds the dictionary lock shared, so it waits for an approval under
+ * way, and an approval waits for it (ADR 0031).
  */
 export class DrizzleSpecIdRepository implements SpecIdRepository {
   constructor(private readonly db: Database) {}
 
-  async add(saved: SavedSpecId, created: SpecIdChange): Promise<Result<void, SpecIdExistsError>> {
+  async add(
+    saved: SavedSpecId,
+    created: SpecIdChange,
+    dictionaryChange: number | null,
+  ): Promise<Result<void, SpecIdExistsError | DictionaryMovedOnError>> {
     try {
       await this.db.transaction(async (tx) => {
+        if ((await lockDictionaryShared(tx)) !== dictionaryChange) throw new DictionaryMovedOn();
         if (await this.heldInLongForm(tx, saved)) throw new HeldInLongForm();
         await tx.insert(atlasSpecIds).values(toRow(saved));
         await tx.insert(atlasSpecIdChanges).values(toChangeRow(created));
       });
       return ok(undefined);
     } catch (error) {
+      if (error instanceof DictionaryMovedOn) return err(new DictionaryMovedOnError());
       if (error instanceof HeldInLongForm || isUniqueViolation(error)) return err(new SpecIdExistsError());
       throw error;
     }
@@ -66,11 +79,13 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
     saved: SavedSpecId,
     change: SpecIdChange,
     expectedVersion: number,
-  ): Promise<Result<void, SpecIdExistsError | SpecIdChangedError>> {
+    dictionaryChange: number | null,
+  ): Promise<Result<void, SpecIdExistsError | SpecIdChangedError | DictionaryMovedOnError>> {
     // Who saved it and when never change.
     const { id, savedBy: _savedBy, savedAt: _savedAt, ...columns } = toRow(saved);
     try {
       await this.db.transaction(async (tx) => {
+        if ((await lockDictionaryShared(tx)) !== dictionaryChange) throw new DictionaryMovedOn();
         // Only the version the change started from is overwritten: a second
         // change from the same version finds it gone and is refused.
         const updated = await tx
@@ -84,6 +99,7 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
       });
       return ok(undefined);
     } catch (error) {
+      if (error instanceof DictionaryMovedOn) return err(new DictionaryMovedOnError());
       if (error instanceof VersionMovedOn) return err(new SpecIdChangedError());
       if (error instanceof HeldInLongForm || isUniqueViolation(error)) return err(new SpecIdExistsError());
       throw error;
@@ -237,7 +253,7 @@ function escapeLike(text: string): string {
  * long form (ADR 0025): only markers differ. A capacity holds its unit as its
  * first letter, and no unit is a marker or a wildcard (`isOptionCode`).
  */
-function holdsOption(slot: DictionarySlotKey, code: string): SQL {
+export function holdsOption(slot: DictionarySlotKey, code: string): SQL {
   const column = atlasSpecIds[slot];
   return slot === 'capacity' ? like(column, `${code}%`) : eq(column, code);
 }

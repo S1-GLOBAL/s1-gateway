@@ -241,7 +241,12 @@ deleted is skipped. `RD` itself cannot be renamed or deleted, so
    change number under the lock), and the plan refuses with
    `409 SPEC_ID_WOULD_BE_INVALID` when a rewrite would be a code the new
    dictionary refuses. Planning is shared with a waiting suggestion's page,
-   which shows `rewrites`, or `problem`.
+   which shows `rewrites`, or `problem`. Under the lock, the store also
+   reads every Spec ID holding the option again, and any saved, changed or
+   gone since the plan answers `409 SPEC_ID_CHANGED`. Each save and change of
+   a Spec ID holds the same lock shared and is refused, then built again by
+   its use case, when an approval landed after the dictionary it was built
+   from (#100's audit).
 
 Reject, withdraw and edit are small use cases over the same repository.
 

@@ -87,6 +87,7 @@ export class ApproveDictionarySuggestion
       change: { number: stamp.number, suggestionId: suggestion.id, approvedBy: input.by.id, approvedAt: now },
       suggestion: approved.value,
       suggestionVersion: input.version,
+      holders: planned.value.holders,
       rewrites,
     });
     if (!applied.ok) return err(applied.error);

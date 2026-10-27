@@ -1,7 +1,8 @@
 import { err, ok, type Result } from '../../../../shared/domain/result.js';
+import type { DictionaryRepository } from '../../domain/dictionary-repository.js';
 import type { SavedSpecId } from '../../domain/saved-spec-id.js';
 import { classifyMatch, type SimilarCriteria } from '../../domain/similar-match.js';
-import type { DictionarySlotKey } from '../../domain/slots.js';
+import { CURRENT_RELEASE, type DictionarySlotKey } from '../../domain/slots.js';
 import type { SpecIdChange } from '../../domain/spec-id-change.js';
 import { SpecIdChangedError, SpecIdExistsError } from '../../domain/spec-id.errors.js';
 import type {
@@ -14,6 +15,7 @@ import type {
   SpecIdRepository,
 } from '../../domain/spec-id-repository.js';
 import { holdsOption } from '../../domain/suggestions/apply-proposal.js';
+import { DictionaryMovedOnError } from '../../domain/suggestions/suggestion.errors.js';
 
 /** The SpecIdRepository contract, in memory. A test double, never used in production. */
 export class InMemorySpecIdRepository implements SpecIdRepository {
@@ -21,6 +23,7 @@ export class InMemorySpecIdRepository implements SpecIdRepository {
   private readonly changes: SpecIdChange[] = [];
   private readonly saverNames = new Map<string, string>();
   private readonly dictionaryChanges = new Map<number, { suggestedBy: string; approvedBy: string }>();
+  private dictionaries: DictionaryRepository | undefined;
 
   /** Teaches the fake a saver's name, as the real repository reads it from accounts. */
   nameSaver(accountId: string, fullName: string): void {
@@ -30,6 +33,15 @@ export class InMemorySpecIdRepository implements SpecIdRepository {
   /** Teaches the fake who suggested and approved dictionary change `number`, as the real one reads it by join. */
   recordDictionaryChange(number: number, people: { suggestedBy: string; approvedBy: string }): void {
     this.dictionaryChanges.set(number, people);
+  }
+
+  /**
+   * Has the fake refuse a write built from a dictionary an approval has since
+   * changed, as the real one does under the dictionary lock. Unfollowed, it
+   * takes every write.
+   */
+  followDictionary(dictionaries: DictionaryRepository): void {
+    this.dictionaries = dictionaries;
   }
 
   /** How many Spec IDs are held. */
@@ -42,7 +54,12 @@ export class InMemorySpecIdRepository implements SpecIdRepository {
     return this.changes.length;
   }
 
-  async add(saved: SavedSpecId, created: SpecIdChange): Promise<Result<void, SpecIdExistsError>> {
+  async add(
+    saved: SavedSpecId,
+    created: SpecIdChange,
+    dictionaryChange: number | null,
+  ): Promise<Result<void, SpecIdExistsError | DictionaryMovedOnError>> {
+    if (await this.dictionaryMovedOn(dictionaryChange)) return err(new DictionaryMovedOnError());
     if (this.holderOf(saved.specId.code)) return err(new SpecIdExistsError());
     this.saved.set(saved.id, saved);
     this.changes.push(created);
@@ -53,7 +70,9 @@ export class InMemorySpecIdRepository implements SpecIdRepository {
     saved: SavedSpecId,
     change: SpecIdChange,
     expectedVersion: number,
-  ): Promise<Result<void, SpecIdExistsError | SpecIdChangedError>> {
+    dictionaryChange: number | null,
+  ): Promise<Result<void, SpecIdExistsError | SpecIdChangedError | DictionaryMovedOnError>> {
+    if (await this.dictionaryMovedOn(dictionaryChange)) return err(new DictionaryMovedOnError());
     const current = this.saved.get(saved.id);
     if (!current || current.version !== expectedVersion) return err(new SpecIdChangedError());
     const holder = this.holderOf(saved.specId.code);
@@ -61,6 +80,12 @@ export class InMemorySpecIdRepository implements SpecIdRepository {
     this.saved.set(saved.id, saved);
     this.changes.push(change);
     return ok(undefined);
+  }
+
+  private async dictionaryMovedOn(dictionaryChange: number | null): Promise<boolean> {
+    if (!this.dictionaries) return false;
+    const live = await this.dictionaries.get(CURRENT_RELEASE);
+    return (live?.change?.number ?? null) !== dictionaryChange;
   }
 
   async findById(id: string): Promise<SavedSpecIdRecord | null> {

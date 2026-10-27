@@ -23,7 +23,9 @@ export class InMemoryDictionaryChangeStore implements DictionaryChangeStore {
     private readonly dictionaries: InMemoryDictionaryRepository,
     private readonly specIds: InMemorySpecIdRepository,
     private readonly suggestions: InMemorySuggestionRepository,
-  ) {}
+  ) {
+    specIds.followDictionary(dictionaries);
+  }
 
   async apply(plan: DictionaryChangePlan): Promise<Result<void, DictionaryChangeError>> {
     const current = await this.dictionaries.get(plan.dictionary.release);
@@ -32,6 +34,12 @@ export class InMemoryDictionaryChangeStore implements DictionaryChangeStore {
     const stored = await this.suggestions.findById(plan.suggestion.suggestion.id);
     if (!stored || stored.suggestion.version !== plan.suggestionVersion || stored.suggestion.state !== 'waiting') {
       return err(new SuggestionChangedError());
+    }
+    if (plan.holders) {
+      const now = await this.specIds.holding(plan.holders.slot, plan.holders.code);
+      const read = new Map(plan.holders.specIds.map(({ id, version }) => [id, version]));
+      const same = now.length === read.size && now.every(({ savedSpecId }) => read.get(savedSpecId.id) === savedSpecId.version);
+      if (!same) return err(new SpecIdMovedOnError());
     }
     for (const rewrite of plan.rewrites) {
       const held = await this.specIds.findById(rewrite.saved.id);
@@ -47,7 +55,7 @@ export class InMemoryDictionaryChangeStore implements DictionaryChangeStore {
       approvedBy: plan.change.approvedBy,
     });
     await this.suggestions.save(plan.suggestion, plan.suggestionVersion);
-    for (const rewrite of plan.rewrites) await this.specIds.update(rewrite.saved, rewrite.change, rewrite.expectedVersion);
+    for (const rewrite of plan.rewrites) await this.specIds.update(rewrite.saved, rewrite.change, rewrite.expectedVersion, plan.change.number);
     this.applied.push(plan);
     return ok(undefined);
   }

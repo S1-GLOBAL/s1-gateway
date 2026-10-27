@@ -147,7 +147,7 @@ describe('the shortening migration, 0012', () => {
   it('touches nothing already short', async () => {
     const repository = new DrizzleSpecIdRepository(connection.db);
     const saved = savedSpecId('00000000-0000-4000-8000-000000000001', ILLUSTRATIVE, 'Lid');
-    await repository.add(saved, SpecIdChange.created(saved, '00000000-0000-4000-8000-0000000000c1'));
+    await repository.add(saved, SpecIdChange.created(saved, '00000000-0000-4000-8000-0000000000c1'), null);
     const before = await connection.db.select().from(atlasSpecIds);
 
     await connection.db.execute(sql.raw(SHORTEN));
@@ -180,7 +180,7 @@ describe('a row an older API saved during the deploy', () => {
     const repository = new DrizzleSpecIdRepository(connection.db);
     const saved = savedSpecId('00000000-0000-4000-8000-000000000002', CUP, 'Second cup');
 
-    const result = await repository.add(saved, SpecIdChange.created(saved, '00000000-0000-4000-8000-0000000000c9'));
+    const result = await repository.add(saved, SpecIdChange.created(saved, '00000000-0000-4000-8000-0000000000c9'), null);
 
     expect(result.ok).toBe(false);
     expect(!result.ok && result.error.code).toBe('SPEC_ID_EXISTS');

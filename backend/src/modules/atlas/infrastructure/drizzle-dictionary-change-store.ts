@@ -1,4 +1,4 @@
-import { and, eq, max, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { err, ok, type Result } from '../../../shared/domain/result.js';
 import type { Database } from '../../../shared/infrastructure/database/connection.js';
 import { isUniqueViolation } from '../../../shared/infrastructure/database/postgres-errors.js';
@@ -6,6 +6,7 @@ import type {
   DictionaryChangeError,
   DictionaryChangePlan,
   DictionaryChangeStore,
+  OptionHolders,
 } from '../domain/suggestions/dictionary-change-store.js';
 import {
   DictionaryMovedOnError,
@@ -24,12 +25,11 @@ import {
 } from './atlas-dictionary.table.js';
 import { atlasSpecIdChanges } from './atlas-spec-id-changes.table.js';
 import { atlasSpecIds } from './atlas-spec-ids.table.js';
+import { lockDictionaryAlone } from './dictionary-change-lock.js';
 import { toRuleRows, toValueRows } from './dictionary.mapper.js';
+import { holdsOption } from './drizzle-spec-id-repository.js';
 import { toChangeRow, toRow } from './saved-spec-id.mapper.js';
 import { toEventRow, toSuggestionRow } from './suggestion.mapper.js';
-
-/** The advisory lock every approval holds for its transaction: one approval at a time (ADR 0031). */
-const APPROVAL_LOCK = 95_031;
 
 /** Thrown inside the transaction to roll it back, carrying the reason. */
 class Refused extends Error {
@@ -43,7 +43,8 @@ class Refused extends Error {
  * release, its renames and search words, the numbered change, the approved
  * suggestion, and every Spec ID it rewrites with its history entry, in one
  * transaction, or nothing. Approvals are rare and the release is about 800
- * rows, so it is written whole rather than row by row.
+ * rows, so it is written whole rather than row by row. It holds the
+ * dictionary lock alone, so no Spec ID is saved or changed meanwhile.
  */
 export class DrizzleDictionaryChangeStore implements DictionaryChangeStore {
   constructor(private readonly db: Database) {}
@@ -51,9 +52,9 @@ export class DrizzleDictionaryChangeStore implements DictionaryChangeStore {
   async apply(plan: DictionaryChangePlan): Promise<Result<void, DictionaryChangeError>> {
     try {
       await this.db.transaction(async (tx) => {
-        await tx.execute(sql`select pg_advisory_xact_lock(${APPROVAL_LOCK})`);
-        const [latest] = await tx.select({ number: max(atlasDictionaryChanges.number) }).from(atlasDictionaryChanges);
-        if ((latest?.number ?? null) !== plan.basedOn) throw new Refused(new DictionaryMovedOnError());
+        if ((await lockDictionaryAlone(tx)) !== plan.basedOn) throw new Refused(new DictionaryMovedOnError());
+        // A Spec ID saved with the option, changed to or from it, or changed at all since the plan read it.
+        if (plan.holders && !(await sameHolders(tx, plan.holders))) throw new Refused(new SpecIdMovedOnError());
 
         const { release } = plan.dictionary;
         await tx.delete(atlasDictionaryValues).where(eq(atlasDictionaryValues.release, release));
@@ -109,4 +110,16 @@ export class DrizzleDictionaryChangeStore implements DictionaryChangeStore {
       throw error;
     }
   }
+}
+
+type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+
+/** Whether the Spec IDs holding the option are still exactly those the plan read, at the versions it read. */
+async function sameHolders(tx: Transaction, holders: OptionHolders): Promise<boolean> {
+  const now = await tx
+    .select({ id: atlasSpecIds.id, version: atlasSpecIds.version })
+    .from(atlasSpecIds)
+    .where(holdsOption(holders.slot, holders.code));
+  const read = new Map(holders.specIds.map(({ id, version }) => [id, version]));
+  return now.length === read.size && now.every(({ id, version }) => read.get(id) === version);
 }

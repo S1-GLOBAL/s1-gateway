@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FixedClock, SequentialIdGenerator } from '../../../shared/application/testing/fakes.js';
+import type { DictionaryRepository } from '../domain/dictionary-repository.js';
 import type { SpecIdFactsInput } from '../domain/spec-id.js';
 import type { Proposal } from '../domain/suggestions/proposal.js';
 import {
@@ -49,6 +50,9 @@ function setup() {
     dictionaries,
     specIds,
     store,
+    sourcing,
+    clock,
+    ids,
     save: new SaveSpecId(dictionaries, specIds, sourcing, clock, ids),
     update: new UpdateSpecId(dictionaries, specIds, sourcing, clock, ids),
     suggest: new SuggestDictionaryChange(dictionaries, specIds, suggestions, clock, ids),
@@ -200,5 +204,62 @@ describe('ApproveDictionarySuggestion', () => {
     const one = await context.approve.execute({ id: second.id, version: 1, by: BEN });
     const two = await context.approve.execute({ id: first.id, version: 1, by: BEN });
     expect([one.ok && one.value.changeNumber, two.ok && two.value.changeNumber]).toEqual([1, 2]);
+  });
+
+  /** The dictionary as it is, but the first read lets `meanwhile` land first: a write built from it is out of date. */
+  function readBefore(context: ReturnType<typeof setup>, meanwhile: () => Promise<unknown>): DictionaryRepository {
+    let landed = false;
+    return {
+      get: async (release) => {
+        const dictionary = await context.dictionaries.get(release);
+        if (!landed) {
+          landed = true;
+          await meanwhile();
+        }
+        return dictionary;
+      },
+    };
+  }
+
+  it('refuses when a Spec ID came to hold the option while it was being approved, and writes nothing', async () => {
+    const context = setup();
+    await saved(context, 'Lid 90', lid('90'));
+    const { id } = await suggested(context, 'material', 'APS', RENAME_APS);
+    const store = context.store;
+    const original = store.apply.bind(store);
+    store.apply = async (plan) => {
+      await saved(context, 'Lid 95', lid('95'));
+      return original(plan);
+    };
+
+    const result = await context.approve.execute({ id, version: 1, by: BEN });
+
+    expect(!result.ok && result.error).toBeInstanceOf(SpecIdMovedOnError);
+    expect((await new GetDictionary(context.dictionaries).execute()).change).toBeNull();
+  });
+
+  it('checks a save again against the dictionary an approval left while it was being made', async () => {
+    const context = setup();
+    const { id } = await suggested(context, 'material', 'APS', RENAME_APS);
+    const approve = () => context.approve.execute({ id, version: 1, by: BEN });
+    const save = new SaveSpecId(readBefore(context, approve), context.specIds, context.sourcing, context.clock, context.ids);
+
+    const result = await save.execute({ name: 'Lid 90', facts: lid('90'), savedBy: ADA });
+
+    expect(!result.ok && result.error.code).toBe('INVALID_SPEC_ID');
+    expect(await context.specIds.usageOf('material', 'APS')).toBe(0);
+  });
+
+  it('checks a change again against the dictionary an approval left while it was being made', async () => {
+    const context = setup();
+    const pp = await saved(context, 'PP lid', lid('90', 'APP'));
+    const { id } = await suggested(context, 'material', 'APS', RENAME_APS);
+    const approve = () => context.approve.execute({ id, version: 1, by: BEN });
+    const update = new UpdateSpecId(readBefore(context, approve), context.specIds, context.sourcing, context.clock, context.ids);
+
+    const result = await update.execute({ id: pp.id, name: 'PP lid', facts: lid('90'), version: 1, updatedBy: ADA });
+
+    expect(!result.ok && result.error.code).toBe('INVALID_SPEC_ID');
+    expect(await context.specIds.usageOf('material', 'APS')).toBe(0);
   });
 });
