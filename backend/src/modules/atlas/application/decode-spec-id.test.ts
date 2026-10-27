@@ -68,4 +68,13 @@ describe('DecodeSpecId after approved changes (ADR 0031)', () => {
     expect(result.value.code).toBe('BWL.CBG.Y.Y.Y.X.O0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X');
     expect(result.value.slots.find((slot) => slot.key === 'capacity')?.meaning).toBe('14 oz');
   });
+
+  it("labels a unit as its own after it took another unit's letters and was renamed again", async () => {
+    const withoutMl = applyProposal(s2Dictionary(), { slot: 'capacity', code: 'M' }, { kind: 'delete', replacement: null }, STAMP);
+    const ozAsM = applyProposal(withoutMl, { slot: 'capacity', code: 'Z' }, { kind: 'edit', newCode: 'M', meaning: null, searchWords: null }, { ...STAMP, number: 2 });
+    const ozAsQ = applyProposal(ozAsM, { slot: 'capacity', code: 'M' }, { kind: 'edit', newCode: 'Q', meaning: null, searchWords: null }, { ...STAMP, number: 3 });
+    const result = await decoding(ozAsQ).execute({ code: 'BWL.CBG.Y.Y.Y.X.Q0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X' });
+    if (!result.ok) throw result.error;
+    expect(result.value.slots.find((slot) => slot.key === 'capacity')?.meaning).toBe('14 oz');
+  });
 });

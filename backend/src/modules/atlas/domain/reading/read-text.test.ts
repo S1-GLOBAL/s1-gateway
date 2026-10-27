@@ -142,6 +142,20 @@ describe('readText after approved changes', () => {
     expect(readText('14oz paper cup', ozAsM).facts.capacity).toEqual({ unit: 'M', value: '14' });
   });
 
+  it('never reads letters another option took later as that option, after it is renamed again', () => {
+    const withoutMl = changed('capacity', 'M', { kind: 'delete', replacement: null });
+    const ozAsM = applyProposal(withoutMl, { slot: 'capacity', code: 'Z' }, { kind: 'edit', newCode: 'M', meaning: null, searchWords: null }, {
+      number: 2,
+      at: STAMP.at,
+    });
+    const ozAsQ = applyProposal(ozAsM, { slot: 'capacity', code: 'M' }, { kind: 'edit', newCode: 'Q', meaning: null, searchWords: null }, {
+      number: 3,
+      at: STAMP.at,
+    });
+    expect(readText('500ml paper cup', ozAsQ).facts).not.toHaveProperty('capacity');
+    expect(readText('14oz paper cup', ozAsQ).facts.capacity).toEqual({ unit: 'Q', value: '14' });
+  });
+
   it("reads a renamed product type's size under its rulings", () => {
     expect(readText('Cup 90mm', renamed('productType', 'CUP', 'CPQ')).facts).toEqual({
       productType: 'CPQ',
