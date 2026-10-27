@@ -4,6 +4,7 @@ import { KEYWORDS } from '../reading/keywords.js';
 import { WORD_LIST } from '../reading/word-list.js';
 import {
   DICTIONARY_SLOTS,
+  DOES_NOT_APPLY,
   NOT_KNOWN,
   ROUND_SHAPE,
   RULED_SLOTS,
@@ -234,6 +235,8 @@ function codeProblems(slot: DictionarySlotKey, code: string, dictionary: Diction
   if (!characters.test(code)) return [slot === 'capacity' ? messages.codeWidth(1) : messages.codeCharacters()];
   if (code.length !== width) return [messages.codeWidth(width)];
   if (isMarker(code)) return [messages.codeIsMarker(code)];
+  // A Spec ID refuses an X inside a value (ADR 0025): an option holding one could never be used.
+  if (code.includes(DOES_NOT_APPLY)) return [messages.codeHoldsX(code)];
   const meaning = dictionary.meaningOf(slot, code);
   return meaning === undefined ? [] : [messages.codeTaken(code, meaning)];
 }
@@ -272,10 +275,14 @@ function wordProblems(
  * slot not known, so a word another option has is refused.
  */
 export function whoFinds(slot: DictionarySlotKey, word: string, context: ProposalContext): string | undefined {
+  // The word list and the keywords name S2 0.1.0's letters: each is read as the dictionary has it now (ADR 0031).
+  // A deleted option's word finds nothing, so an approved word may still have it.
+  const live = (code: string) => context.dictionary.liveOriginal(slot, code);
   const listed = WORD_LIST[word];
   if (listed !== undefined) {
-    if (slot === 'productType' && 'productType' in listed) return listed.productType;
-    if (slot === 'material' && 'material' in listed) return listed.material;
+    const entry = 'productType' in listed ? { slot: 'productType', code: listed.productType } : { slot: 'material', code: listed.material };
+    const code = entry.slot === slot ? live(entry.code) : undefined;
+    if (code !== undefined) return code;
   }
   if (slot === 'productType') {
     const named = context.dictionary.valuesOf('productType').find((value) => value.meaning.toLowerCase() === word);
@@ -284,7 +291,8 @@ export function whoFinds(slot: DictionarySlotKey, word: string, context: Proposa
   for (const keyword of KEYWORDS) {
     if (keyword.slot !== slot || typeof keyword.value !== 'string') continue;
     const pattern = new RegExp(keyword.pattern.source, keyword.pattern.flags.replace('g', ''));
-    if (pattern.exec(word)?.[0] === word) return keyword.value;
+    const code = pattern.exec(word)?.[0] === word ? live(keyword.value) : undefined;
+    if (code !== undefined) return code;
   }
   return context.dictionary.searchWords().find((approved) => approved.slot === slot && approved.word === word)?.code;
 }

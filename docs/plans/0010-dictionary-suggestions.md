@@ -60,7 +60,7 @@ corrected.
 |---|---|---|
 | 1. Suggestions and their trail | 7 / 7 | Done — the suggestion rules, their two tables and the session routes; approving is phase 2 |
 | 2. Approving and rejecting | 10 / 10 | Done — approving rewrites saved Spec IDs in one transaction; rejecting needs a reason; history names the change |
-| 3. Renames and search words in the reader | 0 / 5 | Not started |
+| 3. Renames and search words in the reader | 5 / 5 | Done — the reader, the size rulings, the capacity labels and pasted codes follow renames; approved search words are read |
 | 4. The Dictionary changes page | 0 / 6 | Not started |
 | 5. Suggesting from the Dictionary sheet | 0 / 6 | Not started |
 
@@ -192,21 +192,24 @@ live dictionary. The rules are #95's table; problems carry fields
 
 | Method | Answers |
 |---|---|
-| `live(slot, code)` | The code's live letters: itself if it exists, its rename if renamed, `undefined` if deleted |
-| ~~`original(slot, code)`~~ | Not built: the capacity labels find a live unit's label by asking `live` of each S2 0.1.0 unit, so one direction is enough |
+| `live(slot, code)` | The code's live letters: itself if it exists or never did, its rename if renamed, `undefined` if deleted |
+| `liveOriginal(slot, code)` | An S2 0.1.0 code's live letters: its rename if renamed, `undefined` if deleted, else itself, so letters another option took later never read as it |
+| ~~`original(slot, code)`~~ | Not built: the capacity labels find a renamed unit's label through `renames()`, so one direction is enough |
 
 `DrizzleDictionaryRepository.get` also reads `atlas_dictionary_renames`, and
 the latest change (`number`, `approved_at`), which the dictionary contract
 gains as `change: { number, at } | null`.
 
-Every hardcoded code goes through `live`: `ROUND_SHAPE` and `PAPER_FAMILY` in
-`domain/slots.ts`; `KEYWORDS` in `domain/reading/keywords.ts`; `WORD_LIST` in
+Every hardcoded code goes through `liveOriginal`: `ROUND_SHAPE` in
+`domain/slots.ts` (`PAPER_FAMILY` stays the letter `B`: a material's first
+letter is its family, #95); `KEYWORDS` in `domain/reading/keywords.ts`; `WORD_LIST` in
 `domain/reading/word-list.ts`; the product-type sets and `'RD'`/`'RC'` in
 `domain/reading/size-rulings.ts`; `'RD'` in `domain/reading/read-text.ts` and
-`domain/import/verified-row.ts`; `CAPACITY_UNIT_LABELS` through `live`, in reverse; and
-`fromS1`'s output in `domain/old-codes.ts`. A keyword or word whose code was
-deleted is skipped. `RD` itself cannot be renamed or deleted, so
-`ROUND_SHAPE` is live by rule, but goes through `live` like the rest.
+`domain/import/verified-row.ts`; and `CAPACITY_UNIT_LABELS` through `renames()`.
+Every dictionary slot of a code `SpecId.parse` reads goes through `live`,
+`fromS1`'s output among them. A keyword or word whose code was deleted holds its place in the text and
+reads as nothing. `RD` itself cannot be renamed or deleted, so
+`ROUND_SHAPE` is live by rule, but goes through `liveOriginal` like the rest.
 
 ### Approval — `application/approve-dictionary-suggestion.ts`
 
@@ -383,28 +386,28 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 
 ### Step 3.1 — Hardcoded codes follow renames
 
-- [ ] **Action.** Every site in Design's list goes through `dictionary.live`. Pass the dictionary where a function lacks it (`size-rulings.ts`).
-- [ ] **Verify.** `git grep -nE "'(RD|RC|CUP|BWL|TRY)'" -- backend/src/modules/atlas/domain ':!*.test.ts'` prints only the constant tables the `live` calls read; the reader's existing tests pass unchanged.
+- [x] **Action.** Every site in Design's list goes through `dictionary.live`. Pass the dictionary where a function lacks it (`size-rulings.ts`). *As built:* `live` and `liveOriginal` read a code the dictionary never had as itself, so a value read from text (print `09`, through `liveOriginal`) still reaches `SpecId.build` to be refused as before; only a deleted option's code is `undefined`. `PAPER_FAMILY` stays the letter `B`: a material's first letter is its family (#95). `CAPACITY_UNIT_LABELS` are found through `atlas_dictionary_renames` rather than `live` in reverse, so a unit given the letters of one renamed away gets no label. A deleted option's words still hold their place in the text, so no shorter phrase inside them is read, and come back as ignored. The tables read through `liveOriginal`, which follows a rename or a deletion before asking whether the letters exist, so letters another option took later never read as it ("500ml" never reads as ounces renamed `M`); a pasted code reads through `live`, as the letters an option has now. When an option that took letters another left is renamed again, those letters keep the earlier option's record, so the tables and the capacity labels stay right; a code typed in them while the newer option had them, and held by no Spec ID, no longer decodes.
+- [x] **Verify.** `git grep -nE "'(RD|RC|CUP|BWL|TRY)'" -- backend/src/modules/atlas/domain ':!*.test.ts' ':!**/testing/**'` prints only the constant tables the `liveOriginal` calls read; the reader's existing tests pass unchanged.
 
 ### Step 3.2 — Renamed codes in the reader's tests
 
-- [ ] **Action.** Tests: after renaming `DW` to `DX`, "double wall cup" reads wall `DX`; after deleting `HD`, "half dome lid" leaves profile not known and reports the words as ignored; capacity "14oz" still reads after renaming `Z`.
-- [ ] **Verify.** Tests pass.
+- [x] **Action.** Tests: after renaming `DW` to `DQ`, "double wall cup" reads wall `DQ`; after deleting `HD`, "half dome bowl lid" leaves profile not known and reports the words as ignored; capacity "14oz" still reads after renaming `Z`. *As built:* letters without `X`, which a Spec ID refuses inside a value; and "bowl lid", because "dome lid" is a product-type phrase that covers "dome".
+- [x] **Verify.** Tests pass.
 
 ### Step 3.3 — Approved search words are read
 
-- [ ] **Action.** `readText` takes the approved words with the dictionary (`DictionaryRepository.get` returns them); they are matched as whole phrases for their slot, alongside `WORD_LIST` and `KEYWORDS`. `ReadSpecIdText` and `ImportVerifiedList` pass them.
-- [ ] **Verify.** A test: with the approved word "sugarcane fibre" on a material, "sugarcane fibre bowl" reads that material; without it, it does not.
+- [x] **Action.** `readText` takes the approved words with the dictionary (`DictionaryRepository.get` returns them); they are matched as whole phrases for their slot, alongside `WORD_LIST` and `KEYWORDS`. `ReadSpecIdText` and `ImportVerifiedList` pass them. *As built:* the dictionary carries them, so both pass nothing new. A unit's word is read after a number, as `12 fluid ounces`.
+- [x] **Verify.** A test: with the approved word "sugarcane fibre" on a material, "sugarcane fibre bowl" reads that material; without it, it does not.
 
 ### Step 3.4 — Old codes after renames
 
-- [ ] **Action.** A pasted S1 or long-form code with renamed letters still decodes, through `live`.
-- [ ] **Verify.** A test decodes an S1 code whose product type was renamed.
+- [x] **Action.** A pasted S1 or long-form code with renamed letters still decodes, through `live`. *As built:* in `SpecId.parse`, so a short code copied before a rename decodes too. Finding a Spec ID by an old code: one a Spec ID held before the approval is found as a former holder, since its history entry keeps the old code; any other is looked up once more in the live letters (`liveCode`), and answered with `replacedCode`.
+- [x] **Verify.** A test decodes an S1 code whose product type was renamed.
 
 ### Step 3.5 — The pull request
 
-- [ ] **Action.** Open "Part of #95".
-- [ ] **Verify.** Checks pass. Stop for the owner.
+- [x] **Action.** Open "Part of #95".
+- [x] **Verify.** Checks pass. Stop for the owner.
 
 ---
 

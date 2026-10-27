@@ -156,6 +156,9 @@ Every route that takes a code also takes a code given out before: an S1 code
 (74 characters, 18 slots) or a long S2 code (starting `S2.`, 97 characters,
 each marker as wide as its slot), and reads it as the short code it converts
 to. A marker written wide in a short code (`0000`, `XX`) is read as its letter.
+A code written before an approved dictionary change renamed one of its options
+is read in the option's live letters, and a capacity keeps its unit's label
+([ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md)).
 No route issues anything but short codes.
 
 `AtlasDictionary` is `{ release, approvedOn, slots, rules, change }`. `slots` holds the
@@ -202,6 +205,11 @@ under `code`.
 
 `POST /atlas/spec-ids/read` takes `{ text, productType? }` and reads the facts
 in raw text by rules ([ADR 0026](../decisions/0026-raw-text-is-read-by-rules-and-a-public-word-list.md)).
+It also reads each option's approved search words, from the request after the
+approval, and reads the word list's, the keywords' and the size rulings' codes
+in their live letters; the words of a deleted option are read as nothing and
+answered under `ignored`
+([ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md)).
 `text` is trimmed and must be 1–500 characters; otherwise it answers 400
 `VALIDATION_FAILED` with `details.fields.text`: "Type some text to read." or
 "Search text must be at most 500 characters." A `productType` reads the text as
@@ -261,8 +269,11 @@ typed in lower case is found. When a Spec ID has the code now, it answers that
 one with `replacedCode: null`, and `formerHolders` lists every other Spec ID
 that once had it (`{ id, name, code, until }`, `code` being its code now),
 newest first. When none has it now but one once did, it answers the last one
-that did, with `replacedCode` set to the code asked for. It answers 404 only
-when no Spec ID has or had the code.
+that did, with `replacedCode` set to the code asked for. When none has or had
+it, it is looked up once more in the dictionary's live letters, so a code
+written before an approved rename finds the Spec ID with its options' new
+letters, also with `replacedCode` set. It answers 404 only when that finds
+none either.
 
 `GET /atlas/saved` is the library: `{ items, page, pageSize, total }`, 20 Spec IDs
 per page, newest change first ([ADR 0029](../decisions/0029-the-library-is-numbered-pages.md)).
@@ -334,7 +345,8 @@ Codes are compared in capitals and wording trimmed. Every broken rule is
 answered at once, 400 `VALIDATION_FAILED` with `details.fields` keyed by
 `code`, `newCode`, `meaning`, `searchWords`, `replacement` or `rules`, in
 #95's words where #95 gives them: a code of the wrong width or characters, a
-marker, a code the list already has, an option the list does not have, an
+marker, a code holding an `X` (a Spec ID reads it as "doesn't apply"), a code
+the list already has, an option the list does not have, an
 empty wording or one over 120 characters, `RD`'s letters or deletion, a missing
 replacement, a product type that would become not known, a missing or unchanged
 rule, or a search word in the wrong form (2–40 lower-case letters, digits, spaces or hyphens; at most 20)

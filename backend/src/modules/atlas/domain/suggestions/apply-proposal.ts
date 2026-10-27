@@ -92,7 +92,9 @@ export function applyProposal(
 
 /**
  * Points every rename that reached `from` at `to` (null when deleted), and
- * records `from` itself, so one step always reaches the live letters.
+ * records `from` itself, so one step always reaches the live letters. When an
+ * earlier option left `from`, its record stays: S2 0.1.0's tables read those
+ * letters as that option (`liveOriginal`), never as the one that took them.
  */
 function moveRenames(
   renames: readonly DictionaryRename[],
@@ -104,11 +106,8 @@ function moveRenames(
   const moved = renames.map((rename) =>
     rename.slot === slot && rename.newCode === from ? { ...rename, newCode: to, changeNumber } : rename,
   );
-  const own = moved.findIndex((rename) => rename.slot === slot && rename.oldCode === from);
-  const entry = { slot, oldCode: from, newCode: to, changeNumber };
-  if (own === -1) return [...moved, entry];
-  moved[own] = entry;
-  return moved;
+  const earlier = moved.some((rename) => rename.slot === slot && rename.oldCode === from);
+  return earlier ? moved : [...moved, { slot, oldCode: from, newCode: to, changeNumber }];
 }
 
 /**

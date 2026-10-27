@@ -9,6 +9,7 @@ import {
   CAPACITY_MAX,
   CAPACITY_UNIT_LABELS,
   COUNTS,
+  DICTIONARY_SLOTS,
   DOES_NOT_APPLY,
   MEASURES,
   NO_VARIANT,
@@ -146,7 +147,8 @@ export class SpecId {
     if (parts.length !== SLOT_COUNT) {
       return err(new InvalidSpecIdError({ code: [messages.wrongPartCount(parts.length)] }));
     }
-    const values = Object.fromEntries(SLOTS.map((slot, index) => [slot.key, parts[index] ?? ''])) as SlotValues;
+    const written = Object.fromEntries(SLOTS.map((slot, index) => [slot.key, parts[index] ?? ''])) as SlotValues;
+    const values = live(written, dictionary);
 
     const issues: SpecIdIssues = {};
     const passed = new Set<SlotKey>();
@@ -283,7 +285,7 @@ export function checkSlotValue(key: SlotKey, raw: string, dictionary: Dictionary
       const digits = raw.slice(1);
       if (dictionary.meaningOf('capacity', letter) === undefined) return messages.notInDictionary(name, raw);
       if (!DIGITS.test(digits)) return messages.notANumber(name, raw);
-      if (/^0+$/.test(digits)) return messages.outOfRange(name, raw, capacityRange(letter));
+      if (/^0+$/.test(digits)) return messages.outOfRange(name, raw, capacityRange(letter, dictionary));
       return undefined;
     }
     case 'measure':
@@ -382,7 +384,7 @@ function readCapacity(fact: CapacityInput, dictionary: Dictionary): Reading {
   if (dictionary.meaningOf('capacity', fact.unit) === undefined) {
     return { problem: messages.notInDictionary(name, fact.unit) };
   }
-  const label = capacityLabel(fact.unit);
+  const label = capacityLabel(fact.unit, dictionary);
   const reading = readDecimal(fact.value);
   if (!reading.ok) return { problem: messages.notANumber(name, fact.value) };
   // Whole when the exact value has nothing after the point: 6 and 6.0 are both 6.
@@ -390,7 +392,7 @@ function readCapacity(fact: CapacityInput, dictionary: Dictionary): Reading {
   if (numerator % denominator !== 0n) return { problem: messages.notWhole(name, fact.value) };
   const amount = numerator / denominator;
   if (amount < 1n || amount > CAPACITY_MAX) {
-    return { problem: messages.outOfRange(name, `${fact.value} ${label}`, capacityRange(fact.unit)) };
+    return { problem: messages.outOfRange(name, `${fact.value} ${label}`, capacityRange(fact.unit, dictionary)) };
   }
   return { raw: fact.unit + amount.toString().padStart(4, '0') };
 }
@@ -445,12 +447,43 @@ function checkS1(code: string): InvalidSpecIdError | undefined {
   return undefined;
 }
 
-function capacityLabel(letter: string): string {
-  return CAPACITY_UNIT_LABELS[letter] ?? letter;
+/**
+ * How a capacity's unit is written after a number. The labels name S2
+ * 0.1.0's units, so a unit an approved change renamed keeps its label, and a
+ * unit given the letters of one renamed away has none (ADR 0031).
+ */
+function capacityLabel(letter: string, dictionary: Dictionary): string {
+  const capacity = dictionary.renames().filter((rename) => rename.slot === 'capacity');
+  const startedAs = capacity.find((rename) => rename.newCode === letter && CAPACITY_UNIT_LABELS[rename.oldCode] !== undefined);
+  if (startedAs) return CAPACITY_UNIT_LABELS[startedAs.oldCode] ?? letter;
+  const movedAway = capacity.some((rename) => rename.oldCode === letter);
+  return (movedAway ? undefined : CAPACITY_UNIT_LABELS[letter]) ?? letter;
 }
 
-function capacityRange(letter: string): string {
-  return `1–${CAPACITY_MAX} ${capacityLabel(letter)}`;
+function capacityRange(letter: string, dictionary: Dictionary): string {
+  return `1–${CAPACITY_MAX} ${capacityLabel(letter, dictionary)}`;
+}
+
+/** A code's slots as `dictionary` reads them now: one written before an approved change, in its live letters (ADR 0031). */
+function live(values: SlotValues, dictionary: Dictionary): SlotValues {
+  const now: Record<SlotKey, string> = { ...values };
+  for (const key of DICTIONARY_SLOTS) {
+    const written = values[key];
+    now[key] = (key === 'capacity' ? dictionary.liveCapacity(written) : dictionary.live(key, written)) ?? written;
+  }
+  return now;
+}
+
+/**
+ * A short code in `dictionary`'s live letters: each option an approved change
+ * renamed, in its new letters (ADR 0031). Anything that is not 25 parts is
+ * itself.
+ */
+export function liveCode(code: string, dictionary: Dictionary): string {
+  const parts = code.split('.');
+  if (parts.length !== SLOT_COUNT) return code;
+  const now = live(Object.fromEntries(SLOTS.map((slot, index) => [slot.key, parts[index] ?? ''])) as SlotValues, dictionary);
+  return SLOTS.map(({ key }) => now[key]).join('.');
 }
 
 /** A slot holding a value, in plain words (4.5). Whole numbers of at most four digits only. */
@@ -461,7 +494,7 @@ function meaningOf(slot: SlotDefinition, raw: string, dictionary: Dictionary): s
     case 'dictionary':
       return dictionary.meaningOf(slot.key as DictionarySlotKey, raw) ?? raw;
     case 'capacity':
-      return `${Number.parseInt(raw.slice(1), 10)} ${capacityLabel(raw.slice(0, 1))}`;
+      return `${Number.parseInt(raw.slice(1), 10)} ${capacityLabel(raw.slice(0, 1), dictionary)}`;
     case 'count': {
       const count = Number.parseInt(raw, 10);
       const { one, many } = COUNTS[slot.key as CountSlotKey];

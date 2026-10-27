@@ -247,7 +247,10 @@ export interface FormerHolder {
 
 /** `GET /atlas/spec-ids/:code`. */
 export interface SpecIdLookup extends SavedSpecId {
-  /** The code asked for, when no Spec ID has it now and this one once did; otherwise null. */
+  /**
+   * The code asked for, when no Spec ID has it now and this one once did, or
+   * this one has it in the letters an approved change renamed it to; otherwise null.
+   */
   replacedCode: string | null;
   /** Every other Spec ID that once had the code asked for, newest first. */
   formerHolders: FormerHolder[];

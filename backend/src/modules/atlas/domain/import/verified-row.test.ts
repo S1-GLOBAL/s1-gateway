@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { applyProposal } from '../suggestions/apply-proposal.js';
 import { s2Dictionary } from '../testing/s2-dictionary.js';
 import { NO_PRODUCT_TYPE, readVerifiedRow, type VerifiedRow } from './verified-row.js';
 
@@ -79,5 +80,16 @@ describe('readVerifiedRow', () => {
     expect(read({ itemName: 'PP Cup', category: 'Cup', material: 'Plastic - PP' }).agreement).toBe(true);
     expect(read({ itemName: 'PET Cup', category: 'Cup', material: 'Plastic - PP' }).agreement).toBe(false);
     expect(read({ itemName: 'Invented drink', category: 'Cup' }).agreement).toBeNull();
+  });
+});
+
+describe('readVerifiedRow after an approved change (ADR 0031)', () => {
+  it('reads an approved search word in the item name as its option', () => {
+    const withWord = applyProposal(dictionary, { slot: 'material', code: 'CBG' }, { kind: 'edit', newCode: null, meaning: null, searchWords: ['sugarcane fibre'] }, {
+      number: 1,
+      at: new Date('2026-10-27T10:00:00.000Z'),
+    });
+    const reading = readVerifiedRow(row({ itemName: '12oz sugarcane fibre bowl' }), withWord);
+    expect(reading.kind === 'read' && reading.facts.material).toBe('CBG');
   });
 });

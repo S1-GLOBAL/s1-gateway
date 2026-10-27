@@ -1,3 +1,5 @@
+import type { Dictionary } from '../dictionary.js';
+import { ROUND_SHAPE } from '../slots.js';
 import type { MeasurementInput, SpecIdFactsInput } from '../spec-id.js';
 
 /** #28's rulings for sizes that do not say what they measure. R4 is a trade name, never a size. */
@@ -10,13 +12,17 @@ export interface SizeReading {
   readonly words: string;
 }
 
-/** Product types each ruling reads, as #28's table gives them. */
+/** Product types each ruling reads, as #28's table gives them, in S2 0.1.0's letters. */
 const R1_TYPES = new Set(['CUP', 'CLD', 'BWL', 'BLD', 'PCP', 'PCL']);
 const R1B_TYPES = new Set(['CUP', 'BWL', 'PCP']);
 const R2_TYPES = new Set(['CUP', 'BWL', 'CTN', 'PCP']);
 const R6_TYPES = new Set(['TKB', 'FCB', 'RSC', 'TRY', 'HCT']);
+const SUP = new Set(['SUP']);
+const BAG = new Set(['BAG']);
 /** Of those, the ones whose shape slot applies. Length and width need a shape that is not round. */
 const R6_WITH_SHAPE = new Set(['TRY', 'HCT']);
+/** The shape R6 names for those, in S2 0.1.0's letters. */
+const RECTANGULAR = 'RC';
 
 /** A fraction as an inch ruler marks it, halves to sixty-fourths: `1/8`. */
 const FRACTION = '\\d{1,2}\\/(?:2|4|8|16|32|64)(?!\\d)';
@@ -74,47 +80,52 @@ function measures(values: readonly (string | undefined)[], units: readonly (stri
 /**
  * The size in `text` for `productType`, by #28's rulings, or null when no
  * ruling reads it. `text` is lower case, with the words other rules used
- * already blanked out.
+ * already blanked out. The rulings name product types and shapes in S2
+ * 0.1.0's letters, and read them in `dictionary`'s (ADR 0031).
  */
-export function readSize(text: string, productType: string): SizeReading | null {
+export function readSize(text: string, productType: string, dictionary: Dictionary): SizeReading | null {
+  const is = (types: ReadonlySet<string>) => [...types].some((type) => dictionary.liveOriginal('productType', type) === productType);
+  const round = dictionary.liveOriginal('shape', ROUND_SHAPE) ?? ROUND_SHAPE;
+  const rectangular = dictionary.liveOriginal('shape', RECTANGULAR);
   for (const match of text.matchAll(THREE)) {
     const [words, a, ua, dia, b, ub, c, uc] = match;
     const [x, y, z] = measures([a, b, c], [ua, ub, uc]) as [MeasurementInput, MeasurementInput, MeasurementInput];
     const n = (m: MeasurementInput) => Number.parseFloat(m.value);
     if (dia !== undefined) {
-      if (R2_TYPES.has(productType) && n(y) < n(x)) {
-        return { facts: { shape: 'RD', topDiameter: x, bottomDiameter: y, height: z }, ruling: 'R2', words };
+      if (is(R2_TYPES) && n(y) < n(x)) {
+        return { facts: { shape: round, topDiameter: x, bottomDiameter: y, height: z }, ruling: 'R2', words };
       }
       return null;
     }
-    if (productType === 'SUP' && n(z) < n(x) && n(z) < n(y)) {
+    if (is(SUP) && n(z) < n(x) && n(z) < n(y)) {
       return { facts: { width: x, height: y, gusset: z }, ruling: 'R3', words };
     }
-    if (productType === 'BAG' && n(y) < n(x) && n(y) < n(z)) {
+    if (is(BAG) && n(y) < n(x) && n(y) < n(z)) {
       return { facts: { width: x, gusset: y, height: z }, ruling: 'R5', words };
     }
-    if (R6_TYPES.has(productType)) {
+    if (is(R6_TYPES)) {
       // A tray or a hinged container cannot keep a length until its shape is
-      // not round, so the ruling names it rectangular. readText leaves a shape
-      // the text already gave.
-      const facts: Partial<SpecIdFactsInput> = R6_WITH_SHAPE.has(productType)
-        ? { shape: 'RC', length: x, width: y, height: z }
-        : { length: x, width: y, height: z };
+      // not round, so the ruling names it rectangular, while that option
+      // exists. readText leaves a shape the text already gave.
+      const facts: Partial<SpecIdFactsInput> =
+        is(R6_WITH_SHAPE) && rectangular !== undefined
+          ? { shape: rectangular, length: x, width: y, height: z }
+          : { length: x, width: y, height: z };
       return { facts, ruling: 'R6', words };
     }
     return null;
   }
   for (const match of text.matchAll(DIA_BY)) {
-    if (!R1B_TYPES.has(productType)) return null;
+    if (!is(R1B_TYPES)) return null;
     const [words, a, ua, b, ub] = match;
     const [x, y] = measures([a, b], [ua, ub]) as [MeasurementInput, MeasurementInput];
-    return { facts: { shape: 'RD', topDiameter: x, height: y }, ruling: 'R1b', words };
+    return { facts: { shape: round, topDiameter: x, height: y }, ruling: 'R1b', words };
   }
-  if (!R1_TYPES.has(productType)) return null;
+  if (!is(R1_TYPES)) return null;
   const ones = [...text.matchAll(ONE)];
   if (ones.length !== 1) return null;
   const [match] = ones as [RegExpExecArray];
   const [words, value, unit] = match;
   const [rim] = measures([value], [unit]) as [MeasurementInput];
-  return { facts: { shape: 'RD', topDiameter: rim }, ruling: 'R1', words: words.trim() };
+  return { facts: { shape: round, topDiameter: rim }, ruling: 'R1', words: words.trim() };
 }

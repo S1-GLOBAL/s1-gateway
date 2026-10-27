@@ -140,7 +140,7 @@ for `S2 0.1.0`.
 |---|---|---|---|---|
 | `release` | `varchar(16)` | no | — | FK → `atlas_dictionary_releases.release` |
 | `slot` | `varchar(32)` | no | — | Slot key: `productType`, `material`, `coating`, `colourClarity`, `shape`, `profile`, `capacity` (its unit letters), `wall`, `print`, `lidOpening`, `handle`, `wrap` or `window` |
-| `code` | `varchar(5)` | no | — | Never `Y`, all `0` or all `X`: each reads as a marker ([ADR 0025](../decisions/0025-spec-ids-are-written-short.md)) |
+| `code` | `varchar(5)` | no | — | Never `Y`, all `0` or all `X`: each reads as a marker ([ADR 0025](../decisions/0025-spec-ids-are-written-short.md)). An approved suggestion never adds one holding an `X`, which a Spec ID refuses inside a value |
 | `meaning` | `varchar(120)` | no | — | |
 
 **Indexes**
@@ -438,8 +438,9 @@ lock, so there are no gaps.
 Every code an approved change renamed or deleted, and its live letters now.
 Defined in `backend/src/modules/atlas/infrastructure/atlas-dictionary.table.ts`.
 Flattened: renaming A to B, then B to C, leaves A → C and B → C, so one lookup
-reaches the live letters. Code that names an S2 0.1.0 code reads it through
-this table.
+reaches the live letters. Letters keep the first option that left them:
+deleting M, renaming Z to M, then renaming M to Q leaves M → null and Z → Q.
+Code that names an S2 0.1.0 code reads it through this table.
 
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|

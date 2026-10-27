@@ -60,7 +60,7 @@ describe('Dictionary after approved changes', () => {
     expect(changed.live('material', 'APS')).toBe('APZ');
     expect(changed.live('profile', 'HD')).toBeUndefined();
     expect(changed.live('material', 'APP')).toBe('APP');
-    expect(changed.live('material', 'AQQ')).toBeUndefined();
+    expect(changed.live('material', 'AQQ')).toBe('AQQ');
   });
 
   it("knows its latest change, and an option's search words in order", () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Dictionary } from '../dictionary.js';
 import { RULED_SLOTS, type RuledSlotKey, type SlotRule } from '../slots.js';
 import { s2Dictionary } from '../testing/s2-dictionary.js';
+import { applyProposal } from './apply-proposal.js';
 import { checkProposal, type Proposal, type ProposalContext, type SuggestionTarget } from './proposal.js';
 import type { InvalidSuggestionError } from './suggestion.errors.js';
 
@@ -48,6 +49,13 @@ describe('checkProposal: add', () => {
     ['APS', 'APS is already Polymer, PS (polystyrene).'],
   ])('refuses the material code %s', (code, message) => {
     expect(issuesOf(...addMaterial(code)).code?.[0]).toContain(message);
+  });
+
+  it('refuses a code holding an X, which a Spec ID reads as "doesn\'t apply", added or renamed to', () => {
+    expect(issuesOf(...addMaterial('AXZ')).code).toEqual(['AXZ can\'t be a code: an X in it reads as "doesn\'t apply".']);
+    expect(issuesOf({ slot: 'wall', code: 'DW' }, { kind: 'edit', newCode: 'DX', meaning: null, searchWords: null }).newCode).toEqual([
+      'DX can\'t be a code: an X in it reads as "doesn\'t apply".',
+    ]);
   });
 
   it('refuses Y as a two-letter code, and a capacity unit that is not one letter', () => {
@@ -225,5 +233,48 @@ describe('checkProposal: list', () => {
     expect(issuesOf({ slot: 'height' as never, code: 'AB' }, { kind: 'delete', replacement: null }).slot).toEqual([
       'That is not a dictionary list.',
     ]);
+  });
+});
+
+describe('checkProposal: search words after a rename (ADR 0031)', () => {
+  const renamed = applyProposal(dictionary, { slot: 'material', code: 'CBG' }, { kind: 'edit', newCode: 'CBQ', meaning: null, searchWords: null }, {
+    number: 1,
+    at: new Date('2026-10-27T10:00:00.000Z'),
+  });
+
+  it("names the word list's word under the option's live letters", () => {
+    expect(issuesOf(...addMaterial('AZZ', 'Invented', ['bagasse']), { dictionary: renamed }).searchWords).toEqual([
+      '“bagasse” already finds CBQ (Molded fibre, bagasse).',
+    ]);
+    expect(
+      issuesOf({ slot: 'material', code: 'CBQ' }, { kind: 'edit', newCode: null, meaning: null, searchWords: ['bagasse'] }, { dictionary: renamed }),
+    ).toEqual({});
+  });
+});
+
+describe('checkProposal: search words after a delete (ADR 0031)', () => {
+  const stamp = (number: number) => ({ number, at: new Date('2026-10-27T10:00:00.000Z') });
+  const giveWord = (word: string): Proposal => ({ kind: 'edit', newCode: null, meaning: null, searchWords: [word] });
+  const deleted = applyProposal(
+    applyProposal(dictionary, { slot: 'material', code: 'CBG' }, { kind: 'delete', replacement: null }, stamp(1)),
+    { slot: 'profile', code: 'HD' },
+    { kind: 'delete', replacement: null },
+    stamp(2),
+  );
+  const given = applyProposal(
+    applyProposal(deleted, { slot: 'material', code: 'APP' }, giveWord('bagasse'), stamp(3)),
+    { slot: 'profile', code: 'DM' },
+    giveWord('half dome'),
+    stamp(4),
+  );
+
+  it("frees a deleted option's word, and refuses it once another option has it", () => {
+    expect(issuesOf({ slot: 'material', code: 'APP' }, giveWord('bagasse'), { dictionary: deleted })).toEqual({});
+    expect(issuesOf({ slot: 'material', code: 'APS' }, giveWord('bagasse'), { dictionary: given }).searchWords).toEqual([
+      '“bagasse” already finds APP (Polymer, PP).',
+    ]);
+    expect(issuesOf({ slot: 'profile', code: 'FL' }, giveWord('half dome'), { dictionary: given }).searchWords?.[0]).toMatch(
+      /^“half dome” already finds DM /,
+    );
   });
 });

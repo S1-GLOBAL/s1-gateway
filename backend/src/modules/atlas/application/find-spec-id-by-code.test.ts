@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FixedClock, SequentialIdGenerator } from '../../../shared/application/testing/fakes.js';
 import { SpecIdNotFoundError } from '../domain/spec-id.errors.js';
+import { applyProposal } from '../domain/suggestions/apply-proposal.js';
 import { ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1, withSlot } from '../domain/testing/spec-id-codes.js';
 import { FindSpecIdByCode } from './find-spec-id-by-code.js';
 import { SaveSpecId } from './save-spec-id.js';
@@ -132,5 +133,33 @@ describe('FindSpecIdByCode, after codes change', () => {
     const { find } = await setup(false);
     const result = await find.execute({ code: C2 });
     expect(result.ok && result.value.formerHolders).toEqual([]);
+  });
+});
+
+describe('FindSpecIdByCode after an approved rename (ADR 0031)', () => {
+  it('finds a code typed in the old letters though no Spec ID ever held it, as its code now', async () => {
+    const dictionaries = new InMemoryDictionaryRepository();
+    const before = await dictionaries.get('S2 0.1.0');
+    if (!before) throw new Error('No dictionary');
+    dictionaries.replace(
+      applyProposal(before, { slot: 'material', code: 'CBG' }, { kind: 'edit', newCode: 'CBQ', meaning: null, searchWords: null }, {
+        number: 1,
+        at: new Date('2026-10-27T10:00:00.000Z'),
+      }),
+    );
+    const specIds = new InMemorySpecIdRepository();
+    specIds.nameSaver(SAVER.id, SAVER.fullName);
+    const saved = await new SaveSpecId(dictionaries, specIds, new InMemorySourcingRepository(), new FixedClock(new Date('2026-10-27T11:00:00.000Z')), new SequentialIdGenerator()).execute({
+      name: 'Bagasse bowl',
+      facts: { productType: 'BWL', material: 'CBQ', capacity: { unit: 'Z', value: '14' } },
+      savedBy: SAVER,
+    });
+    if (!saved.ok) throw saved.error;
+    const typed = saved.value.code.replace('.CBQ.', '.CBG.');
+
+    const result = await new FindSpecIdByCode(dictionaries, specIds, new InMemorySourcingRepository()).execute({ code: typed });
+
+    if (!result.ok) throw result.error;
+    expect(result.value).toMatchObject({ id: saved.value.id, code: saved.value.code, replacedCode: typed });
   });
 });

@@ -4,6 +4,7 @@ import type { DictionaryRepository } from '../domain/dictionary-repository.js';
 import { shortForm } from '../domain/old-codes.js';
 import { CURRENT_RELEASE } from '../domain/slots.js';
 import { SpecIdNotFoundError } from '../domain/spec-id.errors.js';
+import { liveCode } from '../domain/spec-id.js';
 import type { SourcingRepository } from '../domain/sourcing/sourcing-repository.js';
 import type { SpecIdRepository } from '../domain/spec-id-repository.js';
 import {
@@ -18,6 +19,8 @@ import { savedSpecIdDtoOf } from './stage-counts.js';
  * that had it before; or, when none has it now, the last one that did. Codes
  * are written in capitals, so a code typed in lower case is found too, and a
  * code given out before, S1 or long, is looked up as the short code it converts to (ADR 0025).
+ * A code no Spec ID has or had is looked up once more in the dictionary's live
+ * letters, so one written before an approved rename finds what it is now (ADR 0031).
  */
 export class FindSpecIdByCode
   implements UseCase<FindSpecIdByCodeInput, Result<SpecIdLookupDto, SpecIdNotFoundError>>
@@ -47,7 +50,16 @@ export class FindSpecIdByCode
       });
     }
     const [latest, ...others] = former;
-    if (!latest) return err(new SpecIdNotFoundError());
+    if (!latest) {
+      const now = liveCode(code, dictionary);
+      const renamed = now === code ? null : await this.specIds.findByCode(now);
+      if (!renamed) return err(new SpecIdNotFoundError());
+      return ok({
+        ...(await savedSpecIdDtoOf(this.sourcing, renamed, dictionary)),
+        replacedCode: code,
+        formerHolders: [],
+      });
+    }
     return ok({
       ...(await savedSpecIdDtoOf(this.sourcing, latest.record, dictionary)),
       replacedCode: code,
