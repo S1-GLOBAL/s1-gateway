@@ -25,6 +25,8 @@ export { HttpSuggestionsGateway } from './infrastructure/http-suggestions-gatewa
 export { BackToAtlas } from './presentation/BackToAtlas';
 export { AtlasLibrary } from './presentation/library/AtlasLibrary';
 export { DictionarySheet } from './presentation/library/DictionarySheet';
+export { DictionaryChanges } from './presentation/dictionary/DictionaryChanges';
+export { SuggestionListSkeleton } from './presentation/dictionary/SuggestionListSkeleton';
 export { NewSpecIdLink } from './presentation/library/NewSpecIdLink';
 export { ManufacturerGroups } from './presentation/manufacturers/ManufacturerGroups';
 export { NewSpecIdForm, type SavedNotice } from './presentation/NewSpecIdForm';

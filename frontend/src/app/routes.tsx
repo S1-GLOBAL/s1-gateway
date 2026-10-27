@@ -3,6 +3,7 @@ import { Navigate, useLocation, type RouteObject } from 'react-router-dom';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { AccountsPageSkeleton } from '@/pages/accounts/AccountsPageSkeleton';
 import { AtlasPageSkeleton } from '@/pages/atlas/AtlasPageSkeleton';
+import { DictionaryChangesPageSkeleton } from '@/pages/dictionary/DictionaryChangesPageSkeleton';
 import { ManufacturersPageSkeleton } from '@/pages/atlas/ManufacturersPageSkeleton';
 import { NewSpecIdPageSkeleton } from '@/pages/atlas/NewSpecIdPageSkeleton';
 import { SpecIdPageSkeleton } from '@/pages/atlas/SpecIdPageSkeleton';
@@ -24,6 +25,9 @@ const NewSpecIdPage = lazy(() =>
 const SpecIdPage = lazy(() => import('@/pages/atlas/SpecIdPage').then((module) => ({ default: module.SpecIdPage })));
 const ManufacturersPage = lazy(() =>
   import('@/pages/atlas/ManufacturersPage').then((module) => ({ default: module.ManufacturersPage })),
+);
+const DictionaryChangesPage = lazy(() =>
+  import('@/pages/dictionary/DictionaryChangesPage').then((module) => ({ default: module.DictionaryChangesPage })),
 );
 const AccountsPage = lazy(() =>
   import('@/pages/accounts/AccountsPage').then((module) => ({ default: module.AccountsPage })),
@@ -147,6 +151,14 @@ export const routes: RouteObject[] = [
             element: (
               <RouteBoundary skeleton={<ManufacturersPageSkeleton />}>
                 <ManufacturersPage />
+              </RouteBoundary>
+            ),
+          },
+          {
+            path: 'dictionary/changes',
+            element: (
+              <RouteBoundary skeleton={<DictionaryChangesPageSkeleton />}>
+                <DictionaryChangesPage />
               </RouteBoundary>
             ),
           },

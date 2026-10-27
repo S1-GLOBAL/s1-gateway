@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { actionsFor, approvedLine, stateLine, usageLine, type Suggestion } from './suggestion';
+import type { AtlasDictionary } from './atlas';
+import {
+  actionsFor,
+  approvedLine,
+  describeSuggestion,
+  editedFields,
+  stateLine,
+  usageLine,
+  type Suggestion,
+} from './suggestion';
 
 const ADA = { id: 'ada', fullName: 'Ada Invented' };
 const BEN = { id: 'ben', fullName: 'Ben Invented' };
@@ -64,3 +73,78 @@ describe('actionsFor', () => {
     expect(actionsFor(suggestion({ state: 'approved' }), { id: 'ben', isAdmin: true })).toEqual({ withdraw: false, decide: false });
   });
 });
+
+describe('describeSuggestion', () => {
+  const dictionary: AtlasDictionary = {
+    release: 'S2 0.1.0',
+    approvedOn: '2026-10-19',
+    slots: [
+      { key: 'productType', name: 'Product type', values: [{ code: 'CUP', meaning: 'Cup' }] },
+      { key: 'material', name: 'Material', values: [{ code: 'APS', meaning: 'Polymer, PS' }, { code: 'APP', meaning: 'Polymer, PP' }] },
+    ],
+    rules: [{ productType: 'CUP', slot: 'wall', rule: 'applies' }],
+  };
+
+  it("says a waiting rename's code and wording as they are now and as asked", () => {
+    const summary = describeSuggestion(
+      suggestion({ kind: 'edit', code: 'APS', proposal: { kind: 'edit', newCode: 'APZ', meaning: 'Polymer, PS, invented', searchWords: null } }),
+      dictionary,
+    );
+    expect(summary).toEqual({
+      title: 'Change APS in Material',
+      rows: [
+        { label: 'Code', before: 'APS', after: 'APZ' },
+        { label: 'Wording', before: 'Polymer, PS', after: 'Polymer, PS, invented' },
+      ],
+    });
+  });
+
+  it("names what a deletion's Spec IDs become, and drops today's wording once decided", () => {
+    const deletion = suggestion({ kind: 'delete', code: 'APS', proposal: { kind: 'delete', replacement: 'APP' } });
+    expect(describeSuggestion(deletion, dictionary).rows).toEqual([
+      { label: 'Wording', before: 'Polymer, PS', after: 'Deleted' },
+      { label: 'Saved Spec IDs become', before: null, after: 'APP (Polymer, PP)' },
+    ]);
+    expect(describeSuggestion({ ...deletion, state: 'approved' }, dictionary).rows[0]?.before).toBeNull();
+    expect(describeSuggestion({ ...deletion, proposal: { kind: 'delete', replacement: 'Y' } }, dictionary).rows[1]?.after).toBe(
+      'Not known (Y)',
+    );
+  });
+
+  it("puts each field's rule now beside the one asked for", () => {
+    const rules = suggestion({ kind: 'rules', slot: 'productType', code: 'CUP', proposal: { kind: 'rules', rules: { wall: 'never' } } });
+    expect(describeSuggestion(rules, dictionary)).toEqual({
+      title: 'Change which fields apply to CUP',
+      rows: [{ label: 'Wall', before: 'Applies', after: 'X' }],
+    });
+  });
+
+  it('says what an addition brings', () => {
+    const added = suggestion({ proposal: { kind: 'add', meaning: 'Polymer, invented', searchWords: ['invented polymer'], rules: null } });
+    expect(describeSuggestion(added, dictionary)).toEqual({
+      title: 'Add AZZ to Material',
+      rows: [
+        { label: 'Wording', before: null, after: 'Polymer, invented' },
+        { label: 'Search words', before: null, after: 'invented polymer' },
+      ],
+    });
+  });
+});
+
+describe('editedFields', () => {
+  it('names each field an edit changed, with what it said before and after', () => {
+    expect(
+      editedFields(
+        { kind: 'edit', newCode: 'APZ', meaning: null, searchWords: ['styrene'] },
+        { kind: 'edit', newCode: 'APY', meaning: null, searchWords: [] },
+      ),
+    ).toEqual([
+      { label: 'Code', before: 'APZ', after: 'APY' },
+      { label: 'Search words', before: 'styrene', after: 'None' },
+    ]);
+    expect(editedFields({ kind: 'rules', rules: { wall: 'never' } }, { kind: 'rules', rules: { wall: 'applies' } })).toEqual([
+      { label: 'Field rules', before: 'Wall: X', after: 'Wall: Applies' },
+    ]);
+  });
+});
+
