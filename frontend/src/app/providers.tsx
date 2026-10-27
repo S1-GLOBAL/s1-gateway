@@ -2,7 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { AccountsGatewayProvider } from '@/features/accounts';
 import { ThemeProvider } from '@/features/appearance';
-import { AtlasGatewayProvider } from '@/features/atlas';
+import { AtlasGatewayProvider, SuggestionsGatewayProvider } from '@/features/atlas';
 import { ToolsGatewayProvider } from '@/features/tools';
 import { createDependencies } from './dependencies';
 import { MotionProvider } from './motion-provider';
@@ -18,7 +18,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
         <QueryClientProvider client={queryClient}>
           <AccountsGatewayProvider gateway={dependencies.accountsGateway}>
             <ToolsGatewayProvider gateway={dependencies.toolsGateway}>
-              <AtlasGatewayProvider gateway={dependencies.atlasGateway}>{children}</AtlasGatewayProvider>
+              <AtlasGatewayProvider gateway={dependencies.atlasGateway}>
+                <SuggestionsGatewayProvider gateway={dependencies.suggestionsGateway}>{children}</SuggestionsGatewayProvider>
+              </AtlasGatewayProvider>
             </ToolsGatewayProvider>
           </AccountsGatewayProvider>
         </QueryClientProvider>
