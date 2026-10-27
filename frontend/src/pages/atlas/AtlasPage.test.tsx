@@ -1,49 +1,28 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { RouteBoundary } from '@/app/shell/RouteBoundary';
-import { AtlasGatewayProvider, type AtlasDictionary, type AtlasGateway } from '@/features/atlas';
+import { AtlasGatewayProvider, type AtlasGateway } from '@/features/atlas';
+import {
+  gatewayWith,
+  ILLUSTRATIVE,
+  s1Dictionary,
+  savedFor,
+} from '@/features/atlas/application/testing/atlas-fixtures';
+import { SEARCH_WAIT_MS } from '@/features/atlas/presentation/library/AtlasLibrary';
 import { AppError } from '@/shared/application/app-error';
 import { AtlasPage } from './AtlasPage';
 import { AtlasPageSkeleton } from './AtlasPageSkeleton';
 
-/** An animated icon is drawn in the shared frame, which leaves overflow visible so a stroke can travel. */
-function animatedIcon(control: HTMLElement): boolean {
-  const svg = control.querySelector('svg');
-  return svg?.style.overflow === 'visible' && svg.querySelectorAll('path').length === 2;
-}
+const EMPTY = { items: [], page: 1, pageSize: 20, total: 0 };
 
-const dictionary: AtlasDictionary = {
-  release: 'S1 0.1.0',
-  approvedOn: '2026-10-16',
-  slots: [
-    { key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid' }] },
-    { key: 'shape', name: 'Shape', values: [{ code: 'RD', meaning: 'Round' }] },
-  ],
-  rules: [{ productType: 'BLD', slot: 'topDiameter', rule: 'round_only' }],
-};
-
-function renderPage(load: AtlasGateway['dictionary']) {
-  const pending = () => new Promise<never>(() => undefined);
-  const gateway: AtlasGateway = {
-    dictionary: load,
-    decode: pending,
-    encode: pending,
-    save: pending,
-    findByCode: pending,
-    findSimilar: pending,
-    readText: pending,
-    getSaved: pending,
-    update: pending,
-    history: pending,
-    manufacturers: pending,
-    setManufacturerStage: pending,
-    library: async () => ({ items: [], page: 1, pageSize: 20, total: 0 }),
-  };
+function renderPage(overrides: Partial<AtlasGateway> = {}) {
+  const library = overrides.library ?? vi.fn<AtlasGateway['library']>(async () => EMPTY);
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <AtlasGatewayProvider gateway={gateway}>
+    <QueryClientProvider client={queryClient}>
+      <AtlasGatewayProvider gateway={gatewayWith({ dictionary: async () => s1Dictionary, ...overrides, library })}>
         <MemoryRouter>
           <RouteBoundary skeleton={<AtlasPageSkeleton />}>
             <AtlasPage />
@@ -52,67 +31,91 @@ function renderPage(load: AtlasGateway['dictionary']) {
       </AtlasGatewayProvider>
     </QueryClientProvider>,
   );
+  return library;
 }
 
 describe('AtlasPage', () => {
-  it('shows its skeleton while the dictionary loads', () => {
-    renderPage(() => new Promise(() => undefined));
+  it('draws the search stage before the page arrives', () => {
+    render(<AtlasPageSkeleton />);
     expect(screen.getByRole('status', { name: 'Loading Atlas' })).toBeTruthy();
   });
 
-  it('opens on the library, with Dictionary and New Spec ID', async () => {
-    renderPage(async () => dictionary);
+  it('shows that skeleton while the dictionary loads', () => {
+    renderPage({ dictionary: () => new Promise(() => undefined) });
+    expect(screen.getByRole('status', { name: 'Loading Atlas' })).toBeTruthy();
+  });
+
+  it('opens on Search, and lists nothing until a name is asked for', async () => {
+    const library = vi.fn<AtlasGateway['library']>(async () => ({
+      ...EMPTY,
+      items: [savedFor(ILLUSTRATIVE, 'Bowl lid')],
+      total: 1,
+    }));
+    renderPage({ library });
     expect(await screen.findByRole('heading', { level: 1, name: 'Atlas' })).toBeTruthy();
-    expect(screen.getByText('One code for what a product physically is. Find a product, or describe a new one.')).toBeTruthy();
-    expect(screen.getByLabelText('Search')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Dictionary' })).toBeTruthy();
-    expect(screen.getAllByRole('link', { name: 'New Spec ID' })[0]?.getAttribute('href')).toBe('/atlas/new');
-    expect(animatedIcon(screen.getByRole('button', { name: 'Dictionary' }))).toBe(true);
-    for (const link of screen.getAllByRole('link', { name: 'New Spec ID' })) {
-      expect(animatedIcon(link)).toBe(true);
-    }
-    expect(screen.queryByRole('heading', { name: 'Decode' })).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Build' })).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Look up' })).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Atlas' }).className).toContain('sr-only');
+    expect(screen.getByRole('tab', { name: 'Search' }).getAttribute('aria-selected')).toBe('true');
+
+    const search = screen.getByRole('searchbox', { name: 'Search' });
+    expect(search.getAttribute('placeholder')).toBe('Search by name, or paste a Spec ID');
+    expect(screen.queryByRole('button', { name: 'Dictionary' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'New Spec ID' })).toBeNull();
+    expect(screen.queryByText('Product type')).toBeNull();
+    expect(screen.queryByText('Bowl lid')).toBeNull();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, SEARCH_WAIT_MS + 20));
+    });
+    expect(library).not.toHaveBeenCalled();
+
+    fireEvent.change(search, { target: { value: 'lid' } });
+
+    expect(await screen.findByRole('link', { name: /Bowl lid/ })).toBeTruthy();
+    expect(library).toHaveBeenLastCalledWith({ q: 'lid', productType: '', page: 1 });
   });
 
-  it('opens the Dictionary sheet, and closes it with its button', async () => {
-    renderPage(async () => dictionary);
-    fireEvent.click(await screen.findByRole('button', { name: 'Dictionary' }));
+  it('keeps what was typed when leaving Search and coming back', async () => {
+    renderPage();
+    const search = await screen.findByRole('searchbox', { name: 'Search' });
+    fireEvent.change(search, { target: { value: 'bowl lid' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'Browse' }));
+    expect(screen.queryByRole('searchbox', { name: 'Search' })).toBeNull();
 
-    const sheet = screen.getByRole('dialog', { name: 'Dictionary' });
-    expect(screen.getByText('S1 0.1.0, approved 16 October 2026. It changes only by migration.')).toBeTruthy();
-    expect(screen.getByRole('article', { name: 'Shape' })).toBeTruthy();
-    expect(screen.getByText('Round only')).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    await waitFor(() => expect((sheet as HTMLDialogElement).open).toBe(false));
+    fireEvent.click(screen.getByRole('tab', { name: 'Search' }));
+    expect((screen.getByRole('searchbox', { name: 'Search' }) as HTMLInputElement).value).toBe('bowl lid');
   });
 
-  it('closes the Dictionary sheet with Escape, and opens it again', async () => {
-    renderPage(async () => dictionary);
-    fireEvent.click(await screen.findByRole('button', { name: 'Dictionary' }));
-    const sheet = screen.getByRole('dialog', { name: 'Dictionary' }) as HTMLDialogElement;
-
-    // Escape makes the browser close a modal <dialog>; happy-dom has no Escape, so do what the browser does.
-    act(() => sheet.close());
-
-    expect(screen.queryByRole('dialog', { name: 'Dictionary' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Dictionary' }));
-    expect(screen.getByRole('dialog', { name: 'Dictionary' })).toBeTruthy();
-  });
-
-  it('shows the reason it failed, and tries again on request', async () => {
+  it('shows the reason the dictionary failed, and tries again', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const load = vi
+    const dictionary = vi
       .fn<AtlasGateway['dictionary']>()
       .mockRejectedValueOnce(new AppError('NETWORK', 'Cannot reach the server. Check your connection and try again.'))
-      .mockResolvedValue(dictionary);
-    renderPage(load);
+      .mockResolvedValue(s1Dictionary);
+    renderPage({ dictionary });
 
     expect(await screen.findByText('Cannot reach the server. Check your connection and try again.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Atlas' })).toBeTruthy();
-    expect(load).toHaveBeenCalledTimes(2);
+    expect(await screen.findByRole('tab', { name: 'Search' })).toBeTruthy();
+    expect(dictionary).toHaveBeenCalledTimes(2);
+  });
+
+  it('moves across the tabs with the arrow keys, and wraps', async () => {
+    renderPage();
+    const search = await screen.findByRole('tab', { name: 'Search' });
+    search.focus();
+    fireEvent.keyDown(search, { key: 'ArrowRight' });
+
+    const browse = screen.getByRole('tab', { name: 'Browse' });
+    expect(browse.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(browse);
+    expect(screen.queryByRole('searchbox', { name: 'Search' })).toBeNull();
+
+    fireEvent.keyDown(browse, { key: 'ArrowRight' });
+    const analyze = screen.getByRole('tab', { name: 'Analyze' });
+    expect(analyze.getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(analyze, { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: 'Search' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('searchbox', { name: 'Search' })).toBeTruthy();
   });
 });

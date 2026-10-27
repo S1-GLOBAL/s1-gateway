@@ -31,14 +31,18 @@ function saved(index: number, overrides: Partial<SavedSpecId> = {}): SavedSpecId
   return { ...savedFor(ILLUSTRATIVE, `Lid ${index}`, { id }), slots: readCode(ILLUSTRATIVE).slots, ...overrides };
 }
 
-function renderLibrary(overrides: Partial<AtlasGateway> = {}, dictionary: AtlasDictionary = s1Dictionary) {
+function renderLibrary(
+  overrides: Partial<AtlasGateway> = {},
+  dictionary: AtlasDictionary = s1Dictionary,
+  untilAsked = false,
+) {
   const gateway = gatewayWith({ library: vi.fn(async () => EMPTY), ...overrides });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 60_000 } } });
   render(
     <QueryClientProvider client={queryClient}>
       <AtlasGatewayProvider gateway={gateway}>
         <MemoryRouter>
-          <AtlasLibrary dictionary={dictionary} timeZone="UTC" />
+          <AtlasLibrary dictionary={dictionary} timeZone="UTC" untilAsked={untilAsked} />
         </MemoryRouter>
       </AtlasGatewayProvider>
     </QueryClientProvider>,
@@ -286,6 +290,34 @@ describe('AtlasLibrary, the list', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByText('Lid 1')).toBeTruthy();
+  });
+});
+
+describe('AtlasLibrary, until asked', () => {
+  it('lists nothing until a name is asked for, then only the names that match', async () => {
+    const library = vi.fn<AtlasGateway['library']>(async () => pageOf([saved(1)]));
+    renderLibrary({ library }, s1Dictionary, true);
+
+    expect(screen.getByRole('searchbox', { name: 'Search' })).toBeTruthy();
+    expect(screen.queryByText('Product type')).toBeNull();
+    expect(screen.queryByText('No Spec IDs yet')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Search' })).toBeNull();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, SEARCH_WAIT_MS + 20));
+    });
+    expect(library).not.toHaveBeenCalled();
+
+    search('lid');
+
+    expect(await screen.findByText('Lid 1')).toBeTruthy();
+    expect(library).toHaveBeenLastCalledWith({ q: 'lid', productType: '', page: 1 });
+    expect(screen.getByText(/Product type/)).toBeTruthy();
+
+    search('');
+
+    await waitFor(() => expect(screen.queryByText('Lid 1')).toBeNull());
+    expect(screen.queryByText('Product type')).toBeNull();
   });
 });
 
