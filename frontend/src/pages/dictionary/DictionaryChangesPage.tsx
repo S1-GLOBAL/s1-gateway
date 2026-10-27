@@ -9,7 +9,7 @@ export function DictionaryChangesPage() {
   return (
     <div className="flex flex-col gap-10">
       <PageHeader
-        title="Dictionary changes"
+        title="Dictionary Changes"
         description="Suggested changes to the Atlas dictionary wait here for an admin. Each decision stays, with its trail."
       />
       <DictionaryChanges viewer={{ id: me.id, isAdmin: me.isAdmin }} />

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { navItemsFor } from '../nav';
@@ -50,6 +50,7 @@ describe('Sidebar', () => {
   it('offers Accounts to an admin only', () => {
     renderAt('/theme');
     expect(screen.queryByRole('link', { name: 'Accounts' })).toBeNull();
+    expect(screen.queryByRole('list', { name: 'Access' })).toBeNull();
   });
 
   it('offers Accounts to an admin', () => {
@@ -57,15 +58,38 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Accounts' })).toBeTruthy();
   });
 
-  it('counts the suggestions waiting on Dictionary changes, and says so to a screen reader', () => {
+  it('counts the suggestions waiting on Dictionary Changes, and says so to a screen reader', () => {
     renderAt('/theme', true, 2);
-    const link = screen.getByRole('link', { name: 'Dictionary changes 2 suggestions waiting' });
+    const link = screen.getByRole('link', { name: 'Dictionary Changes 2 suggestions waiting' });
     expect(link.textContent).toContain('2');
   });
 
   it('shows no count when none is waiting', () => {
     renderAt('/theme', true, 0);
-    expect(screen.getByRole('link', { name: 'Dictionary changes' }).textContent).toBe('Dictionary changes');
+    expect(screen.getByRole('link', { name: 'Dictionary Changes' }).textContent).toBe('Dictionary Changes');
+  });
+
+  it('groups Atlas and Dictionary Changes under Catalog', () => {
+    renderAt('/atlas', true);
+    const catalog = screen.getByRole('list', { name: 'Catalog' });
+    expect(within(catalog).getByRole('link', { name: 'Atlas' })).toBeTruthy();
+    expect(within(catalog).getByRole('link', { name: 'Dictionary Changes' })).toBeTruthy();
+    expect(within(catalog).queryByRole('link', { name: 'Accounts' })).toBeNull();
+  });
+
+  it('groups Accounts under Access, and Theme under Other', () => {
+    renderAt('/theme', true);
+    const access = screen.getByRole('list', { name: 'Access' });
+    expect(within(access).getByRole('link', { name: 'Accounts' })).toBeTruthy();
+    expect(within(access).queryByRole('link', { name: 'Theme' })).toBeNull();
+    const other = screen.getByRole('list', { name: 'Other' });
+    expect(within(other).getByRole('link', { name: 'Theme' })).toBeTruthy();
+  });
+
+  it('keeps the Catalog name for a screen reader when the rail is folded', () => {
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'collapsed');
+    renderAt('/atlas');
+    expect(screen.getByText('Catalog').className).toContain('sr-only');
   });
 
   it('writes Source One beside the mark, and drops the name when folded', () => {
