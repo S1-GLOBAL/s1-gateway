@@ -284,7 +284,7 @@ describe('DictionaryChangesPage', () => {
     expect(screen.getByText('Approved changes appear here.')).toBeTruthy();
   });
 
-  it('loads a decided suggestion\'s trail when it is opened', async () => {
+  it("loads a decided suggestion's trail when it is opened", async () => {
     const get = vi.fn(async () => ({ ...RENAME_DETAIL, state: 'approved' as const, decidedBy: BEN, changeNumber: 4, rewrites: null }));
     const decided = [{ ...RENAME, state: 'approved' as const, decidedBy: BEN, changeNumber: 4 }];
     renderPage(asStaffSuggester, suggestionsWith({ list: async (state) => (state === 'decided' ? decided : []), get }));

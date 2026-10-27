@@ -430,7 +430,7 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 
 ### Step 4.4 — A suggestion's card and trail
 
-- [x] **Action.** `SuggestionCard` (what, before and after, "Used by N saved Spec IDs", the codes it would rewrite) and `SuggestionTrail` (every event, with names, dates, the edit's before and after, the reason). *As built:* a waiting card says what each field is now only while it waits, since a decided one's dictionary may already have changed; a decided card's trail loads when opened.
+- [x] **Action.** `SuggestionCard` (what, before and after, "Used by N saved Spec IDs", the codes it would rewrite) and `SuggestionTrail` (every event, with names, dates, the edit's before and after, the reason). *As built:* a waiting card also says what the dictionary holds now (a wording or a rule); a decided card leaves that out, since the dictionary may have changed, and still shows the code it asked to change. A decided card's trail loads when opened.
 - [x] **Verify.** Tests for each state's copy in #95's table.
 
 ### Step 4.5 — Approve and reject
