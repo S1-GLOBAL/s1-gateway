@@ -342,7 +342,8 @@ Codes are compared in capitals and wording trimmed. Every broken rule is
 answered at once, 400 `VALIDATION_FAILED` with `details.fields` keyed by
 `code`, `newCode`, `meaning`, `searchWords`, `replacement` or `rules`, in
 #95's words where #95 gives them: a code of the wrong width or characters, a
-marker, a code the list already has, an option the list does not have, an
+marker, a code holding an `X` (a Spec ID reads it as "doesn't apply"), a code
+the list already has, an option the list does not have, an
 empty wording or one over 120 characters, `RD`'s letters or deletion, a missing
 replacement, a product type that would become not known, a missing or unchanged
 rule, or a search word in the wrong form (2–40 lower-case letters, digits, spaces or hyphens; at most 20)

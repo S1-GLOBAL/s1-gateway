@@ -140,7 +140,7 @@ for `S2 0.1.0`.
 |---|---|---|---|---|
 | `release` | `varchar(16)` | no | — | FK → `atlas_dictionary_releases.release` |
 | `slot` | `varchar(32)` | no | — | Slot key: `productType`, `material`, `coating`, `colourClarity`, `shape`, `profile`, `capacity` (its unit letters), `wall`, `print`, `lidOpening`, `handle`, `wrap` or `window` |
-| `code` | `varchar(5)` | no | — | Never `Y`, all `0` or all `X`: each reads as a marker ([ADR 0025](../decisions/0025-spec-ids-are-written-short.md)) |
+| `code` | `varchar(5)` | no | — | Never `Y`, all `0` or all `X`: each reads as a marker ([ADR 0025](../decisions/0025-spec-ids-are-written-short.md)). An approved suggestion never adds one holding an `X`, which a Spec ID refuses inside a value |
 | `meaning` | `varchar(120)` | no | — | |
 
 **Indexes**

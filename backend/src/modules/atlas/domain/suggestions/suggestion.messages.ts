@@ -8,6 +8,7 @@ export const suggestionMessages = {
   codeWidth: (width: number): string =>
     width === 1 ? 'A capacity unit is one capital letter.' : `The code must be ${width} characters.`,
   codeIsMarker: (code: string): string => `${code} can't be a code: it reads as "not known" or "doesn't apply".`,
+  codeHoldsX: (code: string): string => `${code} can't be a code: an X in it reads as "doesn't apply".`,
   codeTaken: (code: string, meaning: string): string => `${code} is already ${meaning}.`,
   noSuchOption: (list: string, code: string): string => `${list} has no option ${code}.`,
   sameCode: (): string => 'That is the code it has now.',

@@ -51,6 +51,13 @@ describe('checkProposal: add', () => {
     expect(issuesOf(...addMaterial(code)).code?.[0]).toContain(message);
   });
 
+  it('refuses a code holding an X, which a Spec ID reads as "doesn\'t apply", added or renamed to', () => {
+    expect(issuesOf(...addMaterial('AXZ')).code).toEqual(['AXZ can\'t be a code: an X in it reads as "doesn\'t apply".']);
+    expect(issuesOf({ slot: 'wall', code: 'DW' }, { kind: 'edit', newCode: 'DX', meaning: null, searchWords: null }).newCode).toEqual([
+      'DX can\'t be a code: an X in it reads as "doesn\'t apply".',
+    ]);
+  });
+
   it('refuses Y as a two-letter code, and a capacity unit that is not one letter', () => {
     expect(issuesOf({ slot: 'wall', code: 'Y' }, { kind: 'add', meaning: 'Triple', searchWords: [], rules: null }).code).toEqual([
       'The code must be 2 characters.',
