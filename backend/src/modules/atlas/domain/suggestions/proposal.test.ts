@@ -251,3 +251,30 @@ describe('checkProposal: search words after a rename (ADR 0031)', () => {
     ).toEqual({});
   });
 });
+
+describe('checkProposal: search words after a delete (ADR 0031)', () => {
+  const stamp = (number: number) => ({ number, at: new Date('2026-10-27T10:00:00.000Z') });
+  const giveWord = (word: string): Proposal => ({ kind: 'edit', newCode: null, meaning: null, searchWords: [word] });
+  const deleted = applyProposal(
+    applyProposal(dictionary, { slot: 'material', code: 'CBG' }, { kind: 'delete', replacement: null }, stamp(1)),
+    { slot: 'profile', code: 'HD' },
+    { kind: 'delete', replacement: null },
+    stamp(2),
+  );
+  const given = applyProposal(
+    applyProposal(deleted, { slot: 'material', code: 'APP' }, giveWord('bagasse'), stamp(3)),
+    { slot: 'profile', code: 'DM' },
+    giveWord('half dome'),
+    stamp(4),
+  );
+
+  it("frees a deleted option's word, and refuses it once another option has it", () => {
+    expect(issuesOf({ slot: 'material', code: 'APP' }, giveWord('bagasse'), { dictionary: deleted })).toEqual({});
+    expect(issuesOf({ slot: 'material', code: 'APS' }, giveWord('bagasse'), { dictionary: given }).searchWords).toEqual([
+      '“bagasse” already finds APP (Polymer, PP).',
+    ]);
+    expect(issuesOf({ slot: 'profile', code: 'FL' }, giveWord('half dome'), { dictionary: given }).searchWords?.[0]).toMatch(
+      /^“half dome” already finds DM /,
+    );
+  });
+});
