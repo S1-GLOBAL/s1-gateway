@@ -151,4 +151,59 @@ describe('DictionaryBrowser', () => {
     expect(cell('Basis weight')).toBe('Applies');
     expect(cell('Length')).toBe('X');
   });
+
+  it('suggests matches as the text changes, across every slot', () => {
+    render(<DictionaryBrowser dictionary={dictionary} />);
+    const search = screen.getByRole('combobox', { name: 'Search' });
+
+    fireEvent.change(search, { target: { value: 'l' } });
+    expect(screen.getByRole('option', { name: /Bowl lid/ })).toBeTruthy();
+    expect(screen.getByRole('option', { name: /Clear/ })).toBeTruthy();
+
+    fireEvent.change(search, { target: { value: 'lid' } });
+    const options = screen.getAllByRole('option').map((option) => option.textContent);
+    expect(options.some((text) => text?.includes('Bowl lid'))).toBe(true);
+    expect(options.some((text) => text?.includes('Cup lid'))).toBe(true);
+    expect(options.some((text) => text?.includes('Clear'))).toBe(false);
+    expect(screen.queryByRole('article', { name: 'Shape' })).toBeNull();
+    expect(within(screen.getByRole('article', { name: 'Product type' })).getByText('Cup lid')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Which slots apply' })).toBeNull();
+  });
+
+  it('follows the arrow keys, and marks the chosen value in its list', () => {
+    render(<DictionaryBrowser dictionary={dictionary} />);
+    const search = screen.getByRole('combobox', { name: 'Search' });
+    fireEvent.change(search, { target: { value: 'lid' } });
+    fireEvent.keyDown(search, { key: 'ArrowDown' });
+    fireEvent.keyDown(search, { key: 'Enter' });
+
+    const chosen = document.getElementById('dictionary-hit-productType-CLD');
+    expect(chosen?.className).toContain('bg-surface-sunken');
+    expect(screen.getAllByRole('option')[1]?.getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('clears the search on Escape, and leaves the dictionary in place', () => {
+    render(<DictionaryBrowser dictionary={dictionary} />);
+    const search = screen.getByRole('combobox', { name: 'Search' });
+    fireEvent.change(search, { target: { value: 'lid' } });
+    fireEvent.keyDown(search, { key: 'Escape' });
+
+    expect((search as HTMLInputElement).value).toBe('');
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(screen.getAllByRole('article')).toHaveLength(7);
+  });
+
+  it('says when nothing matches, and restores the dictionary when the text is cleared', () => {
+    render(<DictionaryBrowser dictionary={dictionary} />);
+    const search = screen.getByRole('combobox', { name: 'Search' });
+
+    fireEvent.change(search, { target: { value: 'qqqq' } });
+    expect(screen.getByText('No codes or meanings match.')).toBeTruthy();
+    expect(screen.queryByRole('article')).toBeNull();
+
+    fireEvent.change(search, { target: { value: '' } });
+    expect(screen.getAllByRole('article')).toHaveLength(7);
+    expect(screen.getByRole('heading', { name: 'Which slots apply' })).toBeTruthy();
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
 });
