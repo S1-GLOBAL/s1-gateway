@@ -23,8 +23,19 @@ export const NAME_SEARCH_MAX_LENGTH = 120;
  * they find: the library's cards, or what the pasted code is. Search reads the
  * facts in text that isn't a code, and shows what it read in the list's place
  * until the text changes.
+ *
+ * `untilAsked` keeps the library out of sight until a name, a pasted code, or
+ * Search is asked for. The search itself is unchanged.
  */
-export function AtlasLibrary({ dictionary, timeZone }: { dictionary: AtlasDictionary; timeZone?: string }) {
+export function AtlasLibrary({
+  dictionary,
+  timeZone,
+  untilAsked = false,
+}: {
+  dictionary: AtlasDictionary;
+  timeZone?: string;
+  untilAsked?: boolean;
+}) {
   const [text, setText] = useState('');
   const [asked, setAsked] = useState('');
   const [productType, setProductType] = useState('');
@@ -40,10 +51,12 @@ export function AtlasLibrary({ dictionary, timeZone }: { dictionary: AtlasDictio
 
   const code = asPastedCode(asked);
   const namesAsked = code === null && asked.length <= NAME_SEARCH_MAX_LENGTH;
+  /** Nothing has been asked for, so the library stays out of the way. */
+  const idle = untilAsked && asked === '' && searched === null;
   const filterKey = `${asked}\0${productType}`;
   const [filterSeen, setFilterSeen] = useState(filterKey);
   const requestedPage = filterSeen === filterKey ? page : 1;
-  const library = useSpecIdLibrary({ q: asked, productType, page: requestedPage }, namesAsked);
+  const library = useSpecIdLibrary({ q: asked, productType, page: requestedPage }, namesAsked && !idle);
   if (filterSeen !== filterKey) {
     setFilterSeen(filterKey);
     if (page !== 1) setPage(1);
@@ -89,7 +102,7 @@ export function AtlasLibrary({ dictionary, timeZone }: { dictionary: AtlasDictio
             ) : null
           }
         />
-        {code === null && searched === null && (
+        {code === null && searched === null && !idle && (
           <ProductTypeFilter productType={productType} productTypes={productTypes} onChange={setProductType} />
         )}
       </div>
@@ -104,7 +117,7 @@ export function AtlasLibrary({ dictionary, timeZone }: { dictionary: AtlasDictio
         />
       ) : code !== null ? (
         <PastedCodeResult code={code} result={lookup} timeZone={timeZone} />
-      ) : namesAsked ? (
+      ) : namesAsked && !idle ? (
         <LibraryList
           library={library}
           q={asked}
@@ -113,7 +126,7 @@ export function AtlasLibrary({ dictionary, timeZone }: { dictionary: AtlasDictio
           onPageChange={setPage}
           timeZone={timeZone}
         />
-      ) : (
+      ) : idle ? null : (
         <p role="status" className="text-sm text-ink-muted">
           {NO_NAMES_MATCH}
         </p>
