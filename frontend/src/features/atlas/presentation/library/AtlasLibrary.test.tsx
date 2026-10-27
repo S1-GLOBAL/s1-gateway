@@ -296,6 +296,7 @@ describe('AtlasLibrary, the list', () => {
 describe('AtlasLibrary, until asked', () => {
   it('lists nothing until a name is asked for, then only the names that match', async () => {
     const library = vi.fn<AtlasGateway['library']>(async () => pageOf([saved(1)]));
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     renderLibrary({ library }, s1Dictionary, true);
 
     expect(screen.getByRole('searchbox', { name: 'Search' })).toBeTruthy();
@@ -303,10 +304,9 @@ describe('AtlasLibrary, until asked', () => {
     expect(screen.queryByText('No Spec IDs yet')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Search' })).toBeNull();
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, SEARCH_WAIT_MS + 20));
-    });
+    act(() => vi.advanceTimersByTime(SEARCH_WAIT_MS));
     expect(library).not.toHaveBeenCalled();
+    vi.useRealTimers();
 
     search('lid');
 

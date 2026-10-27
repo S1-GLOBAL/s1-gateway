@@ -83,4 +83,3 @@ function AtlasTabs({ tab, onChange }: { tab: AtlasTab; onChange: (tab: AtlasTab)
     </div>
   );
 }
-

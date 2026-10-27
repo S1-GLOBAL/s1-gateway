@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { RouteBoundary } from '@/app/shell/RouteBoundary';
@@ -10,7 +10,6 @@ import {
   s1Dictionary,
   savedFor,
 } from '@/features/atlas/application/testing/atlas-fixtures';
-import { SEARCH_WAIT_MS } from '@/features/atlas/presentation/library/AtlasLibrary';
 import { AppError } from '@/shared/application/app-error';
 import { AtlasPage } from './AtlasPage';
 import { AtlasPageSkeleton } from './AtlasPageSkeleton';
@@ -62,10 +61,6 @@ describe('AtlasPage', () => {
     expect(screen.queryByRole('link', { name: 'New Spec ID' })).toBeNull();
     expect(screen.queryByText('Product type')).toBeNull();
     expect(screen.queryByText('Bowl lid')).toBeNull();
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, SEARCH_WAIT_MS + 20));
-    });
     expect(library).not.toHaveBeenCalled();
 
     fireEvent.change(search, { target: { value: 'lid' } });
