@@ -84,7 +84,7 @@ describe('readVerifiedRow', () => {
 });
 
 describe('readVerifiedRow after an approved change (ADR 0031)', () => {
-  it("reads an approved search word in the item name as its option", () => {
+  it('reads an approved search word in the item name as its option', () => {
     const withWord = applyProposal(dictionary, { slot: 'material', code: 'CBG' }, { kind: 'edit', newCode: null, meaning: null, searchWords: ['sugarcane fibre'] }, {
       number: 1,
       at: new Date('2026-10-27T10:00:00.000Z'),

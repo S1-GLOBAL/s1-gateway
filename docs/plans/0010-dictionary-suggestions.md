@@ -192,20 +192,22 @@ live dictionary. The rules are #95's table; problems carry fields
 
 | Method | Answers |
 |---|---|
-| `live(slot, code)` | The code's live letters: itself if it exists, its rename if renamed, `undefined` if deleted |
-| ~~`original(slot, code)`~~ | Not built: the capacity labels find a live unit's label by asking `live` of each S2 0.1.0 unit, so one direction is enough |
+| `live(slot, code)` | The code's live letters: itself if it exists or never did, its rename if renamed, `undefined` if deleted |
+| ~~`original(slot, code)`~~ | Not built: the capacity labels find a renamed unit's label through `renames()`, so one direction is enough |
 
 `DrizzleDictionaryRepository.get` also reads `atlas_dictionary_renames`, and
 the latest change (`number`, `approved_at`), which the dictionary contract
 gains as `change: { number, at } | null`.
 
-Every hardcoded code goes through `live`: `ROUND_SHAPE` and `PAPER_FAMILY` in
-`domain/slots.ts`; `KEYWORDS` in `domain/reading/keywords.ts`; `WORD_LIST` in
+Every hardcoded code goes through `live`: `ROUND_SHAPE` in
+`domain/slots.ts` (`PAPER_FAMILY` stays the letter `B`: a material's first
+letter is its family, #95); `KEYWORDS` in `domain/reading/keywords.ts`; `WORD_LIST` in
 `domain/reading/word-list.ts`; the product-type sets and `'RD'`/`'RC'` in
 `domain/reading/size-rulings.ts`; `'RD'` in `domain/reading/read-text.ts` and
-`domain/import/verified-row.ts`; `CAPACITY_UNIT_LABELS` through `live`, in reverse; and
-`fromS1`'s output in `domain/old-codes.ts`. A keyword or word whose code was
-deleted is skipped. `RD` itself cannot be renamed or deleted, so
+`domain/import/verified-row.ts`; `CAPACITY_UNIT_LABELS` through `renames()`; and
+every dictionary slot of a code `SpecId.parse` reads, `fromS1`'s output among
+them. A keyword or word whose code was deleted holds its place in the text and
+reads as nothing. `RD` itself cannot be renamed or deleted, so
 `ROUND_SHAPE` is live by rule, but goes through `live` like the rest.
 
 ### Approval — `application/approve-dictionary-suggestion.ts`
@@ -384,7 +386,7 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 ### Step 3.1 — Hardcoded codes follow renames
 
 - [x] **Action.** Every site in Design's list goes through `dictionary.live`. Pass the dictionary where a function lacks it (`size-rulings.ts`). *As built:* `live` reads a code the dictionary never had as itself, so a value read from text (print `09`) still reaches `SpecId.build` to be refused as before; only a deleted option's code is `undefined`. `PAPER_FAMILY` stays the letter `B`: a material's first letter is its family (#95). `CAPACITY_UNIT_LABELS` are found through `atlas_dictionary_renames` rather than `live` in reverse, so a unit given the letters of one renamed away gets no label. A deleted option's words still hold their place in the text, so no shorter phrase inside them is read, and come back as ignored.
-- [x] **Verify.** `git grep -nE "'(RD|RC|CUP|BWL|TRY)'" -- backend/src/modules/atlas/domain ':!*.test.ts'` prints only the constant tables the `live` calls read; the reader's existing tests pass unchanged.
+- [x] **Verify.** `git grep -nE "'(RD|RC|CUP|BWL|TRY)'" -- backend/src/modules/atlas/domain ':!*.test.ts' ':!**/testing/**'` prints only the constant tables the `live` calls read; the reader's existing tests pass unchanged.
 
 ### Step 3.2 — Renamed codes in the reader's tests
 

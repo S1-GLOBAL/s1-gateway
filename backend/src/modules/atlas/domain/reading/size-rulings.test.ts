@@ -62,7 +62,7 @@ describe('readSize after approved changes (ADR 0031)', () => {
   const rename = (from: typeof dictionary, slot: 'productType' | 'shape', code: string, newCode: string, number: number) =>
     applyProposal(from, { slot, code }, { kind: 'edit', newCode, meaning: null, searchWords: null }, { number, at: new Date('2026-10-27T10:00:00.000Z') });
 
-  it("reads a renamed product type under its ruling, naming the shape in its live letters", () => {
+  it('reads a renamed product type under its ruling, naming the shape in its live letters', () => {
     const renamed = rename(rename(dictionary, 'productType', 'TRY', 'TRQ', 1), 'shape', 'RC', 'RQ', 2);
     expect(readSize('tray 200 x 150 x 60', 'TRQ', renamed)).toMatchObject({ ruling: 'R6', facts: { shape: 'RQ', length: mm('200') } });
     expect(readSize('tray 200 x 150 x 60', 'TRY', renamed)).toBeNull();
