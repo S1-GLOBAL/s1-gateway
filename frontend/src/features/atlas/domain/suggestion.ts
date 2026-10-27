@@ -235,4 +235,3 @@ export function editedFields(before: Proposal, after: Proposal): ChangeRow[] {
     ({ key, label }) => ({ label, before: proposalValue(was[key]), after: proposalValue(now[key]) }),
   );
 }
-
