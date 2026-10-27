@@ -1,5 +1,5 @@
 import type { Dictionary } from '../dictionary.js';
-import { PAPER_FAMILY, SLOTS, type SlotKey } from '../slots.js';
+import { DICTIONARY_SLOTS, PAPER_FAMILY, ROUND_SHAPE, SLOTS, type DictionarySlotKey, type SlotKey } from '../slots.js';
 import type { CapacityInput, MeasurementInput, SpecIdFactsInput } from '../spec-id.js';
 import { KEYWORDS } from './keywords.js';
 import { readSize, type Ruling } from './size-rulings.js';
@@ -29,48 +29,82 @@ interface Match {
   readonly start: number;
   readonly end: number;
   readonly key: SlotKey;
-  /** A slot code, `Z14` for a capacity, or a count as digits. */
-  readonly value: string;
+  /**
+   * A slot code, `Z14` for a capacity, or a count as digits; null for an
+   * option an approved change deleted, whose words read as nothing.
+   */
+  readonly value: string | null;
   readonly paperOnly: boolean;
   /** How a conflict reports this value, when not as the span's own words: one end of a range. */
   readonly words?: string;
 }
 
+/** A match that reads a value. */
+type ReadMatch = Match & { readonly value: string };
+
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
 
-/** Every phrase of the word list and every product-type name, as patterns, longest first. */
-function phrases(dictionary: Dictionary): { pattern: RegExp; key: SlotKey; value: string }[] {
-  const entries = Object.entries(WORD_LIST).map(([phrase, meaning]) =>
-    'productType' in meaning
-      ? { phrase, key: 'productType' as const, value: meaning.productType }
-      : { phrase, key: 'material' as const, value: meaning.material },
-  );
+/**
+ * A slot value written in S2 0.1.0's letters, or before an approved change,
+ * as `dictionary` reads it now: null once its option is deleted (ADR 0031).
+ */
+function liveValue(key: SlotKey, value: string, dictionary: Dictionary): string | null {
+  if (!(DICTIONARY_SLOTS as readonly SlotKey[]).includes(key)) return value;
+  const slot = key as DictionarySlotKey;
+  return (slot === 'capacity' ? dictionary.liveCapacity(value) : dictionary.live(slot, value)) ?? null;
+}
+
+interface Phrase {
+  readonly pattern: RegExp;
+  readonly key: SlotKey;
+  readonly value: (match: RegExpExecArray) => string | null;
+}
+
+/** A number before a unit's search word, as a capacity keyword reads one: `12`, `12.5`. */
+const NUMBER = '(\\d+(?:\\.\\d+)?)';
+const wholePhrase = (source: string) => new RegExp(`(?<![a-z0-9])${source}(?![a-z0-9])`, 'g');
+
+/**
+ * Every phrase of the word list, every product-type name, and every approved
+ * search word (ADR 0026, ADR 0031), as patterns. A unit's search word is read
+ * after a number, as `12 fluid ounces`.
+ */
+function phrases(dictionary: Dictionary): Phrase[] {
+  const fixed = (value: string | null) => () => value;
+  const found: Phrase[] = Object.entries(WORD_LIST).map(([phrase, meaning]) => {
+    const [key, code] = 'productType' in meaning ? (['productType', meaning.productType] as const) : (['material', meaning.material] as const);
+    return { pattern: wholePhrase(escape(phrase)), key, value: fixed(liveValue(key, code, dictionary)) };
+  });
   for (const { code, meaning } of dictionary.valuesOf('productType')) {
-    entries.push({ phrase: meaning.toLowerCase(), key: 'productType', value: code });
+    found.push({ pattern: wholePhrase(escape(meaning.toLowerCase())), key: 'productType', value: fixed(code) });
   }
-  return entries.map(({ phrase, key, value }) => ({
-    pattern: new RegExp(`(?<![a-z0-9])${escape(phrase)}(?![a-z0-9])`, 'g'),
-    key,
-    value,
-  }));
+  for (const { slot, word, code } of dictionary.searchWords()) {
+    found.push(
+      slot === 'capacity'
+        ? { pattern: wholePhrase(`${NUMBER}\\s*${escape(word)}`), key: slot, value: (match) => `${code}${match[1] ?? ''}` }
+        : { pattern: wholePhrase(escape(word)), key: slot, value: fixed(code) },
+    );
+  }
+  return found;
 }
 
 function allMatches(lower: string, dictionary: Dictionary): Match[] {
   const found: Match[] = [];
   for (const { pattern, key, value } of phrases(dictionary)) {
     for (const match of lower.matchAll(pattern)) {
-      found.push({ start: match.index, end: match.index + match[0].length, key, value, paperOnly: false });
+      found.push({ start: match.index, end: match.index + match[0].length, key, value: value(match), paperOnly: false });
     }
   }
+  // Keywords name S2 0.1.0's letters: each is read as the dictionary has it now.
   for (const keyword of KEYWORDS) {
     for (const match of lower.matchAll(keyword.pattern)) {
       const span = { start: match.index, end: match.index + match[0].length, key: keyword.slot, paperOnly: keyword.paperOnly === true };
       if (keyword.ends) {
-        for (const { value, words } of keyword.ends(match)) found.push({ ...span, value, words });
+        for (const { value, words } of keyword.ends(match)) found.push({ ...span, value: liveValue(keyword.slot, value, dictionary), words });
         continue;
       }
       const value = typeof keyword.value === 'string' ? keyword.value : keyword.value(match);
-      found.push({ ...span, value });
+      found.push({ ...span, value: liveValue(keyword.slot, value, dictionary) });
     }
   }
   // The word list and the product-type names can both name the same words ("bowl"): one match each.
@@ -85,7 +119,7 @@ function allMatches(lower: string, dictionary: Dictionary): Match[] {
  * "paper wrapped" is no material. The one exception is a product type, which
  * often names a material or a feature: "paper cup" is paper, "PP lid" is PP.
  */
-function withoutInner(matches: readonly Match[]): Match[] {
+function withoutInner<M extends Match>(matches: readonly M[]): M[] {
   return matches.filter(
     (inner) =>
       !matches.some(
@@ -116,18 +150,19 @@ const wordsOf = (text: string, spans: readonly { start: number; end: number }[])
  */
 export function readText(text: string, dictionary: Dictionary, productType?: string): TextReading {
   const lower = text.toLowerCase();
-  let matches = withoutInner(allMatches(lower, dictionary));
+  // A deleted option's words still hold their place, so no shorter phrase inside them is read, but read as nothing.
+  let matches = withoutInner(allMatches(lower, dictionary)).filter((match): match is ReadMatch => match.value !== null);
 
-  const byKey = new Map<SlotKey, Match[]>();
+  const byKey = new Map<SlotKey, ReadMatch[]>();
   for (const match of matches) byKey.set(match.key, [...(byKey.get(match.key) ?? []), match]);
 
   const facts: Record<string, FactValue> = {};
   const conflicts: { key: SlotKey; found: string[] }[] = [];
-  const decide = (key: SlotKey, found: readonly Match[]) => {
+  const decide = (key: SlotKey, found: readonly ReadMatch[]) => {
     const values = [...new Set(found.map((match) => match.value))];
     if (values.length === 1) facts[key] = factOf(key, values[0] ?? '');
     else {
-      const first = (value: string) => found.find((match) => match.value === value) as Match;
+      const first = (value: string) => found.find((match) => match.value === value) as ReadMatch;
       conflicts.push({ key, found: values.map((value) => first(value).words ?? wordsOf(text, [first(value)])) });
     }
   };
@@ -152,9 +187,10 @@ export function readText(text: string, dictionary: Dictionary, productType?: str
   if (type !== undefined) {
     let masked = lower;
     for (const { start, end } of used) masked = masked.slice(0, start) + ' '.repeat(end - start) + masked.slice(end);
-    const size = readSize(masked, type);
-    const round = size?.facts.shape === 'RD';
-    if (size && !(round && facts.shape !== undefined && facts.shape !== 'RD')) {
+    const size = readSize(masked, type, dictionary);
+    const roundShape = dictionary.live('shape', ROUND_SHAPE);
+    const round = size?.facts.shape === roundShape;
+    if (size && !(round && facts.shape !== undefined && facts.shape !== roundShape)) {
       const start = masked.indexOf(size.words);
       used.push({ start, end: start + size.words.length });
       for (const [key, value] of Object.entries(size.facts) as [SlotKey, FactValue][]) {

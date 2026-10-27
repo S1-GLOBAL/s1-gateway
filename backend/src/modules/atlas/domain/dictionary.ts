@@ -76,14 +76,22 @@ export class Dictionary {
   }
 
   /**
-   * The live letters of a code that once meant something: the code itself
-   * while it exists, else a renamed code's new letters, undefined once
-   * deleted. Code that names an S2 0.1.0 code reads it through this (ADR 0031).
+   * The letters `code` reads as now: the code itself while it exists, else a
+   * renamed code's new letters, undefined once deleted. A code the dictionary
+   * never had is itself too, for whatever reads it to refuse. Code that names
+   * an S2 0.1.0 code, and a code written before a change, read it through
+   * this (ADR 0031).
    */
   live(slot: DictionarySlotKey, code: string): string | undefined {
     const key = `${slot}:${code}`;
-    if (this.meanings.has(key)) return code;
+    if (this.meanings.has(key) || !this.liveLetters.has(key)) return code;
     return this.liveLetters.get(key) ?? undefined;
+  }
+
+  /** The letters a capacity value reads as now, its unit followed: `Z14` is `O14` once `Z` is renamed `O`. */
+  liveCapacity(value: string): string | undefined {
+    const unit = this.live('capacity', value.slice(0, 1));
+    return unit === undefined ? undefined : `${unit}${value.slice(1)}`;
   }
 
   /** Every rename, by list then old code. */

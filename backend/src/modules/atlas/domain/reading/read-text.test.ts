@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import type { DictionarySlotKey } from '../slots.js';
+import { applyProposal } from '../suggestions/apply-proposal.js';
+import type { Proposal } from '../suggestions/proposal.js';
 import { s2Dictionary } from '../testing/s2-dictionary.js';
 import { readText } from './read-text.js';
 
@@ -101,3 +104,53 @@ describe('readText, #58', () => {
     expect(reading.facts).toEqual({ productType: 'CUP', material: 'B00', print });
   });
 });
+
+describe('readText after approved changes', () => {
+  const STAMP = { number: 1, at: new Date('2026-10-27T10:00:00.000Z') };
+  const changed = (slot: DictionarySlotKey, code: string, proposal: Proposal) =>
+    applyProposal(dictionary, { slot, code }, proposal, STAMP);
+  const renamed = (slot: DictionarySlotKey, code: string, newCode: string) =>
+    changed(slot, code, { kind: 'edit', newCode, meaning: null, searchWords: null });
+  const withWords = (slot: DictionarySlotKey, code: string, searchWords: string[]) =>
+    changed(slot, code, { kind: 'edit', newCode: null, meaning: null, searchWords });
+
+  it('reads a keyword for a renamed option in its new letters', () => {
+    expect(readText('12oz double wall paper cup', renamed('wall', 'DW', 'DX')).facts.wall).toBe('DX');
+  });
+
+  it('reads a word-list word for a renamed material as that material', () => {
+    expect(readText('14oz Bagasse Bowl', renamed('material', 'CBG', 'CBX')).facts.material).toBe('CBX');
+  });
+
+  it("leaves a deleted option's keyword not known, and reports its words as ignored", () => {
+    const reading = readText('half dome bowl lid', changed('profile', 'HD', { kind: 'delete', replacement: null }));
+    expect(reading.facts).not.toHaveProperty('profile');
+    expect(reading.ignored).toEqual(['half', 'dome']);
+  });
+
+  it('reads 14oz under a renamed unit', () => {
+    expect(readText('14oz bagasse bowl', renamed('capacity', 'Z', 'O')).facts.capacity).toEqual({ unit: 'O', value: '14' });
+  });
+
+  it("reads a renamed product type's size under its rulings", () => {
+    expect(readText('Cup 90mm', renamed('productType', 'CUP', 'CPX')).facts).toEqual({
+      productType: 'CPX',
+      shape: 'RD',
+      topDiameter: { value: '90', unit: 'mm' },
+    });
+  });
+
+  it('reads an approved search word as its option, and not before it is approved', () => {
+    expect(readText('sugarcane fibre bowl', withWords('material', 'CBG', ['sugarcane fibre'])).facts.material).toBe('CBG');
+    expect(read('sugarcane fibre bowl').facts).not.toHaveProperty('material');
+  });
+
+  it('reads an approved search word in any field, and one for a unit after its number', () => {
+    expect(readText('oblong tray', withWords('shape', 'RC', ['oblong'])).facts.shape).toBe('RC');
+    expect(readText('12 fluid ounces paper cup', withWords('capacity', 'Z', ['fluid ounces'])).facts.capacity).toEqual({
+      unit: 'Z',
+      value: '12',
+    });
+  });
+});
+

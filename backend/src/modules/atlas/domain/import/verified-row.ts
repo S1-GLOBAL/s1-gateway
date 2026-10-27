@@ -2,7 +2,7 @@ import type { Dictionary } from '../dictionary.js';
 import { readText } from '../reading/read-text.js';
 import { readSize, type Ruling } from '../reading/size-rulings.js';
 import { NAME_MAX_LENGTH } from '../saved-spec-id.js';
-import type { SlotKey } from '../slots.js';
+import { ROUND_SHAPE, type SlotKey } from '../slots.js';
 import type { MeasurementInput, SpecIdFactsInput } from '../spec-id.js';
 
 /** Columns O to U of the verified list, what one row quotes, and their names in the report (#56). */
@@ -144,9 +144,10 @@ export function readVerifiedRow(row: VerifiedRow, dictionary: Dictionary): RowRe
 
   // The Dimension column wins over a size the item name gave; a round ruling never overrides a shape that is not round.
   const dimension = tidy(row.dimension);
-  const size = dimension === '' ? null : readSize(dimension.toLowerCase(), productType);
+  const size = dimension === '' ? null : readSize(dimension.toLowerCase(), productType, dictionary);
   const columnRulings: RowNote[] = [];
-  if (size && !(size.facts.shape === 'RD' && typeof facts.shape === 'string' && facts.shape !== 'RD')) {
+  const round = dictionary.live('shape', ROUND_SHAPE);
+  if (size && !(size.facts.shape === round && typeof facts.shape === 'string' && facts.shape !== round)) {
     for (const [key, value] of Object.entries(size.facts)) {
       facts[key] = value;
       columnRulings.push({ key: key as SlotKey, words: dimension, ruling: size.ruling });
