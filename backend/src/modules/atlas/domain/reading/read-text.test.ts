@@ -115,11 +115,11 @@ describe('readText after approved changes', () => {
     changed(slot, code, { kind: 'edit', newCode: null, meaning: null, searchWords });
 
   it('reads a keyword for a renamed option in its new letters', () => {
-    expect(readText('12oz double wall paper cup', renamed('wall', 'DW', 'DX')).facts.wall).toBe('DX');
+    expect(readText('12oz double wall paper cup', renamed('wall', 'DW', 'DQ')).facts.wall).toBe('DQ');
   });
 
   it('reads a word-list word for a renamed material as that material', () => {
-    expect(readText('14oz Bagasse Bowl', renamed('material', 'CBG', 'CBX')).facts.material).toBe('CBX');
+    expect(readText('14oz Bagasse Bowl', renamed('material', 'CBG', 'CBQ')).facts.material).toBe('CBQ');
   });
 
   it("leaves a deleted option's keyword not known, and reports its words as ignored", () => {
@@ -133,8 +133,8 @@ describe('readText after approved changes', () => {
   });
 
   it("reads a renamed product type's size under its rulings", () => {
-    expect(readText('Cup 90mm', renamed('productType', 'CUP', 'CPX')).facts).toEqual({
-      productType: 'CPX',
+    expect(readText('Cup 90mm', renamed('productType', 'CUP', 'CPQ')).facts).toEqual({
+      productType: 'CPQ',
       shape: 'RD',
       topDiameter: { value: '90', unit: 'mm' },
     });

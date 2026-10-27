@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Dictionary } from '../dictionary.js';
 import { RULED_SLOTS, type RuledSlotKey, type SlotRule } from '../slots.js';
 import { s2Dictionary } from '../testing/s2-dictionary.js';
+import { applyProposal } from './apply-proposal.js';
 import { checkProposal, type Proposal, type ProposalContext, type SuggestionTarget } from './proposal.js';
 import type { InvalidSuggestionError } from './suggestion.errors.js';
 
@@ -225,5 +226,21 @@ describe('checkProposal: list', () => {
     expect(issuesOf({ slot: 'height' as never, code: 'AB' }, { kind: 'delete', replacement: null }).slot).toEqual([
       'That is not a dictionary list.',
     ]);
+  });
+});
+
+describe('checkProposal: search words after a rename (ADR 0031)', () => {
+  const renamed = applyProposal(dictionary, { slot: 'material', code: 'CBG' }, { kind: 'edit', newCode: 'CBQ', meaning: null, searchWords: null }, {
+    number: 1,
+    at: new Date('2026-10-27T10:00:00.000Z'),
+  });
+
+  it("names the word list's word under the option's live letters", () => {
+    expect(issuesOf(...addMaterial('AZZ', 'Invented', ['bagasse']), { dictionary: renamed }).searchWords).toEqual([
+      '“bagasse” already finds CBQ (Molded fibre, bagasse).',
+    ]);
+    expect(
+      issuesOf({ slot: 'material', code: 'CBQ' }, { kind: 'edit', newCode: null, meaning: null, searchWords: ['bagasse'] }, { dictionary: renamed }),
+    ).toEqual({});
   });
 });

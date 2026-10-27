@@ -272,10 +272,12 @@ function wordProblems(
  * slot not known, so a word another option has is refused.
  */
 export function whoFinds(slot: DictionarySlotKey, word: string, context: ProposalContext): string | undefined {
+  // The word list and the keywords name S2 0.1.0's letters: each is read as the dictionary has it now (ADR 0031).
+  const live = (code: string) => context.dictionary.live(slot, code);
   const listed = WORD_LIST[word];
   if (listed !== undefined) {
-    if (slot === 'productType' && 'productType' in listed) return listed.productType;
-    if (slot === 'material' && 'material' in listed) return listed.material;
+    if (slot === 'productType' && 'productType' in listed) return live(listed.productType);
+    if (slot === 'material' && 'material' in listed) return live(listed.material);
   }
   if (slot === 'productType') {
     const named = context.dictionary.valuesOf('productType').find((value) => value.meaning.toLowerCase() === word);
@@ -284,7 +286,7 @@ export function whoFinds(slot: DictionarySlotKey, word: string, context: Proposa
   for (const keyword of KEYWORDS) {
     if (keyword.slot !== slot || typeof keyword.value !== 'string') continue;
     const pattern = new RegExp(keyword.pattern.source, keyword.pattern.flags.replace('g', ''));
-    if (pattern.exec(word)?.[0] === word) return keyword.value;
+    if (pattern.exec(word)?.[0] === word) return live(keyword.value);
   }
   return context.dictionary.searchWords().find((approved) => approved.slot === slot && approved.word === word)?.code;
 }

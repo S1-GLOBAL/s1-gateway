@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { CURRENT_RELEASE } from '../domain/slots.js';
+import { applyProposal } from '../domain/suggestions/apply-proposal.js';
 import { ReadSpecIdText } from './read-spec-id-text.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 
@@ -80,5 +82,28 @@ describe('ReadSpecIdText', () => {
     const result = await readText.execute({ text: 'clear PET', productType: 'ZZZ' });
     expect(!result.ok && result.error.code).toBe('INVALID_SPEC_ID');
     expect(!result.ok && result.error.details).toEqual({ fields: { productType: ['Product type: ZZZ is not in the dictionary.'] } });
+  });
+});
+
+describe('ReadSpecIdText after an approved change (ADR 0031)', () => {
+  it('reads an approved search word from the next request, and not before', async () => {
+    const dictionaries = new InMemoryDictionaryRepository();
+    const reading = new ReadSpecIdText(dictionaries);
+    const material = async () => {
+      const result = await reading.execute({ text: 'sugarcane fibre bowl' });
+      if (!result.ok) throw result.error;
+      return result.value.read.find((fact) => fact.key === 'material')?.meaning;
+    };
+
+    expect(await material()).toBeUndefined();
+    const live = await dictionaries.get(CURRENT_RELEASE);
+    if (!live) throw new Error('No dictionary');
+    dictionaries.replace(
+      applyProposal(live, { slot: 'material', code: 'CBG' }, { kind: 'edit', newCode: null, meaning: null, searchWords: ['sugarcane fibre'] }, {
+        number: 1,
+        at: new Date('2026-10-27T10:00:00.000Z'),
+      }),
+    );
+    expect(await material()).toBe('Molded fibre, bagasse');
   });
 });
