@@ -14,6 +14,8 @@ export interface DictionaryDto {
   slots: DictionarySlotDto[];
   /** By product type code, then slot order. */
   rules: SlotRuleEntryDto[];
+  /** The latest approved change, `at` ISO 8601; null before the first (ADR 0031). */
+  change: { number: number; at: string } | null;
 }
 
 export interface DictionarySlotDto {
@@ -68,6 +70,7 @@ export function toDictionaryDto(dictionary: Dictionary): DictionaryDto {
       values: dictionary.valuesOf(key).map(({ code, meaning }) => ({ code, meaning })),
     })),
     rules: dictionary.slotRules().map(({ productType, slot, rule }) => ({ productType, slot, rule })),
+    change: dictionary.change === null ? null : { number: dictionary.change.number, at: dictionary.change.at.toISOString() },
   };
 }
 
@@ -135,6 +138,8 @@ export interface SpecIdChangeDto {
   nameBefore: string | null;
   nameAfter: string;
   slots: SlotChangeDto[];
+  /** The approved dictionary change that made it, with who suggested and approved it; null for anyone's own edit. */
+  dictionaryChange: { number: number; suggestedBy: StaffDto; approvedBy: StaffDto } | null;
 }
 
 export interface FormerHolderDto {
@@ -185,8 +190,9 @@ export interface FindSpecIdByCodeInput {
 export type FindSimilarSpecIdsInput = Readonly<Record<string, unknown>>;
 
 /**
- * A saved Spec ID read slot by slot. Meanings are never reassigned between
- * releases (ADR 0021), so the current dictionary reads every saved code.
+ * A saved Spec ID read slot by slot, with the live dictionary: an approved
+ * change that renames or deletes an option rewrites every saved code holding
+ * it (ADR 0031), so the live dictionary reads every saved code.
  */
 export function toSavedSpecIdDto(
   record: SavedSpecIdRecord,

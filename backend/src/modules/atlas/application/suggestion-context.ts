@@ -4,9 +4,8 @@ import type { SpecIdRepository } from '../domain/spec-id-repository.js';
 import { isDictionarySlot, normaliseCode, type ProposalContext, type SuggestionTarget } from '../domain/suggestions/proposal.js';
 
 /**
- * What a proposal for `target` is checked against: the live dictionary, and
- * how many saved Spec IDs hold the option today. No search word has been
- * approved until approvals exist (plan 0010, phase 2).
+ * What a proposal for `target` is checked against: the live dictionary, with
+ * its approved search words, and how many saved Spec IDs hold the option today.
  */
 export async function proposalContext(
   dictionaries: DictionaryRepository,
@@ -16,5 +15,5 @@ export async function proposalContext(
   const dictionary = await dictionaries.get(CURRENT_RELEASE);
   if (!dictionary) throw new Error(`Dictionary ${CURRENT_RELEASE} is missing`);
   const usage = isDictionarySlot(target.slot) ? await specIds.usageOf(target.slot, normaliseCode(target.code)) : 0;
-  return { dictionary, usage, approvedWords: [] };
+  return { dictionary, usage };
 }

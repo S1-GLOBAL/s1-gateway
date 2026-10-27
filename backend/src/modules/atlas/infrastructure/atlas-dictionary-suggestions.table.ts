@@ -30,7 +30,11 @@ export const atlasDictionarySuggestions = pgTable(
     decidedAt: timestamp('decided_at', { withTimezone: true }),
     /** Why it was rejected. */
     reason: varchar('reason', { length: 500 }),
-    /** The dictionary change it became; its foreign key comes with that table (plan 0010, phase 2). */
+    /**
+     * The dictionary change it became, once approved. It mirrors
+     * `atlas_dictionary_changes.suggestion_id`, which holds the foreign key:
+     * one each way would make each table's type depend on the other's.
+     */
     changeNumber: integer('change_number'),
   },
   (table) => [

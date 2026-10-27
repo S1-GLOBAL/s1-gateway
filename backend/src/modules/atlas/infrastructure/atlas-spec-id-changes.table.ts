@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
-import { check, foreignKey, index, pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import { check, foreignKey, index, integer, pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 import { accountsTable } from '../../accounts/index.js';
+import { atlasDictionaryChanges } from './atlas-dictionary-changes.table.js';
 import { atlasSpecIds } from './atlas-spec-ids.table.js';
 
 /*
@@ -22,6 +23,8 @@ export const atlasSpecIdChanges = pgTable(
     /** Null for `created`. */
     nameBefore: varchar('name_before', { length: 120 }),
     nameAfter: varchar('name_after', { length: 120 }).notNull(),
+    /** The dictionary change whose approval made this change; null for anyone's own edit (ADR 0031). */
+    dictionaryChangeNumber: integer('dictionary_change_number'),
   },
   (table) => [
     foreignKey({ name: 'atlas_spec_id_changes_spec_id_fk', columns: [table.specId], foreignColumns: [atlasSpecIds.id] }),
@@ -29,6 +32,11 @@ export const atlasSpecIdChanges = pgTable(
       name: 'atlas_spec_id_changes_changed_by_fk',
       columns: [table.changedBy],
       foreignColumns: [accountsTable.id],
+    }),
+    foreignKey({
+      name: 'atlas_spec_id_changes_dictionary_change_fk',
+      columns: [table.dictionaryChangeNumber],
+      foreignColumns: [atlasDictionaryChanges.number],
     }),
     check('atlas_spec_id_changes_kind_check', sql`${table.kind} in ('created', 'updated')`),
     index('atlas_spec_id_changes_spec_id_changed_at_idx').on(table.specId, table.changedAt),

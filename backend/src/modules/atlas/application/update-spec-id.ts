@@ -15,6 +15,7 @@ import {
 import { SpecId } from '../domain/spec-id.js';
 import type { SourcingRepository } from '../domain/sourcing/sourcing-repository.js';
 import type { SpecIdRepository } from '../domain/spec-id-repository.js';
+import { DictionaryMovedOnError } from '../domain/suggestions/suggestion.errors.js';
 import { CURRENT_RELEASE } from '../domain/slots.js';
 import type { SavedSpecIdDto, UpdateSpecIdInput } from './atlas.dto.js';
 import { savedSpecIdDtoOf } from './stage-counts.js';
@@ -73,8 +74,10 @@ export class UpdateSpecId implements UseCase<UpdateSpecIdInput, Result<SavedSpec
     }
 
     // The database decides between simultaneous changes: the version, and the unique code.
-    const updated = await this.specIds.update(revised.value, change, input.version);
+    const updated = await this.specIds.update(revised.value, change, input.version, dictionary.change?.number ?? null);
     if (!updated.ok) {
+      // An approval changed the dictionary meanwhile (ADR 0031): check the facts again against the one it left.
+      if (updated.error instanceof DictionaryMovedOnError) return this.execute(input);
       if (updated.error instanceof SpecIdChangedError) return err(updated.error);
       const winner = await this.specIds.findByCode(code);
       return err(winner ? new SpecIdExistsError(await savedSpecIdDtoOf(this.sourcing, winner, dictionary)) : updated.error);

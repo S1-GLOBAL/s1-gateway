@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import type {
+  DictionaryChangeApproved,
   DictionaryCount,
   DictionarySuggestion,
   DictionarySuggestionDetail,
@@ -9,13 +10,18 @@ import type { Result } from '../../../shared/domain/result.js';
 import { HttpError } from '../../../shared/presentation/http/http-error.js';
 import { parseBody } from '../../../shared/presentation/http/parse-body.js';
 import { sendData } from '../../../shared/presentation/http/respond.js';
+import type { ApproveDictionarySuggestionError } from '../application/approve-dictionary-suggestion.js';
 import type { EditDictionarySuggestionError } from '../application/edit-dictionary-suggestion.js';
+import type { RejectDictionarySuggestionError } from '../application/reject-dictionary-suggestion.js';
 import type {
+  ApproveDictionarySuggestionInput,
+  ApprovedSuggestionDto,
   Asker,
   CountWaitingSuggestionsInput,
   DictionaryUsageInput,
   EditDictionarySuggestionInput,
   ListDictionarySuggestionsInput,
+  RejectDictionarySuggestionInput,
   SuggestDictionaryChangeInput,
   SuggestionDetailDto,
   SuggestionDto,
@@ -29,13 +35,19 @@ import {
   type InvalidSuggestionError,
 } from '../domain/suggestions/suggestion.errors.js';
 import {
+  approveDictionarySuggestionRequestSchema,
   editDictionarySuggestionRequestSchema,
+  rejectDictionarySuggestionRequestSchema,
   suggestDictionaryChangeRequestSchema,
   suggestionIdSchema,
   suggestionListStateSchema,
 } from './atlas.schemas.js';
 
-type SuggestionErrorCode = EditDictionarySuggestionError['code'] | WithdrawDictionarySuggestionError['code'];
+type SuggestionErrorCode =
+  | EditDictionarySuggestionError['code']
+  | WithdrawDictionarySuggestionError['code']
+  | ApproveDictionarySuggestionError['code']
+  | RejectDictionarySuggestionError['code'];
 
 const STATUS_BY_CODE: Record<SuggestionErrorCode, number> = {
   VALIDATION_FAILED: 400,
@@ -43,6 +55,11 @@ const STATUS_BY_CODE: Record<SuggestionErrorCode, number> = {
   NOT_ALLOWED: 403,
   SUGGESTION_DECIDED: 409,
   SUGGESTION_CHANGED: 409,
+  SUGGESTION_OUT_OF_DATE: 409,
+  SPEC_IDS_WOULD_CLASH: 409,
+  SPEC_ID_WOULD_BE_INVALID: 409,
+  DICTIONARY_CHANGED: 409,
+  SPEC_ID_CHANGED: 409,
 };
 
 /** The use cases behind the suggestion routes (#95). */
@@ -54,6 +71,8 @@ export interface DictionarySuggestionUseCases {
   get: UseCase<SuggestionIdInput, Result<SuggestionDetailDto, SuggestionNotFoundError>>;
   countWaiting: UseCase<CountWaitingSuggestionsInput, number>;
   usage: UseCase<DictionaryUsageInput, Result<number, InvalidSuggestionError>>;
+  approve: UseCase<ApproveDictionarySuggestionInput, Result<ApprovedSuggestionDto, ApproveDictionarySuggestionError>>;
+  reject: UseCase<RejectDictionarySuggestionInput, Result<SuggestionDto, RejectDictionarySuggestionError>>;
 }
 
 /** The signed-in account a request comes from, and whether it is an admin. */
@@ -110,6 +129,26 @@ export class DictionarySuggestionsController {
 
   withdraw = async (req: Request, res: Response): Promise<void> => {
     const result = await this.useCases.withdraw.execute({ id: suggestionIdOf(req), by: this.asker(req) });
+    if (!result.ok) throw toHttpError(result.error);
+    const suggestion: DictionarySuggestion = result.value;
+    sendData(res, 200, suggestion);
+  };
+
+  /** Admins only: the route is mounted behind the admin gate. */
+  approve = async (req: Request, res: Response): Promise<void> => {
+    const id = suggestionIdOf(req);
+    const { version } = parseBody(approveDictionarySuggestionRequestSchema, req.body);
+    const result = await this.useCases.approve.execute({ id, version, by: this.asker(req) });
+    if (!result.ok) throw toHttpError(result.error);
+    const approved: DictionaryChangeApproved = result.value;
+    sendData(res, 200, approved);
+  };
+
+  /** Admins only: the route is mounted behind the admin gate. */
+  reject = async (req: Request, res: Response): Promise<void> => {
+    const id = suggestionIdOf(req);
+    const { reason } = parseBody(rejectDictionarySuggestionRequestSchema, req.body);
+    const result = await this.useCases.reject.execute({ id, reason, by: this.asker(req) });
     if (!result.ok) throw toHttpError(result.error);
     const suggestion: DictionarySuggestion = result.value;
     sendData(res, 200, suggestion);

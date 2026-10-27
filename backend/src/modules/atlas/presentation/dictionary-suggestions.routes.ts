@@ -4,8 +4,9 @@ import type { DictionarySuggestionsController } from './dictionary-suggestions.c
 /**
  * Suggesting changes to the dictionary (#95, ADR 0031), mounted on
  * `/atlas/dictionary` for every signed-in staff member. Nothing here changes
- * the dictionary: approving and rejecting are admins' (plan 0010, phase 2).
- * `waiting-count` comes before `:id`, which it would otherwise match.
+ * the dictionary: approving and rejecting are admins', in
+ * `createDictionarySuggestionsAdminRouter`. `waiting-count` comes before
+ * `:id`, which it would otherwise match.
  */
 export function createDictionarySuggestionsRouter(controller: DictionarySuggestionsController): Router {
   const router = Router();
@@ -16,5 +17,17 @@ export function createDictionarySuggestionsRouter(controller: DictionarySuggesti
   router.get('/suggestions/:id', controller.get);
   router.put('/suggestions/:id', controller.edit);
   router.post('/suggestions/:id/withdraw', controller.withdraw);
+  return router;
+}
+
+/**
+ * Deciding a suggestion, mounted on `/atlas/dictionary` behind the admin gate
+ * (ADR 0030): anyone else is answered 403 before any Atlas code runs. Nobody
+ * decides their own; the use cases refuse that.
+ */
+export function createDictionarySuggestionsAdminRouter(controller: DictionarySuggestionsController): Router {
+  const router = Router();
+  router.post('/suggestions/:id/approve', controller.approve);
+  router.post('/suggestions/:id/reject', controller.reject);
   return router;
 }

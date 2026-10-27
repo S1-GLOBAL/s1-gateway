@@ -98,6 +98,7 @@ export function toChange(row: ChangeRow): SpecIdChange {
     codeAfter: shortForm(row.codeAfter),
     nameBefore: row.nameBefore,
     nameAfter: row.nameAfter,
+    dictionaryChangeNumber: row.dictionaryChangeNumber,
   });
 }
 
@@ -112,5 +113,6 @@ export function toChangeRow(change: SpecIdChange): NewChangeRow {
     codeAfter: change.codeAfter,
     nameBefore: change.nameBefore,
     nameAfter: change.nameAfter,
+    dictionaryChangeNumber: change.dictionaryChangeNumber,
   };
 }

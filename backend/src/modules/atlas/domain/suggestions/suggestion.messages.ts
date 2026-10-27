@@ -30,4 +30,17 @@ export const suggestionMessages = {
   wordTaken: (word: string, code: string, meaning: string): string => `“${word}” already finds ${code} (${meaning}).`,
   targetChanged: (): string =>
     "A suggestion's kind, list and code can't change. Withdraw it and suggest again.",
+  ownSuggestion: (): string => "You can't approve or reject your own suggestion.",
+  reasonMissing: (suggester: string): string => `Say why, so ${suggester} knows what to change.`,
+  reasonTooLong: (max: number): string => `Keep it to ${max} characters.`,
+  outOfDate: (what: string): string =>
+    `The dictionary changed since this was suggested: ${what}. The suggester can edit it, or you can reject it.`,
+  wouldClash: (first: string, second: string): string =>
+    `Approving this would make saved Spec IDs identical: ${first} and ${second}. Edit or reject the suggestion.`,
+  wouldClashUnnamed: (): string =>
+    'Approving this would make two saved Spec IDs identical. Edit or reject the suggestion.',
+  wouldBeInvalid: (code: string, problem: string): string =>
+    `Approving this would leave ${code} invalid: ${problem} Edit or reject the suggestion.`,
+  dictionaryMovedOn: (): string => 'The dictionary changed while this was being approved. Try again.',
+  specIdMovedOn: (): string => 'A Spec ID changed while this was being approved. Try again.',
 } as const;

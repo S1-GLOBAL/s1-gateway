@@ -2,7 +2,8 @@ import { Router } from 'express';
 import type { AtlasController } from './atlas.controller.js';
 
 /**
- * The dictionary is only read (ADR 0021). A saved Spec ID is created, read and
+ * The dictionary is only read here: it changes when an admin approves a
+ * suggestion, on `/atlas/dictionary` (ADR 0031). A saved Spec ID is created, read and
  * changed, never deleted (ADR 0022): there is no DELETE. Every signed-in staff
  * member may call these; the one PUT, a manufacturer's stage, is admins' only
  * and lives in `createAtlasAdminRouter` (#57).

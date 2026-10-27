@@ -3,6 +3,7 @@ import type { IdGenerator } from '../../shared/application/ports/id-generator.js
 import type { Database } from '../../shared/infrastructure/database/connection.js';
 import type { HttpModule } from '../../shared/presentation/http/http-module.js';
 import { requireAuth } from '../accounts/index.js';
+import { ApproveDictionarySuggestion } from './application/approve-dictionary-suggestion.js';
 import { CountWaitingSuggestions } from './application/count-waiting-suggestions.js';
 import { DecodeSpecId } from './application/decode-spec-id.js';
 import { EditDictionarySuggestion } from './application/edit-dictionary-suggestion.js';
@@ -18,11 +19,13 @@ import { GetSpecIdManufacturers } from './application/get-spec-id-manufacturers.
 import { ListDictionarySuggestions } from './application/list-dictionary-suggestions.js';
 import { ListSavedSpecIds } from './application/list-saved-spec-ids.js';
 import { ReadSpecIdText } from './application/read-spec-id-text.js';
+import { RejectDictionarySuggestion } from './application/reject-dictionary-suggestion.js';
 import { SaveSpecId } from './application/save-spec-id.js';
 import { SetManufacturerStage } from './application/set-manufacturer-stage.js';
 import { SuggestDictionaryChange } from './application/suggest-dictionary-change.js';
 import { UpdateSpecId } from './application/update-spec-id.js';
 import { WithdrawDictionarySuggestion } from './application/withdraw-dictionary-suggestion.js';
+import { DrizzleDictionaryChangeStore } from './infrastructure/drizzle-dictionary-change-store.js';
 import { DrizzleDictionaryRepository } from './infrastructure/drizzle-dictionary-repository.js';
 import { DrizzleSourcingRepository } from './infrastructure/drizzle-sourcing-repository.js';
 import { DrizzleSpecIdRepository } from './infrastructure/drizzle-spec-id-repository.js';
@@ -30,7 +33,10 @@ import { DrizzleSuggestionRepository } from './infrastructure/drizzle-suggestion
 import { AtlasController } from './presentation/atlas.controller.js';
 import { createAtlasAdminRouter, createAtlasRouter } from './presentation/atlas.routes.js';
 import { DictionarySuggestionsController } from './presentation/dictionary-suggestions.controller.js';
-import { createDictionarySuggestionsRouter } from './presentation/dictionary-suggestions.routes.js';
+import {
+  createDictionarySuggestionsAdminRouter,
+  createDictionarySuggestionsRouter,
+} from './presentation/dictionary-suggestions.routes.js';
 
 export interface AtlasModuleDependencies {
   db: Database;
@@ -41,7 +47,8 @@ export interface AtlasModuleDependencies {
 /**
  * The module's composition root: the one place its adapters meet its use
  * cases. Two modules on `/atlas`: every signed-in staff member's routes, and
- * the admins' (#57); and the dictionary's suggestions on `/atlas/dictionary` (#95).
+ * the admins' (#57); and the dictionary's suggestions on `/atlas/dictionary`,
+ * with deciding them behind the admin gate (#95).
  */
 export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule[] {
   const dictionaries = new DrizzleDictionaryRepository(deps.db);
@@ -77,9 +84,18 @@ export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule[] {
       edit: new EditDictionarySuggestion(dictionaries, specIds, suggestions, deps.clock, deps.ids),
       withdraw: new WithdrawDictionarySuggestion(suggestions, deps.clock, deps.ids),
       list: new ListDictionarySuggestions(suggestions),
-      get: new GetDictionarySuggestion(suggestions, specIds),
+      get: new GetDictionarySuggestion(dictionaries, suggestions, specIds),
       countWaiting: new CountWaitingSuggestions(suggestions),
       usage: new GetDictionaryUsage(specIds),
+      approve: new ApproveDictionarySuggestion(
+        dictionaries,
+        specIds,
+        suggestions,
+        new DrizzleDictionaryChangeStore(deps.db),
+        deps.clock,
+        deps.ids,
+      ),
+      reject: new RejectDictionarySuggestion(suggestions, deps.clock, deps.ids),
     },
     (req) => {
       const { account } = requireAuth(req);
@@ -89,6 +105,7 @@ export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule[] {
   return [
     { path: '/atlas', router: createAtlasRouter(controller), access: 'session' },
     { path: '/atlas/dictionary', router: createDictionarySuggestionsRouter(suggestionsController), access: 'session' },
+    { path: '/atlas/dictionary', router: createDictionarySuggestionsAdminRouter(suggestionsController), access: 'admin' },
     { path: '/atlas', router: createAtlasAdminRouter(controller), access: 'admin' },
   ];
 }

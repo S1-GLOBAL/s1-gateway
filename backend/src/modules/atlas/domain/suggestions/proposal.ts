@@ -62,20 +62,11 @@ export interface RulesProposal {
 
 export type Proposal = AddProposal | EditProposal | DeleteProposal | RulesProposal;
 
-/** A search word an approved change gave an option. */
-export interface ApprovedSearchWord {
-  readonly slot: DictionarySlotKey;
-  readonly word: string;
-  readonly code: string;
-}
-
-/** What a proposal is checked against. */
+/** What a proposal is checked against: the live dictionary, with its approved search words. */
 export interface ProposalContext {
   readonly dictionary: Dictionary;
   /** How many saved Spec IDs hold the target option. */
   readonly usage: number;
-  /** Every approved search word, in every list. */
-  readonly approvedWords: readonly ApprovedSearchWord[];
 }
 
 export const MEANING_MAX_LENGTH = 120;
@@ -295,7 +286,7 @@ export function whoFinds(slot: DictionarySlotKey, word: string, context: Proposa
     const pattern = new RegExp(keyword.pattern.source, keyword.pattern.flags.replace('g', ''));
     if (pattern.exec(word)?.[0] === word) return keyword.value;
   }
-  return context.approvedWords.find((approved) => approved.slot === slot && approved.word === word)?.code;
+  return context.dictionary.searchWords().find((approved) => approved.slot === slot && approved.word === word)?.code;
 }
 
 function replacementProblems(
@@ -353,4 +344,16 @@ function isRuledSlot(value: string): value is RuledSlotKey {
 
 function isRule(value: string): value is SlotRule {
   return (SLOT_RULES as readonly string[]).includes(value);
+}
+
+export const REASON_MAX_LENGTH = 500;
+
+/** A rejection's reason, trimmed, or why it can't be one: it says the suggester's name (#95). */
+export function checkReason(reason: string, suggesterName: string): Result<string, InvalidSuggestionError> {
+  const trimmed = reason.trim();
+  if (trimmed === '') return err(new InvalidSuggestionError({ reason: [messages.reasonMissing(suggesterName)] }));
+  if (trimmed.length > REASON_MAX_LENGTH) {
+    return err(new InvalidSuggestionError({ reason: [messages.reasonTooLong(REASON_MAX_LENGTH)] }));
+  }
+  return ok(trimmed);
 }

@@ -70,6 +70,8 @@ Request bodies are JSON, at most **100 kB**.
 | GET | `/atlas/dictionary/suggestions/:id` | session | 200 `{ data: DictionarySuggestionDetail }` | 401, 404 `SUGGESTION_NOT_FOUND` |
 | PUT | `/atlas/dictionary/suggestions/:id` | session | 200 `{ data: DictionarySuggestion }` | 401, 400 `VALIDATION_FAILED`, 403 `NOT_ALLOWED`, 404 `SUGGESTION_NOT_FOUND`, 409 `SUGGESTION_DECIDED`, 409 `SUGGESTION_CHANGED` |
 | POST | `/atlas/dictionary/suggestions/:id/withdraw` | session | 200 `{ data: DictionarySuggestion }` | 401, 403 `NOT_ALLOWED`, 404 `SUGGESTION_NOT_FOUND`, 409 `SUGGESTION_DECIDED`, 409 `SUGGESTION_CHANGED` |
+| POST | `/atlas/dictionary/suggestions/:id/approve` | admin | 200 `{ data: DictionaryChangeApproved }`. Body `{ version }` | 401, 403 `NOT_ALLOWED`, 400 `VALIDATION_FAILED`, 404 `SUGGESTION_NOT_FOUND`, 409 `SUGGESTION_DECIDED`, 409 `SUGGESTION_CHANGED`, 409 `SUGGESTION_OUT_OF_DATE`, 409 `SPEC_IDS_WOULD_CLASH`, 409 `SPEC_ID_WOULD_BE_INVALID`, 409 `DICTIONARY_CHANGED`, 409 `SPEC_ID_CHANGED` |
+| POST | `/atlas/dictionary/suggestions/:id/reject` | admin | 200 `{ data: DictionarySuggestion }`. Body `{ reason }` | 401, 403 `NOT_ALLOWED`, 400 `VALIDATION_FAILED`, 404 `SUGGESTION_NOT_FOUND`, 409 `SUGGESTION_DECIDED`, 409 `SUGGESTION_CHANGED` |
 
 When `mustChangePassword` is true, every session route except
 `GET /auth/me`, `POST /auth/sign-out` and `POST /auth/change-password`
@@ -156,13 +158,14 @@ each marker as wide as its slot), and reads it as the short code it converts
 to. A marker written wide in a short code (`0000`, `XX`) is read as its letter.
 No route issues anything but short codes.
 
-`AtlasDictionary` is `{ release, approvedOn, slots, rules }`. `slots` holds the
+`AtlasDictionary` is `{ release, approvedOn, slots, rules, change }`. `slots` holds the
 thirteen dictionary slots in code order (`productType` to `profile`, then
 `capacity` for its unit letters, then `wall`, `print`, `lidOpening`, `handle`,
 `wrap` and `window`), each `{ key, name, values: { code, meaning }[] }`.
 `rules` holds one `{ productType, slot, rule }` per product type and ruled
 slot, where `rule` is `applies`, `never`, `round_only`, `non_round_only` or
-`paper_only`.
+`paper_only`. `change` is the latest approved dictionary change,
+`{ number, at }`, or null before the first.
 
 `DecodedSpecId` is `{ code, dictionaryRelease, slots }`, with all 25 slots in
 order:
@@ -286,7 +289,8 @@ its creation last: `kind` (`created` or `updated`), `changedBy`,
 `nameAfter`, and `slots`, every slot the change altered as
 `{ key, name, before, after, corrected }`, with meanings as people read them
 ("Not known", "Doesn't apply", "62 mm"). `corrected` is true when a known
-value was replaced.
+value was replaced. `dictionaryChange` is `{ number, suggestedBy, approvedBy }`
+when an approved dictionary change made the entry, else null.
 
 `GET /atlas/saved/:id/manufacturers` answers a `SpecIdManufacturers`: the
 Spec ID's `{ id, name, code }` and `manufacturers`, each manufacturer once,
@@ -313,7 +317,7 @@ Spec ID, or a `:manufacturerId` that is not an id, answers 404
 Anyone signed in may suggest a change to the dictionary; nothing in it changes
 until an admin who did not make the suggestion approves it (#95,
 [ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md)).
-Approving and rejecting arrive with plan 0010's phase 2.
+Approving and rejecting are admins', behind the admin gate.
 
 `POST /atlas/dictionary/suggestions` takes `{ slot, code, proposal }`: one of
 the thirteen dictionary lists, the option it is about (the new code for an
@@ -342,12 +346,53 @@ suggestedBy, suggestedAt, decidedBy, decidedAt, reason, changeNumber }`.
 raised by each edit. `DictionarySuggestionDetail` adds `events`, the trail
 first step first (`{ kind, by, at, proposalBefore, proposalAfter, reason }`,
 `kind` one of `suggested`, `edited`, `withdrawn`, `approved`, `rejected`), and
-`usage`, how many saved Spec IDs hold the option now.
+`usage`, how many saved Spec IDs hold the option now. While it waits, it also
+carries `rewrites`, each saved Spec ID approving now would change
+(`{ id, name, codeBefore, codeAfter }`), or `problem`, the message approving
+now would be refused with; both are null once it is decided.
 
 `PUT /atlas/dictionary/suggestions/:id` takes the same body and the `version`
 the suggester read. Only the suggester may edit or withdraw, and only while it
 waits; its `kind`, `slot` and `code` cannot change (400 `VALIDATION_FAILED`
 under `kind`). An edit from an older version answers 409 `SUGGESTION_CHANGED`.
+
+`POST /atlas/dictionary/suggestions/:id/approve` takes the `version` the
+approver read. An admin who did not suggest it approves; the suggester gets 403
+`NOT_ALLOWED` "You can't approve or reject your own suggestion." The suggestion
+is checked again against the live dictionary (409 `SUGGESTION_OUT_OF_DATE`,
+`details.fields` as when suggesting), then applied as the next numbered change,
+in one transaction with every saved Spec ID it rewrites:
+
+| Kind | What changes in saved Spec IDs holding the option |
+|---|---|
+| `edit` with `newCode` | The code is replaced by the new letters; a capacity keeps its number |
+| `delete` | The code is replaced by `replacement`; `Y` leaves a capacity `Y` |
+| `rules` | Nothing is replaced |
+
+Then every ruled field of each is refitted to the new rules: `X` where it no
+longer applies, `Y` where it applies but was `X`, and `Y` where it waits on a
+shape or material not known. Each rewritten Spec ID gets a history entry naming
+the change, and its `version` goes up by 1. It answers
+`DictionaryChangeApproved`, `{ suggestion, changeNumber, specIdsRewritten }`.
+Approving is refused, with nothing written, with 409 `SPEC_IDS_WOULD_CLASH`
+(`details.codes`, the two codes now) when two Spec IDs would end with one code;
+409 `SPEC_ID_WOULD_BE_INVALID` (`details.code`) when a rewrite would be a code
+the new dictionary refuses; 409 `DICTIONARY_CHANGED` when another approval
+landed while this one was made; and 409 `SPEC_ID_CHANGED` when a saved Spec ID
+holding the option was saved, changed, or changed away from it meanwhile.
+Approvals run one at a time, and no Spec ID is saved or changed while one runs:
+a save or change built from the dictionary before an approval is checked again
+against the dictionary it left.
+
+`POST /atlas/dictionary/suggestions/:id/reject` takes `{ reason }`, 1–500
+characters once trimmed, kept on the suggestion and in its trail; without one,
+400 `VALIDATION_FAILED` under `reason`: "Say why, so {suggester} knows what to
+change."
+
+`GET /atlas/dictionary` answers `change`, the latest approved change as
+`{ number, at }`, or null before the first. A `SpecIdChange` in a Spec ID's
+history carries `dictionaryChange`: `{ number, suggestedBy, approvedBy }` when
+an approved change made it, else null.
 
 Nothing replaces or deletes a saved Spec ID ([ADR 0022](../decisions/0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md)):
 there is no `PUT` or `DELETE` for one. The one Atlas `PUT` sets a manufacturer's stage.
@@ -369,7 +414,7 @@ there is no `PUT` or `DELETE` for one. The one Atlas `PUT` sets a manufacturer's
 | `ACCOUNT_LOCKED` | 423 | Too many wrong passwords; try again in 15 minutes |
 | `SIGN_IN_REQUIRED` | 401 | No valid session cookie |
 | `MUST_CHANGE_PASSWORD` | 403 | Signed in but must change password before continuing |
-| `NOT_ALLOWED` | 403 | Signed in but not an admin; or an admin acting on an admin's or System Admin's account; or anyone disabling, or changing the role of, their own account; or editing or withdrawing someone else's dictionary suggestion |
+| `NOT_ALLOWED` | 403 | Signed in but not an admin; or an admin acting on an admin's or System Admin's account; or anyone disabling, or changing the role of, their own account; or editing or withdrawing someone else's dictionary suggestion, or approving or rejecting your own |
 | `RESET_TOKEN_INVALID` | 400 | Reset link is missing, used, or expired |
 | `ACCOUNT_NOT_FOUND` | 404 | No account with that id |
 | `INVITE_INVALID` | 404 | Invite link is expired, used, revoked or unknown — all answered alike |
@@ -378,10 +423,14 @@ there is no `PUT` or `DELETE` for one. The one Atlas `PUT` sets a manufacturer's
 | `INVALID_SPEC_ID` | 400 | A Spec ID, or the facts to build one, break a rule of ADR 0019. `details.fields` holds every problem, keyed by slot (`code` for the whole code) |
 | `SPEC_ID_EXISTS` | 409 | That Spec ID is already saved. `details.existing` is the saved Spec ID; nothing new was saved |
 | `SPEC_ID_NOT_FOUND` | 404 | No saved Spec ID has, or had, this code; or none has this id |
-| `SPEC_ID_CHANGED` | 409 | The Spec ID changed since the `version` the change was started from; nothing was saved |
+| `SPEC_ID_CHANGED` | 409 | The Spec ID changed since the `version` the change was started from; or a saved Spec ID holding the option an approval changes was saved or changed while it was being made. Nothing was saved |
 | `MANUFACTURER_NOT_FOUND` | 404 | The manufacturer has no quote on this Spec ID, or the id is not one |
 | `SUGGESTION_NOT_FOUND` | 404 | No dictionary suggestion has this id, or the id is not one |
 | `SUGGESTION_DECIDED` | 409 | The suggestion was approved, rejected or withdrawn: it no longer waits |
-| `SUGGESTION_CHANGED` | 409 | The suggestion changed since the `version` the edit was started from; nothing was saved |
+| `SUGGESTION_CHANGED` | 409 | The suggestion changed since the `version` the edit or approval was started from; nothing was saved |
+| `SUGGESTION_OUT_OF_DATE` | 409 | Checked again on approval, the suggestion no longer fits the live dictionary. `details.fields` as when suggesting |
+| `SPEC_IDS_WOULD_CLASH` | 409 | Approving would give two saved Spec IDs one code. `details.codes` holds both codes as they are, when known |
+| `SPEC_ID_WOULD_BE_INVALID` | 409 | Approving would leave a saved Spec ID a code the new dictionary refuses. `details.code` is its code now |
+| `DICTIONARY_CHANGED` | 409 | Another approval landed while this one was being made; nothing was saved |
 | `NOT_FOUND` | 404 | No route matches the method and path |
 | `INTERNAL_ERROR` | 500 | An unexpected failure. Logged in full on the server; the response says nothing more |

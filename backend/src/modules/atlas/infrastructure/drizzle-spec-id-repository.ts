@@ -19,12 +19,18 @@ import type {
   SpecIdChangeRecord,
   SpecIdRepository,
 } from '../domain/spec-id-repository.js';
+import { DictionaryMovedOnError } from '../domain/suggestions/suggestion.errors.js';
+import { atlasDictionaryChanges } from './atlas-dictionary-changes.table.js';
+import { atlasDictionarySuggestions } from './atlas-dictionary-suggestions.table.js';
 import { atlasSpecIdChanges } from './atlas-spec-id-changes.table.js';
 import { atlasSpecIds } from './atlas-spec-ids.table.js';
+import { lockDictionaryShared } from './dictionary-change-lock.js';
 import { toChange, toChangeRow, toDomain, toRow } from './saved-spec-id.mapper.js';
 
 /** Whoever last changed a Spec ID: the accounts table a second time. */
 const updater = alias(accountsTable, 'updater');
+const suggester = alias(accountsTable, 'suggester');
+const approver = alias(accountsTable, 'approver');
 
 /** When a Spec ID was saved or last changed: the library's order. */
 const lastChangedAt = sql`coalesce(${atlasSpecIds.updatedAt}, ${atlasSpecIds.savedAt})`;
@@ -35,24 +41,35 @@ class VersionMovedOn extends Error {}
 /** Thrown inside a transaction to roll it back when another Spec ID holds the code in its long form. */
 class HeldInLongForm extends Error {}
 
+/** Thrown inside a transaction to roll it back when the code was built from a dictionary an approval has since changed. */
+class DictionaryMovedOn extends Error {}
+
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 /**
  * Inserts, updates and selects saved Spec IDs, writing each one's history
- * entry in the same transaction. It never deletes (ADR 0022).
+ * entry in the same transaction. It never deletes (ADR 0022). Each insert and
+ * update holds the dictionary lock shared, so it waits for an approval under
+ * way, and an approval waits for it (ADR 0031).
  */
 export class DrizzleSpecIdRepository implements SpecIdRepository {
   constructor(private readonly db: Database) {}
 
-  async add(saved: SavedSpecId, created: SpecIdChange): Promise<Result<void, SpecIdExistsError>> {
+  async add(
+    saved: SavedSpecId,
+    created: SpecIdChange,
+    dictionaryChange: number | null,
+  ): Promise<Result<void, SpecIdExistsError | DictionaryMovedOnError>> {
     try {
       await this.db.transaction(async (tx) => {
+        if ((await lockDictionaryShared(tx)) !== dictionaryChange) throw new DictionaryMovedOn();
         if (await this.heldInLongForm(tx, saved)) throw new HeldInLongForm();
         await tx.insert(atlasSpecIds).values(toRow(saved));
         await tx.insert(atlasSpecIdChanges).values(toChangeRow(created));
       });
       return ok(undefined);
     } catch (error) {
+      if (error instanceof DictionaryMovedOn) return err(new DictionaryMovedOnError());
       if (error instanceof HeldInLongForm || isUniqueViolation(error)) return err(new SpecIdExistsError());
       throw error;
     }
@@ -62,11 +79,13 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
     saved: SavedSpecId,
     change: SpecIdChange,
     expectedVersion: number,
-  ): Promise<Result<void, SpecIdExistsError | SpecIdChangedError>> {
+    dictionaryChange: number | null,
+  ): Promise<Result<void, SpecIdExistsError | SpecIdChangedError | DictionaryMovedOnError>> {
     // Who saved it and when never change.
     const { id, savedBy: _savedBy, savedAt: _savedAt, ...columns } = toRow(saved);
     try {
       await this.db.transaction(async (tx) => {
+        if ((await lockDictionaryShared(tx)) !== dictionaryChange) throw new DictionaryMovedOn();
         // Only the version the change started from is overwritten: a second
         // change from the same version finds it gone and is refused.
         const updated = await tx
@@ -80,6 +99,7 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
       });
       return ok(undefined);
     } catch (error) {
+      if (error instanceof DictionaryMovedOn) return err(new DictionaryMovedOnError());
       if (error instanceof VersionMovedOn) return err(new SpecIdChangedError());
       if (error instanceof HeldInLongForm || isUniqueViolation(error)) return err(new SpecIdExistsError());
       throw error;
@@ -111,12 +131,13 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
   }
 
   async usageOf(slot: DictionarySlotKey, code: string): Promise<number> {
-    // A dictionary code is the same in the short and the long form (ADR 0025): only markers differ.
-    // A capacity holds its unit as its first letter, and no unit is a marker.
-    const column = atlasSpecIds[slot];
-    const holds = slot === 'capacity' ? like(column, `${code}%`) : eq(column, code);
-    const [row] = await this.db.select({ total: count() }).from(atlasSpecIds).where(holds);
+    const [row] = await this.db.select({ total: count() }).from(atlasSpecIds).where(holdsOption(slot, code));
     return Number(row?.total ?? 0);
+  }
+
+  async holding(slot: DictionarySlotKey, code: string): Promise<SavedSpecIdRecord[]> {
+    const rows = await this.selectWithNames().where(holdsOption(slot, code)).orderBy(asc(atlasSpecIds.code));
+    return rows.map(toRecord);
   }
 
   async count(filter: LibraryFilter): Promise<number> {
@@ -142,13 +163,35 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
 
   async history(id: string): Promise<SpecIdChangeRecord[]> {
     const rows = await this.db
-      .select({ change: atlasSpecIdChanges, changedByName: accountsTable.fullName })
+      .select({
+        change: atlasSpecIdChanges,
+        changedByName: accountsTable.fullName,
+        suggestedBy: suggester.id,
+        suggestedByName: suggester.fullName,
+        approvedBy: approver.id,
+        approvedByName: approver.fullName,
+      })
       .from(atlasSpecIdChanges)
       .innerJoin(accountsTable, eq(atlasSpecIdChanges.changedBy, accountsTable.id))
+      .leftJoin(atlasDictionaryChanges, eq(atlasSpecIdChanges.dictionaryChangeNumber, atlasDictionaryChanges.number))
+      .leftJoin(atlasDictionarySuggestions, eq(atlasDictionaryChanges.suggestionId, atlasDictionarySuggestions.id))
+      .leftJoin(suggester, eq(atlasDictionarySuggestions.suggestedBy, suggester.id))
+      .leftJoin(approver, eq(atlasDictionaryChanges.approvedBy, approver.id))
       .where(eq(atlasSpecIdChanges.specId, id))
       // `updated` sorts before `created`, so a creation is last even at the same instant.
       .orderBy(desc(atlasSpecIdChanges.changedAt), desc(atlasSpecIdChanges.kind), desc(atlasSpecIdChanges.id));
-    return rows.map((row) => ({ change: toChange(row.change), changedByName: row.changedByName }));
+    return rows.map((row) => {
+      const number = row.change.dictionaryChangeNumber;
+      const dictionaryChange =
+        number !== null && row.suggestedBy !== null && row.approvedBy !== null
+          ? {
+              number,
+              suggestedBy: { id: row.suggestedBy, fullName: row.suggestedByName ?? '' },
+              approvedBy: { id: row.approvedBy, fullName: row.approvedByName ?? '' },
+            }
+          : null;
+      return { change: toChange(row.change), changedByName: row.changedByName, dictionaryChange };
+    });
   }
 
   async formerHolders(code: string): Promise<FormerHolderRecord[]> {
@@ -203,4 +246,14 @@ function toRecord(row: {
 /** `%`, `_` and `\` mean themselves in a search, not LIKE's wildcards. */
 function escapeLike(text: string): string {
   return text.replace(/[\\%_]/g, (character) => `\\${character}`);
+}
+
+/**
+ * A slot holding a dictionary option. A code is the same in the short and the
+ * long form (ADR 0025): only markers differ. A capacity holds its unit as its
+ * first letter, and no unit is a marker or a wildcard (`isOptionCode`).
+ */
+export function holdsOption(slot: DictionarySlotKey, code: string): SQL {
+  const column = atlasSpecIds[slot];
+  return slot === 'capacity' ? like(column, `${code}%`) : eq(column, code);
 }

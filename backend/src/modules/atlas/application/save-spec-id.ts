@@ -11,6 +11,7 @@ import { reachedCounts } from '../domain/sourcing/stage.js';
 import { SpecId } from '../domain/spec-id.js';
 import type { SourcingRepository } from '../domain/sourcing/sourcing-repository.js';
 import type { SpecIdRepository } from '../domain/spec-id-repository.js';
+import { DictionaryMovedOnError } from '../domain/suggestions/suggestion.errors.js';
 import { toSavedSpecIdDto, type SaveSpecIdInput, type SavedSpecIdDto } from './atlas.dto.js';
 import { savedSpecIdDtoOf } from './stage-counts.js';
 
@@ -54,8 +55,11 @@ export class SaveSpecId implements UseCase<SaveSpecIdInput, Result<SavedSpecIdDt
     if (existing) return err(new SpecIdExistsError(await savedSpecIdDtoOf(this.sourcing, existing, dictionary)));
 
     // The database decides between two simultaneous saves of one code: the loser reads the winner.
-    const added = await this.specIds.add(created.value, SpecIdChange.created(created.value, this.ids.next()));
+    const entry = SpecIdChange.created(created.value, this.ids.next());
+    const added = await this.specIds.add(created.value, entry, dictionary.change?.number ?? null);
     if (!added.ok) {
+      // An approval changed the dictionary meanwhile (ADR 0031): check the facts again against the one it left.
+      if (added.error instanceof DictionaryMovedOnError) return this.execute(input);
       const winner = await this.specIds.findByCode(code);
       return err(winner ? new SpecIdExistsError(await savedSpecIdDtoOf(this.sourcing, winner, dictionary)) : added.error);
     }

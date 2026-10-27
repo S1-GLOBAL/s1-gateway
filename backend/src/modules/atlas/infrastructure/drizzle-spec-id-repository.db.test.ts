@@ -42,7 +42,7 @@ function lid(id: string, name: string, savedAt: string, rim?: string, profile = 
 }
 
 /** Adds a Spec ID with its `created` history entry, as SaveSpecId does. */
-const add = (saved: SavedSpecId) => repository.add(saved, SpecIdChange.created(saved, randomUUID()));
+const add = (saved: SavedSpecId) => repository.add(saved, SpecIdChange.created(saved, randomUUID()), null);
 
 const rowCount = async () => (await connection.db.select({ n: count() }).from(atlasSpecIds))[0]?.n;
 const changeCount = async () => (await connection.db.select({ n: count() }).from(atlasSpecIdChanges))[0]?.n;
@@ -61,9 +61,9 @@ function revised(saved: SavedSpecId, at: string, rim?: string, name = saved.name
 
 /** Saves `after` over `before` from `before`'s version, with its history entry. */
 const update = (before: SavedSpecId, after: SavedSpecId, expectedVersion = before.version) =>
-  repository.update(after, SpecIdChange.updated(before, after, randomUUID()), expectedVersion);
+  repository.update(after, SpecIdChange.updated(before, after, randomUUID()), expectedVersion, null);
 
-// resetTables empties the saved Spec IDs and accounts, never the dictionary: only the migration fills that.
+// resetTables empties the saved Spec IDs and accounts, and puts the dictionary back as the migrations made it.
 beforeEach(async () => {
   await resetTables(connection.db);
   await connection.db.insert(accountsTable).values({

@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import postgres from 'postgres';
+import { dictionarySeedSql } from './database.js';
 
 /**
  * Runs once before any test file: creates the test database if it is missing,
@@ -40,10 +41,26 @@ export default async function setup(): Promise<void> {
     await admin.end();
   }
 
+  // Approval tests change the dictionary (ADR 0031). Undo what a stopped run
+  // left, migrate, then copy the dictionary so resetTables can put it back.
+  const test = postgres(url, { max: 1, onnotice: () => undefined });
+  try {
+    for (const statement of dictionarySeedSql.restoreIfCopied) await test.unsafe(statement);
+  } finally {
+    await test.end();
+  }
+
   execFileSync('npm', ['run', 'db:migrate'], {
     cwd: process.cwd(),
     env: { ...process.env, DATABASE_URL: url },
     stdio: 'pipe',
     shell: true,
   });
+
+  const migrated = postgres(url, { max: 1, onnotice: () => undefined });
+  try {
+    for (const statement of dictionarySeedSql.copy) await migrated.unsafe(statement);
+  } finally {
+    await migrated.end();
+  }
 }

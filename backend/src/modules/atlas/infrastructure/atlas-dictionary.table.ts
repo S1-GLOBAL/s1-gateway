@@ -1,10 +1,12 @@
 import { sql } from 'drizzle-orm';
-import { check, date, foreignKey, pgTable, primaryKey, varchar } from 'drizzle-orm/pg-core';
+import { check, date, foreignKey, index, integer, pgTable, primaryKey, varchar } from 'drizzle-orm/pg-core';
+import { atlasDictionaryChanges } from './atlas-dictionary-changes.table.js';
 
 /*
- * The Atlas dictionary (ADR 0021). Rows arrive only by migration, and nothing in
- * the application updates or deletes one: a published meaning is never
- * reassigned. A new release adds rows under its own `release` key.
+ * The Atlas dictionary. Release S1 0.1.0 arrived by migration and never
+ * changes. The live release, S2 0.1.0, changes only when an admin approves a
+ * suggestion (ADR 0031, superseding ADR 0021): only the dictionary change
+ * store writes these tables.
  */
 
 export const atlasDictionaryReleases = pgTable('atlas_dictionary_releases', {
@@ -52,5 +54,55 @@ export const atlasSlotRules = pgTable(
       'atlas_slot_rules_rule_check',
       sql`${table.rule} in ('applies', 'never', 'round_only', 'non_round_only', 'paper_only')`,
     ),
+  ],
+);
+
+/**
+ * Every code an approved change renamed or deleted, and its live letters now:
+ * null once deleted (ADR 0031). Flattened: renaming A to B, then B to C, leaves
+ * A → C and B → C, so a lookup is one step. Code that names an S2 0.1.0 code
+ * asks this table for its live letters.
+ */
+export const atlasDictionaryRenames = pgTable(
+  'atlas_dictionary_renames',
+  {
+    slot: varchar('slot', { length: 32 }).notNull(),
+    oldCode: varchar('old_code', { length: 5 }).notNull(),
+    newCode: varchar('new_code', { length: 5 }),
+    /** The change that last moved it. */
+    changeNumber: integer('change_number').notNull(),
+  },
+  (table) => [
+    primaryKey({ name: 'atlas_dictionary_renames_pk', columns: [table.slot, table.oldCode] }),
+    foreignKey({
+      name: 'atlas_dictionary_renames_change_number_fk',
+      columns: [table.changeNumber],
+      foreignColumns: [atlasDictionaryChanges.number],
+    }),
+  ],
+);
+
+/**
+ * Words an approved change gave an option, read in pasted text as that option
+ * alongside the word list in the code (ADR 0026, ADR 0031). One meaning per
+ * word in each list.
+ */
+export const atlasDictionarySearchWords = pgTable(
+  'atlas_dictionary_search_words',
+  {
+    slot: varchar('slot', { length: 32 }).notNull(),
+    word: varchar('word', { length: 40 }).notNull(),
+    code: varchar('code', { length: 5 }).notNull(),
+    /** The change that gave it. */
+    changeNumber: integer('change_number').notNull(),
+  },
+  (table) => [
+    primaryKey({ name: 'atlas_dictionary_search_words_pk', columns: [table.slot, table.word] }),
+    foreignKey({
+      name: 'atlas_dictionary_search_words_change_number_fk',
+      columns: [table.changeNumber],
+      foreignColumns: [atlasDictionaryChanges.number],
+    }),
+    index('atlas_dictionary_search_words_option_idx').on(table.slot, table.code),
   ],
 );
