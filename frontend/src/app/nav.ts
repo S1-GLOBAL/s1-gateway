@@ -4,13 +4,24 @@ import { AccountsIcon, AtlasIcon, BookCheckIcon, ThemeIcon, type IconProps } fro
 export interface NavItem {
   /** Absolute path. */
   path: string;
-  /** In the sidebar, the bottom bar and the top bar. */
+  /** In the sidebar, the bottom bar and the top bar. Title case. */
   label: string;
   icon: ComponentType<IconProps>;
   /** Shown only to admins. */
   adminOnly?: boolean;
   /** A count it carries, when above 0: the suggestions an admin may decide. */
   badge?: NavBadge;
+  /**
+   * Sidebar overline shared with the places beside it. The bottom bar stays a
+   * flat row, so a phone never shows the overline.
+   */
+  group?: string;
+}
+
+/** One run of places the sidebar draws together. No label means they stand alone. */
+export interface NavSection {
+  label?: string;
+  items: NavItem[];
 }
 
 export type NavBadge = 'dictionary-waiting';
@@ -32,15 +43,32 @@ export function badgeLabel(badge: NavBadge, count: number): string {
  * no page or link for now.
  */
 export const NAV_ITEMS: readonly NavItem[] = [
-  { path: '/atlas', label: 'Atlas', icon: AtlasIcon },
-  { path: '/dictionary/changes', label: 'Dictionary changes', icon: BookCheckIcon, badge: 'dictionary-waiting' },
-  { path: '/accounts', label: 'Accounts', icon: AccountsIcon, adminOnly: true },
-  { path: '/theme', label: 'Theme', icon: ThemeIcon },
+  { path: '/atlas', label: 'Atlas', icon: AtlasIcon, group: 'Catalog' },
+  {
+    path: '/dictionary/changes',
+    label: 'Dictionary Changes',
+    icon: BookCheckIcon,
+    badge: 'dictionary-waiting',
+    group: 'Catalog',
+  },
+  { path: '/accounts', label: 'Accounts', icon: AccountsIcon, adminOnly: true, group: 'Access' },
+  { path: '/theme', label: 'Theme', icon: ThemeIcon, group: 'Other' },
 ];
 
 /** The places this person may go: Accounts only for an admin. */
 export function navItemsFor(isAdmin: boolean): readonly NavItem[] {
   return NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+}
+
+/** Runs of places that share an overline, in the order the sidebar shows them. */
+export function navSections(items: readonly NavItem[]): NavSection[] {
+  const sections: NavSection[] = [];
+  for (const item of items) {
+    const last = sections.at(-1);
+    if (last && last.label === item.group) last.items.push(item);
+    else sections.push({ label: item.group, items: [item] });
+  }
+  return sections;
 }
 
 /** Whether a path is this place or a page inside it: `/atlas/new` is in Atlas. */

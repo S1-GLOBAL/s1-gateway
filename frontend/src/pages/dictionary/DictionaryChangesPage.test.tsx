@@ -138,6 +138,11 @@ describe('DictionaryChangesPage', () => {
     expect(screen.getByRole('status', { name: /Loading/ })).toBeTruthy();
   });
 
+  it('names the page Dictionary Changes', async () => {
+    renderPage(asAdmin, suggestionsWith({ list: async () => [] }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Dictionary Changes' })).toBeTruthy();
+  });
+
   it("says so when no suggestion waits, in #95's words", async () => {
     renderPage(asAdmin, suggestionsWith({ list: async () => [] }));
     expect(await screen.findByText('No suggestions waiting.')).toBeTruthy();

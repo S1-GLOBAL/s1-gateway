@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { RouteBoundary } from '@/app/shell/RouteBoundary';
@@ -57,16 +57,34 @@ describe('AtlasPage', () => {
 
     const search = screen.getByRole('searchbox', { name: 'Search' });
     expect(search.getAttribute('placeholder')).toBe('Search by name, or paste a Spec ID');
-    expect(screen.queryByRole('button', { name: 'Dictionary' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Dictionary' })).toBeTruthy();
+    const panel = screen.getByRole('tabpanel');
     expect(screen.queryByRole('link', { name: 'New Spec ID' })).toBeNull();
-    expect(screen.queryByText('Product type')).toBeNull();
-    expect(screen.queryByText('Bowl lid')).toBeNull();
+    expect(within(panel).queryByText('Product type · All')).toBeNull();
+    expect(within(panel).queryByText('Bowl lid')).toBeNull();
     expect(library).not.toHaveBeenCalled();
 
     fireEvent.change(search, { target: { value: 'lid' } });
 
     expect(await screen.findByRole('link', { name: /Bowl lid/ })).toBeTruthy();
     expect(library).toHaveBeenLastCalledWith({ q: 'lid', productType: '', page: 1 });
+  });
+
+  it('opens the dictionary, and closes it', async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Dictionary' }));
+
+    const sheet = screen.getByRole('dialog', { name: 'Dictionary' }) as HTMLDialogElement;
+    expect(screen.getByRole('article', { name: 'Product type' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(sheet.open).toBe(false));
+  });
+
+  it('keeps the dictionary on the other tabs', async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole('tab', { name: 'Browse' }));
+    expect(screen.getByRole('button', { name: 'Dictionary' })).toBeTruthy();
   });
 
   it('keeps what was typed when leaving Search and coming back', async () => {

@@ -4,7 +4,7 @@ import { cn } from '@/shared/ui/cn';
 import { SidebarIcon } from '@/shared/ui/icons';
 import { Logo, SourceOneName } from '@/shared/ui/Logo';
 import { duration, ease, useIconTrigger } from '@/shared/ui/motion';
-import type { NavBadges, NavItem } from '../nav';
+import { navSections, type NavBadges, type NavItem, type NavSection } from '../nav';
 import { SidebarLink } from './SidebarLink';
 
 export const SIDEBAR_WIDTH = { expanded: 248, collapsed: 72 } as const;
@@ -64,14 +64,10 @@ export function Sidebar({
         </Link>
       </div>
 
-      <nav className="flex-1 px-3 py-4">
-        <ul className="flex flex-col gap-1">
-          {items.map((item) => (
-            <li key={item.path}>
-              <SidebarLink item={item} count={item.badge ? (badges[item.badge] ?? 0) : 0} collapsed={collapsed} />
-            </li>
-          ))}
-        </ul>
+      <nav className={cn('flex flex-1 flex-col px-3 py-4', collapsed ? 'gap-1' : 'gap-5')}>
+        {navSections(items).map((section) => (
+          <NavGroup key={section.label ?? 'places'} section={section} badges={badges} collapsed={collapsed} />
+        ))}
       </nav>
 
       <div
@@ -126,5 +122,35 @@ export function Sidebar({
         </m.button>
       </div>
     </m.aside>
+  );
+}
+
+/** Places that share an overline. Folded, the overline stays for a screen reader and leaves the rail. */
+function NavGroup({
+  section,
+  badges,
+  collapsed,
+}: {
+  section: NavSection;
+  badges: NavBadges;
+  collapsed: boolean;
+}) {
+  const labelId = section.label ? `sidebar-${section.label.toLowerCase().replaceAll(' ', '-')}` : undefined;
+
+  return (
+    <div className="flex flex-col gap-1">
+      {section.label && (
+        <p id={labelId} className={cn('px-2.5 text-2xs font-medium text-ink-subtle uppercase', collapsed && 'sr-only')}>
+          {section.label}
+        </p>
+      )}
+      <ul aria-labelledby={labelId} className="flex flex-col gap-1">
+        {section.items.map((item) => (
+          <li key={item.path}>
+            <SidebarLink item={item} count={item.badge ? (badges[item.badge] ?? 0) : 0} collapsed={collapsed} />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

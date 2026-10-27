@@ -421,8 +421,8 @@ describe('navigation by role', () => {
   });
 
   it.each([
-    ['staff', false, ['Atlas', 'Dictionary changes', 'Theme']],
-    ['an admin', true, ['Atlas', 'Dictionary changes', 'Accounts', 'Theme']],
+    ['staff', false, ['Atlas', 'Dictionary Changes', 'Theme']],
+    ['an admin', true, ['Atlas', 'Dictionary Changes', 'Accounts', 'Theme']],
   ] as const)('lists the places in order for %s, with Theme last', async (_who, isAdmin, labels) => {
     renderAt('/theme', fakeAccountsGateway({ me: async () => account({ isAdmin }) }));
     await screen.findByRole('heading', { level: 1, name: 'Theme' });
@@ -437,7 +437,7 @@ describe('navigation by role', () => {
   it('shows an admin how many suggestions wait for them, in the sidebar and the bottom bar', async () => {
     renderAt('/theme', fakeAccountsGateway({ me: async () => account({ isAdmin: true }) }), suggestionsWith({ waitingCount: async () => 2 }));
     await screen.findByRole('heading', { level: 1, name: 'Theme' });
-    const links = await screen.findAllByRole('link', { name: 'Dictionary changes 2 suggestions waiting' });
+    const links = await screen.findAllByRole('link', { name: 'Dictionary Changes 2 suggestions waiting' });
     expect(links).toHaveLength(2);
   });
 
@@ -445,7 +445,7 @@ describe('navigation by role', () => {
     const waitingCount = vi.fn(async () => 2);
     renderAt('/theme', fakeAccountsGateway({ me: async () => account({ isAdmin: false }) }), suggestionsWith({ waitingCount }));
     await screen.findByRole('heading', { level: 1, name: 'Theme' });
-    expect(screen.getAllByRole('link', { name: 'Dictionary changes' })).toHaveLength(2);
+    expect(screen.getAllByRole('link', { name: 'Dictionary Changes' })).toHaveLength(2);
     expect(waitingCount).not.toHaveBeenCalled();
   });
 });

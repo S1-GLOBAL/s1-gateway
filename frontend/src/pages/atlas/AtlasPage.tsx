@@ -1,6 +1,8 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
-import { AtlasLibrary, useDictionary } from '@/features/atlas';
+import { AtlasLibrary, DictionarySheet, useDictionary } from '@/features/atlas';
+import { Button } from '@/shared/ui/Button';
 import { cn } from '@/shared/ui/cn';
+import { BookOpenIcon } from '@/shared/ui/icons';
 
 const ATLAS_TABS = [
   { id: 'search', label: 'Search' },
@@ -13,18 +15,26 @@ type AtlasTab = (typeof ATLAS_TABS)[number]['id'];
 /** `/atlas`. Search asks; Browse and Analyze are the other two places, still empty. */
 export function AtlasPage() {
   const [tab, setTab] = useState<AtlasTab>('search');
+  const [dictionaryOpen, setDictionaryOpen] = useState(false);
   const { data: dictionary } = useDictionary();
 
   return (
     <div className="flex flex-col gap-10">
       <h1 className="sr-only">Atlas</h1>
-      <AtlasTabs tab={tab} onChange={setTab} />
+      <div className="flex items-end justify-between gap-4 border-b border-border">
+        <AtlasTabs tab={tab} onChange={setTab} />
+        <Button variant="secondary" onClick={() => setDictionaryOpen(true)} className="mb-2">
+          <BookOpenIcon size={16} />
+          Dictionary
+        </Button>
+      </div>
 
       {/* Stays mounted, so a question survives a trip to the other tabs. */}
       <div role="tabpanel" id="atlas-panel-search" aria-labelledby="atlas-tab-search" hidden={tab !== 'search'}>
         <AtlasLibrary dictionary={dictionary} untilAsked />
       </div>
       {tab !== 'search' && <div role="tabpanel" id={`atlas-panel-${tab}`} aria-labelledby={`atlas-tab-${tab}`} />}
+      <DictionarySheet dictionary={dictionary} open={dictionaryOpen} onClose={() => setDictionaryOpen(false)} />
     </div>
   );
 }
@@ -53,7 +63,7 @@ function AtlasTabs({ tab, onChange }: { tab: AtlasTab; onChange: (tab: AtlasTab)
   }
 
   return (
-    <div role="tablist" aria-label="Atlas" className="flex gap-1 border-b border-border">
+    <div role="tablist" aria-label="Atlas" className="flex gap-1">
       {ATLAS_TABS.map((option, index) => {
         const selected = option.id === tab;
         return (
