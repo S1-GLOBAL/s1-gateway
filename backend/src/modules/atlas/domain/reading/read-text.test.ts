@@ -153,4 +153,3 @@ describe('readText after approved changes', () => {
     });
   });
 });
-
