@@ -22,18 +22,18 @@ export function RejectForm({ suggestion, open, onClose, onRejected }: RejectForm
   const [reason, setReason] = useState('');
   const reasonErrors = reject.error?.fields.reason;
 
-  const submit = (event: FormEvent) => {
+  // The card, and this sheet with it, leaves the list once rejected, often
+  // before the request settles; a `mutate` callback would never run, awaiting does.
+  async function submit(event: FormEvent) {
     event.preventDefault();
-    reject.mutate(
-      { id: suggestion.id, reason },
-      {
-        onSuccess: () => {
-          setReason('');
-          onRejected();
-        },
-      },
-    );
-  };
+    try {
+      await reject.mutateAsync({ id: suggestion.id, reason });
+      setReason('');
+      onRejected();
+    } catch {
+      // The answer is shown from `reject.error`.
+    }
+  }
 
   return (
     <Sheet

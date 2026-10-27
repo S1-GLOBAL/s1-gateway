@@ -81,6 +81,29 @@ function suggestionsWith(overrides: Partial<SuggestionsGateway> = {}): Suggestio
   };
 }
 
+/**
+ * As the server answers: once acted on, the suggestion no longer waits, so its
+ * card leaves the list, while the slower full suggestion is still being asked
+ * for again.
+ */
+function leavingTheList(): SuggestionsGateway {
+  let acted = false;
+  const act = <T,>(answer: T) => async () => {
+    acted = true;
+    return answer;
+  };
+  return suggestionsWith({
+    list: async (state) => (state === 'waiting' && !acted ? [RENAME] : []),
+    get: async () => {
+      if (acted) await new Promise((resolve) => setTimeout(resolve, 50));
+      return RENAME_DETAIL;
+    },
+    approve: act({ suggestion: { ...RENAME, state: 'approved' as const, decidedBy: BEN, changeNumber: 4 }, changeNumber: 4, specIdsRewritten: 3 }),
+    reject: act({ ...RENAME, state: 'rejected' as const, decidedBy: BEN, reason: 'We have APP.' }),
+    withdraw: act({ ...RENAME, state: 'withdrawn' as const }),
+  });
+}
+
 const atlasGateway = { dictionary: async () => DICTIONARY } as unknown as AtlasGateway;
 
 function renderPage(viewer: { id: string; fullName: string; isAdmin: boolean }, suggestions: SuggestionsGateway) {
@@ -215,6 +238,30 @@ describe('DictionaryChangesPage', () => {
     fireEvent.click((await card('Change APS in Material')).getByRole('button', { name: 'Withdraw' }));
     expect(await screen.findByText('Withdrawn.')).toBeTruthy();
     expect(withdraw).toHaveBeenCalledWith('s1');
+  });
+
+  it('says the change is live, though the card has already left the list', async () => {
+    renderPage(asAdmin, leavingTheList());
+    fireEvent.click((await card('Change APS in Material')).getByRole('button', { name: 'Approve' }));
+    expect(await screen.findByText('No suggestions waiting.')).toBeTruthy();
+    expect(await screen.findByText('Change #4 is live. 3 saved Spec IDs were updated.')).toBeTruthy();
+  });
+
+  it('says a rejection was sent, though the card has already left the list', async () => {
+    renderPage(asAdmin, leavingTheList());
+    fireEvent.click((await card('Change APS in Material')).getByRole('button', { name: 'Reject' }));
+    const sheet = within(await screen.findByRole('dialog', { name: 'Reject APS' }));
+    fireEvent.change(sheet.getByLabelText('Reason'), { target: { value: 'We have APP.' } });
+    fireEvent.click(sheet.getByRole('button', { name: 'Reject' }));
+    expect(await screen.findByText('No suggestions waiting.')).toBeTruthy();
+    expect(await screen.findByText('Rejected. Ada Invented sees your reason.')).toBeTruthy();
+  });
+
+  it('says a withdrawal was made, though the card has already left the list', async () => {
+    renderPage(asStaffSuggester, leavingTheList());
+    fireEvent.click((await card('Change APS in Material')).getByRole('button', { name: 'Withdraw' }));
+    expect(await screen.findByText('No suggestions waiting.')).toBeTruthy();
+    expect(await screen.findByText('Withdrawn.')).toBeTruthy();
   });
 
   it('lists each decision in the history in #95 words', async () => {

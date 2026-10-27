@@ -59,6 +59,25 @@ export function SuggestionCard({ suggestion, detail, dictionary, viewer, timeZon
   const usage = detail ? usageLine(detail.usage, suggestion.proposal) : null;
   const problem = actions.decide ? (detail?.problem ?? null) : null;
 
+  // A decided card leaves the list, often before its request settles, and a
+  // `mutate` callback never runs once its card has gone; awaiting does.
+  async function approveIt() {
+    try {
+      onNotice(approvedLine(await approve.mutateAsync({ id: suggestion.id, version: suggestion.version })));
+    } catch {
+      // The answer is shown from `approve.error`.
+    }
+  }
+
+  async function withdrawIt() {
+    try {
+      await withdraw.mutateAsync({ id: suggestion.id });
+      onNotice('Withdrawn.');
+    } catch {
+      // The answer is shown from `withdraw.error`.
+    }
+  }
+
   return (
     <Card aria-labelledby={titleId} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -97,13 +116,7 @@ export function SuggestionCard({ suggestion, detail, dictionary, viewer, timeZon
       <div className="flex flex-wrap items-center gap-2">
         {actions.decide && (
           <>
-            <Button
-              loading={approve.isPending}
-              disabled={problem !== null}
-              onClick={() =>
-                approve.mutate({ id: suggestion.id, version: suggestion.version }, { onSuccess: (approved) => onNotice(approvedLine(approved)) })
-              }
-            >
+            <Button loading={approve.isPending} disabled={problem !== null} onClick={approveIt}>
               Approve
             </Button>
             <Button variant="secondary" onClick={() => setRejecting(true)}>
@@ -112,11 +125,7 @@ export function SuggestionCard({ suggestion, detail, dictionary, viewer, timeZon
           </>
         )}
         {actions.withdraw && (
-          <Button
-            variant="secondary"
-            loading={withdraw.isPending}
-            onClick={() => withdraw.mutate({ id: suggestion.id }, { onSuccess: () => onNotice('Withdrawn.') })}
-          >
+          <Button variant="secondary" loading={withdraw.isPending} onClick={withdrawIt}>
             Withdraw
           </Button>
         )}
