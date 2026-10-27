@@ -59,9 +59,12 @@ describe('applyProposal', () => {
   });
 
   it('deletes an option, its rules and its words, and remembers it is gone', () => {
-    const next = applyProposal(dictionary, { slot: 'productType', code: 'CUP' }, { kind: 'delete', replacement: 'BWL' }, STAMP);
+    const worded = applyProposal(dictionary, { slot: 'productType', code: 'CUP' }, { kind: 'edit', newCode: null, meaning: null, searchWords: ['tumbler'] }, STAMP);
+    const next = applyProposal(worded, { slot: 'productType', code: 'CUP' }, { kind: 'delete', replacement: 'BWL' }, LATER);
     expect(next.meaningOf('productType', 'CUP')).toBeUndefined();
     expect(next.slotRules().some((entry) => entry.productType === 'CUP')).toBe(false);
+    expect(worded.searchWordsOf('productType', 'CUP')).toEqual(['tumbler']);
+    expect(next.searchWords()).toEqual([]);
     expect(next.live('productType', 'CUP')).toBeUndefined();
   });
 
@@ -94,6 +97,7 @@ describe('rewriteSpecId', () => {
   it('replaces a deleted option with the one named, or with Not known', () => {
     const lid = built(LID);
     expect(approve({ slot: 'material', code: 'APS' }, { kind: 'delete', replacement: 'APP' }, lid).code).toBe(lid.code.replace('.APS.', '.APP.'));
+    expect(SpecId.restoreCode(approve({ slot: 'material', code: 'APS' }, { kind: 'delete', replacement: 'Y' }, lid).code).slot('material')).toBe('Y');
   });
 
   it('turns a paper-only field from X to Y when the material it depends on becomes not known', () => {

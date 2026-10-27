@@ -186,7 +186,7 @@ describe('approving and rejecting', () => {
     return (await request(app).post(`${BASE}/suggestions`).send(NEW_MATERIAL)).body.data as { id: string };
   }
 
-  it('approves as change #1, and the dictionary has the option on the next request', async () => {
+  it('approves as change #1, with the approval in its trail', async () => {
     const app = setup();
     const { id } = await suggested(app);
 

@@ -13,7 +13,7 @@ const valueKeys = (values: readonly DictionaryValue[]) =>
 const ruleKeys = (rules: readonly SlotRuleEntry[]) =>
   rules.map((entry) => `${entry.productType} ${entry.slot} ${entry.rule}`).sort();
 
-// resetTables never empties the dictionary: only the migration fills it.
+// resetTables puts the dictionary back as the migrations made it, whatever a test before approved.
 beforeEach(() => resetTables(connection.db));
 afterAll(() => connection.close());
 

@@ -63,7 +63,7 @@ function revised(saved: SavedSpecId, at: string, rim?: string, name = saved.name
 const update = (before: SavedSpecId, after: SavedSpecId, expectedVersion = before.version) =>
   repository.update(after, SpecIdChange.updated(before, after, randomUUID()), expectedVersion, null);
 
-// resetTables empties the saved Spec IDs and accounts, never the dictionary: only the migration fills that.
+// resetTables empties the saved Spec IDs and accounts, and puts the dictionary back as the migrations made it.
 beforeEach(async () => {
   await resetTables(connection.db);
   await connection.db.insert(accountsTable).values({
