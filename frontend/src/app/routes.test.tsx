@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountsGatewayProvider, type AccountsGateway } from '@/features/accounts';
-import { AtlasGatewayProvider, type AtlasGateway } from '@/features/atlas';
+import { AtlasGatewayProvider, SuggestionsGatewayProvider, type AtlasGateway, type SuggestionsGateway } from '@/features/atlas';
 import { ThemeProvider, type ThemeDocument, type ThemePreferenceStore } from '@/features/appearance';
 import { AppError } from '@/shared/application/app-error';
 import { duration } from '@/shared/ui/motion';
@@ -37,7 +37,20 @@ const atlasGateway: AtlasGateway = {
   library: async () => ({ items: [], page: 1, pageSize: 20, total: 0 }),
 };
 
-function renderAt(path: string, gateway: AccountsGateway = fakeAccountsGateway()) {
+/** No suggestion waits, unless a test says otherwise. */
+function suggestionsWith(overrides: Partial<SuggestionsGateway> = {}): SuggestionsGateway {
+  return {
+    list: async () => [],
+    get: pending,
+    waitingCount: async () => 0,
+    approve: pending,
+    reject: pending,
+    withdraw: pending,
+    ...overrides,
+  };
+}
+
+function renderAt(path: string, gateway: AccountsGateway = fakeAccountsGateway(), suggestions = suggestionsWith()) {
   const store: ThemePreferenceStore = { read: () => 'light', write: () => undefined };
   const document: ThemeDocument = {
     prefersDark: () => false,
@@ -51,7 +64,9 @@ function renderAt(path: string, gateway: AccountsGateway = fakeAccountsGateway()
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
         <AccountsGatewayProvider gateway={gateway}>
           <AtlasGatewayProvider gateway={atlasGateway}>
-            <RouterProvider router={router} />
+            <SuggestionsGatewayProvider gateway={suggestions}>
+              <RouterProvider router={router} />
+            </SuggestionsGatewayProvider>
           </AtlasGatewayProvider>
         </AccountsGatewayProvider>
       </QueryClientProvider>
@@ -406,8 +421,8 @@ describe('navigation by role', () => {
   });
 
   it.each([
-    ['staff', false, ['Atlas', 'Theme']],
-    ['an admin', true, ['Atlas', 'Accounts', 'Theme']],
+    ['staff', false, ['Atlas', 'Dictionary changes', 'Theme']],
+    ['an admin', true, ['Atlas', 'Dictionary changes', 'Accounts', 'Theme']],
   ] as const)('lists the places in order for %s, with Theme last', async (_who, isAdmin, labels) => {
     renderAt('/theme', fakeAccountsGateway({ me: async () => account({ isAdmin }) }));
     await screen.findByRole('heading', { level: 1, name: 'Theme' });
@@ -417,5 +432,20 @@ describe('navigation by role', () => {
     for (const nav of [sidebar, bottomBar]) {
       expect(within(nav).getAllByRole('link').map((link) => link.textContent?.trim())).toEqual(labels);
     }
+  });
+
+  it('shows an admin how many suggestions wait for them, in the sidebar and the bottom bar', async () => {
+    renderAt('/theme', fakeAccountsGateway({ me: async () => account({ isAdmin: true }) }), suggestionsWith({ waitingCount: async () => 2 }));
+    await screen.findByRole('heading', { level: 1, name: 'Theme' });
+    const links = await screen.findAllByRole('link', { name: 'Dictionary changes 2 suggestions waiting' });
+    expect(links).toHaveLength(2);
+  });
+
+  it('never asks for a count for staff, who decide no suggestion', async () => {
+    const waitingCount = vi.fn(async () => 2);
+    renderAt('/theme', fakeAccountsGateway({ me: async () => account({ isAdmin: false }) }), suggestionsWith({ waitingCount }));
+    await screen.findByRole('heading', { level: 1, name: 'Theme' });
+    expect(screen.getAllByRole('link', { name: 'Dictionary changes' })).toHaveLength(2);
+    expect(waitingCount).not.toHaveBeenCalled();
   });
 });

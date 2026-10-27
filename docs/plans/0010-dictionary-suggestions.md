@@ -61,7 +61,7 @@ corrected.
 | 1. Suggestions and their trail | 7 / 7 | Done — the suggestion rules, their two tables and the session routes; approving is phase 2 |
 | 2. Approving and rejecting | 10 / 10 | Done — approving rewrites saved Spec IDs in one transaction; rejecting needs a reason; history names the change |
 | 3. Renames and search words in the reader | 5 / 5 | Done — the reader, the size rulings, the capacity labels and pasted codes follow renames; approved search words are read |
-| 4. The Dictionary changes page | 0 / 6 | Not started |
+| 4. The Dictionary changes page | 6 / 6 | Done — the page, its skeleton and badge; approving, rejecting and withdrawing from a suggestion's card; Edit comes with the form in phase 5 |
 | 5. Suggesting from the Dictionary sheet | 0 / 6 | Not started |
 
 Five pull requests, one per phase. Phases 1–4 are "Part of #95"; phase 5 is
@@ -415,33 +415,33 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 
 ### Step 4.1 — Gateway and hooks
 
-- [ ] **Action.** Port methods, the HTTP adapter with tests, and hooks for the list, one suggestion, the waiting count, approve, reject and withdraw.
-- [ ] **Verify.** Gateway tests pass.
+- [x] **Action.** Port methods, the HTTP adapter with tests, and hooks for the list, one suggestion, the waiting count, approve, reject and withdraw. *As built:* a `SuggestionsGateway` port of its own beside `AtlasGateway`, with its own provider, so the tests that build a whole `AtlasGateway` by hand need nothing new. #95's lines for each state are pure functions in `domain/suggestion.ts`.
+- [x] **Verify.** Gateway tests pass.
 
 ### Step 4.2 — The nav badge
 
-- [ ] **Action.** `NavItem.badge`; the Sidebar and BottomNav show the waiting count when above 0, as a `Badge` with an accessible label "{N} suggestions waiting".
-- [ ] **Verify.** A test: an admin with 2 waiting sees "2"; staff see none.
+- [x] **Action.** `NavItem.badge`; the Sidebar and BottomNav show the waiting count when above 0, as a `Badge` with an accessible label "{N} suggestions waiting". *As built:* the number is hidden from screen readers and the words are a screen-reader-only part of the link, since an `aria-label` on a plain `span` is not reliably read. The item's icon is a new `BookCheckIcon`, whose tick draws in.
+- [x] **Verify.** A test: an admin with 2 waiting sees "2"; staff see none.
 
 ### Step 4.3 — The page and its skeleton
 
-- [ ] **Action.** `DictionaryChangesPage` (Waiting and History), `DictionaryChangesPageSkeleton`, the route, #95's empty states.
-- [ ] **Verify.** Page tests: the suggester sees Edit and Withdraw; another admin sees Approve and Reject; the suggester-admin sees no Approve.
+- [x] **Action.** `DictionaryChangesPage` (Waiting and History), `DictionaryChangesPageSkeleton`, the route, #95's empty states. *As built:* no Edit yet: the form it opens is phase 5's (step 5.3), and a button that does nothing breaks DESIGN.md's first principle.
+- [x] **Verify.** Page tests: the suggester sees Withdraw (Edit in phase 5); another admin sees Approve and Reject; the suggester-admin sees no Approve.
 
 ### Step 4.4 — A suggestion's card and trail
 
-- [ ] **Action.** `SuggestionCard` (what, before and after, "Used by N saved Spec IDs", the codes it would rewrite) and `SuggestionTrail` (every event, with names, dates, the edit's before and after, the reason).
-- [ ] **Verify.** Tests for each state's copy in #95's table.
+- [x] **Action.** `SuggestionCard` (what, before and after, "Used by N saved Spec IDs", the codes it would rewrite) and `SuggestionTrail` (every event, with names, dates, the edit's before and after, the reason). *As built:* a waiting card also says what the dictionary holds now (a wording or a rule); a decided card leaves that out, since the dictionary may have changed, and still shows the code it asked to change. A decided card's trail loads when opened.
+- [x] **Verify.** Tests for each state's copy in #95's table.
 
 ### Step 4.5 — Approve and reject
 
-- [ ] **Action.** Approve (sends `version`) and the `RejectForm` sheet; each 409 shows its message.
-- [ ] **Verify.** Tests: "Change #N is live. K saved Spec IDs were updated."; a reject without a reason shows "Say why, so {name} knows what to change."
+- [x] **Action.** Approve (sends `version`) and the `RejectForm` sheet; each 409 shows its message. *As built:* when the waiting suggestion's page says approving would be refused (`problem`), the card says why and holds Approve back.
+- [x] **Verify.** Tests: "Change #N is live. K saved Spec IDs were updated."; a reject without a reason shows "Say why, so {name} knows what to change."
 
 ### Step 4.6 — Screenshots, then the pull request
 
-- [ ] **Action.** Light, dark and phone screenshots with invented data, as #94 did. Open "Part of #95".
-- [ ] **Verify.** Checks and `check:pr` pass. Stop for the owner.
+- [x] **Action.** Light, dark and phone screenshots with invented data, as #94 did. Open "Part of #95".
+- [x] **Verify.** Checks and `check:pr` pass. Stop for the owner.
 
 ---
 

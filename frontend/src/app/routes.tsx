@@ -7,6 +7,7 @@ import { ManufacturersPageSkeleton } from '@/pages/atlas/ManufacturersPageSkelet
 import { NewSpecIdPageSkeleton } from '@/pages/atlas/NewSpecIdPageSkeleton';
 import { SpecIdPageSkeleton } from '@/pages/atlas/SpecIdPageSkeleton';
 import { AuthPageSkeleton } from '@/pages/auth/AuthPageSkeleton';
+import { DictionaryChangesPageSkeleton } from '@/pages/dictionary/DictionaryChangesPageSkeleton';
 import { LandingPageSkeleton } from '@/pages/landing/LandingPageSkeleton';
 import { ThemePageSkeleton } from '@/pages/theme/ThemePageSkeleton';
 import { AppShell } from './shell/AppShell';
@@ -24,6 +25,9 @@ const NewSpecIdPage = lazy(() =>
 const SpecIdPage = lazy(() => import('@/pages/atlas/SpecIdPage').then((module) => ({ default: module.SpecIdPage })));
 const ManufacturersPage = lazy(() =>
   import('@/pages/atlas/ManufacturersPage').then((module) => ({ default: module.ManufacturersPage })),
+);
+const DictionaryChangesPage = lazy(() =>
+  import('@/pages/dictionary/DictionaryChangesPage').then((module) => ({ default: module.DictionaryChangesPage })),
 );
 const AccountsPage = lazy(() =>
   import('@/pages/accounts/AccountsPage').then((module) => ({ default: module.AccountsPage })),
@@ -147,6 +151,14 @@ export const routes: RouteObject[] = [
             element: (
               <RouteBoundary skeleton={<ManufacturersPageSkeleton />}>
                 <ManufacturersPage />
+              </RouteBoundary>
+            ),
+          },
+          {
+            path: 'dictionary/changes',
+            element: (
+              <RouteBoundary skeleton={<DictionaryChangesPageSkeleton />}>
+                <DictionaryChangesPage />
               </RouteBoundary>
             ),
           },

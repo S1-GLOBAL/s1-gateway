@@ -29,6 +29,15 @@ export type SlotKey =
 /** Whether a slot applies to a product type, or what it depends on. */
 export type SlotRule = 'applies' | 'never' | 'round_only' | 'non_round_only' | 'paper_only';
 
+/** The specification's own words for each rule. */
+export const RULE_LABELS: Readonly<Record<SlotRule, string>> = {
+  applies: 'Applies',
+  never: 'X',
+  round_only: 'Round only',
+  non_round_only: 'Non-round only',
+  paper_only: 'Paper family only',
+};
+
 export interface DictionaryValue {
   code: string;
   meaning: string;

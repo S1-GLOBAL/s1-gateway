@@ -1,17 +1,8 @@
 import { useState } from 'react';
 import { SelectField } from '@/shared/ui/SelectField';
-import type { AtlasDictionary, SlotKey, SlotRule } from '../domain/atlas';
-import { SLOT_NAMES } from '../domain/atlas';
+import type { AtlasDictionary, SlotKey } from '../domain/atlas';
+import { RULE_LABELS, SLOT_NAMES } from '../domain/atlas';
 import { dictionaryOptions } from './dictionary-options';
-
-/** The specification's own words for each rule. */
-const RULE_LABELS: Record<SlotRule, string> = {
-  applies: 'Applies',
-  never: 'X',
-  round_only: 'Round only',
-  non_round_only: 'Non-round only',
-  paper_only: 'Paper family only',
-};
 
 /** Every value of every dictionary slot, then which slots apply to one product type. */
 export function DictionaryBrowser({ dictionary }: { dictionary: AtlasDictionary }) {

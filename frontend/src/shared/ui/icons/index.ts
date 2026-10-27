@@ -3,6 +3,7 @@ export {
   AccountsIcon,
   AlertIcon,
   AtlasIcon,
+  BookCheckIcon,
   BookOpenIcon,
   CheckIcon,
   ExternalLinkIcon,

@@ -1,18 +1,20 @@
 import * as m from 'motion/react-m';
 import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { Badge } from '@/shared/ui/Badge';
 import { cn } from '@/shared/ui/cn';
 import { useIconTrigger } from '@/shared/ui/motion';
-import { isInPlace, type NavItem } from '../nav';
+import { badgeLabel, isInPlace, type NavItem } from '../nav';
 
 const MotionLink = m.create(Link);
 
 /**
  * One place in the sidebar. The current one sits on the lime pill, which
  * slides between items (ADR 0012); its icon plays once on arrival and on
- * hover. Folded to the rail, the label becomes a tooltip.
+ * hover. Folded to the rail, the label becomes a tooltip, and a count sits
+ * on the icon's corner. A screen reader hears the count as words.
  */
-export function SidebarLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+export function SidebarLink({ item, count = 0, collapsed }: { item: NavItem; count?: number; collapsed: boolean }) {
   const { pathname } = useLocation();
   const current = isInPlace(item, pathname);
   const Icon = item.icon;
@@ -44,6 +46,22 @@ export function SidebarLink({ item, collapsed }: { item: NavItem; collapsed: boo
         <Icon size={18} />
       </span>
       <span className={cn('relative truncate', collapsed && 'sr-only')}>{item.label}</span>
+      {item.badge && count > 0 && (
+        <>
+          <Badge
+            aria-hidden="true"
+            tone="accent"
+            className={cn(
+              'relative ml-auto shrink-0',
+              current && 'bg-surface text-ink',
+              collapsed && 'absolute top-0 left-6 h-4 px-1.5',
+            )}
+          >
+            {count}
+          </Badge>
+          <span className="sr-only">{` ${badgeLabel(item.badge, count)}`}</span>
+        </>
+      )}
       {collapsed && (
         <span
           aria-hidden="true"

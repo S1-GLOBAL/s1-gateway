@@ -12,15 +12,23 @@ const ADA = {
   email: 'ada@sourceone.global',
 };
 
-function Harness({ isAdmin }: { isAdmin: boolean }) {
+function Harness({ isAdmin, waiting }: { isAdmin: boolean; waiting: number }) {
   const [collapsed, toggle] = useSidebarCollapsed();
-  return <Sidebar items={navItemsFor(isAdmin)} account={ADA} collapsed={collapsed} onToggle={toggle} />;
+  return (
+    <Sidebar
+      items={navItemsFor(isAdmin)}
+      badges={{ 'dictionary-waiting': waiting }}
+      account={ADA}
+      collapsed={collapsed}
+      onToggle={toggle}
+    />
+  );
 }
 
-function renderAt(path: string, isAdmin = false) {
+function renderAt(path: string, isAdmin = false, waiting = 0) {
   render(
     <MemoryRouter initialEntries={[path]}>
-      <Harness isAdmin={isAdmin} />
+      <Harness isAdmin={isAdmin} waiting={waiting} />
     </MemoryRouter>,
   );
 }
@@ -47,6 +55,17 @@ describe('Sidebar', () => {
   it('offers Accounts to an admin', () => {
     renderAt('/theme', true);
     expect(screen.getByRole('link', { name: 'Accounts' })).toBeTruthy();
+  });
+
+  it('counts the suggestions waiting on Dictionary changes, and says so to a screen reader', () => {
+    renderAt('/theme', true, 2);
+    const link = screen.getByRole('link', { name: 'Dictionary changes 2 suggestions waiting' });
+    expect(link.textContent).toContain('2');
+  });
+
+  it('shows no count when none is waiting', () => {
+    renderAt('/theme', true, 0);
+    expect(screen.getByRole('link', { name: 'Dictionary changes' }).textContent).toBe('Dictionary changes');
   });
 
   it('writes Source One beside the mark, and drops the name when folded', () => {
