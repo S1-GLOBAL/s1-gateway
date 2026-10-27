@@ -4,7 +4,7 @@ import { cn } from '@/shared/ui/cn';
 import { SidebarIcon } from '@/shared/ui/icons';
 import { Logo, SourceOneName } from '@/shared/ui/Logo';
 import { duration, ease, useIconTrigger } from '@/shared/ui/motion';
-import type { NavItem } from '../nav';
+import type { NavBadges, NavItem } from '../nav';
 import { SidebarLink } from './SidebarLink';
 
 export const SIDEBAR_WIDTH = { expanded: 248, collapsed: 72 } as const;
@@ -31,11 +31,14 @@ export function accountInitials(firstName: string, lastName: string): string {
 
 export function Sidebar({
   items,
+  badges = {},
   account,
   collapsed,
   onToggle,
 }: {
   items: readonly NavItem[];
+  /** Each badge's count; none means every count is 0. */
+  badges?: NavBadges;
   account: SidebarAccount;
   collapsed: boolean;
   onToggle(): void;
@@ -65,7 +68,7 @@ export function Sidebar({
         <ul className="flex flex-col gap-1">
           {items.map((item) => (
             <li key={item.path}>
-              <SidebarLink item={item} collapsed={collapsed} />
+              <SidebarLink item={item} count={item.badge ? (badges[item.badge] ?? 0) : 0} collapsed={collapsed} />
             </li>
           ))}
         </ul>

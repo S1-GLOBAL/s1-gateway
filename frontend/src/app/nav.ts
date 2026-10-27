@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { AccountsIcon, AtlasIcon, ThemeIcon, type IconProps } from '@/shared/ui/icons';
+import { AccountsIcon, AtlasIcon, BookCheckIcon, ThemeIcon, type IconProps } from '@/shared/ui/icons';
 
 export interface NavItem {
   /** Absolute path. */
@@ -9,6 +9,21 @@ export interface NavItem {
   icon: ComponentType<IconProps>;
   /** Shown only to admins. */
   adminOnly?: boolean;
+  /** A count it carries, when above 0: the suggestions an admin may decide. */
+  badge?: NavBadge;
+}
+
+export type NavBadge = 'dictionary-waiting';
+
+/** Each badge's count now; one left out is 0. */
+export type NavBadges = Partial<Record<NavBadge, number>>;
+
+/** What a badge's count means, for a screen reader: `2 suggestions waiting`. */
+export function badgeLabel(badge: NavBadge, count: number): string {
+  switch (badge) {
+    case 'dictionary-waiting':
+      return count === 1 ? '1 suggestion waiting' : `${count} suggestions waiting`;
+  }
 }
 
 /**
@@ -18,6 +33,7 @@ export interface NavItem {
  */
 export const NAV_ITEMS: readonly NavItem[] = [
   { path: '/atlas', label: 'Atlas', icon: AtlasIcon },
+  { path: '/dictionary/changes', label: 'Dictionary changes', icon: BookCheckIcon, badge: 'dictionary-waiting' },
   { path: '/accounts', label: 'Accounts', icon: AccountsIcon, adminOnly: true },
   { path: '/theme', label: 'Theme', icon: ThemeIcon },
 ];
