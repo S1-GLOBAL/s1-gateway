@@ -138,7 +138,7 @@ describe('DictionaryChangesPage', () => {
     expect(screen.getByRole('status', { name: /Loading/ })).toBeTruthy();
   });
 
-  it('says so when no suggestion waits, in #95 words', async () => {
+  it("says so when no suggestion waits, in #95's words", async () => {
     renderPage(asAdmin, suggestionsWith({ list: async () => [] }));
     expect(await screen.findByText('No suggestions waiting.')).toBeTruthy();
   });
@@ -152,7 +152,7 @@ describe('DictionaryChangesPage', () => {
     expect(rename.getByText(/Suggested by Ada Invented/)).toBeTruthy();
   });
 
-  it("opens the trail: who suggested it, and what each edit changed", async () => {
+  it('opens the trail: who suggested it, and what each edit changed', async () => {
     renderPage(asAdmin, suggestionsWith());
     const rename = await card('Change APS in Material');
     fireEvent.click(rename.getByRole('button', { name: 'Show trail' }));
@@ -186,7 +186,7 @@ describe('DictionaryChangesPage', () => {
     expect(rename.getByRole('button', { name: 'Withdraw' })).toBeTruthy();
   });
 
-  it('approves the version read, and says the change is live in #95 words', async () => {
+  it("approves the version read, and says the change is live in #95's words", async () => {
     const approve = vi.fn(async () => ({ suggestion: { ...RENAME, state: 'approved' as const }, changeNumber: 4, specIdsRewritten: 3 }));
     renderPage(asAdmin, suggestionsWith({ approve }));
     fireEvent.click((await card('Change APS in Material')).getByRole('button', { name: 'Approve' }));
@@ -209,7 +209,7 @@ describe('DictionaryChangesPage', () => {
     expect((rename.getByRole('button', { name: 'Approve' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("answers a rejection without a reason under the field, in #95 words", async () => {
+  it("answers a rejection without a reason under the field, in #95's words", async () => {
     const reject = vi.fn(async () =>
       Promise.reject(new AppError('VALIDATION_FAILED', 'The suggestion is not valid.', { reason: ['Say why, so Ada Invented knows what to change.'] })),
     );
@@ -264,7 +264,7 @@ describe('DictionaryChangesPage', () => {
     expect(await screen.findByText('Withdrawn.')).toBeTruthy();
   });
 
-  it('lists each decision in the history in #95 words', async () => {
+  it("lists each decision in the history in #95's words", async () => {
     const decided: SuggestionOf[] = [
       { ...RENAME, id: 'd1', state: 'approved', decidedBy: BEN, changeNumber: 4 },
       { ...RENAME, id: 'd2', code: 'APP', state: 'rejected', decidedBy: BEN, reason: 'We have APP.' },
@@ -277,7 +277,7 @@ describe('DictionaryChangesPage', () => {
     expect((await card('Change APQ in Material')).getAllByText('Withdrawn').length).toBeGreaterThan(0);
   });
 
-  it('says so when nothing was decided yet, in #95 words', async () => {
+  it("says so when nothing was decided yet, in #95's words", async () => {
     renderPage(asStaffSuggester, suggestionsWith({ list: async () => [] }));
     fireEvent.click(await screen.findByRole('radio', { name: 'History' }));
     expect(await screen.findByText('No dictionary changes yet.')).toBeTruthy();

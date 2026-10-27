@@ -57,7 +57,9 @@ export function DictionaryChanges({ viewer, timeZone }: { viewer: Viewer; timeZo
             <SuggestionListSkeleton />
           </SkeletonRegion>
         }
-      >{tab === 'waiting' ? <Waiting {...list} /> : <History {...list} />}</Suspense>
+      >
+        {tab === 'waiting' ? <Waiting {...list} /> : <History {...list} />}
+      </Suspense>
     </div>
   );
 }

@@ -70,7 +70,7 @@ describe('HttpSuggestionsGateway', () => {
     expect(detail).toMatchObject({ usage: 1, rewrites: [{ codeAfter: 'BLD.APZ.Y' }], problem: null });
   });
 
-  it("reads a detail from an API that sends no rewrites or problem as neither", async () => {
+  it('reads a detail from an API that sends no rewrites or problem as neither', async () => {
     const detail = await gatewayAnswering(200, { data: { ...wireSuggestion, events: [], usage: 0 } }).get('s1');
     expect(detail).toMatchObject({ rewrites: null, problem: null });
   });

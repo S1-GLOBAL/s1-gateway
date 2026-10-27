@@ -434,7 +434,7 @@ describe('navigation by role', () => {
     }
   });
 
-  it("shows an admin how many suggestions wait for them, in the sidebar and the bottom bar", async () => {
+  it('shows an admin how many suggestions wait for them, in the sidebar and the bottom bar', async () => {
     renderAt('/theme', fakeAccountsGateway({ me: async () => account({ isAdmin: true }) }), suggestionsWith({ waitingCount: async () => 2 }));
     await screen.findByRole('heading', { level: 1, name: 'Theme' });
     const links = await screen.findAllByRole('link', { name: 'Dictionary changes 2 suggestions waiting' });

@@ -32,7 +32,7 @@ function suggestion(overrides: Partial<Suggestion> = {}): Suggestion {
   };
 }
 
-describe('stateLine, in #95 words', () => {
+describe("stateLine, in #95's words", () => {
   it('reads each state', () => {
     expect(stateLine(suggestion())).toBe('Waiting for an admin');
     expect(stateLine(suggestion({ state: 'approved', decidedBy: BEN, changeNumber: 4 }))).toBe('Approved as change #4 by Ben Invented');
@@ -44,7 +44,7 @@ describe('stateLine, in #95 words', () => {
 });
 
 describe('approvedLine', () => {
-  it("says the change is live and how many saved Spec IDs it updated", () => {
+  it('says the change is live and how many saved Spec IDs it updated', () => {
     const approved = { suggestion: suggestion(), changeNumber: 4, specIdsRewritten: 3 };
     expect(approvedLine(approved)).toBe('Change #4 is live. 3 saved Spec IDs were updated.');
     expect(approvedLine({ ...approved, specIdsRewritten: 1 })).toBe('Change #4 is live. 1 saved Spec ID was updated.');
@@ -56,7 +56,7 @@ describe('usageLine', () => {
   const rename = { kind: 'edit', newCode: 'APZ', meaning: null, searchWords: null } as const;
   const reword = { kind: 'edit', newCode: null, meaning: 'Polymer, PS', searchWords: null } as const;
 
-  it("says they change too only when approving would change them, as #95 words it", () => {
+  it('says they change too only when approving would change them, as #95 words it', () => {
     expect(usageLine(2, rename)).toBe('Used by 2 saved Spec IDs. If approved, they change too.');
     expect(usageLine(1, rename)).toBe('Used by 1 saved Spec ID. If approved, it changes too.');
     expect(usageLine(2, reword)).toBe('Used by 2 saved Spec IDs.');
