@@ -70,7 +70,9 @@ export function SuggestionCard({ suggestion, detail, dictionary, viewer, timeZon
             Suggested by {suggestion.suggestedBy.fullName}, {formatChangedAt(suggestion.suggestedAt, timeZone)}
           </p>
         </div>
-        <StateBadge suggestion={suggestion} />
+        <span className="shrink-0 self-start">
+          <StateBadge suggestion={suggestion} />
+        </span>
       </div>
 
       {summary.rows.length > 0 && (

@@ -42,7 +42,8 @@ function BottomNavLink({ item, count, current }: { item: NavItem; count: number;
       aria-current={current ? 'page' : undefined}
       {...trigger}
       className={cn(
-        'relative flex h-16 flex-col items-center justify-center gap-1 text-2xs font-medium',
+        // Icons line up at the top, so a label that wraps to two lines grows down, not up.
+        'relative flex h-16 flex-col items-center justify-start gap-1 pt-2 text-center text-2xs font-medium',
         current ? 'text-accent-ink' : 'text-ink-muted',
       )}
     >
