@@ -277,7 +277,7 @@ function wordProblems(
 export function whoFinds(slot: DictionarySlotKey, word: string, context: ProposalContext): string | undefined {
   // The word list and the keywords name S2 0.1.0's letters: each is read as the dictionary has it now (ADR 0031).
   // A deleted option's word finds nothing, so an approved word may still have it.
-  const live = (code: string) => context.dictionary.live(slot, code);
+  const live = (code: string) => context.dictionary.liveOriginal(slot, code);
   const listed = WORD_LIST[word];
   if (listed !== undefined) {
     const entry = 'productType' in listed ? { slot: 'productType', code: listed.productType } : { slot: 'material', code: listed.material };

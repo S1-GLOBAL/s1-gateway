@@ -132,6 +132,16 @@ describe('readText after approved changes', () => {
     expect(readText('14oz bagasse bowl', renamed('capacity', 'Z', 'O')).facts.capacity).toEqual({ unit: 'O', value: '14' });
   });
 
+  it('never reads letters another option took later as that option', () => {
+    const withoutMl = changed('capacity', 'M', { kind: 'delete', replacement: null });
+    const ozAsM = applyProposal(withoutMl, { slot: 'capacity', code: 'Z' }, { kind: 'edit', newCode: 'M', meaning: null, searchWords: null }, {
+      number: 2,
+      at: STAMP.at,
+    });
+    expect(readText('500ml paper cup', ozAsM).facts).not.toHaveProperty('capacity');
+    expect(readText('14oz paper cup', ozAsM).facts.capacity).toEqual({ unit: 'M', value: '14' });
+  });
+
   it("reads a renamed product type's size under its rulings", () => {
     expect(readText('Cup 90mm', renamed('productType', 'CUP', 'CPQ')).facts).toEqual({
       productType: 'CPQ',

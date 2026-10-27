@@ -146,7 +146,7 @@ export function readVerifiedRow(row: VerifiedRow, dictionary: Dictionary): RowRe
   const dimension = tidy(row.dimension);
   const size = dimension === '' ? null : readSize(dimension.toLowerCase(), productType, dictionary);
   const columnRulings: RowNote[] = [];
-  const round = dictionary.live('shape', ROUND_SHAPE);
+  const round = dictionary.liveOriginal('shape', ROUND_SHAPE);
   if (size && !(size.facts.shape === round && typeof facts.shape === 'string' && facts.shape !== round)) {
     for (const [key, value] of Object.entries(size.facts)) {
       facts[key] = value;

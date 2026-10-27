@@ -84,9 +84,9 @@ function measures(values: readonly (string | undefined)[], units: readonly (stri
  * 0.1.0's letters, and read them in `dictionary`'s (ADR 0031).
  */
 export function readSize(text: string, productType: string, dictionary: Dictionary): SizeReading | null {
-  const is = (types: ReadonlySet<string>) => [...types].some((type) => dictionary.live('productType', type) === productType);
-  const round = dictionary.live('shape', ROUND_SHAPE) ?? ROUND_SHAPE;
-  const rectangular = dictionary.live('shape', RECTANGULAR);
+  const is = (types: ReadonlySet<string>) => [...types].some((type) => dictionary.liveOriginal('productType', type) === productType);
+  const round = dictionary.liveOriginal('shape', ROUND_SHAPE) ?? ROUND_SHAPE;
+  const rectangular = dictionary.liveOriginal('shape', RECTANGULAR);
   for (const match of text.matchAll(THREE)) {
     const [words, a, ua, dia, b, ub, c, uc] = match;
     const [x, y, z] = measures([a, b, c], [ua, ub, uc]) as [MeasurementInput, MeasurementInput, MeasurementInput];

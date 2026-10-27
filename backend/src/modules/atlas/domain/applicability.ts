@@ -44,7 +44,7 @@ export function expectedFill(
       if (shape === undefined || isDoesNotApply(shape)) return null;
       if (isNotKnown(shape)) return { fill: 'not-known', dependsOn: 'shape' };
       // RD can't be renamed (#95), but is read like every code the rules name.
-      const round = shape === dictionary.live('shape', ROUND_SHAPE);
+      const round = shape === dictionary.liveOriginal('shape', ROUND_SHAPE);
       return { fill: round === (rule === 'round_only') ? 'any' : 'does-not-apply' };
     }
     case 'paper_only': {

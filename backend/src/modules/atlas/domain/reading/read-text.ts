@@ -51,7 +51,7 @@ const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').rep
 function liveValue(key: SlotKey, value: string, dictionary: Dictionary): string | null {
   if (!(DICTIONARY_SLOTS as readonly SlotKey[]).includes(key)) return value;
   const slot = key as DictionarySlotKey;
-  return (slot === 'capacity' ? dictionary.liveCapacity(value) : dictionary.live(slot, value)) ?? null;
+  return (slot === 'capacity' ? dictionary.liveOriginalCapacity(value) : dictionary.liveOriginal(slot, value)) ?? null;
 }
 
 interface Phrase {
@@ -188,7 +188,7 @@ export function readText(text: string, dictionary: Dictionary, productType?: str
     let masked = lower;
     for (const { start, end } of used) masked = masked.slice(0, start) + ' '.repeat(end - start) + masked.slice(end);
     const size = readSize(masked, type, dictionary);
-    const roundShape = dictionary.live('shape', ROUND_SHAPE);
+    const roundShape = dictionary.liveOriginal('shape', ROUND_SHAPE);
     const round = size?.facts.shape === roundShape;
     if (size && !(round && facts.shape !== undefined && facts.shape !== roundShape)) {
       const start = masked.indexOf(size.words);
