@@ -156,6 +156,9 @@ Every route that takes a code also takes a code given out before: an S1 code
 (74 characters, 18 slots) or a long S2 code (starting `S2.`, 97 characters,
 each marker as wide as its slot), and reads it as the short code it converts
 to. A marker written wide in a short code (`0000`, `XX`) is read as its letter.
+A code written before an approved dictionary change renamed one of its options
+is read in the option's live letters, and a capacity keeps its unit's label
+([ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md)).
 No route issues anything but short codes.
 
 `AtlasDictionary` is `{ release, approvedOn, slots, rules, change }`. `slots` holds the
@@ -202,6 +205,11 @@ under `code`.
 
 `POST /atlas/spec-ids/read` takes `{ text, productType? }` and reads the facts
 in raw text by rules ([ADR 0026](../decisions/0026-raw-text-is-read-by-rules-and-a-public-word-list.md)).
+It also reads each option's approved search words, from the request after the
+approval, and reads the word list's, the keywords' and the size rulings' codes
+in their live letters; the words of a deleted option are read as nothing and
+answered under `ignored`
+([ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md)).
 `text` is trimmed and must be 1–500 characters; otherwise it answers 400
 `VALIDATION_FAILED` with `details.fields.text`: "Type some text to read." or
 "Search text must be at most 500 characters." A `productType` reads the text as

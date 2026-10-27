@@ -179,4 +179,20 @@ describe('Dictionary suggestions, composed over Postgres', () => {
       events: [{ kind: 'suggested' }, { kind: 'rejected', reason: 'We have APP.' }],
     });
   });
+
+  it('reads an approved search word in pasted text from the next request, and not before (#95)', async () => {
+    const readFacts = async () =>
+      ((await staff.post('/api/v1/atlas/spec-ids/read').send({ text: 'sugarcane fibre bowl' })).body.data.read as { key: string; meaning: string }[]);
+    const { id } = (
+      await staff.post(SUGGESTIONS).send({
+        slot: 'material',
+        code: 'CBG',
+        proposal: { kind: 'edit', newCode: null, meaning: null, searchWords: ['sugarcane fibre'] },
+      })
+    ).body.data;
+
+    expect((await readFacts()).map((fact) => fact.key)).not.toContain('material');
+    expect((await admin.post(`${SUGGESTIONS}/${id}/approve`).send({ version: 1 })).status).toBe(200);
+    expect((await readFacts()).find((fact) => fact.key === 'material')?.meaning).toBe('Molded fibre, bagasse');
+  });
 });

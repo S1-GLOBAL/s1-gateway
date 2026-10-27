@@ -60,7 +60,7 @@ corrected.
 |---|---|---|
 | 1. Suggestions and their trail | 7 / 7 | Done — the suggestion rules, their two tables and the session routes; approving is phase 2 |
 | 2. Approving and rejecting | 10 / 10 | Done — approving rewrites saved Spec IDs in one transaction; rejecting needs a reason; history names the change |
-| 3. Renames and search words in the reader | 0 / 5 | Not started |
+| 3. Renames and search words in the reader | 5 / 5 | Done — the reader, the size rulings, the capacity labels and pasted codes follow renames; approved search words are read |
 | 4. The Dictionary changes page | 0 / 6 | Not started |
 | 5. Suggesting from the Dictionary sheet | 0 / 6 | Not started |
 
@@ -383,28 +383,28 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 
 ### Step 3.1 — Hardcoded codes follow renames
 
-- [ ] **Action.** Every site in Design's list goes through `dictionary.live`. Pass the dictionary where a function lacks it (`size-rulings.ts`).
-- [ ] **Verify.** `git grep -nE "'(RD|RC|CUP|BWL|TRY)'" -- backend/src/modules/atlas/domain ':!*.test.ts'` prints only the constant tables the `live` calls read; the reader's existing tests pass unchanged.
+- [x] **Action.** Every site in Design's list goes through `dictionary.live`. Pass the dictionary where a function lacks it (`size-rulings.ts`). *As built:* `live` reads a code the dictionary never had as itself, so a value read from text (print `09`) still reaches `SpecId.build` to be refused as before; only a deleted option's code is `undefined`. `PAPER_FAMILY` stays the letter `B`: a material's first letter is its family (#95). `CAPACITY_UNIT_LABELS` are found through `atlas_dictionary_renames` rather than `live` in reverse, so a unit given the letters of one renamed away gets no label. A deleted option's words still hold their place in the text, so no shorter phrase inside them is read, and come back as ignored.
+- [x] **Verify.** `git grep -nE "'(RD|RC|CUP|BWL|TRY)'" -- backend/src/modules/atlas/domain ':!*.test.ts'` prints only the constant tables the `live` calls read; the reader's existing tests pass unchanged.
 
 ### Step 3.2 — Renamed codes in the reader's tests
 
-- [ ] **Action.** Tests: after renaming `DW` to `DX`, "double wall cup" reads wall `DX`; after deleting `HD`, "half dome lid" leaves profile not known and reports the words as ignored; capacity "14oz" still reads after renaming `Z`.
-- [ ] **Verify.** Tests pass.
+- [x] **Action.** Tests: after renaming `DW` to `DQ`, "double wall cup" reads wall `DQ`; after deleting `HD`, "half dome bowl lid" leaves profile not known and reports the words as ignored; capacity "14oz" still reads after renaming `Z`. *As built:* letters without `X`, which a Spec ID refuses inside a value; and "bowl lid", because "dome lid" is a product-type phrase that covers "dome".
+- [x] **Verify.** Tests pass.
 
 ### Step 3.3 — Approved search words are read
 
-- [ ] **Action.** `readText` takes the approved words with the dictionary (`DictionaryRepository.get` returns them); they are matched as whole phrases for their slot, alongside `WORD_LIST` and `KEYWORDS`. `ReadSpecIdText` and `ImportVerifiedList` pass them.
-- [ ] **Verify.** A test: with the approved word "sugarcane fibre" on a material, "sugarcane fibre bowl" reads that material; without it, it does not.
+- [x] **Action.** `readText` takes the approved words with the dictionary (`DictionaryRepository.get` returns them); they are matched as whole phrases for their slot, alongside `WORD_LIST` and `KEYWORDS`. `ReadSpecIdText` and `ImportVerifiedList` pass them. *As built:* the dictionary carries them, so both pass nothing new. A unit's word is read after a number, as `12 fluid ounces`.
+- [x] **Verify.** A test: with the approved word "sugarcane fibre" on a material, "sugarcane fibre bowl" reads that material; without it, it does not.
 
 ### Step 3.4 — Old codes after renames
 
-- [ ] **Action.** A pasted S1 or long-form code with renamed letters still decodes, through `live`.
-- [ ] **Verify.** A test decodes an S1 code whose product type was renamed.
+- [x] **Action.** A pasted S1 or long-form code with renamed letters still decodes, through `live`. *As built:* in `SpecId.parse`, so a short code copied before a rename decodes too. Finding a Spec ID by an old code needs nothing new: the approval's history entry keeps the old code, so it is found as a former holder.
+- [x] **Verify.** A test decodes an S1 code whose product type was renamed.
 
 ### Step 3.5 — The pull request
 
-- [ ] **Action.** Open "Part of #95".
-- [ ] **Verify.** Checks pass. Stop for the owner.
+- [x] **Action.** Open "Part of #95".
+- [x] **Verify.** Checks pass. Stop for the owner.
 
 ---
 
