@@ -385,7 +385,7 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 
 ### Step 3.1 — Hardcoded codes follow renames
 
-- [x] **Action.** Every site in Design's list goes through `dictionary.live`. Pass the dictionary where a function lacks it (`size-rulings.ts`). *As built:* `live` reads a code the dictionary never had as itself, so a value read from text (print `09`) still reaches `SpecId.build` to be refused as before; only a deleted option's code is `undefined`. `PAPER_FAMILY` stays the letter `B`: a material's first letter is its family (#95). `CAPACITY_UNIT_LABELS` are found through `atlas_dictionary_renames` rather than `live` in reverse, so a unit given the letters of one renamed away gets no label. A deleted option's words still hold their place in the text, so no shorter phrase inside them is read, and come back as ignored.
+- [x] **Action.** Every site in Design's list goes through `dictionary.live`. Pass the dictionary where a function lacks it (`size-rulings.ts`). *As built:* `live` reads a code the dictionary never had as itself, so a value read from text (print `09`) still reaches `SpecId.build` to be refused as before; only a deleted option's code is `undefined`. `PAPER_FAMILY` stays the letter `B`: a material's first letter is its family (#95). `CAPACITY_UNIT_LABELS` are found through `atlas_dictionary_renames` rather than `live` in reverse, so a unit given the letters of one renamed away gets no label. A deleted option's words still hold their place in the text, so no shorter phrase inside them is read, and come back as ignored. The tables read through `liveOriginal`, which follows a rename or a deletion before asking whether the letters exist, so letters another option took later never read as it ("500ml" never reads as ounces renamed `M`); a pasted code reads through `live`, as the letters an option has now.
 - [x] **Verify.** `git grep -nE "'(RD|RC|CUP|BWL|TRY)'" -- backend/src/modules/atlas/domain ':!*.test.ts' ':!**/testing/**'` prints only the constant tables the `live` calls read; the reader's existing tests pass unchanged.
 
 ### Step 3.2 — Renamed codes in the reader's tests
@@ -400,7 +400,7 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 
 ### Step 3.4 — Old codes after renames
 
-- [x] **Action.** A pasted S1 or long-form code with renamed letters still decodes, through `live`. *As built:* in `SpecId.parse`, so a short code copied before a rename decodes too. Finding a Spec ID by an old code needs nothing new: the approval's history entry keeps the old code, so it is found as a former holder.
+- [x] **Action.** A pasted S1 or long-form code with renamed letters still decodes, through `live`. *As built:* in `SpecId.parse`, so a short code copied before a rename decodes too. Finding a Spec ID by an old code: one a Spec ID held before the approval is found as a former holder, since its history entry keeps the old code; any other is looked up once more in the live letters (`liveCode`), and answered with `replacedCode`.
 - [x] **Verify.** A test decodes an S1 code whose product type was renamed.
 
 ### Step 3.5 — The pull request

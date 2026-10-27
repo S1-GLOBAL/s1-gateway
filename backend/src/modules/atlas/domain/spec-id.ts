@@ -474,6 +474,18 @@ function live(values: SlotValues, dictionary: Dictionary): SlotValues {
   return now;
 }
 
+/**
+ * A short code in `dictionary`'s live letters: each option an approved change
+ * renamed, in its new letters (ADR 0031). Anything that is not 25 parts is
+ * itself.
+ */
+export function liveCode(code: string, dictionary: Dictionary): string {
+  const parts = code.split('.');
+  if (parts.length !== SLOT_COUNT) return code;
+  const now = live(Object.fromEntries(SLOTS.map((slot, index) => [slot.key, parts[index] ?? ''])) as SlotValues, dictionary);
+  return SLOTS.map(({ key }) => now[key]).join('.');
+}
+
 /** A slot holding a value, in plain words (4.5). Whole numbers of at most four digits only. */
 function meaningOf(slot: SlotDefinition, raw: string, dictionary: Dictionary): string {
   switch (slot.kind) {

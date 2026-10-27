@@ -269,8 +269,11 @@ typed in lower case is found. When a Spec ID has the code now, it answers that
 one with `replacedCode: null`, and `formerHolders` lists every other Spec ID
 that once had it (`{ id, name, code, until }`, `code` being its code now),
 newest first. When none has it now but one once did, it answers the last one
-that did, with `replacedCode` set to the code asked for. It answers 404 only
-when no Spec ID has or had the code.
+that did, with `replacedCode` set to the code asked for. When none has or had
+it, it is looked up once more in the dictionary's live letters, so a code
+written before an approved rename finds the Spec ID with its options' new
+letters, also with `replacedCode` set. It answers 404 only when that finds
+none either.
 
 `GET /atlas/saved` is the library: `{ items, page, pageSize, total }`, 20 Spec IDs
 per page, newest change first ([ADR 0029](../decisions/0029-the-library-is-numbered-pages.md)).
