@@ -228,7 +228,12 @@ function toDictionary(contract: AtlasDictionaryContract): AtlasDictionary {
     slots: contract.slots.map((slot) => ({
       key: slot.key,
       name: slot.name,
-      values: slot.values.map(({ code, meaning, searchWords }) => ({ code, meaning, searchWords: [...searchWords] })),
+      values: slot.values.map(({ code, meaning, searchWords }) => ({
+        code,
+        meaning,
+        // An API older than plan 0010's phase 5 sends none: no approved words yet.
+        searchWords: [...(searchWords ?? [])],
+      })),
     })),
     rules: contract.rules.map(({ productType, slot, rule }) => ({ productType, slot, rule })),
     // An API older than plan 0010's phase 2 sends none: no change yet.

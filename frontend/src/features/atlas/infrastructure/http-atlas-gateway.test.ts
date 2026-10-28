@@ -58,6 +58,16 @@ describe('HttpAtlasGateway', () => {
     expect(dictionary.change).toEqual({ number: 3, at: new Date('2026-10-27T09:30:00.000Z') });
   });
 
+  it('reads search words an older API omits as none, during a release', async () => {
+    const dictionary = await gatewayAnswering(200, {
+      data: {
+        ...wireDictionary,
+        slots: [{ key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid' }] }],
+      },
+    }).dictionary();
+    expect(dictionary.slots[0]?.values).toEqual([{ code: 'BLD', meaning: 'Bowl lid', searchWords: [] }]);
+  });
+
   it('sends the code to decode and returns its slots', async () => {
     const sent: Sent[] = [];
     const decoded = await gatewayAnswering(200, { data: wireDecoded }, sent).decode(ILLUSTRATIVE);
