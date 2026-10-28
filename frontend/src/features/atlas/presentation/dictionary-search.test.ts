@@ -5,24 +5,25 @@ import { searchDictionary } from './dictionary-search';
 const dictionary: AtlasDictionary = {
   release: 'S2 0.1.0',
   approvedOn: '2026-10-19',
+  change: null,
   slots: [
     {
       key: 'productType',
       name: 'Product type',
       values: [
-        { code: 'BLD', meaning: 'Bowl lid' },
-        { code: 'BWL', meaning: 'Bowl' },
+        { code: 'BLD', meaning: 'Bowl lid', searchWords: [] },
+        { code: 'BWL', meaning: 'Bowl', searchWords: [] },
       ],
     },
     {
       key: 'material',
       name: 'Material',
-      values: [{ code: 'APT', meaning: 'Polymer, PET' }],
+      values: [{ code: 'APT', meaning: 'Polymer, PET', searchWords: [] }],
     },
     {
       key: 'shape',
       name: 'Shape',
-      values: [{ code: 'RD', meaning: 'Round' }],
+      values: [{ code: 'RD', meaning: 'Round', searchWords: [] }],
     },
   ],
   rules: [],

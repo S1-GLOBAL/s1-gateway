@@ -23,7 +23,8 @@ const BEN = { id: 'ben', fullName: 'Ben Invented' };
 const DICTIONARY: AtlasDictionary = {
   release: 'S2 0.1.0',
   approvedOn: '2026-10-19',
-  slots: [{ key: 'material', name: 'Material', values: [{ code: 'APS', meaning: 'Polymer, PS' }, { code: 'APP', meaning: 'Polymer, PP' }] }],
+  change: null,
+  slots: [{ key: 'material', name: 'Material', values: [{ code: 'APS', meaning: 'Polymer, PS', searchWords: [] }, { code: 'APP', meaning: 'Polymer, PP', searchWords: [] }] }],
   rules: [],
 };
 
@@ -71,6 +72,9 @@ const pending = () => new Promise<never>(() => undefined);
 
 function suggestionsWith(overrides: Partial<SuggestionsGateway> = {}): SuggestionsGateway {
   return {
+    suggest: pending,
+    edit: pending,
+    usage: async () => 0,
     list: async (state) => (state === 'waiting' ? [RENAME] : []),
     get: async () => RENAME_DETAIL,
     waitingCount: async () => 1,
@@ -106,13 +110,13 @@ function leavingTheList(): SuggestionsGateway {
 
 const atlasGateway = { dictionary: async () => DICTIONARY } as unknown as AtlasGateway;
 
-function renderPage(viewer: { id: string; fullName: string; isAdmin: boolean }, suggestions: SuggestionsGateway) {
+function renderPage(viewer: { id: string; fullName: string; isAdmin: boolean }, suggestions: SuggestionsGateway, path = '/dictionary/changes') {
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <AccountsGatewayProvider gateway={fakeAccountsGateway({ me: async () => account({ ...viewer }) })}>
         <AtlasGatewayProvider gateway={atlasGateway}>
           <SuggestionsGatewayProvider gateway={suggestions}>
-            <MemoryRouter>
+            <MemoryRouter initialEntries={[path]}>
               <RouteBoundary skeleton={<DictionaryChangesPageSkeleton />}>
                 <DictionaryChangesPage />
               </RouteBoundary>
@@ -235,6 +239,69 @@ describe('DictionaryChangesPage', () => {
     fireEvent.click(sheet.getByRole('button', { name: 'Reject' }));
     expect(await screen.findByText('Rejected. Ada Invented sees your reason.')).toBeTruthy();
     expect(reject).toHaveBeenCalledWith('s1', 'We have APP.');
+  });
+
+  it("lets the suggester edit it in the same form, from the version read, and the trail shows the edit's before and after", async () => {
+    let edited = false;
+    const reworded = { kind: 'edit' as const, newCode: 'APQ', meaning: null, searchWords: null };
+    const after = { ...RENAME, version: 3, proposal: reworded };
+    const edit = vi.fn(async () => {
+      edited = true;
+      return after;
+    });
+    renderPage(
+      asStaffSuggester,
+      suggestionsWith({
+        list: async (state) => (state === 'waiting' ? [edited ? after : RENAME] : []),
+        get: async () =>
+          edited
+            ? {
+                ...RENAME_DETAIL,
+                ...after,
+                events: [
+                  ...RENAME_DETAIL.events,
+                  { kind: 'edited', by: ADA, at: new Date('2026-10-27T10:00:00.000Z'), proposalBefore: RENAME.proposal, proposalAfter: reworded, reason: null },
+                ],
+              }
+            : RENAME_DETAIL,
+        edit,
+      }),
+    );
+
+    fireEvent.click((await card('Change APS in Material')).getByRole('button', { name: 'Edit' }));
+    const form = within(await screen.findByRole('dialog', { name: 'Edit your suggestion' }));
+    const code = (await form.findByLabelText('Code')) as HTMLInputElement;
+    expect(code.value).toBe('APZ');
+    fireEvent.change(code, { target: { value: 'APQ' } });
+    fireEvent.click(form.getByRole('button', { name: 'Save edit' }));
+
+    expect(await screen.findByText('Suggested. An admin will review it.')).toBeTruthy();
+    expect(edit).toHaveBeenCalledWith('s1', { slot: 'material', code: 'APS', proposal: reworded, version: 2 });
+
+    const rename = await card('Change APS in Material');
+    fireEvent.click(rename.getByRole('button', { name: 'Show trail' }));
+    const trail = within(rename.getByRole('list', { name: 'Trail' }));
+    const lastEdit = within(trail.getAllByRole('listitem').at(-1) as HTMLElement);
+    expect(lastEdit.getByText('Edited')).toBeTruthy();
+    expect(lastEdit.getByText('APZ').className).toContain('line-through');
+    expect(lastEdit.getByText('APQ')).toBeTruthy();
+  });
+
+  it('gives no one else Edit', async () => {
+    renderPage(asAdmin, suggestionsWith());
+    expect((await card('Change APS in Material')).queryByRole('button', { name: 'Edit' })).toBeNull();
+  });
+
+  it("opens the history on the change a Spec ID's history links to, with its trail", async () => {
+    const decided = [{ ...RENAME, state: 'approved' as const, decidedBy: BEN, changeNumber: 4 }];
+    renderPage(
+      asStaffSuggester,
+      suggestionsWith({ list: async (state) => (state === 'decided' ? decided : []), get: async () => ({ ...RENAME_DETAIL, ...decided[0], rewrites: null }) }),
+      '/dictionary/changes?change=4',
+    );
+    const rename = await card('Change APS in Material');
+    expect(screen.getByRole('radio', { name: 'History' }).getAttribute('aria-checked')).toBe('true');
+    expect(await rename.findByRole('list', { name: 'Trail' })).toBeTruthy();
   });
 
   it('withdraws for the suggester', async () => {

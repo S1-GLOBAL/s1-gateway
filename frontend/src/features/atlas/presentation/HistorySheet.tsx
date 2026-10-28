@@ -1,5 +1,6 @@
 import { ArrowRight } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Badge } from '@/shared/ui/Badge';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SegmentedControl } from '@/shared/ui/SegmentedControl';
@@ -8,7 +9,7 @@ import { SkeletonText } from '@/shared/ui/Skeleton';
 import { useSpecIdHistory } from '../application/use-spec-id-history';
 import type { SpecIdChange } from '../domain/atlas';
 import { formatChangedAt } from '../domain/format-saved-date';
-import { historySentence, inFilter, isRename, type HistoryFilter } from '../domain/history-entry';
+import { dictionaryChangeLine, dictionaryChangePath, historySentence, inFilter, isRename, type HistoryFilter } from '../domain/history-entry';
 
 export interface HistorySheetProps {
   id: string;
@@ -63,10 +64,20 @@ export function HistorySheet({ id, name, open, onClose, timeZone }: HistorySheet
 
 function Entry({ entry, timeZone }: { entry: SpecIdChange; timeZone?: string }) {
   const codeChanged = entry.codeBefore !== null && entry.codeBefore !== entry.codeAfter;
+  const byDictionary = dictionaryChangeLine(entry);
   return (
     <li className="flex flex-col gap-3 rounded-surface border border-border p-4">
       <div className="flex flex-col gap-0.5">
-        <p className="text-sm font-medium text-ink">{historySentence(entry)}</p>
+        {byDictionary && entry.dictionaryChange ? (
+          <Link
+            to={dictionaryChangePath(entry.dictionaryChange.number)}
+            className="text-sm font-medium text-accent-ink underline-offset-2 hover:underline"
+          >
+            {byDictionary}
+          </Link>
+        ) : (
+          <p className="text-sm font-medium text-ink">{historySentence(entry)}</p>
+        )}
         <p className="text-xs text-ink-muted">{formatChangedAt(entry.changedAt, timeZone)}</p>
       </div>
 

@@ -228,9 +228,11 @@ function toDictionary(contract: AtlasDictionaryContract): AtlasDictionary {
     slots: contract.slots.map((slot) => ({
       key: slot.key,
       name: slot.name,
-      values: slot.values.map(({ code, meaning }) => ({ code, meaning })),
+      values: slot.values.map(({ code, meaning, searchWords }) => ({ code, meaning, searchWords: [...searchWords] })),
     })),
     rules: contract.rules.map(({ productType, slot, rule }) => ({ productType, slot, rule })),
+    // An API older than plan 0010's phase 2 sends none: no change yet.
+    change: contract.change ? { number: contract.change.number, at: new Date(contract.change.at) } : null,
   };
 }
 
@@ -284,6 +286,14 @@ function toSpecIdChange(contract: SpecIdChangeContract): SpecIdChange {
     nameBefore: contract.nameBefore,
     nameAfter: contract.nameAfter,
     slots: contract.slots.map(({ key, name, before, after, corrected }) => ({ key, name, before, after, corrected })),
+    // An API older than plan 0010's phase 2 sends none: a person's own edit.
+    dictionaryChange: contract.dictionaryChange
+      ? {
+          number: contract.dictionaryChange.number,
+          suggestedBy: { id: contract.dictionaryChange.suggestedBy.id, fullName: contract.dictionaryChange.suggestedBy.fullName },
+          approvedBy: { id: contract.dictionaryChange.approvedBy.id, fullName: contract.dictionaryChange.approvedBy.fullName },
+        }
+      : null,
   };
 }
 

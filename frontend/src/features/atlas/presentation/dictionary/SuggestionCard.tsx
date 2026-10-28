@@ -8,6 +8,7 @@ import { useApproveSuggestion, useWithdrawSuggestion } from '../../application/u
 import { useSuggestion } from '../../application/use-suggestions';
 import type { AtlasDictionary } from '../../domain/atlas';
 import { formatChangedAt } from '../../domain/format-saved-date';
+import { suggestionTarget } from '../../domain/suggestion-form';
 import {
   actionsFor,
   approvedLine,
@@ -20,6 +21,7 @@ import {
 } from '../../domain/suggestion';
 import { ChangeLine } from './ChangeLine';
 import { RejectForm } from './RejectForm';
+import { SuggestionForm } from './SuggestionForm';
 import { SuggestionTrail } from './SuggestionTrail';
 
 /** How many rewritten codes a card lists before it only counts the rest. */
@@ -37,6 +39,8 @@ export interface SuggestionCardProps {
   dictionary: AtlasDictionary;
   viewer: Viewer;
   timeZone?: string;
+  /** Opens with its trail showing: the change a link asked for. */
+  opened?: boolean;
   /** Says what just happened, once this card's action succeeds. */
   onNotice(message: string): void;
 }
@@ -44,17 +48,19 @@ export interface SuggestionCardProps {
 /**
  * One suggestion: what it changes, before and after; how many saved Spec IDs
  * hold the option and which codes approving would change; where it stands;
- * and what the viewer may do with it (#95). The suggester may withdraw it; an
- * admin who did not suggest it approves or rejects it.
+ * and what the viewer may do with it (#95). The suggester may edit it, in the
+ * form it was suggested with, or withdraw it; an admin who did not suggest it
+ * approves or rejects it.
  */
-export function SuggestionCard({ suggestion, detail, dictionary, viewer, timeZone, onNotice }: SuggestionCardProps) {
+export function SuggestionCard({ suggestion, detail, dictionary, viewer, timeZone, opened = false, onNotice }: SuggestionCardProps) {
   const titleId = useId();
   const summary = describeSuggestion(suggestion, dictionary);
   const actions = actionsFor(suggestion, viewer);
   const approve = useApproveSuggestion();
   const withdraw = useWithdrawSuggestion();
   const [rejecting, setRejecting] = useState(false);
-  const [trailOpen, setTrailOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [trailOpen, setTrailOpen] = useState(opened);
   const failure = approve.error ?? withdraw.error;
   const usage = detail ? usageLine(detail.usage, suggestion.proposal) : null;
   const problem = actions.decide ? (detail?.problem ?? null) : null;
@@ -124,6 +130,11 @@ export function SuggestionCard({ suggestion, detail, dictionary, viewer, timeZon
             </Button>
           </>
         )}
+        {actions.edit && (
+          <Button variant="secondary" onClick={() => setEditing(true)}>
+            Edit
+          </Button>
+        )}
         {actions.withdraw && (
           <Button variant="secondary" loading={withdraw.isPending} onClick={withdrawIt}>
             Withdraw
@@ -136,6 +147,18 @@ export function SuggestionCard({ suggestion, detail, dictionary, viewer, timeZon
 
       {trailOpen &&
         (detail ? <SuggestionTrail events={detail.events} timeZone={timeZone} /> : <LoadedTrail id={suggestion.id} timeZone={timeZone} />)}
+
+      {actions.edit && (
+        <SuggestionForm
+          request={editing ? { target: suggestionTarget(suggestion), editing: suggestion } : null}
+          dictionary={dictionary}
+          onClose={() => setEditing(false)}
+          onSent={(message) => {
+            setEditing(false);
+            onNotice(message);
+          }}
+        />
+      )}
 
       {actions.decide && (
         <RejectForm
