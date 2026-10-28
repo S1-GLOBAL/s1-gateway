@@ -37,6 +37,19 @@ describe('readText', () => {
     expect(read('14OZ,Bagasse-Bowl').facts).toEqual(read('14oz bagasse bowl').facts);
   });
 
+  it('leaves a print colour range unknown', () => {
+    const reading = read('22oz White Single Wall Paper Cold Cup (2-3 color print)');
+    expect(reading.facts).toEqual({
+      productType: 'CUP',
+      material: 'B00',
+      colourClarity: 'WH',
+      wall: 'SW',
+      capacity: { unit: 'Z', value: '22' },
+    });
+    expect(reading.conflicts).toEqual([{ key: 'print', found: ['2 colour', '3 colour'] }]);
+    expect(reading.ignored).toEqual(['Cold']);
+  });
+
   it('reads a product type inside a longer name as the longer one', () => {
     expect(read('Bowl Lid').facts.productType).toBe('BLD');
     expect(read('lid with straw hole').facts).toEqual({ productType: 'CLD', lidOpening: 'SH' });

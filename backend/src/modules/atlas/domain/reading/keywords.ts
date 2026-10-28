@@ -66,6 +66,16 @@ export const KEYWORDS: readonly Keyword[] = [
   { pattern: word('double[\\s-]*wall'), slot: 'wall', value: 'DW' },
   { pattern: word('ripple(?:[\\s-]*wall)?'), slot: 'wall', value: 'RW' },
   { pattern: word('no[\\s-]*print'), slot: 'print', value: 'NP' },
+  // "2-3 color" is a range, so neither end is stored. It must be longer than the single count below.
+  {
+    pattern: word('(\\d+)\\s*(?:-|–|/)\\s*(\\d+)[\\s-]*colou?rs?(?:[\\s-]*print(?:ed|ing)?)?'),
+    slot: 'print',
+    value: '',
+    ends: (match) => [
+      { value: (match[1] ?? '').padStart(2, '0'), words: `${match[1]} colour` },
+      { value: (match[2] ?? '').padStart(2, '0'), words: `${match[2]} colour` },
+    ],
+  },
   // "3-color" alone is a print colour count, as "3-color print" is (#58).
   { pattern: word('(\\d+)[\\s-]*colou?rs?(?:[\\s-]*print(?:ed|ing)?)?'), slot: 'print', value: (match) => number(match).padStart(2, '0') },
   { pattern: word('full[\\s-]*colou?r(?:[\\s-]*print(?:ed|ing)?)?'), slot: 'print', value: 'FC' },
