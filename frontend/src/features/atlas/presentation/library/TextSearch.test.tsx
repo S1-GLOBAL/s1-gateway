@@ -28,6 +28,7 @@ const READ_BOWL: SpecIdTextReading = {
   ],
   ignored: ['for', 'Cava'],
   conflicts: [],
+  notes: [],
   decoded: bowl,
 };
 
@@ -92,14 +93,32 @@ describe('AtlasLibrary, Search', () => {
     expect(screen.queryByText(/Ignored:/)).toBeNull();
   });
 
-  it('names each fact found twice', async () => {
+  it("lists the reader's notes, such as a fact found twice, one sentence each", async () => {
+    const notes = [
+      'Material: PET is Polymer, PET (B1). PP is Polymer, PP (B3). Both were left out.',
+      'The 3.25 inch height was converted to 83 mm.',
+    ];
     renderLibrary({
-      readText: async () => ({ ...READ_BOWL, conflicts: [{ key: 'material', name: 'Material', found: ['PET', 'PP'] }] }),
+      readText: async () => ({
+        ...READ_BOWL,
+        conflicts: [{ key: 'material', name: 'Material', found: ['PET', 'PP'] }],
+        notes,
+      }),
     });
     type('PET and PP bowl');
     pressSearch();
 
-    expect(await screen.findByText("Material: found both PET and PP, so it's left as not known.")).toBeTruthy();
+    const list = await screen.findByRole('list', { name: 'Notes' });
+    expect(within(list).getAllByRole('listitem').map((item) => item.textContent)).toEqual(notes);
+  });
+
+  it('shows no notes when the reader has none', async () => {
+    renderLibrary({ readText: async () => READ_BOWL });
+    type(TEXT);
+    pressSearch();
+
+    await screen.findByText('Does this code look right?');
+    expect(screen.queryByRole('list', { name: 'Notes' })).toBeNull();
   });
 
   it('asks for the product type when the text names none, and reads the text again as the one chosen', async () => {
@@ -121,7 +140,9 @@ describe('AtlasLibrary, Search', () => {
   });
 
   it('says when it found no facts, with New Spec ID', async () => {
-    renderLibrary({ readText: async () => ({ read: [], ignored: ['Cava', 'order', '12'], conflicts: [], decoded: null }) });
+    renderLibrary({
+      readText: async () => ({ read: [], ignored: ['Cava', 'order', '12'], conflicts: [], notes: [], decoded: null }),
+    });
     type('Cava order 12');
     pressSearch();
 

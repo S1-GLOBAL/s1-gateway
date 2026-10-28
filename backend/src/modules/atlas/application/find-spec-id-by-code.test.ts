@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FixedClock, SequentialIdGenerator } from '../../../shared/application/testing/fakes.js';
 import { SpecIdNotFoundError } from '../domain/spec-id.errors.js';
 import { applyProposal } from '../domain/suggestions/apply-proposal.js';
-import { ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1, withSlot } from '../domain/testing/spec-id-codes.js';
+import { ILLUSTRATIVE as ILLUSTRATIVE_DOTTED, ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1, withSlot } from '../domain/testing/spec-id-codes.js';
 import { FindSpecIdByCode } from './find-spec-id-by-code.js';
 import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
@@ -10,7 +10,7 @@ import { InMemorySourcingRepository } from './testing/in-memory-sourcing-reposit
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { UpdateSpecId } from './update-spec-id.js';
 
-const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
+const ILLUSTRATIVE = 'A1B4D1E1F1-H90N33';
 const FACTS = {
   productType: 'BLD',
   material: 'APS',
@@ -45,7 +45,7 @@ describe('FindSpecIdByCode', () => {
     expect(result.value.slots).toHaveLength(25);
   });
 
-  it('finds a Spec ID by the long code and the S1 code it was given out as', async () => {
+  it('finds a Spec ID by its code in any order and case, and by every dotted code it was given out as', async () => {
     const saved = new InMemorySpecIdRepository();
     saved.nameSaver(SAVER.id, SAVER.fullName);
     await new SaveSpecId(
@@ -56,14 +56,20 @@ describe('FindSpecIdByCode', () => {
     ).execute({ name: 'Illustrative lid', facts: FACTS, savedBy: SAVER });
     const findSaved = new FindSpecIdByCode(dictionaries, saved, new InMemorySourcingRepository());
 
-    for (const code of [ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1.toLowerCase(), withSlot(ILLUSTRATIVE, 'height', '0000')]) {
+    for (const code of [
+      'n33h90-f1e1d1b4a1',
+      ILLUSTRATIVE_DOTTED,
+      ILLUSTRATIVE_LONG,
+      ILLUSTRATIVE_S1.toLowerCase(),
+      withSlot(ILLUSTRATIVE_DOTTED, 'height', '0000'),
+    ]) {
       const result = await findSaved.execute({ code });
       expect(result.ok && result.value.code, code).toBe(ILLUSTRATIVE);
     }
   });
 
   it('answers not found for a code nobody saved', async () => {
-    const result = await find.execute({ code: ILLUSTRATIVE.replace('.0090.', '.0091.') });
+    const result = await find.execute({ code: ILLUSTRATIVE.replace('H90', 'H91') });
     expect(!result.ok && result.error).toBeInstanceOf(SpecIdNotFoundError);
     expect(!result.ok && result.error.message).toBe('No saved Spec ID has this code. Check it, or build and save it.');
   });
@@ -72,7 +78,7 @@ describe('FindSpecIdByCode', () => {
 describe('FindSpecIdByCode, after codes change', () => {
   const EDITOR = { id: '00000000-0000-4000-8000-0000000000bb', fullName: 'Ben Invented' };
   const C1 = ILLUSTRATIVE;
-  const C2 = withSlot(ILLUSTRATIVE, 'height', '0012');
+  const C2 = 'A1B4D1E1F1-H90J12N33';
 
   /** A is saved as C1 and corrected to C2; `takeC1` then saves B as C1. */
   async function setup(takeC1: boolean) {
@@ -137,7 +143,7 @@ describe('FindSpecIdByCode, after codes change', () => {
 });
 
 describe('FindSpecIdByCode after an approved rename (ADR 0031)', () => {
-  it('finds a code typed in the old letters though no Spec ID ever held it, as its code now', async () => {
+  it('finds a Spec ID by a dotted code typed in the old letters, as its code now, since a rename keeps the number', async () => {
     const dictionaries = new InMemoryDictionaryRepository();
     const before = await dictionaries.get('S2 0.1.0');
     if (!before) throw new Error('No dictionary');
@@ -155,11 +161,13 @@ describe('FindSpecIdByCode after an approved rename (ADR 0031)', () => {
       savedBy: SAVER,
     });
     if (!saved.ok) throw saved.error;
-    const typed = saved.value.code.replace('.CBQ.', '.CBG.');
+    expect(saved.value.code).toBe('A3B25-G114');
 
-    const result = await new FindSpecIdByCode(dictionaries, specIds, new InMemorySourcingRepository()).execute({ code: typed });
+    const result = await new FindSpecIdByCode(dictionaries, specIds, new InMemorySourcingRepository()).execute({
+      code: 'BWL.CBG.Y.Y.Y.X.Z0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X',
+    });
 
     if (!result.ok) throw result.error;
-    expect(result.value).toMatchObject({ id: saved.value.id, code: saved.value.code, replacedCode: typed });
+    expect(result.value).toMatchObject({ id: saved.value.id, code: 'A3B25-G114', replacedCode: null });
   });
 });

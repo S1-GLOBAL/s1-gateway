@@ -78,6 +78,11 @@ describe('toFacts', () => {
     expect(toFacts(form({ measures }, { shape: 'SQ' }), rules)).toEqual({ productType: 'BLD', shape: 'SQ' });
   });
 
+  it('sends a capacity with decimals as typed', () => {
+    const facts = toFacts(form({ productType: 'BWL', capacityUnit: 'Z', capacityValue: ' 3.25 ' }), rules);
+    expect(facts.capacity).toEqual({ unit: 'Z', value: '3.25' });
+  });
+
   it('sends a capacity unit without an amount, for the server to name', () => {
     const facts = toFacts(form({ productType: 'BWL', capacityUnit: 'Z' }), rules);
     expect(facts.capacity).toEqual({ unit: 'Z', value: '' });

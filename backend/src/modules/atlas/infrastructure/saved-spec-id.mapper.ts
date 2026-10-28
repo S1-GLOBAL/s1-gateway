@@ -1,3 +1,4 @@
+import { isDottedCode } from '../domain/code.js';
 import { S1_ADDED_SLOTS, shortForm, shortPart } from '../domain/old-codes.js';
 import { SavedSpecId } from '../domain/saved-spec-id.js';
 import { SpecIdChange, type SpecIdChangeKind } from '../domain/spec-id-change.js';
@@ -35,7 +36,7 @@ function slotValues(row: SpecIdRow) {
 export function toDomain(row: SpecIdRow): SavedSpecId {
   return SavedSpecId.restore({
     id: row.id,
-    specId: SpecId.restore(slotValues(row)),
+    specId: SpecId.restore(slotValues(row), row.code),
     name: row.name,
     dictionaryRelease: row.dictionaryRelease,
     savedBy: row.savedBy,
@@ -93,13 +94,17 @@ export function toChange(row: ChangeRow): SpecIdChange {
     kind: row.kind as SpecIdChangeKind,
     changedBy: row.changedBy,
     changedAt: row.changedAt,
-    // A code an older API wrote during a deploy is read in the short form.
-    codeBefore: row.codeBefore === null ? null : shortForm(row.codeBefore),
-    codeAfter: shortForm(row.codeAfter),
+    // A dotted code an older API wrote during a deploy is read in the short form.
+    codeBefore: row.codeBefore === null ? null : shortened(row.codeBefore),
+    codeAfter: shortened(row.codeAfter),
     nameBefore: row.nameBefore,
     nameAfter: row.nameAfter,
     dictionaryChangeNumber: row.dictionaryChangeNumber,
   });
+}
+
+function shortened(code: string): string {
+  return isDottedCode(code) ? shortForm(code) : code;
 }
 
 export function toChangeRow(change: SpecIdChange): NewChangeRow {

@@ -4,12 +4,16 @@ import { TextField } from '@/shared/ui/TextField';
 import { cn } from '@/shared/ui/cn';
 import type { AtlasDictionary, SlotKey } from '../domain/atlas';
 import { RULE_LABELS, SLOT_NAMES } from '../domain/atlas';
+import { byNumber, valueCode } from '../domain/code-letters';
 import { dictionaryOptions } from './dictionary-options';
 import { SUGGESTIONS_SHOWN, searchDictionary, type DictionaryHit } from './dictionary-search';
 
-/** Every value of every dictionary slot, then which slots apply to one product type. */
+/**
+ * Every value of every dictionary slot, each as a code writes it (`B17`), then
+ * which slots apply to one product type.
+ */
 export function DictionaryBrowser({ dictionary }: { dictionary: AtlasDictionary }) {
-  const productTypes = dictionary.slots.find((slot) => slot.key === 'productType')?.values ?? [];
+  const productTypes = byNumber(dictionary.slots.find((slot) => slot.key === 'productType')?.values ?? []);
   const [chosen, setChosen] = useState(productTypes[0]?.code ?? '');
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState(0);
@@ -104,7 +108,7 @@ export function DictionaryBrowser({ dictionary }: { dictionary: AtlasDictionary 
                       index === active ? 'bg-surface-sunken' : 'hover:bg-surface-raised',
                     )}
                   >
-                    <span className="w-10 shrink-0 font-mono text-ink">{hit.code}</span>
+                    <span className="w-10 shrink-0 font-mono text-ink">{hit.part}</span>
                     <span className="min-w-0 flex-1 truncate text-ink">{hit.meaning}</span>
                     <span className="shrink-0 text-xs text-ink-subtle">{hit.slotName}</span>
                   </div>
@@ -133,8 +137,9 @@ export function DictionaryBrowser({ dictionary }: { dictionary: AtlasDictionary 
                 {slot.name}
               </h3>
               <dl className="mt-3 flex flex-col gap-1.5 text-sm">
-                {slot.values.map((value) => {
-                  const hit = { slotKey: slot.key, slotName: slot.name, code: value.code, meaning: value.meaning };
+                {byNumber(slot.values).map((value) => {
+                  const part = valueCode(slot.key, value.number);
+                  const hit = { slotKey: slot.key, slotName: slot.name, code: value.code, part, meaning: value.meaning };
                   const current = picked?.slotKey === slot.key && picked.code === value.code;
                   return (
                     <div
@@ -142,7 +147,7 @@ export function DictionaryBrowser({ dictionary }: { dictionary: AtlasDictionary 
                       id={hitId(hit)}
                       className={cn('flex gap-3 rounded-control px-2 py-0.5', current && 'bg-surface-sunken')}
                     >
-                      <dt className="w-10 shrink-0 font-mono text-ink">{value.code}</dt>
+                      <dt className="w-10 shrink-0 font-mono text-ink">{part}</dt>
                       <dd className="text-ink-muted">{value.meaning}</dd>
                     </div>
                   );

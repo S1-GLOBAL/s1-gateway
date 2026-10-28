@@ -23,7 +23,7 @@ const BEN = { id: 'ben', fullName: 'Ben Invented' };
 const DICTIONARY: AtlasDictionary = {
   release: 'S2 0.1.0',
   approvedOn: '2026-10-19',
-  slots: [{ key: 'material', name: 'Material', values: [{ code: 'APS', meaning: 'Polymer, PS' }, { code: 'APP', meaning: 'Polymer, PP' }] }],
+  slots: [{ key: 'material', name: 'Material', values: [{ code: 'APS', meaning: 'Polymer, PS', number: 4 }, { code: 'APP', meaning: 'Polymer, PP', number: 3 }] }],
   rules: [],
 };
 

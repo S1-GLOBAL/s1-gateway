@@ -30,6 +30,15 @@ describe('toBuildForm', () => {
     expect(form.capacityValue).toBe('16');
   });
 
+  it('keeps the decimals of a capacity that has them', () => {
+    // The dotted fixture splits on dots, so the decimal goes straight into the slot.
+    const bowl = readCode(withSlot(withSlot(ILLUSTRATIVE, 'productType', 'BWL'), 'capacity', 'Z0003'));
+    const slots = bowl.slots.map((slot) => (slot.key === 'capacity' ? { ...slot, raw: 'Z0003.25', part: 'G13.25' } : slot));
+    const form = toBuildForm({ ...bowl, slots });
+    expect(form.capacityUnit).toBe('Z');
+    expect(form.capacityValue).toBe('3.25');
+  });
+
   it('fills every new slot, so that the form sends the facts a code was built from', () => {
     const code = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.DW.02.03.2.SP.TW.PW.WN.X';
     expect(toFacts(toBuildForm(readCode(code)), testDictionary.rules)).toEqual({

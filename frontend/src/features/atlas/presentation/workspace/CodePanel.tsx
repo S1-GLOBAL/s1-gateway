@@ -8,12 +8,6 @@ import { summarise } from '../../domain/spec-id-summary';
 /** How long Copy reads "Copied". */
 export const COPIED_MS = 2000;
 
-/** What the two markers mean (ADR 0025). The code itself is one style: a marker is a character like any other. */
-const LEGEND: readonly { sample: string; label: string }[] = [
-  { sample: 'Y', label: 'Not known yet' },
-  { sample: 'X', label: "Doesn't apply" },
-];
-
 export interface CodePanelProps {
   /** The code the facts build now. Undefined until the first one arrives, or while the facts are refused. */
   decoded: DecodedSpecId | undefined;
@@ -21,7 +15,7 @@ export interface CodePanelProps {
   error?: string;
 }
 
-/** The code as it forms, a key to its markers, Copy, and the facts in plain words. */
+/** The code as it forms, Copy, and the facts in plain words. The code is one style throughout. */
 export function CodePanel({ decoded, error }: CodePanelProps) {
   const [copied, setCopied] = useState(false);
 
@@ -57,16 +51,7 @@ export function CodePanel({ decoded, error }: CodePanelProps) {
 
       <p className="min-h-6 font-mono text-md font-medium break-all text-ink">{decoded?.code}</p>
 
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
-        {LEGEND.map(({ sample, label }) => (
-          <li key={sample} className="inline-flex items-center gap-1.5">
-            <span aria-hidden="true" className="font-mono">
-              {sample}
-            </span>
-            {label}
-          </li>
-        ))}
-      </ul>
+      <p className="text-xs text-ink-muted">Facts not known are left out.</p>
 
       {decoded && <p className="border-t border-border pt-4 text-sm text-ink">{summarise(decoded)}</p>}
       {error && (

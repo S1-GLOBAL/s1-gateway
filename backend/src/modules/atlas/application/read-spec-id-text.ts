@@ -1,26 +1,21 @@
 import type { UseCase } from '../../../shared/application/use-case.js';
 import { err, ok, type Result } from '../../../shared/domain/result.js';
-import { buildKeepingWhatFits } from '../domain/build-keeping-what-fits.js';
 import type { DictionaryRepository } from '../domain/dictionary-repository.js';
-import { readText } from '../domain/reading/read-text.js';
-import { CURRENT_RELEASE, slotDefinition, type SlotKey } from '../domain/slots.js';
+import { describeText, factsInWords } from '../domain/reading/describe-text.js';
+import { CURRENT_RELEASE, slotDefinition } from '../domain/slots.js';
 import { InvalidLookupError, InvalidSpecIdError } from '../domain/spec-id.errors.js';
 import { specIdMessages } from '../domain/spec-id.messages.js';
-import { meaningOfFact } from '../domain/spec-id.js';
-import {
-  toDecodedSpecIdDto,
-  type DecodedSpecIdDto,
-  type ReadSpecIdTextInput,
-  type SpecIdTextReadingDto,
-} from './atlas.dto.js';
+import { toDecodedSpecIdDto, type ReadSpecIdTextInput, type SpecIdTextReadingDto } from './atlas.dto.js';
 
 /** The most raw text a search reads (#41). */
 export const TEXT_MAX_LENGTH = 500;
 
 /**
  * Reads the facts in raw text and, once there is a product type, the code
- * they make (ADR 0026). A fact the product type cannot have is dropped and its
- * words listed as ignored. Nothing is saved.
+ * they make (ADR 0026, ADR 0032). A fact the product type cannot have is left
+ * out, and a note says why; so does each fact the text gives two values for,
+ * and each size converted. Words nothing used, and no note explains, are
+ * listed as ignored. Nothing is saved.
  */
 export class ReadSpecIdText
   implements UseCase<ReadSpecIdTextInput, Result<SpecIdTextReadingDto, InvalidLookupError | InvalidSpecIdError>>
@@ -40,26 +35,21 @@ export class ReadSpecIdText
       return err(new InvalidSpecIdError({ productType: [specIdMessages.notInDictionary('Product type', input.productType)] }));
     }
 
-    const reading = readText(text, dictionary, input.productType);
-    // A fact the product type cannot have is refused by the build: it is dropped and the build tried again.
-    const build = buildKeepingWhatFits(reading.facts, dictionary);
-    const facts: Record<string, unknown> = { ...build.facts };
-    const dropped = new Set<SlotKey>(build.dropped.map(({ key }) => key));
-    const decoded: DecodedSpecIdDto | null = build.specId ? toDecodedSpecIdDto(build.specId, dictionary) : null;
-
-    const kept = reading.read.filter((fact) => !dropped.has(fact.key));
-    const meaningIn = (key: SlotKey, words: string): string => {
-      const slot = decoded?.slots.find((candidate) => candidate.key === key);
-      if (slot?.state === 'value') return slot.meaning;
-      const fact = facts[key] as Parameters<typeof meaningOfFact>[1] | undefined;
-      return (fact !== undefined ? meaningOfFact(key, fact, dictionary) : undefined) ?? words;
-    };
+    const description = describeText(text, dictionary, input.productType);
+    // A fact a later pass read, such as a size written beside its name, has no words of its own.
+    const words = new Map(description.reading.read.map((fact) => [fact.key, fact]));
     return ok({
-      read: kept.map(({ key, words, ruling }) => ({ key, name: slotDefinition(key).name, meaning: meaningIn(key, words), words, ruling })),
-      // A size's slots share their words: each dropped phrase is listed once.
-      ignored: [...new Set([...reading.ignored, ...reading.read.filter((fact) => dropped.has(fact.key)).map((fact) => fact.words)])],
-      conflicts: reading.conflicts.map(({ key, found }) => ({ key, name: slotDefinition(key).name, found: [...found] })),
-      decoded,
+      read: factsInWords(description, dictionary).map(({ key, name, meaning }) => ({
+        key,
+        name,
+        meaning,
+        words: words.get(key)?.words ?? '',
+        ruling: words.get(key)?.ruling ?? null,
+      })),
+      ignored: [...description.ignored],
+      conflicts: description.reading.conflicts.map(({ key, found }) => ({ key, name: slotDefinition(key).name, found: [...found] })),
+      notes: [...description.notes],
+      decoded: description.specId ? toDecodedSpecIdDto(description.specId, dictionary) : null,
     });
   }
 }

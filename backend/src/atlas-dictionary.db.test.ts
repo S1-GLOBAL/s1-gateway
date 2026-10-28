@@ -119,18 +119,43 @@ describe('Dictionary suggestions, composed over Postgres', () => {
     expect((await admin.get(`${SUGGESTIONS}/waiting-count`)).body.data).toEqual({ count: 0 });
   });
 
-  it('renames a material in use, rewriting each saved Spec ID with a history entry naming both people', async () => {
+  it('renames a material in use, relettering each saved Spec ID: its code, version and History stay (ADR 0032)', async () => {
     const saved = [
       (await staff.post('/api/v1/atlas/spec-ids').send({ name: 'Lid 90', facts: lid('90') })).body.data,
       (await staff.post('/api/v1/atlas/spec-ids').send({ name: 'Lid 95', facts: lid('95') })).body.data,
-    ] as { id: string; code: string }[];
+    ] as { id: string; code: string; version: number }[];
     const proposal = { kind: 'edit', newCode: 'APZ', meaning: null, searchWords: null };
     const { id } = (await staff.post(SUGGESTIONS).send({ slot: 'material', code: 'APS', proposal })).body.data;
 
     const preview = (await admin.get(`${SUGGESTIONS}/${id}`)).body.data;
     expect(preview.usage).toBe(2);
+    expect(preview.rewrites).toEqual([]);
+
+    const approved = await admin.post(`${SUGGESTIONS}/${id}/approve`).send({ version: 1 });
+    expect(approved.body.data).toMatchObject({ changeNumber: 1, specIdsRewritten: 0 });
+
+    for (const one of saved) {
+      const now = (await staff.get(`/api/v1/atlas/saved/${one.id}`)).body.data;
+      expect(now.code).toBe(one.code);
+      expect(now.version).toBe(one.version);
+      expect(now.slots.find((slot: { key: string }) => slot.key === 'material')).toMatchObject({ raw: 'APZ', part: 'B4' });
+      const history = (await staff.get(`/api/v1/atlas/saved/${one.id}/history`)).body.data;
+      expect(history.map((entry: { kind: string }) => entry.kind)).toEqual(['created']);
+    }
+    expect(await materials()).not.toContain('APS');
+  });
+
+  it('deletes a material in use for another, rewriting each saved Spec ID with a history entry naming both people', async () => {
+    const saved = [
+      (await staff.post('/api/v1/atlas/spec-ids').send({ name: 'Lid 90', facts: lid('90') })).body.data,
+      (await staff.post('/api/v1/atlas/spec-ids').send({ name: 'Lid 95', facts: lid('95') })).body.data,
+    ] as { id: string; code: string }[];
+    const proposal = { kind: 'delete', replacement: 'APP' };
+    const { id } = (await staff.post(SUGGESTIONS).send({ slot: 'material', code: 'APS', proposal })).body.data;
+
+    const preview = (await admin.get(`${SUGGESTIONS}/${id}`)).body.data;
     expect(preview.rewrites.map((rewrite: { codeAfter: string }) => rewrite.codeAfter).sort()).toEqual(
-      saved.map((one) => one.code.replace('.APS.', '.APZ.')).sort(),
+      saved.map((one) => one.code.replace('B4', 'B3')).sort(),
     );
 
     const approved = await admin.post(`${SUGGESTIONS}/${id}/approve`).send({ version: 1 });
@@ -138,7 +163,7 @@ describe('Dictionary suggestions, composed over Postgres', () => {
 
     for (const one of saved) {
       const now = (await staff.get(`/api/v1/atlas/saved/${one.id}`)).body.data;
-      expect(now.code).toBe(one.code.replace('.APS.', '.APZ.'));
+      expect(now.code).toBe(one.code.replace('B4', 'B3'));
       const [latest] = (await staff.get(`/api/v1/atlas/saved/${one.id}/history`)).body.data;
       expect(latest).toMatchObject({
         changedBy: { fullName: 'Ada Invented' },

@@ -6,7 +6,8 @@ import { s2Dictionary } from '../domain/testing/s2-dictionary.js';
 import { DecodeSpecId } from './decode-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 
-const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
+const ILLUSTRATIVE = 'A1B4D1E1F1-H90N33';
+const ILLUSTRATIVE_DOTTED = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
 
 describe('DecodeSpecId', () => {
   const decode = new DecodeSpecId(new InMemoryDictionaryRepository());
@@ -23,17 +24,40 @@ describe('DecodeSpecId', () => {
       key: 'productType',
       name: 'Product type',
       raw: 'BLD',
+      part: 'A1',
       state: 'value',
       meaning: 'Bowl lid',
     });
   });
 
-  it('reports every problem with the code', async () => {
-    const result = await decode.execute({ code: ILLUSTRATIVE.replace('.APS.', '.QQQ.') });
+  it('reads a dotted code given out before as the same Spec ID', async () => {
+    const result = await decode.execute({ code: ILLUSTRATIVE_DOTTED });
+    if (!result.ok) throw result.error;
+
+    expect(result.value.code).toBe(ILLUSTRATIVE);
+    expect(result.value.slots.map((slot) => slot.raw).join('.')).toBe(ILLUSTRATIVE_DOTTED);
+  });
+
+  it('reports every problem with a dotted code', async () => {
+    const result = await decode.execute({ code: ILLUSTRATIVE_DOTTED.replace('.APS.', '.QQQ.') });
 
     expect(result.ok).toBe(false);
     expect(!result.ok && result.error).toBeInstanceOf(InvalidSpecIdError);
     expect(!result.ok && result.error.issues).toEqual({ material: ['Material: QQQ is not in the dictionary.'] });
+  });
+
+  it('answers what is wrong with each part of a code written today', async () => {
+    const result = await decode.execute({ code: 'A1B99D1' });
+
+    expect(!result.ok && result.error).toBeInstanceOf(InvalidSpecIdError);
+    expect(!result.ok && result.error.issues).toEqual({ code: ['B99: This key/part is unknown.'] });
+  });
+
+  it('answers why a code written today is refused when no one part is wrong', async () => {
+    const result = await decode.execute({ code: 'B4D1' });
+
+    expect(!result.ok && result.error).toBeInstanceOf(InvalidSpecIdError);
+    expect(!result.ok && result.error.issues).toEqual({ code: ['Product type (A) is missing. Every code includes it, for example A1.'] });
   });
 
   it('fails loudly when the current release is missing', async () => {
@@ -58,15 +82,15 @@ describe('DecodeSpecId after approved changes (ADR 0031)', () => {
       code: 'S1.CLD.APT.00.CL.RD.FL.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0021.XXX.000.XX',
     });
     if (!result.ok) throw result.error;
-    expect(result.value.code.startsWith('CLQ.APT.')).toBe(true);
-    expect(result.value.slots[0]).toMatchObject({ raw: 'CLQ', meaning: 'Cup lid' });
+    expect(result.value.code).toBe('A2B1D1E1F3-H90N21');
+    expect(result.value.slots[0]).toMatchObject({ raw: 'CLQ', part: 'A2', meaning: 'Cup lid' });
   });
 
   it("decodes a code written before its unit was renamed, and labels the capacity as the unit's own", async () => {
     const result = await decoding(renamed('capacity', 'Z', 'O')).execute({ code: 'BWL.CBG.Y.Y.Y.X.Z0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X' });
     if (!result.ok) throw result.error;
-    expect(result.value.code).toBe('BWL.CBG.Y.Y.Y.X.O0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X');
-    expect(result.value.slots.find((slot) => slot.key === 'capacity')?.meaning).toBe('14 oz');
+    expect(result.value.code).toBe('A3B25-G114');
+    expect(result.value.slots.find((slot) => slot.key === 'capacity')).toMatchObject({ raw: 'O0014', part: 'G114', meaning: '14 oz' });
   });
 
   it("labels a unit as its own after it took another unit's letters and was renamed again", async () => {

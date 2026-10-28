@@ -44,70 +44,70 @@ const dictionary: AtlasDictionary = {
       key: 'productType',
       name: 'Product type',
       values: [
-        { code: 'BLD', meaning: 'Bowl lid' },
-        { code: 'BWL', meaning: 'Bowl' },
-        { code: 'CLD', meaning: 'Cup lid' },
-        { code: 'SUP', meaning: 'Stand-up pouch' },
+        { code: 'BLD', meaning: 'Bowl lid', number: 1 },
+        { code: 'BWL', meaning: 'Bowl', number: 3 },
+        { code: 'CLD', meaning: 'Cup lid', number: 2 },
+        { code: 'SUP', meaning: 'Stand-up pouch', number: 4 },
       ],
     },
     {
       key: 'material',
       name: 'Material',
       values: [
-        { code: 'APS', meaning: 'Polymer, PS (polystyrene)' },
-        { code: 'APT', meaning: 'Polymer, PET' },
-        { code: 'B00', meaning: 'Paper and paperboard, grade not known' },
-        { code: 'BKR', meaning: 'Paper and paperboard, kraft' },
+        { code: 'APS', meaning: 'Polymer, PS (polystyrene)', number: 4 },
+        { code: 'APT', meaning: 'Polymer, PET', number: 1 },
+        { code: 'B00', meaning: 'Paper and paperboard, grade not known', number: 24 },
+        { code: 'BKR', meaning: 'Paper and paperboard, kraft', number: 12 },
       ],
     },
     {
       key: 'coating',
       name: 'Coating',
       values: [
-        { code: 'NC', meaning: 'No coating, as stated by the source' },
-        { code: 'PB', meaning: 'PE both sides' },
-        { code: 'PI', meaning: 'PE inside only' },
-        { code: 'PO', meaning: 'PE outside only' },
+        { code: 'NC', meaning: 'No coating, as stated by the source', number: 1 },
+        { code: 'PB', meaning: 'PE both sides', number: 4 },
+        { code: 'PI', meaning: 'PE inside only', number: 2 },
+        { code: 'PO', meaning: 'PE outside only', number: 3 },
       ],
     },
     {
       key: 'colourClarity',
       name: 'Colour / clarity',
       values: [
-        { code: 'BR', meaning: 'Brown' },
-        { code: 'CL', meaning: 'Clear' },
-        { code: 'TL', meaning: 'Translucent' },
-        { code: 'WH', meaning: 'White' },
+        { code: 'BR', meaning: 'Brown', number: 4 },
+        { code: 'CL', meaning: 'Clear', number: 1 },
+        { code: 'TL', meaning: 'Translucent', number: 2 },
+        { code: 'WH', meaning: 'White', number: 3 },
       ],
     },
     {
       key: 'shape',
       name: 'Shape',
       values: [
-        { code: 'OV', meaning: 'Oval' },
-        { code: 'RC', meaning: 'Rectangular' },
-        { code: 'RD', meaning: 'Round' },
-        { code: 'SQ', meaning: 'Square' },
+        { code: 'OV', meaning: 'Oval', number: 4 },
+        { code: 'RC', meaning: 'Rectangular', number: 3 },
+        { code: 'RD', meaning: 'Round', number: 1 },
+        { code: 'SQ', meaning: 'Square', number: 2 },
       ],
     },
     {
       key: 'profile',
       name: 'Profile',
       values: [
-        { code: 'DM', meaning: 'Dome' },
-        { code: 'FL', meaning: 'Flat' },
-        { code: 'HD', meaning: 'Half dome' },
+        { code: 'DM', meaning: 'Dome', number: 1 },
+        { code: 'FL', meaning: 'Flat', number: 3 },
+        { code: 'HD', meaning: 'Half dome', number: 2 },
       ],
     },
     {
       key: 'capacity',
       name: 'Nominal capacity',
       values: [
-        { code: 'G', meaning: 'Grams' },
-        { code: 'M', meaning: 'Millilitres' },
-        { code: 'N', meaning: 'Count' },
-        { code: 'S', meaning: 'Servings' },
-        { code: 'Z', meaning: 'Ounces, nominal trade size' },
+        { code: 'G', meaning: 'Grams', number: 5 },
+        { code: 'M', meaning: 'Millilitres', number: 2 },
+        { code: 'N', meaning: 'Count', number: 4 },
+        { code: 'S', meaning: 'Servings', number: 3 },
+        { code: 'Z', meaning: 'Ounces, nominal trade size', number: 1 },
       ],
     },
   ],
@@ -117,15 +117,30 @@ const dictionary: AtlasDictionary = {
 };
 
 describe('DictionaryBrowser', () => {
-  it('shows one card per dictionary slot, with each code and its meaning', () => {
+  it('shows one card per dictionary slot, with each value as a code writes it and its meaning', () => {
     render(<DictionaryBrowser dictionary={dictionary} />);
 
     const cards = screen.getAllByRole('article');
     expect(cards).toHaveLength(7);
     const shape = screen.getByRole('article', { name: 'Shape' });
-    expect(within(shape).getByText('RD')).toBeTruthy();
+    expect(within(shape).getByText('E1')).toBeTruthy();
     expect(within(shape).getByText('Round')).toBeTruthy();
-    expect(within(screen.getByRole('article', { name: 'Nominal capacity' })).getAllByRole('definition')).toHaveLength(5);
+    expect(within(shape).queryByText('RD')).toBeNull();
+    expect(within(screen.getByRole('article', { name: 'Material' })).getByText('B12')).toBeTruthy();
+    const capacity = screen.getByRole('article', { name: 'Nominal capacity' });
+    expect(within(capacity).getAllByRole('definition')).toHaveLength(5);
+    expect(within(capacity).getAllByRole('term').map((term) => term.textContent)).toEqual(['G1', 'G2', 'G3', 'G4', 'G5']);
+  });
+
+  it('finds a value by its code as written today, or by its dictionary code', () => {
+    render(<DictionaryBrowser dictionary={dictionary} />);
+    const search = screen.getByRole('combobox', { name: 'Search' });
+
+    fireEvent.change(search, { target: { value: 'e1' } });
+    expect(screen.getAllByRole('option')[0]?.textContent).toContain('Round');
+
+    fireEvent.change(search, { target: { value: 'BKR' } });
+    expect(screen.getByRole('option', { name: /kraft/ }).textContent).toContain('B12');
   });
 
   it("shows which slots apply to the chosen product type, in the specification's words", () => {
@@ -147,9 +162,9 @@ describe('DictionaryBrowser', () => {
 
     fireEvent.change(productType, { target: { value: 'SUP' } });
 
-    expect(cell('Top diameter')).toBe('X');
+    expect(cell('Top diameter')).toBe("Doesn't apply");
     expect(cell('Basis weight')).toBe('Applies');
-    expect(cell('Length')).toBe('X');
+    expect(cell('Length')).toBe("Doesn't apply");
   });
 
   it('suggests matches as the text changes, across every slot', () => {

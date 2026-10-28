@@ -12,13 +12,13 @@ const dictionary: AtlasDictionary = {
   release: 'S2 0.1.0',
   approvedOn: '2026-10-16',
   slots: [
-    { key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid' }] },
+    { key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid', number: 1 }] },
     {
       key: 'material',
       name: 'Material',
       values: [
-        { code: 'APS', meaning: 'Polymer, PS (polystyrene)' },
-        { code: 'BKR', meaning: 'Paper and paperboard, kraft' },
+        { code: 'APS', meaning: 'Polymer, PS (polystyrene)', number: 4 },
+        { code: 'BKR', meaning: 'Paper and paperboard, kraft', number: 12 },
       ],
     },
   ],
@@ -30,8 +30,8 @@ const decoded: DecodedSpecId = {
   code: CODE,
   dictionaryRelease: 'S2 0.1.0',
   slots: [
-    { number: 2, key: 'productType', name: 'Product type', raw: 'BLD', state: 'value', meaning: 'Bowl lid' },
-    { number: 3, key: 'material', name: 'Material', raw: 'APS', state: 'value', meaning: 'Polymer, PS (polystyrene)' },
+    { number: 2, key: 'productType', name: 'Product type', raw: 'BLD', part: 'A1', state: 'value', meaning: 'Bowl lid' },
+    { number: 3, key: 'material', name: 'Material', raw: 'APS', part: 'B4', state: 'value', meaning: 'Polymer, PS (polystyrene)' },
   ],
 };
 

@@ -4,8 +4,8 @@ export interface DecodedSlotRow {
   number: number;
   key: SlotKey;
   name: string;
-  /** The slot's characters, as they appear in the code. */
-  raw: string;
+  /** How the code writes the slot: `B17`, `H90`; empty when the code leaves it out. */
+  part: string;
   /** Empty for a code the server refused. */
   meaning: string;
   /** The server's messages about this slot, shown in its Meaning cell. */
@@ -26,7 +26,7 @@ export function DecodedSlotsTable({ rows }: { rows: readonly DecodedSlotRow[] })
               Slot
             </th>
             <th scope="col" className="px-4 py-2.5 font-medium">
-              Value
+              Code
             </th>
             <th scope="col" className="px-4 py-2.5 font-medium">
               Meaning
@@ -40,7 +40,7 @@ export function DecodedSlotsTable({ rows }: { rows: readonly DecodedSlotRow[] })
               <th scope="row" className="px-4 py-2.5 font-medium whitespace-nowrap text-ink">
                 {row.name}
               </th>
-              <td className="px-4 py-2.5 font-mono whitespace-nowrap text-ink">{row.raw}</td>
+              <td className="px-4 py-2.5 font-mono whitespace-nowrap text-ink">{row.part}</td>
               <td className="px-4 py-2.5 text-ink-muted">
                 {row.meaning}
                 {row.messages?.map((message) => (

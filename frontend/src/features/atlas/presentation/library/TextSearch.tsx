@@ -6,7 +6,7 @@ import { SelectField } from '@/shared/ui/SelectField';
 import { SkeletonBlock, SkeletonRegion } from '@/shared/ui/Skeleton';
 import type { useReadText } from '../../application/use-read-text';
 import type { AtlasDictionary, DecodedSpecId, SlotRuleEntry, SpecIdTextReading } from '../../domain/atlas';
-import { conflictSentence, readInWords } from '../../domain/text-reading';
+import { readInWords } from '../../domain/text-reading';
 import { dictionaryOptions } from '../dictionary-options';
 import { NewSpecIdLink } from './NewSpecIdLink';
 import { TextSearchResults } from './TextSearchResults';
@@ -136,7 +136,7 @@ function NoFacts({ reading }: { reading: SpecIdTextReading }) {
       <p role="status" className="text-md font-medium text-ink">
         No facts found in your text. Check the wording, or start a Spec ID by hand.
       </p>
-      <Conflicts reading={reading} />
+      <Notes reading={reading} />
       <div className="flex">
         <NewSpecIdLink />
       </div>
@@ -144,7 +144,7 @@ function NoFacts({ reading }: { reading: SpecIdTextReading }) {
   );
 }
 
-/** What was read, what was ignored when anything was, and each fact found twice. */
+/** What was read, what was ignored when anything was, and what the reader noted about it. */
 function WhatWasRead({ reading }: { reading: SpecIdTextReading }) {
   return (
     <>
@@ -152,15 +152,22 @@ function WhatWasRead({ reading }: { reading: SpecIdTextReading }) {
       {reading.ignored.length > 0 && (
         <p className="text-sm break-words text-ink-muted">{`Ignored: ${reading.ignored.join(', ')}`}</p>
       )}
-      <Conflicts reading={reading} />
+      <Notes reading={reading} />
     </>
   );
 }
 
-function Conflicts({ reading }: { reading: SpecIdTextReading }) {
-  return reading.conflicts.map((conflict) => (
-    <p key={conflict.key} className="text-sm break-words text-ink-muted">
-      {conflictSentence(conflict)}
-    </p>
-  ));
+/**
+ * The reader's sentences: a lid named by what it fits, two values for one
+ * fact, a size converted, what a word left over could mean.
+ */
+function Notes({ reading }: { reading: SpecIdTextReading }) {
+  if (reading.notes.length === 0) return null;
+  return (
+    <ul aria-label="Notes" className="flex flex-col gap-1 text-sm break-words text-ink-muted">
+      {reading.notes.map((note, index) => (
+        <li key={index}>{note}</li>
+      ))}
+    </ul>
+  );
 }

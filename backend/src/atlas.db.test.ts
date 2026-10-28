@@ -9,6 +9,8 @@ import { connectTestDatabase, resetTables } from './test/database.js';
 const ADMIN = 'admin@sourceone.global';
 const PASSWORD = 'correct-horse-battery';
 const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
+/** The same Spec ID's code as Atlas writes it (ADR 0032). */
+const CODE = 'A1B4D1E1F1-H90N33';
 const FACTS = {
   productType: 'BLD',
   material: 'APS',
@@ -68,15 +70,15 @@ describe('Atlas, composed over Postgres', () => {
     expect(response.status).toBe(200);
     expect(response.body.data.release).toBe('S2 0.1.0');
     const values = response.body.data.slots.flatMap((slot: { values: unknown[] }) => slot.values);
-    expect(values).toHaveLength(118);
-    expect(response.body.data.rules).toHaveLength(682);
+    expect(values).toHaveLength(121);
+    expect(response.body.data.rules).toHaveLength(748);
   });
 
   it('decodes the illustrative code when signed in', async () => {
     const response = await agent.post(`${SPEC_IDS}/decode`).send({ code: ILLUSTRATIVE });
 
     expect(response.status).toBe(200);
-    expect(response.body.data.code).toBe(ILLUSTRATIVE);
+    expect(response.body.data.code).toBe(CODE);
   });
 
   it.each([
@@ -103,7 +105,7 @@ describe('Atlas, composed over Postgres', () => {
     const response = await agent.post(SPEC_IDS).send({ name: 'Illustrative lid', facts: FACTS });
 
     expect(response.status).toBe(201);
-    expect(response.body.data.code).toBe(ILLUSTRATIVE);
+    expect(response.body.data.code).toBe(CODE);
     expect(response.body.data.name).toBe('Illustrative lid');
     expect(response.body.data.savedBy.fullName).toBe('Admin User');
     expect(response.body.data.savedAt).toBe('2026-10-14T08:00:00.000Z');
@@ -118,7 +120,7 @@ describe('Atlas, composed over Postgres', () => {
     expect(again.status).toBe(409);
     expect(again.body.error.code).toBe('SPEC_ID_EXISTS');
     expect(again.body.error.details.existing.name).toBe('First');
-    expect(again.body.error.details.existing.code).toBe(ILLUSTRATIVE);
+    expect(again.body.error.details.existing.code).toBe(CODE);
     expect(again.body.error.details.existing.savedBy.fullName).toBe('Admin User');
     expect(await savedCount()).toBe(1);
   });
@@ -132,7 +134,7 @@ describe('Atlas, composed over Postgres', () => {
     expect(responses.map((response) => response.status).sort()).toEqual([201, 409]);
     expect(await savedCount()).toBe(1);
     const loser = responses.find((response) => response.status === 409);
-    expect(loser?.body.error.details.existing.code).toBe(ILLUSTRATIVE);
+    expect(loser?.body.error.details.existing.code).toBe(CODE);
   });
 
   it('answers 400 and saves nothing for a bad name and a bad slot together', async () => {
@@ -229,7 +231,7 @@ describe('Atlas, composed over Postgres', () => {
     ]);
     expect(byOldCode.status).toBe(200);
     expect(byOldCode.body.data.id).toBe(saved.body.data.id);
-    expect(byOldCode.body.data.replacedCode).toBe(ILLUSTRATIVE);
+    expect(byOldCode.body.data.replacedCode).toBe(CODE);
   });
 
   it('answers 409 SPEC_ID_CHANGED to a second change from the same version', async () => {

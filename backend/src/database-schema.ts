@@ -12,6 +12,7 @@ export { tools } from './modules/tools/infrastructure/tools.table.js';
 export {
   atlasDictionaryReleases,
   atlasDictionaryRenames,
+  atlasDictionaryRetiredNumbers,
   atlasDictionarySearchWords,
   atlasDictionaryValues,
   atlasSlotRules,

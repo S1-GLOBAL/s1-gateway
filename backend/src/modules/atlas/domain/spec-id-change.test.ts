@@ -6,6 +6,9 @@ import { s2Dictionary } from './testing/s2-dictionary.js';
 
 const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
 const WITH_HEIGHT = 'BLD.APS.Y.CL.RD.DM.X.0090.X.0012.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
+/** The two codes as History records them (ADR 0032). */
+const ILLUSTRATIVE_CODE = 'A1B4D1E1F1-H90N33';
+const WITH_HEIGHT_CODE = 'A1B4D1E1F1-H90J12N33';
 const SAVER = '00000000-0000-4000-8000-0000000000aa';
 const EDITOR = '00000000-0000-4000-8000-0000000000bb';
 
@@ -44,7 +47,7 @@ describe('SpecIdChange.created', () => {
     expect(change.changedBy).toBe(SAVER);
     expect(change.changedAt.toISOString()).toBe('2026-10-16T08:00:00.000Z');
     expect(change.codeBefore).toBeNull();
-    expect(change.codeAfter).toBe(ILLUSTRATIVE);
+    expect(change.codeAfter).toBe(ILLUSTRATIVE_CODE);
     expect(change.nameBefore).toBeNull();
     expect(change.nameAfter).toBe('Illustrative lid');
     expect(change.isEmpty).toBe(false);
@@ -57,8 +60,8 @@ describe('SpecIdChange.updated', () => {
     expect(change.kind).toBe('updated');
     expect(change.changedBy).toBe(EDITOR);
     expect(change.changedAt.toISOString()).toBe('2026-10-17T08:00:00.000Z');
-    expect(change.codeBefore).toBe(ILLUSTRATIVE);
-    expect(change.codeAfter).toBe(WITH_HEIGHT);
+    expect(change.codeBefore).toBe(ILLUSTRATIVE_CODE);
+    expect(change.codeAfter).toBe(WITH_HEIGHT_CODE);
     expect(change.nameBefore).toBe('Illustrative lid');
     expect(change.nameAfter).toBe('Lid, 12 mm');
   });

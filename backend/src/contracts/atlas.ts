@@ -31,6 +31,8 @@ export type SlotRule = 'applies' | 'never' | 'round_only' | 'non_round_only' | '
 export interface DictionaryValue {
   code: string;
   meaning: string;
+  /** Its number in its list, written after the list's letter in a code: material 17 is `B17` (ADR 0032). */
+  number: number;
 }
 
 export interface DictionarySlot {
@@ -63,8 +65,10 @@ export interface DecodedSlot {
   number: number;
   key: SlotKey;
   name: string;
-  /** The slot's characters, exactly as they appear in the code. */
+  /** The slot's value as it is stored: `BCS`, `Z0012`, `0090`, or `Y` (not known) or `X` (doesn't apply). */
   raw: string;
+  /** How the code writes it: `B17`, `G112`, `H90`; empty when the code leaves it out (ADR 0032). */
+  part: string;
   state: 'value' | 'not-known' | 'does-not-apply';
   /** "Bowl lid", "90 mm", "3.3 g", "Not known", "Doesn't apply". */
   meaning: string;
@@ -72,13 +76,17 @@ export interface DecodedSlot {
 
 /** A Spec ID, read slot by slot. */
 export interface DecodedSpecId {
+  /** Each known fact as a letter and a number, sizes after one hyphen: `A5B17D3E1Q2R3-G112H90J110` (ADR 0032). */
   code: string;
   dictionaryRelease: string;
   /** Always 25, in code order. */
   slots: DecodedSlot[];
 }
 
-/** `POST /atlas/spec-ids/decode`. */
+/**
+ * `POST /atlas/spec-ids/decode`. A code written today, its letters in any
+ * order and either case, or a dotted code given out before (ADR 0025).
+ */
 export interface DecodeSpecIdRequest {
   code: string;
 }
@@ -93,13 +101,14 @@ export interface MeasurementFact {
 export interface CapacityFact {
   /** A capacity unit letter from the dictionary: `Z`, `M`, `S`, `N` or `G`. */
   unit: string;
-  /** A whole number, 1–9999. */
+  /** More than 0, at most 9999, at most 6 decimal places: `12`, `3.25` (ADR 0032). */
   value: string;
 }
 
 /**
  * What is known about a product. A slot left out, or `null`, has no value:
- * the encoder writes `X` where the slot doesn't apply and `0` everywhere else.
+ * the code leaves it out, and its slot holds `X` where it doesn't apply and
+ * `Y` everywhere else.
  */
 export interface SpecIdFacts {
   productType: string;
@@ -271,7 +280,7 @@ export interface TextReadFact {
   name: string;
   /** As the slot reads in a decoded code: "14 oz", "Molded fibre, bagasse". */
   meaning: string;
-  /** As the text wrote them. */
+  /** As the text wrote them; empty for a fact a later pass read, such as a size written beside its name. */
   words: string;
   ruling: TextRuling | null;
 }
@@ -289,6 +298,12 @@ export interface SpecIdTextReading {
   read: TextReadFact[];
   ignored: string[];
   conflicts: TextConflict[];
+  /**
+   * Sentences about what was read: a lid named by what it fits, two values
+   * for one fact, a size converted, and what a word left over could mean
+   * (plan 0011).
+   */
+  notes: string[];
   decoded: DecodedSpecId | null;
 }
 

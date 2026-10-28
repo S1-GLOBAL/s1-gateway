@@ -157,7 +157,7 @@ export function FactGroups({ dictionary, form, onChange, fields, className }: Fa
           />
           {leftOut.length > 0 && (
             <p className="text-sm text-ink-muted sm:col-span-2">
-              {`Not asked for a ${lowerFirst(productTypeName)}: ${joinNames(leftOut.map((key) => nameOf(key).toLowerCase()))}. They're written as X in the code.`}
+              {`Not asked for a ${lowerFirst(productTypeName)}: ${joinNames(leftOut.map((key) => nameOf(key).toLowerCase()))}. They're left out of the code.`}
             </p>
           )}
         </Group>
@@ -221,7 +221,7 @@ interface CapacityFieldProps {
   errors: readonly string[] | undefined;
 }
 
-/** Nominal capacity: a unit, then a whole number that waits for the unit. */
+/** Nominal capacity: a unit, then an amount that waits for the unit, such as 12 or 3.25. */
 function CapacityField({ label, state, options, unit, amount, onUnit, onAmount, errors }: CapacityFieldProps) {
   const open = state === 'any';
   return (
@@ -241,7 +241,7 @@ function CapacityField({ label, state, options, unit, amount, onUnit, onAmount, 
         onChange={(event) => onAmount(event.target.value)}
         disabled={!open || unit === ''}
         placeholder={NOT_KNOWN}
-        inputMode="numeric"
+        inputMode="decimal"
         autoComplete="off"
         className="w-28 shrink-0"
       />

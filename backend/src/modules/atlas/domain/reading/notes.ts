@@ -1,8 +1,8 @@
-import { expectedFill, type ExpectedFill } from './applicability.js';
-import type { Dictionary, DictionaryValue } from './dictionary.js';
-import type { TextReading } from './reading/read-text.js';
-import { WORD_LIST } from './reading/word-list.js';
-import type { SpecIdFactsInput } from './spec-id.js';
+import { expectedFill, type ExpectedFill } from '../applicability.js';
+import type { Dictionary, DictionaryValue } from '../dictionary.js';
+import type { TextReading } from './read-text.js';
+import { WORD_LIST } from './word-list.js';
+import type { FactDraft, SpecIdFactsInput } from '../spec-id-facts.js';
 import {
   CAPACITY_UNIT_LABELS,
   COUNTS,
@@ -14,8 +14,8 @@ import {
   type MeasureSlotKey,
   type RuledSlotKey,
   type SlotKey,
-} from './slots.js';
-import { V2_CAPACITY_DIGIT_BY_UNIT, V2_LETTERS } from './tagged-spec-id-v2.js';
+} from '../slots.js';
+import { letterOf as codeLetterOf } from '../code.js';
 
 /**
  * What a leftover word could still be, drawn from the whole dictionary.
@@ -27,10 +27,6 @@ interface Numbering {
   numberOf(slot: DictionarySlotKey, code: string): number | undefined;
 }
 
-/** A writable copy of the facts while a code is being read. `SpecIdFactsInput` itself is read-only. */
-export type FactDraft = {
-  -readonly [K in keyof SpecIdFactsInput]?: SpecIdFactsInput[K];
-};
 
 /** The fact a slot holds. The variant is a slot of the code, not a fact, so it holds nothing. */
 export function factIn(facts: Partial<SpecIdFactsInput>, slot: SlotKey): SpecIdFactsInput[keyof SpecIdFactsInput] {
@@ -154,7 +150,6 @@ export function combineAdjacent(
   text: string,
   reading: TextReading,
   dictionary: Dictionary,
-  numbering: Numbering,
 ): { readonly facts: Partial<SpecIdFactsInput>; readonly ignored: readonly string[]; readonly warnings: readonly string[] } {
   const index = hitIndex(dictionary);
   const marks = align(text, reading.ignored);
@@ -188,7 +183,7 @@ export function combineAdjacent(
     start = best.end;
   }
 
-  return settle(adopted, consumed, reading, numbering);
+  return settle(adopted, consumed, reading, dictionary);
 }
 
 /**
@@ -303,7 +298,6 @@ export function suggestionsFor(
   reading: TextReading,
   kept: Partial<SpecIdFactsInput>,
   dictionary: Dictionary,
-  numbering: Numbering,
   text: string,
 ): { readonly suggestions: readonly string[]; readonly ignored: readonly string[] } {
   const suggestions: string[] = [];
@@ -315,7 +309,7 @@ export function suggestionsFor(
     const lower = word.toLowerCase();
     if (STOP_WORDS.has(lower)) continue;
     if (lower.length < 3 && CAPACITY_WORDS[lower] === undefined && lower !== 'um' && lower !== 'pe') continue;
-    const line = lineFor(word, lower, text, kept, dictionary, numbering, index, hasPrint);
+    const line = lineFor(word, lower, text, kept, dictionary, index, hasPrint);
     if (line === undefined) continue;
     suggestions.push(line);
     explained.add(word);
@@ -333,7 +327,6 @@ export function productIncludedWith(
   text: string,
   reading: TextReading,
   dictionary: Dictionary,
-  numbering: Numbering,
 ): { readonly code: string; readonly note: string; readonly drop: readonly string[] } | undefined {
   const conflict = reading.conflicts.find((entry) => entry.key === 'productType');
   if (conflict === undefined || conflict.found.length < 2) return undefined;
@@ -357,12 +350,12 @@ export function productIncludedWith(
   const headWords = heads.find((mention) => mention.code === headCode)?.words ?? headCode;
   const described = extraWords.map((words) => {
     const code = productCodeOf(words, dictionary) ?? words;
-    return `${words} is ${productLabel(code, dictionary, numbering)}`;
+    return `${words} is ${productLabel(code, dictionary)}`;
   });
   const lead = described.join('. ');
   const note = described.length === 1
-    ? `${lead}, included with ${headWords}, so the product is ${productLabel(headCode, dictionary, numbering)}.`
-    : `${lead}. Included with ${headWords}, so the product is ${productLabel(headCode, dictionary, numbering)}.`;
+    ? `${lead}, included with ${headWords}, so the product is ${productLabel(headCode, dictionary)}.`
+    : `${lead}. Included with ${headWords}, so the product is ${productLabel(headCode, dictionary)}.`;
   return {
     code: headCode,
     note,
@@ -378,9 +371,9 @@ function productCodeOf(words: string, dictionary: Dictionary): string | undefine
   return dictionary.valuesOf('productType').find((value) => value.meaning.toLowerCase() === words.toLowerCase())?.code;
 }
 
-function productLabel(code: string, dictionary: Dictionary, numbering: Numbering): string {
+function productLabel(code: string, dictionary: Dictionary): string {
   const meaning = dictionary.meaningOf('productType', code) ?? code;
-  const number = numbering.numberOf('productType', code);
+  const number = dictionary.numberOf('productType', code);
   return number === undefined ? meaning : `${meaning} (A${number})`;
 }
 
@@ -412,11 +405,10 @@ export function conflictLine(
   key: SlotKey,
   found: readonly string[],
   dictionary: Dictionary,
-  numbering: Numbering,
 ): string {
   const name = slotDefinition(key).name;
   const index = hitIndex(dictionary);
-  const sides = found.map((words) => side(words, index, numbering));
+  const sides = found.map((words) => side(words, index, dictionary));
   if (sides.every((entry) => entry !== undefined)) {
     const tail = found.length === 2 ? 'Both were left out.' : 'All were left out.';
     return `${name}: ${sides.join('. ')}. ${tail}`;
@@ -430,13 +422,12 @@ function lineFor(
   text: string,
   kept: Partial<SpecIdFactsInput>,
   dictionary: Dictionary,
-  numbering: Numbering,
   index: Map<string, Hit[]>,
   hasPrint: boolean,
 ): string | undefined {
-  if (lower === 'pe') return peLine(word, kept, dictionary, numbering);
-  if (PRINT_WORDS.has(lower) || COLOURS_WORDS.has(lower)) return namedLine(word, 'print', kept, dictionary, numbering, hasPrint);
-  if (COLOUR_WORDS.has(lower)) return colourLine(word, kept, dictionary, numbering, hasPrint);
+  if (lower === 'pe') return peLine(word, kept, dictionary);
+  if (PRINT_WORDS.has(lower) || COLOURS_WORDS.has(lower)) return namedLine(word, 'print', kept, dictionary, hasPrint);
+  if (COLOUR_WORDS.has(lower)) return colourLine(word, kept, dictionary, hasPrint);
   const count = COUNT_WORDS[lower];
   if (count !== undefined) return countLine(word, count, numberBeside(text, word), kept, dictionary);
   const measure = MEASURE_WORDS[lower];
@@ -448,8 +439,8 @@ function lineFor(
   const capacity = CAPACITY_WORDS[lower];
   if (capacity !== undefined) return capacityLine(word, capacity, numberBeside(text, word), kept, dictionary);
   const named = NAMED_WORDS[lower];
-  if (named !== undefined) return namedLine(word, named, kept, dictionary, numbering, false);
-  return matchLine(word, lower, kept, numbering, index);
+  if (named !== undefined) return namedLine(word, named, kept, dictionary, false);
+  return matchLine(word, lower, kept, dictionary, index);
 }
 
 function namedLine(
@@ -457,15 +448,14 @@ function namedLine(
   slot: DictionarySlotKey,
   kept: Partial<SpecIdFactsInput>,
   dictionary: Dictionary,
-  numbering: Numbering,
   hasPrint: boolean,
 ): string | undefined {
   if (slot === 'print' && hasPrint) return undefined;
   if (already(slot, kept)) return undefined;
   const blocked = block(slot, word, kept, dictionary);
   if (blocked !== undefined) return blocked;
-  const list = issued(slot, dictionary, numbering)
-    .map((value) => `${value.meaning} is ${written(value, numbering)}`)
+  const list = issued(slot, dictionary)
+    .map((value) => `${value.meaning} is ${written(value, dictionary)}`)
     .join('. ');
   return `${word} is mentioned, but not which one. ${list}.`;
 }
@@ -474,21 +464,20 @@ function colourLine(
   word: string,
   kept: Partial<SpecIdFactsInput>,
   dictionary: Dictionary,
-  numbering: Numbering,
   hasPrint: boolean,
 ): string | undefined {
   const parts: string[] = [];
   if (!already('colourClarity', kept)) {
     const blocked = block('colourClarity', 'Colour', kept, dictionary);
-    const colours = issued('colourClarity', dictionary, numbering)
-      .map((value) => `${value.meaning} is ${written(value, numbering)}`)
+    const colours = issued('colourClarity', dictionary)
+      .map((value) => `${value.meaning} is ${written(value, dictionary)}`)
       .join('. ');
     parts.push(blocked ?? `Item colours: ${colours}.`);
   }
   if (!hasPrint && !already('print', kept)) {
     const blocked = block('print', 'Print', kept, dictionary);
-    const prints = issued('print', dictionary, numbering)
-      .map((value) => `${value.meaning} is ${written(value, numbering)}`)
+    const prints = issued('print', dictionary)
+      .map((value) => `${value.meaning} is ${written(value, dictionary)}`)
       .join('. ');
     parts.push(blocked ?? `Print: ${prints}.`);
   }
@@ -571,7 +560,7 @@ function weightLine(
   if (includeCapacity && !already('capacity', kept)) {
     const blocked = block('capacity', 'Capacity in grams', kept, dictionary);
     const value = amount ?? SAMPLE_OZ;
-    parts.push(blocked ?? `Capacity in grams: ${value} g is G${V2_CAPACITY_DIGIT_BY_UNIT.G}${value}.`);
+    parts.push(blocked ?? `Capacity in grams: ${capacityExample('G', value, dictionary)}.`);
   }
   if (parts.length === 0) return undefined;
   return `${word} is mentioned, but not which weight. ${parts.join(' ')}`;
@@ -589,18 +578,18 @@ function capacityLine(
   if (blocked !== undefined) return blocked;
   const units = unit === 'all' ? ['Z', 'M', 'S', 'N', 'G'] : [unit];
   const value = amount ?? SAMPLE_OZ;
-  const examples = units.map((entry) => capacityExample(entry, value)).join('. ');
+  const examples = units.map((entry) => capacityExample(entry, value, dictionary)).join('. ');
   const asking = amount === undefined ? 'no amount' : `an amount of ${amount}, but not stored as a capacity`;
   return `${word} is mentioned, but ${asking}. ${examples}.`;
 }
 
-function peLine(word: string, kept: Partial<SpecIdFactsInput>, dictionary: Dictionary, numbering: Numbering): string | undefined {
+function peLine(word: string, kept: Partial<SpecIdFactsInput>, dictionary: Dictionary): string | undefined {
   if (already('coating', kept)) return undefined;
   const blocked = block('coating', word, kept, dictionary);
   if (blocked !== undefined) return blocked;
-  const list = issued('coating', dictionary, numbering)
+  const list = issued('coating', dictionary)
     .filter((value) => tokens(value.meaning.toLowerCase()).includes('pe'))
-    .map((value) => `${value.meaning} is ${written(value, numbering)}`)
+    .map((value) => `${value.meaning} is ${written(value, dictionary)}`)
     .join('. ');
   return `${word} isn't a coating on its own. ${list}.`;
 }
@@ -721,11 +710,11 @@ function already(slot: SlotKey, kept: Partial<SpecIdFactsInput>): boolean {
   return factIn(kept, slot) !== undefined && factIn(kept, slot) !== null;
 }
 
-function issued(slot: DictionarySlotKey, dictionary: Dictionary, numbering: Numbering): DictionaryValue[] {
+function issued(slot: DictionarySlotKey, dictionary: Dictionary): DictionaryValue[] {
   return dictionary
     .valuesOf(slot)
-    .filter((value) => numbering.numberOf(slot, value.code) !== undefined)
-    .sort((left, right) => (numbering.numberOf(slot, left.code) ?? 0) - (numbering.numberOf(slot, right.code) ?? 0));
+    .filter((value) => dictionary.numberOf(slot, value.code) !== undefined)
+    .sort((left, right) => (dictionary.numberOf(slot, left.code) ?? 0) - (dictionary.numberOf(slot, right.code) ?? 0));
 }
 
 function written(value: DictionaryValue, numbering: Numbering): string {
@@ -737,7 +726,7 @@ function writtenHit(hit: Hit, numbering: Numbering): string {
 }
 
 function letterOf(slot: SlotKey): string {
-  return V2_LETTERS.find((entry) => entry.slot === slot)?.letter ?? '';
+  return slot === 'variant' ? '' : codeLetterOf(slot);
 }
 
 function sampleOf(slot: MeasureSlotKey): string {
@@ -747,9 +736,10 @@ function sampleOf(slot: MeasureSlotKey): string {
   return SAMPLE_MM;
 }
 
-function capacityExample(unit: string, amount: string): string {
+/** `12 oz is G112`: the unit's number is the digit after G (ADR 0032). `unit` names an S2 0.1.0 unit. */
+function capacityExample(unit: string, amount: string, dictionary: Dictionary): string {
   const label = CAPACITY_UNIT_LABELS[unit] ?? unit;
-  const digit = V2_CAPACITY_DIGIT_BY_UNIT[unit] ?? '';
+  const digit = dictionary.numberOf('capacity', dictionary.liveOriginal('capacity', unit) ?? unit) ?? '';
   return `${amount} ${label} is G${digit}${amount}`;
 }
 

@@ -5,10 +5,10 @@ import { s2Dictionary } from './testing/s2-dictionary.js';
 describe('Dictionary', () => {
   const dictionary = s2Dictionary();
 
-  it('holds release S2 0.1.0 with 118 values and 682 rules', () => {
+  it('holds release S2 0.1.0 with 121 values and 748 rules: the seed, then three vessels sold with their lids', () => {
     expect(dictionary.release).toBe('S2 0.1.0');
-    expect(dictionary.values()).toHaveLength(118);
-    expect(dictionary.slotRules()).toHaveLength(682);
+    expect(dictionary.values()).toHaveLength(121);
+    expect(dictionary.slotRules()).toHaveLength(748);
   });
 
   it('knows each meaning, and nothing else', () => {
@@ -19,8 +19,8 @@ describe('Dictionary', () => {
   });
 
   it('orders values by code within each slot, slots in code order', () => {
-    expect(dictionary.valuesOf('productType').map((value) => value.code).slice(0, 4)).toEqual(['BAG', 'BLD', 'BWL', 'CCR']);
-    expect(dictionary.valuesOf('productType')).toHaveLength(31);
+    expect(dictionary.valuesOf('productType').map((value) => value.code).slice(0, 4)).toEqual(['BAG', 'BLD', 'BWB', 'BWL']);
+    expect(dictionary.valuesOf('productType')).toHaveLength(34);
     expect(dictionary.values()[0]?.slot).toBe('productType');
     expect(dictionary.values().at(-1)?.slot).toBe('window');
   });

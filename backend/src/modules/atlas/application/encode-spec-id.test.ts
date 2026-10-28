@@ -3,7 +3,8 @@ import { InvalidSpecIdError } from '../domain/spec-id.errors.js';
 import { EncodeSpecId } from './encode-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 
-const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
+const ILLUSTRATIVE = 'A1B4D1E1F1-H90N33';
+const ILLUSTRATIVE_SLOTS = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
 const FACTS = {
   productType: 'BLD',
   material: 'APS',
@@ -23,7 +24,8 @@ describe('EncodeSpecId', () => {
 
     expect(result.value.code).toBe(ILLUSTRATIVE);
     expect(result.value.dictionaryRelease).toBe('S2 0.1.0');
-    expect(result.value.slots.map((slot) => slot.raw).join('.')).toBe(ILLUSTRATIVE);
+    expect(result.value.slots.map((slot) => slot.raw).join('.')).toBe(ILLUSTRATIVE_SLOTS);
+    expect(result.value.slots.map((slot) => slot.part).join('')).toBe(ILLUSTRATIVE.replace('-', ''));
     expect(result.value.slots.find((slot) => slot.key === 'unitWeight')?.meaning).toBe('3.3 g');
   });
 

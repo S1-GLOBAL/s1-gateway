@@ -57,7 +57,8 @@ describe('the illustrative code', () => {
     const specId = parsed(ILLUSTRATIVE);
     const slots = specId.describe(dictionary);
 
-    expect(specId.code).toBe(ILLUSTRATIVE);
+    expect(specId.dottedCode).toBe(ILLUSTRATIVE);
+    expect(specId.code).toBe('A1B4D1E1F1-H90N33');
     expect(slots).toHaveLength(25);
     expect(slots.map((slot) => slot.number)).toEqual(Array.from({ length: 25 }, (_, index) => index + 1));
     expect(slots[0]).toEqual({
@@ -65,6 +66,7 @@ describe('the illustrative code', () => {
       key: 'productType',
       name: 'Product type',
       raw: 'BLD',
+      part: 'A1',
       state: 'value',
       meaning: 'Bowl lid',
     });
@@ -80,8 +82,8 @@ describe('the illustrative code', () => {
 
   it('is built from its facts, and parses back to the same code', () => {
     const specId = built(ILLUSTRATIVE_FACTS);
-    expect(specId.code).toBe(ILLUSTRATIVE);
-    expect(parsed(specId.code).code).toBe(ILLUSTRATIVE);
+    expect(specId.dottedCode).toBe(ILLUSTRATIVE);
+    expect(parsed(specId.code).dottedCode).toBe(ILLUSTRATIVE);
   });
 
   it('gives each slot by its key', () => {
@@ -95,7 +97,7 @@ describe('the illustrative code', () => {
 
 describe('SpecId.parse', () => {
   it('trims surrounding spaces and folds no case', () => {
-    expect(parsed(`  ${ILLUSTRATIVE}\n`).code).toBe(ILLUSTRATIVE);
+    expect(parsed(`  ${ILLUSTRATIVE}\n`).dottedCode).toBe(ILLUSTRATIVE);
     expect(parseIssues(withSlot(ILLUSTRATIVE, 'productType', 'bld'))).toEqual({
       productType: ['Product type: bld is not in the dictionary.'],
     });
@@ -159,7 +161,8 @@ describe('SpecId.parse', () => {
 describe('SpecId.build', () => {
   it('writes Y in every slot that applies and X in every slot that never does', () => {
     const specId = built({ productType: 'BLD' });
-    expect(specId.code).toBe('BLD.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.X.Y.Y.Y.X.Y.X.X.X.X.X.X.X');
+    expect(specId.dottedCode).toBe('BLD.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.X.Y.Y.Y.X.Y.X.X.X.X.X.X.X');
+    expect(specId.code).toBe('A1');
 
     const back = parsed(specId.code);
     expect(back.code).toBe(specId.code);
@@ -399,9 +402,9 @@ describe('every message the domain produces', () => {
         { capacity: ['Nominal capacity: Q is not in the dictionary.'] },
       ],
       [
-        'a capacity that is not whole',
-        { productType: 'BWL', capacity: { unit: 'Z', value: '6.5' } },
-        { capacity: ['Nominal capacity: 6.5 must be a whole number.'] },
+        'a capacity with more than 6 decimal places',
+        { productType: 'BWL', capacity: { unit: 'Z', value: '6.1234567' } },
+        { capacity: ['Nominal capacity: 6.1234567 oz has more than 6 decimal places.'] },
       ],
       [
         'a capacity that is not a number',
@@ -504,7 +507,7 @@ describe('the limits', () => {
 
   it('builds a 25-part code for every product type, with Y or X in every empty slot', () => {
     for (const { code } of dictionary.valuesOf('productType')) {
-      const parts = built({ productType: code }).code.split('.');
+      const parts = built({ productType: code }).dottedCode.split('.');
       expect(parts).toHaveLength(25);
       expect(parts[0]).toBe(code);
       expect(parts.slice(1).every((part) => part === 'Y' || part === 'X'), code).toBe(true);
@@ -586,17 +589,17 @@ describe('checkSlotValue', () => {
 
 describe('codes given out before', () => {
   it('reads an S1 code as the short code it converts to', () => {
-    expect(parsed(ILLUSTRATIVE_S1).code).toBe(ILLUSTRATIVE);
-    expect(parsed(`  ${ILLUSTRATIVE_S1} `).code).toBe(ILLUSTRATIVE);
+    expect(parsed(ILLUSTRATIVE_S1).dottedCode).toBe(ILLUSTRATIVE);
+    expect(parsed(`  ${ILLUSTRATIVE_S1} `).dottedCode).toBe(ILLUSTRATIVE);
   });
 
   it('reads a long S2 code as the short code it converts to', () => {
-    expect(parsed(ILLUSTRATIVE_LONG).code).toBe(ILLUSTRATIVE);
+    expect(parsed(ILLUSTRATIVE_LONG).dottedCode).toBe(ILLUSTRATIVE);
   });
 
   it('reads a marker written as wide as its slot as its one letter', () => {
-    expect(parsed(withSlot(ILLUSTRATIVE, 'height', '0000')).code).toBe(ILLUSTRATIVE);
-    expect(parsed(withSlot(ILLUSTRATIVE, 'capacity', 'XXXXX')).code).toBe(ILLUSTRATIVE);
+    expect(parsed(withSlot(ILLUSTRATIVE, 'height', '0000')).dottedCode).toBe(ILLUSTRATIVE);
+    expect(parsed(withSlot(ILLUSTRATIVE, 'capacity', 'XXXXX')).dottedCode).toBe(ILLUSTRATIVE);
   });
 
   it('says what an S1 code must be when it cannot be converted', () => {
@@ -651,7 +654,7 @@ describe('the slots S2 added', () => {
 
   it('reads a coating of WC and a material of BWP, and refuses WX as a broken marker', () => {
     expect(built({ productType: 'CUP', coating: 'WC', material: 'BWP' }).slot('coating')).toBe('WC');
-    const waxed = built({ productType: 'CUP', coating: 'WC' }).code;
+    const waxed = built({ productType: 'CUP', coating: 'WC' }).dottedCode;
     expect(parseIssues(withSlot(waxed, 'coating', 'WX'))).toEqual({
       coating: ['Coating: WX mixes a marker with other characters.'],
     });

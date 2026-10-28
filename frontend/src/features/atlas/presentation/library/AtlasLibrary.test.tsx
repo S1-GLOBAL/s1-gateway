@@ -8,6 +8,7 @@ import { AtlasGatewayProvider } from '../../application/atlas-gateway-context';
 import {
   gatewayWith,
   ILLUSTRATIVE,
+  ILLUSTRATIVE_V2,
   lookupFor,
   readCode,
   s1Dictionary,
@@ -375,6 +376,47 @@ describe('AtlasLibrary, a pasted code', () => {
     const [shown] = screen.getAllByRole('table');
     // The header row, then the 11 slots that apply.
     expect(within(shown!).getAllByRole('row')).toHaveLength(12);
+    // Each slot as a code writes it today; one not known is left out of the code.
+    expect(within(shown!).getByRole('row', { name: /Material/ }).textContent).toContain('B4');
+    expect(within(shown!).getByRole('row', { name: /Top diameter/ }).textContent).toContain('H90');
+    expect(within(shown!).getByRole('row', { name: /Coating/ }).textContent).toBe('3CoatingNot known');
+  });
+
+  it('finds a code written today, typed in lower case', async () => {
+    const findByCode = vi.fn<AtlasGateway['findByCode']>(async () => lookupFor(ILLUSTRATIVE_V2, 'Illustrative lid'));
+    renderLibrary({ findByCode });
+
+    search(` ${ILLUSTRATIVE_V2.toLowerCase()} `);
+
+    expect(await screen.findByText('Saved as "Illustrative lid".')).toBeTruthy();
+    expect(findByCode).toHaveBeenCalledWith(ILLUSTRATIVE_V2);
+  });
+
+  it("shows only the decoder's messages for a code written today that it cannot read", async () => {
+    const fields = { code: ['This key/part is unknown: Z9.', 'Product type (A) is missing. Every code includes it, for example A1.'] };
+    renderLibrary({
+      findByCode: async () => Promise.reject(NOT_FOUND),
+      decode: async () => Promise.reject(new AppError('INVALID_SPEC_ID', 'The Spec ID is not valid.', fields)),
+    });
+
+    search('B4D1-H90');
+
+    for (const message of fields.code) expect(await screen.findByText(message)).toBeTruthy();
+    expect(screen.queryByRole('table')).toBeNull();
+  });
+
+  it('shows a refused dotted code with all 25 parts part by part, with the messages beside each', async () => {
+    const fields = { productType: ['Product type: QQQ is not in the dictionary.'] };
+    renderLibrary({
+      findByCode: async () => Promise.reject(NOT_FOUND),
+      decode: async () => Promise.reject(new AppError('INVALID_SPEC_ID', 'The Spec ID is not valid.', fields)),
+    });
+
+    search(withSlot(ILLUSTRATIVE, 'productType', 'QQQ'));
+
+    const row = await screen.findByRole('row', { name: /Product type/ });
+    expect(row.textContent).toContain('QQQ');
+    expect(within(row).getByRole('alert').textContent).toBe('Product type: QQQ is not in the dictionary.');
   });
 
   it("shows the decoder's messages for a code it cannot read", async () => {

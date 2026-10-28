@@ -99,9 +99,7 @@ describe('DrizzleSpecIdRepository', () => {
     expect(record?.savedSpecId.savedBy).toBe(SAVER_ID);
     expect(record?.savedSpecId.savedAt.toISOString()).toBe('2026-10-16T08:00:00.000Z');
     for (const { key } of SLOTS) expect(record?.savedSpecId.specId.slot(key)).toBe(saved.specId.slot(key));
-    expect(record?.savedSpecId.specId.code).toBe(
-      'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X',
-    );
+    expect(record?.savedSpecId.specId.code).toBe('A1B4D1E1F1-H90N33');
   });
 
   it('answers null for a code nobody saved', async () => {

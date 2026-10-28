@@ -1,15 +1,9 @@
-import type { Dictionary, DictionaryValue, SlotRuleEntry } from './dictionary.js';
-import { RULED_SLOTS, type SlotRule } from './slots.js';
-
-/**
- * A vessel sold with its own lid. Container with lid is already `CWL`.
- * The other three are issued after S2 0.1.0, so the earlier numbers stay put.
+/*
+ * A vessel sold with its own lid is one product: bowl with bowl lid (`BWB`),
+ * cup with cup lid (`CWC`), portion cup with portion cup lid (`PWC`), and
+ * container with lid (`CWL`). Migration 0018 added the first three (ADR 0032).
+ * A lid named by what it fits is the lid alone.
  */
-export const COMBINED_PRODUCT_TYPES: readonly DictionaryValue[] = [
-  { slot: 'productType', code: 'BWB', meaning: 'Bowl with Bowl Lid' },
-  { slot: 'productType', code: 'CWC', meaning: 'Cup with Cup Lid' },
-  { slot: 'productType', code: 'PWC', meaning: 'Portion cup with Portion cup lid' },
-];
 
 interface Pair {
   readonly base: string;
@@ -24,17 +18,6 @@ const PAIRS: readonly Pair[] = [
   { base: 'BWL', other: 'BLD', combined: 'BWB', pattern: paired('bowls?', 'bowl') },
   { base: 'CTN', other: 'CTL', combined: 'CWL', pattern: paired('containers?', 'container') },
 ];
-
-/** A slot applies when either the vessel or its lid has it. */
-export function combinedProductRules(dictionary: Dictionary): SlotRuleEntry[] {
-  return PAIRS.filter((pair) => pair.combined !== 'CWL').flatMap((pair) =>
-    RULED_SLOTS.map((slot) => ({
-      productType: pair.combined,
-      slot,
-      rule: widen(dictionary.ruleFor(pair.base, slot), dictionary.ruleFor(pair.other, slot)),
-    })),
-  );
-}
 
 export interface LidFit {
   /** The lid that product is. */
@@ -97,11 +80,4 @@ function paired(base: string, qualifier: string): RegExp {
     `(?<![a-z0-9])${base}(?![a-z0-9])(?:[^a-z0-9]+[a-z0-9]+){0,8}?[^a-z0-9]+(?:and|&|with|w\\/|c\\/w|\\+)[^a-z0-9]+(?:${qualifier}\\s+)?lids?(?![\\s-]*opening)(?![a-z0-9])`,
     'i',
   );
-}
-
-function widen(left: SlotRule, right: SlotRule): SlotRule {
-  if (left === right || right === 'never') return left;
-  if (left === 'never') return right;
-  if (left === 'applies' || right === 'applies') return 'applies';
-  return left;
 }

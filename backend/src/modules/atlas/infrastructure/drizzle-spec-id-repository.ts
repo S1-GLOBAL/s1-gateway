@@ -38,8 +38,8 @@ const lastChangedAt = sql`coalesce(${atlasSpecIds.updatedAt}, ${atlasSpecIds.sav
 /** Thrown inside a transaction to roll it back when the version moved on. */
 class VersionMovedOn extends Error {}
 
-/** Thrown inside a transaction to roll it back when another Spec ID holds the code in its long form. */
-class HeldInLongForm extends Error {}
+/** Thrown inside a transaction to roll it back when another Spec ID holds the code in a form an older API wrote. */
+class HeldInOldForm extends Error {}
 
 /** Thrown inside a transaction to roll it back when the code was built from a dictionary an approval has since changed. */
 class DictionaryMovedOn extends Error {}
@@ -63,14 +63,14 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
     try {
       await this.db.transaction(async (tx) => {
         if ((await lockDictionaryShared(tx)) !== dictionaryChange) throw new DictionaryMovedOn();
-        if (await this.heldInLongForm(tx, saved)) throw new HeldInLongForm();
+        if (await this.heldInOldForm(tx, saved)) throw new HeldInOldForm();
         await tx.insert(atlasSpecIds).values(toRow(saved));
         await tx.insert(atlasSpecIdChanges).values(toChangeRow(created));
       });
       return ok(undefined);
     } catch (error) {
       if (error instanceof DictionaryMovedOn) return err(new DictionaryMovedOnError());
-      if (error instanceof HeldInLongForm || isUniqueViolation(error)) return err(new SpecIdExistsError());
+      if (error instanceof HeldInOldForm || isUniqueViolation(error)) return err(new SpecIdExistsError());
       throw error;
     }
   }
@@ -94,14 +94,14 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
           .where(and(eq(atlasSpecIds.id, id), eq(atlasSpecIds.version, expectedVersion)))
           .returning({ id: atlasSpecIds.id });
         if (updated.length === 0) throw new VersionMovedOn();
-        if (await this.heldInLongForm(tx, saved)) throw new HeldInLongForm();
+        if (await this.heldInOldForm(tx, saved)) throw new HeldInOldForm();
         await tx.insert(atlasSpecIdChanges).values(toChangeRow(change));
       });
       return ok(undefined);
     } catch (error) {
       if (error instanceof DictionaryMovedOn) return err(new DictionaryMovedOnError());
       if (error instanceof VersionMovedOn) return err(new SpecIdChangedError());
-      if (error instanceof HeldInLongForm || isUniqueViolation(error)) return err(new SpecIdExistsError());
+      if (error instanceof HeldInOldForm || isUniqueViolation(error)) return err(new SpecIdExistsError());
       throw error;
     }
   }
@@ -112,7 +112,7 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
   }
 
   async findByCode(code: string): Promise<SavedSpecIdRecord | null> {
-    const [row] = await this.selectWithNames().where(inArray(atlasSpecIds.code, storedForms(code)));
+    const [row] = await this.selectWithNames().where(eq(atlasSpecIds.code, code));
     return row ? toRecord(row) : null;
   }
 
@@ -198,7 +198,7 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
     const moves = await this.db
       .select({ specId: atlasSpecIdChanges.specId, until: atlasSpecIdChanges.changedAt })
       .from(atlasSpecIdChanges)
-      .where(inArray(atlasSpecIdChanges.codeBefore, storedForms(code)))
+      .where(eq(atlasSpecIdChanges.codeBefore, code))
       .orderBy(desc(atlasSpecIdChanges.changedAt), desc(atlasSpecIdChanges.id));
 
     const former: FormerHolderRecord[] = [];
@@ -213,16 +213,15 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
   }
 
   /**
-   * Whether another Spec ID holds this code in its long form, saved by an
-   * older API during a deploy: the unique index cannot see the two forms as one.
+   * Whether another Spec ID holds these facts under a dotted code, short or
+   * long, saved by an older API during a deploy (ADR 0025, ADR 0032): the
+   * unique index cannot see the two spellings as one.
    */
-  private async heldInLongForm(tx: Transaction, saved: SavedSpecId): Promise<boolean> {
-    const [, long] = storedForms(saved.specId.code);
-    if (long === undefined) return false;
+  private async heldInOldForm(tx: Transaction, saved: SavedSpecId): Promise<boolean> {
     const rows = await tx
       .select({ id: atlasSpecIds.id })
       .from(atlasSpecIds)
-      .where(and(eq(atlasSpecIds.code, long), ne(atlasSpecIds.id, saved.id)));
+      .where(and(inArray(atlasSpecIds.code, storedForms(saved.specId.dottedCode)), ne(atlasSpecIds.id, saved.id)));
     return rows.length > 0;
   }
 

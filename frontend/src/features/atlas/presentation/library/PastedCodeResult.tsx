@@ -102,16 +102,18 @@ function Unsaved({ code, decoded }: { code: string; decoded: DecodedSpecId }) {
 }
 
 /**
- * A code the decoder refused: its messages about the whole code, then, when it
- * has all 25 parts, each part with the messages about it.
+ * A code the decoder refused: its messages about the whole code, then, for a
+ * dotted code given out before with all 25 parts, each part with the messages
+ * about it. A code written today has its messages only.
  */
 function Refused({ code, fields }: { code: string; fields: Record<string, string[]> }) {
   const parts = code.split('.');
+  const dotted = parts.length === SLOT_NAMES.length;
   const rows: DecodedSlotRow[] = SLOT_NAMES.map((slot, index) => ({
     number: index + 1,
     key: slot.key,
     name: slot.name,
-    raw: parts[index] ?? '',
+    part: parts[index] ?? '',
     meaning: '',
     messages: fields[slot.key],
   }));
@@ -122,7 +124,7 @@ function Refused({ code, fields }: { code: string; fields: Record<string, string
           {message}
         </p>
       ))}
-      {parts.length === SLOT_NAMES.length && <DecodedSlotsTable rows={rows} />}
+      {dotted && <DecodedSlotsTable rows={rows} />}
     </div>
   );
 }
