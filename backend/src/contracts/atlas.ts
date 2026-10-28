@@ -31,6 +31,8 @@ export type SlotRule = 'applies' | 'never' | 'round_only' | 'non_round_only' | '
 export interface DictionaryValue {
   code: string;
   meaning: string;
+  /** Words an approved suggestion gave it, read in pasted text as it (ADR 0031); the word list in the code is not among them. */
+  searchWords: string[];
 }
 
 export interface DictionarySlot {

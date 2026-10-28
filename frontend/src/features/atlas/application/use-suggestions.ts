@@ -1,5 +1,6 @@
 import { useQuery, useSuspenseQueries, useSuspenseQuery } from '@tanstack/react-query';
 import type { AppError } from '@/shared/application/app-error';
+import type { SlotKey } from '../domain/atlas';
 import type { Suggestion, SuggestionDetail } from '../domain/suggestion';
 import { atlasKeys } from './atlas.keys';
 import { useSuggestionsGateway } from './suggestions-gateway-context';
@@ -47,5 +48,15 @@ export function useWaitingCount(isAdmin: boolean) {
     queryFn: () => gateway.waitingCount(),
     enabled: isAdmin,
     staleTime: 30_000,
+  });
+}
+
+/** How many saved Spec IDs hold an option, asked for only once `enabled`. An approval asks again. */
+export function useDictionaryUsage(slot: SlotKey, code: string, enabled: boolean) {
+  const gateway = useSuggestionsGateway();
+  return useQuery<number, AppError>({
+    queryKey: atlasKeys.usage(slot, code),
+    queryFn: () => gateway.usage(slot, code),
+    enabled,
   });
 }

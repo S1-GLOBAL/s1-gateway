@@ -62,7 +62,7 @@ corrected.
 | 2. Approving and rejecting | 10 / 10 | Done — approving rewrites saved Spec IDs in one transaction; rejecting needs a reason; history names the change |
 | 3. Renames and search words in the reader | 5 / 5 | Done — the reader, the size rulings, the capacity labels and pasted codes follow renames; approved search words are read |
 | 4. The Dictionary changes page | 6 / 6 | Done — the page, its skeleton and badge; approving, rejecting and withdrawing from a suggestion's card; Edit comes with the form in phase 5 |
-| 5. Suggesting from the Dictionary sheet | 0 / 6 | Not started |
+| 5. Suggesting from the Dictionary sheet | 5 / 6 | In progress — the form, the sheet, Edit, the history line and screenshots are in; the staging check remains |
 
 Five pull requests, one per phase. Phases 1–4 are "Part of #95"; phase 5 is
 "Closes #95". Each phase leaves `main` working: phases 1–3 add routes the web
@@ -449,28 +449,28 @@ waiting); `SUGGESTION_OUT_OF_DATE` 409; `SPEC_IDS_WOULD_CLASH` 409;
 
 ### Step 5.1 — The suggestion form
 
-- [ ] **Action.** `SuggestionForm`, one form whose fields follow the kind: code, wording, search words (one per line), the replacement for a delete in use, the 22 rules for a new product type (copied from a chosen product type) or a rules change. Every problem shows by its field. It also edits a waiting suggestion.
-- [ ] **Verify.** Tests for each kind, the `RD` lock and the Used-by line.
+- [x] **Action.** `SuggestionForm`, one form whose fields follow the kind: code, wording, search words (one per line), the replacement for a delete in use, the 22 rules for a new product type (copied from a chosen product type) or a rules change. Every problem shows by its field. It also edits a waiting suggestion. *As built:* a sheet of its own, opened beside the Dictionary sheet rather than inside it, since a dialog's close event would otherwise reach the panel too; the form's rules are pure functions in `domain/suggestion-form.ts`; an edit starts from the option's wording and approved search words and sends only what differs; the search words are a new `TextAreaField` primitive, shown at `/theme`.
+- [x] **Verify.** Tests for each kind, the `RD` lock and the Used-by line.
 
 ### Step 5.2 — The sheet's buttons and header
 
-- [ ] **Action.** `DictionarySheet` header copy from #95; Suggest an option per list, Suggest edit and Suggest delete per option, Suggest rule changes on the rules table; search words under each option.
-- [ ] **Verify.** Tests: the header reads "S2, change 3, 27 October 2026." with a change, and "S2, approved 19 October 2026." without.
+- [x] **Action.** `DictionarySheet` header copy from #95; Suggest an option per list, Suggest edit and Suggest delete per option, Suggest rule changes on the rules table; search words under each option. *As built:* an option's wording opens it, and the open option shows Suggest edit and Suggest delete, so a long list is not two buttons a row. `GET /dictionary` now sends each option's approved search words (`searchWords` on every value), so the sheet and an edit read them from the dictionary; the base word list in the reader's code is not shown.
+- [x] **Verify.** Tests: the header reads "S2, change 3, 27 October 2026." with a change, and "S2, approved 19 October 2026." without.
 
 ### Step 5.3 — Edit from the changes page
 
-- [ ] **Action.** Edit on the suggester's waiting card opens the same form.
-- [ ] **Verify.** A test: the edit is in the trail with before and after.
+- [x] **Action.** Edit on the suggester's waiting card opens the same form.
+- [x] **Verify.** A test: the edit is in the trail with before and after.
 
 ### Step 5.4 — History's line
 
-- [ ] **Action.** The Spec ID History entry for a dictionary change, with its link.
-- [ ] **Verify.** A test with #95's exact copy.
+- [x] **Action.** The Spec ID History entry for a dictionary change, with its link. *As built:* `/dictionary/changes?change=N` opens the page on History, with change N's trail open and scrolled to.
+- [x] **Verify.** A test with #95's exact copy.
 
 ### Step 5.5 — Screenshots, then the pull request
 
-- [ ] **Action.** Screenshots of each form. Open "Closes #95".
-- [ ] **Verify.** Checks and `check:pr` pass. Stop for the owner.
+- [x] **Action.** Screenshots of each form. Open "Closes #95".
+- [x] **Verify.** Checks and `check:pr` pass. Stop for the owner.
 
 ### Step 5.6 — The staging check (reyxdz)
 

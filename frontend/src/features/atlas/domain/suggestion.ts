@@ -71,6 +71,14 @@ export interface SuggestionDetail extends Suggestion {
   problem: string | null;
 }
 
+/** What is sent to suggest a change, or to edit a waiting suggestion: its list, its option and what it asks for. */
+export interface SuggestionInput {
+  slot: SlotKey;
+  /** The option it is about: the new code for an add, the product type for a rules change. */
+  code: string;
+  proposal: Proposal;
+}
+
 /** An approval's answer. */
 export interface ApprovedChange {
   suggestion: Suggestion;
@@ -121,6 +129,7 @@ export function usageLine(usage: number, proposal: Proposal): string | null {
 
 /** Who may do what with a suggestion: the one who made it, or an admin who did not. */
 export interface SuggestionActions {
+  edit: boolean;
   withdraw: boolean;
   decide: boolean;
 }
@@ -128,7 +137,7 @@ export interface SuggestionActions {
 export function actionsFor(suggestion: Suggestion, viewer: { id: string; isAdmin: boolean }): SuggestionActions {
   const waiting = suggestion.state === 'waiting';
   const own = suggestion.suggestedBy.id === viewer.id;
-  return { withdraw: waiting && own, decide: waiting && !own && viewer.isAdmin };
+  return { edit: waiting && own, withdraw: waiting && own, decide: waiting && !own && viewer.isAdmin };
 }
 
 /** One line of what a suggestion changes: what it is now, when that is known, and what it asks for. */

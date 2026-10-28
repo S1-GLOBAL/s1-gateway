@@ -22,7 +22,7 @@ vi.mock('virtual:pwa-register/react', () => ({
 /** Atlas, where signed-in staff land: an empty dictionary and no saved Spec IDs. */
 const pending = () => new Promise<never>(() => undefined);
 const atlasGateway: AtlasGateway = {
-  dictionary: async () => ({ release: 'S1 0.1.0', approvedOn: '2026-10-16', slots: [], rules: [] }),
+  dictionary: async () => ({ release: 'S1 0.1.0', approvedOn: '2026-10-16', slots: [], rules: [], change: null }),
   decode: pending,
   encode: pending,
   save: pending,
@@ -40,6 +40,9 @@ const atlasGateway: AtlasGateway = {
 /** No suggestion waits, unless a test says otherwise. */
 function suggestionsWith(overrides: Partial<SuggestionsGateway> = {}): SuggestionsGateway {
   return {
+    suggest: pending,
+    edit: pending,
+    usage: async () => 0,
     list: async () => [],
     get: pending,
     waitingCount: async () => 0,

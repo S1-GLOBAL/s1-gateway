@@ -9,7 +9,7 @@ import { SpecIdPage } from './SpecIdPage';
 import { SpecIdPageSkeleton } from './SpecIdPageSkeleton';
 
 const ID = '00000000-0000-4000-8000-000000000001';
-const dictionary: AtlasDictionary = { release: 'S1 0.1.0', approvedOn: '2026-10-16', slots: [], rules: [] };
+const dictionary: AtlasDictionary = { release: 'S1 0.1.0', approvedOn: '2026-10-16', slots: [], rules: [], change: null };
 const saved: SavedSpecId = {
   id: ID,
   code: 'S1.BLD',

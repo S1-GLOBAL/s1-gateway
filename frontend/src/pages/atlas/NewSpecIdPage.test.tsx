@@ -11,14 +11,15 @@ import { NewSpecIdPageSkeleton } from './NewSpecIdPageSkeleton';
 const dictionary: AtlasDictionary = {
   release: 'S2 0.1.0',
   approvedOn: '2026-10-16',
+  change: null,
   slots: [
-    { key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid' }] },
+    { key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid', searchWords: [] }] },
     {
       key: 'material',
       name: 'Material',
       values: [
-        { code: 'APS', meaning: 'Polymer, PS (polystyrene)' },
-        { code: 'BKR', meaning: 'Paper and paperboard, kraft' },
+        { code: 'APS', meaning: 'Polymer, PS (polystyrene)', searchWords: [] },
+        { code: 'BKR', meaning: 'Paper and paperboard, kraft', searchWords: [] },
       ],
     },
   ],

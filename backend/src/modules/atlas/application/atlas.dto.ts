@@ -27,6 +27,8 @@ export interface DictionarySlotDto {
 export interface DictionaryValueDto {
   code: string;
   meaning: string;
+  /** Its approved search words, in order (ADR 0031). The word list in the code is not among them. */
+  searchWords: string[];
 }
 
 export interface SlotRuleEntryDto {
@@ -67,7 +69,11 @@ export function toDictionaryDto(dictionary: Dictionary): DictionaryDto {
     slots: DICTIONARY_SLOTS.map((key) => ({
       key,
       name: slotDefinition(key).name,
-      values: dictionary.valuesOf(key).map(({ code, meaning }) => ({ code, meaning })),
+      values: dictionary.valuesOf(key).map(({ code, meaning }) => ({
+        code,
+        meaning,
+        searchWords: dictionary.searchWordsOf(key, code),
+      })),
     })),
     rules: dictionary.slotRules().map(({ productType, slot, rule }) => ({ productType, slot, rule })),
     change: dictionary.change === null ? null : { number: dictionary.change.number, at: dictionary.change.at.toISOString() },

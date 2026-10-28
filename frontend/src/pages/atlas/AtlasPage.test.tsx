@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { RouteBoundary } from '@/app/shell/RouteBoundary';
-import { AtlasGatewayProvider, type AtlasGateway } from '@/features/atlas';
+import { AtlasGatewayProvider, SuggestionsGatewayProvider, type AtlasGateway, type SuggestionsGateway } from '@/features/atlas';
 import {
   gatewayWith,
   ILLUSTRATIVE,
@@ -16,17 +16,34 @@ import { AtlasPageSkeleton } from './AtlasPageSkeleton';
 
 const EMPTY = { items: [], page: 1, pageSize: 20, total: 0 };
 
+const pending = () => new Promise<never>(() => undefined);
+
+/** No suggestion was ever made. */
+const suggestions: SuggestionsGateway = {
+  suggest: pending,
+  edit: pending,
+  usage: async () => 0,
+  list: async () => [],
+  get: pending,
+  waitingCount: async () => 0,
+  approve: pending,
+  reject: pending,
+  withdraw: pending,
+};
+
 function renderPage(overrides: Partial<AtlasGateway> = {}) {
   const library = overrides.library ?? vi.fn<AtlasGateway['library']>(async () => EMPTY);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
       <AtlasGatewayProvider gateway={gatewayWith({ dictionary: async () => s1Dictionary, ...overrides, library })}>
-        <MemoryRouter>
-          <RouteBoundary skeleton={<AtlasPageSkeleton />}>
-            <AtlasPage />
-          </RouteBoundary>
-        </MemoryRouter>
+        <SuggestionsGatewayProvider gateway={suggestions}>
+          <MemoryRouter>
+            <RouteBoundary skeleton={<AtlasPageSkeleton />}>
+              <AtlasPage />
+            </RouteBoundary>
+          </MemoryRouter>
+        </SuggestionsGatewayProvider>
       </AtlasGatewayProvider>
     </QueryClientProvider>,
   );
