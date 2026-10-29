@@ -178,7 +178,10 @@ const wordsOf = (text: string, spans: readonly { start: number; end: number }[])
 export function readText(text: string, dictionary: Dictionary, productType?: string, material?: string): TextReading {
   const lower = text.toLowerCase();
   // A deleted option's words still hold their place, so no shorter phrase inside them is read, but read as nothing.
-  const outer = headLast(withoutInner(allMatches(lower, dictionary)));
+  const outer = headLast(withoutInner(allMatches(lower, dictionary))).map((match) =>
+    // "Latex free", "PFAS free": a material named as absent is not the material.
+    match.key === 'material' && /^[\s-]*free(?![a-z])/.test(lower.slice(match.end)) ? { ...match, value: null, held: true as const } : match,
+  );
   const held = outer.filter((match) => match.held === true).map(({ start, end }) => ({ start, end }));
   let matches = outer.filter((match): match is ReadMatch => match.value !== null);
   matches = wrapsAsFeature(matches, lower, dictionary, productType);

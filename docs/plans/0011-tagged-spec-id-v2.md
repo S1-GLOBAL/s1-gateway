@@ -316,7 +316,24 @@ A description goes through the existing Atlas reader, then these extra passes, a
 
 **Sizes and weights, as the list writes them.** A size named beside its number (`Height: 68`, `t:88mm*h:96mm*b:58mm`, `L115 x W120 x H72`, `topφ: 81.4`, `Rim: 80 mm`, `GSM:16, PLY:2`, `230 Dia`) wins over a size a ruling read from one of the same numbers for another slot: `Top diameter 180 x Bottom diameter 150 X Height 70 mm` is no 70 mm rim. A named diameter makes the product round; a tray's or clamshell's named length and width make it rectangular, as R6 does. A one-letter name is read only before its number, since `1.5 L` is a capacity. A rim marked `dia`, `rim`, `ø` or `φ` outranks a stray bare number, and the second of two numbers (`90 x 110`) is no rim. A model code (`DELI-34`) is no size. Only a ruler's fractions, in lowest terms, are fractions: `24/32` is two sizes. Of three-number sizes, one with its unit written is read over one without, and the other is its restatement, not leftover numbers; with none written, it is still millimetres (#58). R6 also reads fry cartons, containers, pans, plates, container lids and cup carriers. `280g paper` is a basis weight; a weight joined by `+` is a layer, and a comma decimal (`4,2 grams`) is not read.
 
-**The importer reads a row by its columns.** The product type comes from the item name; failing that, from the Category column, which also settles two the item name gives; failing that, from the sizes, weight and printing as well. The material cells name the material, never a product type, though they or the Category column may name a kind of the item name's general product (`Container Lid` beside `dome lids`). The cells' material wins over a vessel's a lid's name mentions, and a grade in the item name over a family in the cells. Then the rest of the row is read with both fixed, the Dimension cell first, and the Category column fills only the facts the rest leaves unsaid. A bare number in the Weight column, whose header is grams or gsm, is grams on a product with no basis weight and gsm on one with no unit weight; otherwise it is not read. A three-number size with no unit and every side under 50 is flagged in the report as likely inches.
+**The importer reads a row by its columns.** The product type comes from the item name; failing that, from the Category column, which also settles two the item name gives; failing that, from the sizes, weight and printing as well. The material cells name the material, never a product type, though they or the Category column may name a kind of the item name's general product (`Container Lid` beside `dome lids`). The cells' material wins over a vessel's a lid's name mentions, and a grade in the item name over a family in the cells. Then the rest of the row is read with both fixed, the Dimension cell first, and the Category column fills only the facts the rest leaves unsaid. A bare number in the Weight column, whose header is grams or gsm, is grams on a product with no basis weight and gsm on one with no unit weight; otherwise it is not read. A three-number size with no unit and every side under 50 is flagged in the report as likely inches; reyxdz kept these in millimetres, as #58 reads them (2026-10-30).
+
+**Decided by reyxdz on 2026-10-30.** A soup cup is a bowl, as the verified list files most of them, and a lid for one is a bowl lid. A material named as absent (`latex free`, `PFAS free`) is not that material. A fact a pass left out as two values stays out: no later pass reads it again by its own name (`16/20oz` is no 20 oz). A product type or material given stays as given through every pass, and no note is written about it.
+
+Gloves and cup sleeves get product types. These are dictionary changes, made in the app by suggestion and approval (ADR 0031), not by a migration, so they land in the live dictionary before the list is imported:
+
+| List | Code | Meaning | Search words | Fields that apply |
+|---|---|---|---|---|
+| Product type | `GLV` | Glove | disposable glove | coating, colour / clarity, length, thickness, unit weight |
+| Product type | `CSL` | Cup sleeve | sleeve, coffee sleeve, cup jacket | colour / clarity, capacity, height, basis weight (paper only), unit weight, print |
+| Material | `HNI` | Elastomer, nitrile | nitrile | |
+| Material | `HLT` | Elastomer, latex | latex | |
+| Material | `AVN` | Polymer, vinyl (PVC) | vinyl, pvc | |
+| Material | `ACP` | Polymer, CPE | cpe | |
+| Coating | `PF` | Powder-free | powder free, powder-free | |
+| Coating | `PW` | Powdered | powdered | |
+
+No field holds a glove's size, so a glove's small, medium, large and extra-large share one Spec ID.
 
 ## Suggestions
 

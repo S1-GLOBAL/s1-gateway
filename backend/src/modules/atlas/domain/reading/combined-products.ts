@@ -16,8 +16,11 @@ export interface LidFit {
   readonly drop: readonly string[];
 }
 
-/** A vessel a lid can fit, as a text names it. A souffle is a portion cup; a tray or a box takes a container lid. */
-const VESSEL = '(souffl[eé]s?(?:\\s+cups?)?|portion\\s+cups?|bowls?|containers?|trays?|box(?:es)?|(?<!portion\\s)cups?)';
+/**
+ * A vessel a lid can fit, as a text names it. A souffle is a portion cup, a
+ * soup cup a bowl; a tray or a box takes a container lid.
+ */
+const VESSEL = '(souffl[eé]s?(?:\\s+cups?)?|portion\\s+cups?|soup\\s+cups?|bowls?|containers?|trays?|box(?:es)?|(?<!portion\\s|soup\\s)cups?)';
 /** "Lid", but not a hinged lid, which is a clamshell's own. */
 const LID = '(?<![a-z0-9])(?<!hinged?[\\s-]+)lids?(?![a-z0-9])';
 /** The words that join a lid to the product it comes with: "with", "w/", "+". */
@@ -86,7 +89,7 @@ export function lidFits(text: string): LidFit | undefined {
 function fit(vessel: string, gap: string, joiner: readonly string[]): LidFit | undefined {
   const kind = vessel.toLowerCase();
   const code = kind.startsWith('souffl') || kind.startsWith('portion') ? 'PCL'
-    : kind.startsWith('bowl') ? 'BLD'
+    : kind.startsWith('bowl') || kind.startsWith('soup') ? 'BLD'
     : kind.startsWith('container') || kind.startsWith('tray') || kind.startsWith('box') ? 'CTL'
     : kind.startsWith('cup') ? 'CLD'
     : undefined;

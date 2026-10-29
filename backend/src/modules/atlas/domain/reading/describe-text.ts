@@ -90,8 +90,13 @@ export function describeText(text: string, dictionary: Dictionary, productType?:
   }
   const notes = [...productNotes, ...reading.conflicts.map((conflict) => conflictLine(conflict.key, conflict.found, dictionary))];
 
+  // A product type or material given is final: no pass's note about it has anything left to settle.
+  const settledSlots = [productType === undefined ? undefined : 'Product type', material === undefined ? undefined : 'Material'].filter(
+    (name): name is string => name !== undefined,
+  );
+  const unsettled = (note: string) => !settledSlots.some((name) => note.startsWith(`${name}:`) || note.startsWith(`${name} was given as`));
   const combined = combineAdjacent(text, reading, dictionary);
-  notes.push(...combined.warnings);
+  notes.push(...combined.warnings.filter(unsettled));
   const issued = readIssuedMeanings(
     text,
     { ...reading, facts: { ...reading.facts, ...combined.facts }, ignored: combined.ignored },
@@ -99,17 +104,27 @@ export function describeText(text: string, dictionary: Dictionary, productType?:
   );
   notes.push(
     ...(fitted === undefined || fittedCode === undefined
-      ? issued.warnings
-      : issued.warnings.filter((note) => !note.startsWith('Product type') || !note.toLowerCase().includes(fitted.vessel.toLowerCase()))),
+      ? issued.warnings.filter(unsettled)
+      : issued.warnings.filter(
+          (note) => unsettled(note) && (!note.startsWith('Product type') || !note.toLowerCase().includes(fitted.vessel.toLowerCase())),
+        )),
   );
   const named = readNamedMeasures(
     text,
     { ...reading, facts: { ...reading.facts, ...combined.facts, ...issued.facts }, ignored: issued.ignored },
     dictionary,
   );
-  notes.push(...named.warnings);
+  notes.push(...named.warnings.filter(unsettled));
 
-  const facts: Record<string, unknown> = { ...reading.facts, ...combined.facts, ...issued.facts, ...named.facts };
+  const facts: Record<string, unknown> = {
+    ...reading.facts,
+    ...combined.facts,
+    ...issued.facts,
+    ...named.facts,
+    // A product type or material given stays as given, whatever a pass read.
+    ...(productType === undefined ? {} : { productType }),
+    ...(material === undefined ? {} : { material }),
+  };
   const conversions = new Map<SlotKey, string>();
   for (const key of Object.keys(STORED_UNIT) as MeasureSlotKey[]) {
     const fact = facts[key] as MeasurementInput | undefined;

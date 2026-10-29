@@ -1024,6 +1024,11 @@ function keepNamed(
     return;
   }
   if (factIn(reading.facts, slot) !== undefined && factIn(reading.facts, slot) !== null) return;
+  // "16/20oz" was left out as two capacities: its "20oz", a capacity by its own name, does not settle it.
+  if (reading.conflicts.some((conflict) => conflict.key === slot)) {
+    for (const hit of list) taken.push(...pieces(hit.span));
+    return;
+  }
   const distinct = new Set(list.map((hit) => (hit.kind === 'count' ? hit.value : `${hit.value} ${hit.unit}`)));
   if (distinct.size > 1) {
     const shown = list.map((hit) => (hit.kind === 'count' ? hit.value : `${hit.value} ${hit.kind === 'capacity' ? (CAPACITY_UNIT_LABELS[hit.unit] ?? hit.unit) : (UNIT_LABELS[hit.unit] ?? hit.unit)}`)).join(' and ');

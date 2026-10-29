@@ -32,6 +32,9 @@ describe('reading a product type as a supplier list writes it (plan 0011)', () =
     ['a lid for a tray', 'bagasse lid for 100 oz tray', 'CTL'],
     ['a lid for a box', 'invented bento box lid', 'CTL'],
     ['a lid for a souffle, the words reversed', 'lid souffle 2oz', 'PCL'],
+    ['a soup cup as the bowl it is filed as', '12 oz white paper soup cup', 'BWL'],
+    ['a lid for a soup cup as a bowl lid', 'flat PP lid for paper soup cup', 'BLD'],
+    ['a soup cup with its lid', 'soup cup with lid', 'BWB'],
   ])('reads %s: "%s" is %s', (_case, text, productType) => {
     expect(described(text).facts.productType).toBe(productType);
   });
@@ -54,6 +57,12 @@ describe('reading a product type as a supplier list writes it (plan 0011)', () =
     expect(lids.notes).toContain('Cup lid (A2) comes with the product, but the product itself is not named.');
   });
 
+  it('writes no note about a material given, which is final', () => {
+    const description = describeText('brown virgin kraft paper bag', dictionary, 'BAG', 'BKB');
+    expect(description.facts.material).toBe('BKB');
+    expect(description.notes.some((note) => note.startsWith('Material'))).toBe(false);
+  });
+
   it('keeps a product type given, whatever the passes would read', () => {
     expect(described('12oz cup with lid', 'CUP').facts.productType).toBe('CUP');
     expect(described('cup lid for a bowl', 'CUP').facts.productType).toBe('CUP');
@@ -70,6 +79,16 @@ describe('reading other facts as a supplier list writes them (plan 0011)', () =>
   it('reads kraft as a family of paper, and kraft as brown only off white kraft', () => {
     expect(readText('kraft, recycled kraft', dictionary).facts.material).toBe('BKC');
     expect(described('kraft paper bag, white kraft').facts).toMatchObject({ material: 'BKW', colourClarity: 'WH' });
+  });
+
+  it('reads no material named as absent', () => {
+    expect(described('plastic free paper cup').facts.material).toBe('B00');
+    expect(described('PP free bagasse bowl').facts.material).toBe('CBG');
+  });
+
+  it('leaves a list of capacities out, and reads none of it again by its own name', () => {
+    expect(described('paper cup 16/20oz').facts.capacity).toBeUndefined();
+    expect(described('kraft sleeve for 12/16/20oz').facts.capacity).toBeUndefined();
   });
 
   it('reads flat beside a lid as its profile', () => {

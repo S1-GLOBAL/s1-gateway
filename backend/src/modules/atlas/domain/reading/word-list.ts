@@ -4,7 +4,8 @@
  * with reyxdz on 2026-10-19, without its skip entries, and the spellings the
  * restructured list adds (plan 0011). Each phrase is written in lower case,
  * with any run of spaces as one, as `readText` compares text. A product type's
- * phrase is read one or many: "napkin" and "napkins".
+ * phrase is read one or many: "napkin" and "napkins". A soup cup is a bowl, as
+ * the verified list files most of them.
  */
 
 export type WordMeaning = { readonly productType: string } | { readonly material: string };
@@ -208,6 +209,7 @@ export const WORD_LIST: Readonly<Record<string, WordMeaning>> = {
   'silicone': { material: 'HSI' },
   'souffle': { productType: 'PCP' },
   'soufflé': { productType: 'PCP' },
+  'soup cup': { productType: 'BWL' },
   'spe260': { material: 'BCS' },
   'spe260 / wk80': { material: 'BCS' },
   'stand up pouch': { productType: 'SUP' },
