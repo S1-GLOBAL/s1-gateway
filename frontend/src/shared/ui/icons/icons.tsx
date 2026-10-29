@@ -516,6 +516,26 @@ export function NoManufacturersIcon(props: IconProps) {
   );
 }
 
+/* ---------------------------------------------------------- Arrow right -- */
+
+/** The shaft slides on, the head follows a beat behind, and both come back. */
+const forward: Variants = {
+  rest: { x: 0 },
+  active: (order: number) => ({
+    x: [0, 3, 0],
+    transition: { duration: 0.45, delay: order * 0.06, ease: ease.standard },
+  }),
+};
+
+export function ArrowRightIcon(props: IconProps) {
+  return (
+    <IconSvg {...props}>
+      <m.path custom={0} variants={forward} d="M5 12h14" />
+      <m.path custom={1} variants={forward} d="m12 5 7 7-7 7" />
+    </IconSvg>
+  );
+}
+
 /* ------------------------------------------------------------- Sign out -- */
 
 /** The doorway stays. The arrow steps out and comes back. */

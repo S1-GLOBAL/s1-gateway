@@ -3,6 +3,7 @@ import type { ComponentType } from 'react';
 import {
   AccountsIcon,
   AlertIcon,
+  ArrowRightIcon,
   AtlasIcon,
   BookCheckIcon,
   BookOpenIcon,
@@ -39,6 +40,7 @@ const ICONS: { name: string; Icon: ComponentType<IconProps>; motion: string }[] 
   { name: 'Moon', Icon: MoonIcon, motion: 'Rocks; star blinks' },
   { name: 'Monitor', Icon: MonitorIcon, motion: 'Screen redraws' },
   { name: 'External link', Icon: ExternalLinkIcon, motion: 'Arrow leaves, returns' },
+  { name: 'Arrow right', Icon: ArrowRightIcon, motion: 'Shaft slides, head follows' },
   { name: 'Sign out', Icon: SignOutIcon, motion: 'Arrow steps out' },
   { name: 'Plus', Icon: PlusIcon, motion: 'Strokes redraw' },
   { name: 'Sidebar', Icon: SidebarIcon, motion: 'Chevron nudges' },

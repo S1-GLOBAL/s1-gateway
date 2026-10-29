@@ -2,6 +2,7 @@ export type { IconProps } from './icon-svg';
 export {
   AccountsIcon,
   AlertIcon,
+  ArrowRightIcon,
   AtlasIcon,
   BookCheckIcon,
   BookOpenIcon,

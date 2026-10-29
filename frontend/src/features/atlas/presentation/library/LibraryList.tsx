@@ -10,7 +10,7 @@ import { NewSpecIdLink } from './NewSpecIdLink';
 import { SpecIdCard } from './SpecIdCard';
 
 /** When no saved name matches the search: Search reads the facts instead. */
-export const NO_NAMES_MATCH = 'No names match. Press Search to read the facts from your text.';
+export const NO_NAMES_MATCH = 'No names match.';
 
 export interface LibraryListProps {
   library: ReturnType<typeof useSpecIdLibrary>;
@@ -21,6 +21,8 @@ export interface LibraryListProps {
   /** The page asked for, starting at 1. */
   page: number;
   onPageChange(page: number): void;
+  /** A Spec ID already shown above the list, such as a perfect match: left out of it. */
+  shownAbove?: string | undefined;
   timeZone?: string;
 }
 
@@ -29,7 +31,7 @@ export interface LibraryListProps {
  * numbered pages underneath know how many there are. Says plainly when there
  * are none at all, none of the type chosen, or none matching the search.
  */
-export function LibraryList({ library, q, productTypeName, page, onPageChange, timeZone }: LibraryListProps) {
+export function LibraryList({ library, q, productTypeName, page, onPageChange, shownAbove, timeZone }: LibraryListProps) {
   const listRef = useRef<HTMLUListElement>(null);
   const seenPage = useRef<number | undefined>(undefined);
   const shownPage = library.data?.page;
@@ -62,7 +64,10 @@ export function LibraryList({ library, q, productTypeName, page, onPageChange, t
   }
 
   const pageData = library.data;
-  const items = pageData?.items ?? [];
+  const answered = pageData?.items ?? [];
+  const items = answered.filter((saved) => saved.id !== shownAbove);
+  // The only name that matched is the one shown above: nothing more to say.
+  if (items.length === 0 && answered.length > 0) return null;
   if (items.length === 0) {
     // The last search's empty answer, kept while this one is asked: it says nothing about this one yet.
     if (library.isPlaceholderData) return null;

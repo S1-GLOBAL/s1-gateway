@@ -12,6 +12,7 @@ export const atlasKeys = {
   manufacturers: (id: string) => [...atlasKeys.all, 'manufacturers', id] as const,
   library: (request: { q: string; productType: string; page: number }) => [...atlasKeys.all, 'library', request] as const,
   code: (code: string) => [...atlasKeys.all, 'code', code] as const,
+  reading: (text: string, productType: string) => [...atlasKeys.all, 'reading', text, productType] as const,
   suggestions: () => [...atlasKeys.all, 'suggestions'] as const,
   suggestionList: (state: 'waiting' | 'decided') => [...atlasKeys.suggestions(), 'list', state] as const,
   suggestion: (id: string) => [...atlasKeys.suggestions(), 'one', id] as const,

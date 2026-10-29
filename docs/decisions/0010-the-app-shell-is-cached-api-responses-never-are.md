@@ -43,3 +43,10 @@ or updates will not be detected. That belongs to the deployment plan.
 A user who dismisses the update prompt keeps the old shell until the next
 launch. The API's version prefix ([0006](./0006-versioned-api-prefix.md))
 keeps that old shell working.
+
+This is about the browser and the service worker. The API may keep data it
+reads in its own memory when every request still checks that data is current:
+Atlas keeps the live dictionary between requests, and reads it again whenever
+the latest approved change has moved
+([ADR 0032](./0032-spec-ids-are-written-tagged.md)). No response is served
+from a cache.

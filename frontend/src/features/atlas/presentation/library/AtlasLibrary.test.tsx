@@ -12,7 +12,6 @@ import {
   lookupFor,
   readCode,
   s1Dictionary,
-  s2Dictionary,
   savedFor,
   withSlot,
 } from '../../application/testing/atlas-fixtures';
@@ -52,19 +51,6 @@ function renderLibrary(
 }
 
 const search = (text: string) => fireEvent.change(screen.getByLabelText('Search'), { target: { value: text } });
-
-function productTypeSummary() {
-  const summary = document.querySelector('summary');
-  if (!(summary instanceof HTMLElement)) throw new Error('Product type summary is missing');
-  return summary;
-}
-
-function chooseProductType(name: string) {
-  const summary = productTypeSummary();
-  const details = summary.closest('details') as HTMLDetailsElement;
-  if (!details.open) fireEvent.click(summary);
-  fireEvent.click(screen.getByRole('radio', { name }));
-}
 
 // The library's list comes first; each card holds its own list of stage icons (#73).
 const cards = () => within(screen.getAllByRole('list')[0]!).getAllByRole('link');
@@ -174,10 +160,10 @@ describe('AtlasLibrary, the list', () => {
     expect(SEARCH_WAIT_MS).toBe(250);
   });
 
-  it('points to Search when no name matches', async () => {
+  it('says so when no name matches', async () => {
     renderLibrary();
     search('  zebra ');
-    expect(await screen.findByText('No names match. Press Search to read the facts from your text.')).toBeTruthy();
+    expect(await screen.findByText('No names match.')).toBeTruthy();
   });
 
   it('says nothing about a search until its own answer arrives', async () => {
@@ -200,51 +186,7 @@ describe('AtlasLibrary, the list', () => {
     act(() => {
       for (const resolve of pending.splice(0)) resolve(EMPTY);
     });
-    expect(await screen.findByText('No names match. Press Search to read the facts from your text.')).toBeTruthy();
-  });
-
-  it('starts with the product types folded, and names the one in force', async () => {
-    renderLibrary();
-    await screen.findByText('No Spec IDs yet');
-
-    const summary = productTypeSummary();
-    const details = summary.closest('details') as HTMLDetailsElement;
-    expect(details.open).toBe(false);
-    expect(summary?.textContent).toBe('Product type · All');
-
-    fireEvent.click(summary!);
-    expect(details.open).toBe(true);
-    fireEvent.click(screen.getByRole('radio', { name: 'Bowl lid' }));
-    expect(summary?.textContent).toBe('Product type · Bowl lid');
-
-    fireEvent.click(summary!);
-    expect(details.open).toBe(false);
-    expect(summary?.textContent).toBe('Product type · Bowl lid');
-
-    fireEvent.click(summary!);
-    expect(details.open).toBe(true);
-    expect(screen.getByRole('radio', { name: 'Bowl lid' }).getAttribute('aria-checked')).toBe('true');
-  });
-
-  it('filters by product type, and names the type when none is saved yet', async () => {
-    const library = vi.fn<AtlasGateway['library']>(async () => EMPTY);
-    renderLibrary({ library });
-    await screen.findByText('No Spec IDs yet');
-
-    chooseProductType('Bowl lid');
-
-    expect(await screen.findByText('No bowl lid Spec IDs yet.')).toBeTruthy();
-    expect(library).toHaveBeenLastCalledWith({ q: '', productType: 'BLD', page: 1 });
-    expect(screen.getByRole('radio', { name: 'All' })).toBeTruthy();
-  });
-
-  it('keeps the capitals of a code in the type it names', async () => {
-    renderLibrary({}, s2Dictionary);
-    await screen.findByText('No Spec IDs yet');
-
-    chooseProductType('Shipping box (RSC)');
-
-    expect(await screen.findByText('No shipping box (RSC) Spec IDs yet.')).toBeTruthy();
+    expect(await screen.findByText('No names match.')).toBeTruthy();
   });
 
   it('invites the first Spec ID when none is saved at all', async () => {
@@ -267,17 +209,18 @@ describe('AtlasLibrary, the list', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('does not ask the name search for text over 120 characters, and points to Search', async () => {
+  it('does not ask the name search for text over 120 characters, and only reads it for its facts', async () => {
     const library = vi.fn<AtlasGateway['library']>(async () => EMPTY);
-    renderLibrary({ library });
+    const readText = vi.fn<AtlasGateway['readText']>(async () => ({ read: [], ignored: [], conflicts: [], notes: [], decoded: null }));
+    renderLibrary({ library, readText });
     await screen.findByText('No Spec IDs yet');
 
     search('x'.repeat(121));
 
-    expect(await screen.findByText('No names match. Press Search to read the facts from your text.')).toBeTruthy();
+    await waitFor(() => expect(readText).toHaveBeenCalledWith({ text: 'x'.repeat(121) }, expect.any(AbortSignal)));
     expect(library).not.toHaveBeenCalledWith(expect.objectContaining({ q: 'x'.repeat(121) }));
     expect(screen.queryByText('Search text must be at most 120 characters.')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Search' })).toBeTruthy();
+    expect(screen.queryByText(/No names match/)).toBeNull();
   });
 
   it('shows any other failure with Try again', async () => {
@@ -313,7 +256,7 @@ describe('AtlasLibrary, until asked', () => {
 
     expect(await screen.findByText('Lid 1')).toBeTruthy();
     expect(library).toHaveBeenLastCalledWith({ q: 'lid', productType: '', page: 1 });
-    expect(screen.getByText(/Product type/)).toBeTruthy();
+    expect(screen.queryByRole('radiogroup', { name: 'Product type' })).toBeNull();
 
     search('');
 
@@ -380,6 +323,35 @@ describe('AtlasLibrary, a pasted code', () => {
     expect(within(shown!).getByRole('row', { name: /Material/ }).textContent).toContain('B4');
     expect(within(shown!).getByRole('row', { name: /Top diameter/ }).textContent).toContain('H90');
     expect(within(shown!).getByRole('row', { name: /Coating/ }).textContent).toBe('3CoatingNot known');
+  });
+
+  it('lists the saved Spec IDs with every fact in a code nobody saved, then those that might fit', async () => {
+    const findSimilar = vi.fn<AtlasGateway['findSimilar']>(async () => ({
+      fits: [savedFor(withSlot(ILLUSTRATIVE, 'height', '0012'), 'Lid, 12 mm high')],
+      mightFit: [savedFor(withSlot(ILLUSTRATIVE, 'material', 'Y'), 'Lid, material not known')],
+    }));
+    renderLibrary({ findByCode: async () => Promise.reject(NOT_FOUND), decode: async (code) => readCode(code), findSimilar });
+
+    search(ILLUSTRATIVE);
+
+    const fits = await screen.findByRole('region', { name: 'Fits — every fact you gave matches' });
+    expect(within(fits).getByText('Lid, 12 mm high')).toBeTruthy();
+    const might = screen.getByRole('region', { name: "Might fit — nothing contradicts, but some facts aren't recorded" });
+    expect(within(might).getByText('Lid, material not known')).toBeTruthy();
+    expect(findSimilar).toHaveBeenCalledWith(expect.objectContaining({ productType: 'BLD', material: 'APS', topDiameter: '0090' }));
+    expect(screen.getByText("This Spec ID isn't saved yet.")).toBeTruthy();
+  });
+
+  it('says when no saved Spec ID has every fact in a code nobody saved', async () => {
+    renderLibrary({
+      findByCode: async () => Promise.reject(NOT_FOUND),
+      decode: async (code) => readCode(code),
+      findSimilar: async () => ({ fits: [], mightFit: [] }),
+    });
+
+    search(ILLUSTRATIVE);
+
+    expect(await screen.findByText('No saved Spec ID has every fact in this code.')).toBeTruthy();
   });
 
   it('finds a code written today, typed in lower case', async () => {

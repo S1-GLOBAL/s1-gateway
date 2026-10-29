@@ -82,6 +82,11 @@ looks up the tagged code.
   It shows in today's spelling, because the code shown is written from the slot
   columns, and a second save of the same facts is refused. Looking it up by its
   code finds it only after it is next saved.
+- Search reads raw text as it is typed, from two characters, so the API reads
+  the dictionary far more often. The API keeps the live dictionary in memory
+  and asks the database only for the latest approved change, one row, reading
+  the whole release again when that has moved. A request for text since
+  changed is stopped in the browser.
 - The three combined product types arrived by migration, not by suggestion and
   approval (ADR 0031). Where an option with their letters already existed, the
   migration left it alone and numbered it after the others.

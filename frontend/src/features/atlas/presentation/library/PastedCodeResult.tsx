@@ -4,10 +4,14 @@ import { Link } from 'react-router-dom';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonBlock, SkeletonRegion } from '@/shared/ui/Skeleton';
 import type { useCodeLookup } from '../../application/use-code-lookup';
+import { useSimilarSpecIds } from '../../application/use-similar-spec-ids';
 import { SLOT_NAMES, type DecodedSpecId, type FormerHolder, type SpecIdLookup } from '../../domain/atlas';
 import { formatSavedDate } from '../../domain/format-saved-date';
+import { knownCriteria } from '../../domain/known-criteria';
 import { DecodedSlotsTable, type DecodedSlotRow } from '../DecodedSlotsTable';
+import { SpecIdGroup } from './SpecIdGroup';
 import { SpecIdSummary } from './SpecIdSummary';
+import { FITS, MIGHT_FIT } from './TextSearchResults';
 
 const LINK =
   'inline-flex items-center gap-1.5 self-start text-sm font-medium text-accent-ink underline-offset-4 hover:underline';
@@ -22,7 +26,8 @@ export interface PastedCodeResultProps {
 /**
  * What a pasted code is: the saved Spec ID that has it, with a note for each
  * that had it before; the one it became; or, unsaved, its slots in plain
- * words and the way to start a Spec ID from it; or the decoder's messages.
+ * words, the way to start a Spec ID from it, and the saved Spec IDs that have
+ * every fact it gives, then those that might; or the decoder's messages.
  */
 export function PastedCodeResult({ code, result, timeZone }: PastedCodeResultProps) {
   if (result.isPending) {
@@ -36,7 +41,14 @@ export function PastedCodeResult({ code, result, timeZone }: PastedCodeResultPro
 
   const found = result.data;
   if (found.kind === 'saved') return <Saved lookup={found.lookup} timeZone={timeZone} />;
-  if (found.kind === 'unsaved') return <Unsaved code={code} decoded={found.decoded} />;
+  if (found.kind === 'unsaved') {
+    return (
+      <div className="flex flex-col gap-6">
+        <Unsaved code={code} decoded={found.decoded} />
+        <SavedThatFit decoded={found.decoded} timeZone={timeZone} />
+      </div>
+    );
+  }
   return <Refused code={code} fields={found.fields} />;
 }
 
@@ -126,6 +138,39 @@ function Refused({ code, fields }: { code: string; fields: Record<string, string
       ))}
       {dotted && <DecodedSlotsTable rows={rows} />}
     </div>
+  );
+}
+
+/**
+ * The saved Spec IDs with every fact a code gives, whatever else they hold:
+ * `A16B24V2` finds each paper bag with a twisted handle, at any size. Then
+ * those that might: nothing contradicts, but some of its facts aren't recorded.
+ */
+function SavedThatFit({ decoded, timeZone }: { decoded: DecodedSpecId; timeZone?: string }) {
+  const similar = useSimilarSpecIds(knownCriteria(decoded));
+  if (similar.isPending) {
+    return (
+      <SkeletonRegion label="Spec IDs" className="flex flex-col gap-3">
+        {[0, 1].map((card) => (
+          <SkeletonBlock key={card} className="h-32 w-full rounded-surface" order={card} />
+        ))}
+      </SkeletonRegion>
+    );
+  }
+  if (similar.isError) return <ErrorState message={similar.error.message} onRetry={() => void similar.refetch()} />;
+
+  const { fits, mightFit } = similar.data;
+  return (
+    <>
+      {fits.length > 0 ? (
+        <SpecIdGroup title={FITS} items={fits} timeZone={timeZone} />
+      ) : (
+        <p role="status" className="text-sm text-ink-muted">
+          No saved Spec ID has every fact in this code.
+        </p>
+      )}
+      {mightFit.length > 0 && <SpecIdGroup title={MIGHT_FIT} items={mightFit} timeZone={timeZone} />}
+    </>
   );
 }
 

@@ -3,10 +3,14 @@ import { Link } from 'react-router-dom';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonBlock, SkeletonRegion } from '@/shared/ui/Skeleton';
 import { useSimilarSpecIds } from '../../application/use-similar-spec-ids';
-import type { DecodedSpecId, SavedSpecId, SlotRuleEntry } from '../../domain/atlas';
+import type { DecodedSpecId, SlotRuleEntry } from '../../domain/atlas';
 import { knownCriteria } from '../../domain/known-criteria';
 import { SaveFromSearch } from './SaveFromSearch';
-import { SpecIdCard } from './SpecIdCard';
+import { SpecIdGroup } from './SpecIdGroup';
+
+/** The two groups' titles, shared with a pasted code's. */
+export const FITS = 'Fits — every fact you gave matches';
+export const MIGHT_FIT = "Might fit — nothing contradicts, but some facts aren't recorded";
 
 const LINK =
   'inline-flex items-center gap-1.5 self-start text-sm font-medium text-accent-ink underline-offset-4 hover:underline';
@@ -44,7 +48,7 @@ export function TextSearchResults({ decoded, text, rules, timeZone }: TextSearch
   return (
     <div className="flex flex-col gap-6">
       {fits.length > 0 ? (
-        <Group title="Fits — every fact you gave matches" items={fits} timeZone={timeZone} />
+        <SpecIdGroup title={FITS} items={fits} timeZone={timeZone} />
       ) : (
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
@@ -60,27 +64,8 @@ export function TextSearchResults({ decoded, text, rules, timeZone }: TextSearch
         </div>
       )}
       {mightFit.length > 0 && (
-        <Group
-          title="Might fit — nothing contradicts, but some facts aren't recorded"
-          items={mightFit}
-          timeZone={timeZone}
-        />
+        <SpecIdGroup title={MIGHT_FIT} items={mightFit} timeZone={timeZone} />
       )}
     </div>
-  );
-}
-
-function Group({ title, items, timeZone }: { title: string; items: SavedSpecId[]; timeZone?: string }) {
-  return (
-    <section aria-label={title} className="flex flex-col gap-3">
-      <h2 className="text-sm font-medium text-ink">{title}</h2>
-      <ul className="flex flex-col gap-3">
-        {items.map((saved) => (
-          <li key={saved.id}>
-            <SpecIdCard saved={saved} timeZone={timeZone} />
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }

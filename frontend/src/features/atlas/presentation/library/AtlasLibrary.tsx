@@ -1,179 +1,124 @@
-import { ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Button } from '@/shared/ui/Button';
-import { SegmentedControl } from '@/shared/ui/SegmentedControl';
 import { TextField } from '@/shared/ui/TextField';
 import { useCodeLookup } from '../../application/use-code-lookup';
+import { useExactMatch } from '../../application/use-exact-match';
 import { useReadText } from '../../application/use-read-text';
 import { useSpecIdLibrary } from '../../application/use-spec-id-library';
-import type { AtlasDictionary, DictionaryValue } from '../../domain/atlas';
+import type { AtlasDictionary } from '../../domain/atlas';
 import { asPastedCode } from '../../domain/pasted-code';
-import { LibraryList, NO_NAMES_MATCH } from './LibraryList';
+import { LibraryList } from './LibraryList';
 import { PastedCodeResult } from './PastedCodeResult';
 import { TextSearch } from './TextSearch';
 
 /** How long the search waits after the last keystroke before it asks. */
 export const SEARCH_WAIT_MS = 250;
 
-/** The longest text the name search takes. Longer text is only read by Search, which takes up to 500. */
+/** The fewest characters read for their facts: one letter reads as nothing yet. */
+export const READ_MIN_LENGTH = 2;
+
+/** The longest text the name search takes. Longer text is only read for its facts, up to 500 characters. */
 export const NAME_SEARCH_MAX_LENGTH = 120;
 
 /**
- * One search box for a name or a pasted code, a product-type filter, and what
- * they find: the library's cards, or what the pasted code is. Search reads the
- * facts in text that isn't a code, and shows what it read in the list's place
- * until the text changes.
+ * One search box for a name or a pasted code, and what they find: what the pasted code is; or, for any other text, the code its
+ * facts make as it is typed, with the reader's notes, above the library's
+ * cards whose names match (ADR 0032).
  *
- * `untilAsked` keeps the library out of sight until a name, a pasted code, or
- * Search is asked for. The search itself is unchanged.
+ * `untilAsked` keeps the library out of sight until something is typed. The
+ * search itself is unchanged. `initialText` starts the box with a search asked
+ * before, read at once; `onAsk` hears each search once typing pauses, so the
+ * page can keep it for the way back.
  */
 export function AtlasLibrary({
   dictionary,
   timeZone,
   untilAsked = false,
+  initialText = '',
+  onAsk,
 }: {
   dictionary: AtlasDictionary;
   timeZone?: string;
   untilAsked?: boolean;
+  initialText?: string;
+  onAsk?: (text: string) => void;
 }) {
-  const [text, setText] = useState('');
-  const [asked, setAsked] = useState('');
-  const [productType, setProductType] = useState('');
+  const [text, setText] = useState(initialText);
+  const [asked, setAsked] = useState(initialText.trim());
   const [page, setPage] = useState(1);
-  /** The text Search read, until the text changes; null while the name list shows. */
-  const [searched, setSearched] = useState<string | null>(null);
-  const reading = useReadText();
+  /** A product type chosen for text that names none, kept while the text is the one it was chosen for. */
+  const [chosen, setChosen] = useState<{ text: string; productType: string } | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setAsked(text.trim()), SEARCH_WAIT_MS);
+    const timer = setTimeout(() => {
+      setAsked(text.trim());
+      onAsk?.(text.trim());
+    }, SEARCH_WAIT_MS);
     return () => clearTimeout(timer);
+    // `onAsk` may be a new function each render; only the text decides when to ask.
   }, [text]);
 
   const code = asPastedCode(asked);
   const namesAsked = code === null && asked.length <= NAME_SEARCH_MAX_LENGTH;
   /** Nothing has been asked for, so the library stays out of the way. */
-  const idle = untilAsked && asked === '' && searched === null;
-  const filterKey = `${asked}\0${productType}`;
-  const [filterSeen, setFilterSeen] = useState(filterKey);
-  const requestedPage = filterSeen === filterKey ? page : 1;
-  const library = useSpecIdLibrary({ q: asked, productType, page: requestedPage }, namesAsked && !idle);
-  if (filterSeen !== filterKey) {
-    setFilterSeen(filterKey);
+  const idle = untilAsked && asked === '';
+  const productTypeChosen = chosen?.text === asked ? chosen.productType : undefined;
+  const reading = useReadText(
+    code === null && asked.length >= READ_MIN_LENGTH
+      ? { text: asked, ...(productTypeChosen === undefined ? {} : { productType: productTypeChosen }) }
+      : null,
+  );
+  const [filterSeen, setFilterSeen] = useState(asked);
+  const requestedPage = filterSeen === asked ? page : 1;
+  const library = useSpecIdLibrary({ q: asked, productType: '', page: requestedPage }, namesAsked && !idle);
+  if (filterSeen !== asked) {
+    setFilterSeen(asked);
     if (page !== 1) setPage(1);
   } else if (library.data && !library.isPlaceholderData && library.data.page !== requestedPage) {
     setPage(library.data.page);
   }
   const lookup = useCodeLookup(code);
-  const productTypes = dictionary.slots.find((slot) => slot.key === 'productType')?.values ?? [];
-  const typed = text.trim();
-  const canSearch = typed !== '' && asPastedCode(typed) === null;
-  const readRefused =
-    searched !== null && reading.error?.code === 'VALIDATION_FAILED' ? reading.error.fields.text : undefined;
+  // The saved Spec ID the reading's code is, shown above as a perfect match: the list leaves it out.
+  const perfectMatch = useExactMatch(reading.data?.decoded?.code);
+  const readRefused = reading.error?.code === 'VALIDATION_FAILED' ? reading.error.fields.text : undefined;
   const namesRefused = namesAsked && library.error?.code === 'VALIDATION_FAILED' ? library.error.fields.q : undefined;
-
-  function changeText(value: string) {
-    setText(value);
-    setSearched(null);
-    reading.reset();
-  }
-
-  function search() {
-    setSearched(typed);
-    reading.mutate({ text: typed });
-  }
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4">
-        <TextField
-          label="Search"
-          type="search"
-          placeholder="Search by name, or paste a Spec ID"
-          value={text}
-          onChange={(event) => changeText(event.target.value)}
-          errors={readRefused ?? namesRefused}
-          autoComplete="off"
-          spellCheck={false}
-          action={
-            canSearch ? (
-              <Button variant="secondary" loading={reading.isPending} onClick={search}>
-                Search
-              </Button>
-            ) : null
-          }
-        />
-        {code === null && searched === null && !idle && (
-          <ProductTypeFilter productType={productType} productTypes={productTypes} onChange={setProductType} />
-        )}
-      </div>
+      <TextField
+        label="Search"
+        type="search"
+        placeholder="Search by name, or paste a Spec ID"
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        errors={readRefused ?? namesRefused}
+        autoComplete="off"
+        spellCheck={false}
+      />
 
-      {searched !== null ? (
+      {code === null && asked.length >= READ_MIN_LENGTH && (
         <TextSearch
-          key={reading.submittedAt}
+          // What was confirmed for one text is not confirmed for the next.
+          key={`${asked}|${productTypeChosen ?? ''}`}
           reading={reading}
-          text={searched}
+          text={asked}
           dictionary={dictionary}
+          onChooseProductType={(productType) => setChosen({ text: asked, productType })}
           timeZone={timeZone}
         />
-      ) : code !== null ? (
+      )}
+      {code !== null ? (
         <PastedCodeResult code={code} result={lookup} timeZone={timeZone} />
       ) : namesAsked && !idle ? (
         <LibraryList
           library={library}
           q={asked}
-          productTypeName={productTypes.find((value) => value.code === productType)?.meaning}
+          productTypeName={undefined}
           page={requestedPage}
           onPageChange={setPage}
+          shownAbove={code === null && asked.length >= READ_MIN_LENGTH ? perfectMatch.data?.id : undefined}
           timeZone={timeZone}
         />
-      ) : idle ? null : (
-        <p role="status" className="text-sm text-ink-muted">
-          {NO_NAMES_MATCH}
-        </p>
-      )}
+      ) : null}
     </div>
-  );
-}
-
-/**
- * The product-type choices, folded under a summary that names the one in
- * force. Folded at first, so the list can sit higher.
- */
-function ProductTypeFilter({
-  productType,
-  productTypes,
-  onChange,
-}: {
-  productType: string;
-  productTypes: readonly DictionaryValue[];
-  onChange: (value: string) => void;
-}) {
-  const current = productTypes.find((value) => value.code === productType)?.meaning ?? 'All';
-
-  return (
-    <details className="group flex flex-col gap-2">
-      <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
-        <ChevronDown
-          size={16}
-          strokeWidth={1.75}
-          aria-hidden="true"
-          className="shrink-0 text-ink-muted transition-transform duration-150 ease-standard group-open:rotate-180"
-        />
-        <span className="text-ink">
-          Product type
-          <span className={productType ? 'font-normal text-ink' : 'font-normal text-ink-muted'}>{` · ${current}`}</span>
-        </span>
-      </summary>
-      <SegmentedControl
-        label="Product type"
-        value={productType}
-        options={[
-          { value: '', label: 'All' },
-          ...productTypes.map(({ code: value, meaning }) => ({ value, label: meaning })),
-        ]}
-        onChange={onChange}
-        className="flex-wrap self-start"
-      />
-    </details>
   );
 }
