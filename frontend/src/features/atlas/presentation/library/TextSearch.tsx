@@ -115,7 +115,8 @@ function Match({ match, decoded, timeZone }: { match: SearchMatch; decoded: Deco
         initial={trigger.initial}
         animate={trigger.animate}
         onHoverStart={trigger.onHoverStart}
-        className={cn(SECONDARY_LINK, 'self-start')}
+        // A long label wraps inside the box at phone width rather than running past it.
+        className={cn(SECONDARY_LINK, 'h-auto min-h-10 max-w-full self-start py-2 text-left whitespace-normal')}
       >
         This is not what I'm looking for, create a Spec ID
         <ArrowRightIcon size={16} />
