@@ -175,6 +175,12 @@ describe('readVerifiedRow, each column for what it says (plan 0011)', () => {
     expect(bag.notes).toContain('The weight 110 has no unit, g or gsm, so it was not read.');
   });
 
+  it('flags sizes named in a list with no unit that are small for millimetres', () => {
+    const reading = read({ itemName: 'Invented napkin', material: 'Paper', dimension: '16 x 14.5 (Top Length x Width)' });
+    expect(reading.facts).toMatchObject({ length: { value: '16', unit: 'mm' }, width: { value: '14.5', unit: 'mm' } });
+    expect(reading.notes).toContain('16 x 14.5 (Top Length x Width) has no unit, so it was read in millimetres (#58). That is small for Napkin (A17): check the unit.');
+  });
+
   it('flags a size with no unit that is small for millimetres', () => {
     const reading = read({ itemName: 'Invented paper bag', material: 'Paper', dimension: '12 x 7.5 x 13' });
     expect(reading.facts).toMatchObject({ height: { value: '13', unit: 'mm' } });

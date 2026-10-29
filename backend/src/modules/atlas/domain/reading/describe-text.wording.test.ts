@@ -119,6 +119,9 @@ describe('reading sizes as a supplier list writes them (plan 0011)', () => {
     ['a plate diameter', 'round bagasse plate, 230 Dia × 22 H mm', { shape: 'RD', topDiameter: mm('230'), height: mm('22') }],
     ['a rim marked "diameter", with words after it', '14oz PET cup with 98mm diameter plain', { topDiameter: mm('98') }],
     ['a rim marked "dia" over a stray number', '16oz PP cup, 96 Dia, 7.5 grams (+/- 0.5)', { topDiameter: mm('96') }],
+    ['named in a list after its numbers', 'fry carton 350.5 x 170.2 mm (Top Length x Width)', { length: mm('350.5'), width: mm('170.2') }],
+    ['named in a list, in its own order over R6', 'tray 200 x 150 x 40 (W x L x H)', { width: mm('200'), length: mm('150'), height: mm('40') }],
+    ['named in a list by letters, a gusset among them', 'paper bag 250 x 120 x 300 (W x G x H)', { width: mm('250'), gusset: mm('120'), height: mm('300') }],
     ['R6 on a plate', 'oval plate 250 × 190 × 25 H mm', { length: mm('250'), width: mm('190'), height: mm('25') }],
     ['R6 on a cup carrier', 'bagasse cup carrier 215 mm x 215 mm x 50 mm', { length: mm('215'), width: mm('215'), height: mm('50') }],
   ])('reads a size %s', (_case, text, facts) => {
@@ -131,6 +134,11 @@ describe('reading sizes as a supplier list writes them (plan 0011)', () => {
     expect(bag.code).toBe('A16B6V4-J508L305M152');
     expect(bag.notes.some((note) => note.includes('has no unit'))).toBe(false);
     expect(described('paper bag 11 x 6 x 13, 11 x 6 x 13 in').facts).toMatchObject({ width: mm('279'), gusset: mm('152'), height: mm('330') });
+  });
+
+  it('reads no list whose names are not as many as its numbers, nor all sizes', () => {
+    expect(described('invented box 300 x 200 (Length x Width x Height)').facts.length).toBeUndefined();
+    expect(described('invented box 300 x 200 (Length x Colour)').facts.length).toBeUndefined();
   });
 
   it('reads no rim from a model code, the second of two numbers, or a size too narrow for a rim', () => {

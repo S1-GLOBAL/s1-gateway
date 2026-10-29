@@ -185,15 +185,23 @@ function withNamedSizes(text: string, dictionary: Dictionary, given: TextReading
   const boxed = sides && type !== undefined ? shapeOfLengthAndWidth(type, dictionary) : undefined;
   const shape = given.facts.shape === undefined ? (diameter ? round : boxed) : undefined;
   const reading: TextReading = shape === undefined ? given : { ...given, facts: { ...given.facts, shape } };
-  // A ruling is wrong when the text names one of its numbers as a size it did not read it as.
+  // A ruling is wrong when the text names one of its numbers as a size it did not read it as:
+  // another slot, or the same slot with another number ("200 x 150 x 40 (W x L x H)").
   const ruled = reading.read.filter((fact) => fact.ruling !== null);
+  const ruledFacts = reading.facts as Record<string, unknown>;
   const claimed = new Set(
     ruled
       .filter((fact) => {
         const start = lower.indexOf(fact.words.toLowerCase());
         const end = start + fact.words.length;
         const read = new Set(ruled.filter((other) => other.ruling === fact.ruling).map((other) => other.key));
-        return start !== -1 && named.some((span) => span.start < end && start < span.end && !read.has(span.slot));
+        return (
+          start !== -1 &&
+          named.some(
+            (span) =>
+              span.start < end && start < span.end && (!read.has(span.slot) || !sameSize(ruledFacts[span.slot], span.value, span.unit)),
+          )
+        );
       })
       .map((fact) => fact.ruling),
   );
@@ -219,6 +227,18 @@ function withNamedSizes(text: string, dictionary: Dictionary, given: TextReading
 function standsAlone(text: string, number: string): boolean {
   const alone = new RegExp(`(?<![\\d.,/+'"x×*-]\\s*)(?<![\\d.])${number}(?![\\d.])(?!\\s*(?:[x×*/+'"%-]|mm|cm|in|g|gsm|kg|ml|oz|ft|m)(?![a-z]))`, 'i');
   return alone.test(text);
+}
+
+/** Millimetres in each length unit a size is read in. */
+const MM_IN: Readonly<Record<string, number>> = { mm: 1, cm: 10, in: 25.4 };
+
+/** Whether a size a ruling read is the one a name gives, to the millimetre. */
+function sameSize(read: unknown, value: string, unit: string | undefined): boolean {
+  if (read === null || typeof read !== 'object' || !('value' in read) || !('unit' in read)) return true;
+  const ruled = read as MeasurementInput;
+  const [a, b] = [MM_IN[ruled.unit], MM_IN[unit ?? 'mm']];
+  if (a === undefined || b === undefined) return ruled.value === value && ruled.unit === (unit ?? 'mm');
+  return Math.abs(Number(ruled.value) * a - Number(value) * b) < 1;
 }
 
 /** A product type as a note names it: `Bag (A16)`. */

@@ -257,9 +257,15 @@ export function readNamedMeasures(
   return { facts, ignored: without(reading.ignored, taken), warnings };
 }
 
-/** Where the text names a measure, a count or a capacity beside its number, and its slot: "Height 67 mm", "40mm gusset". */
-export function namedMeasureSpans(text: string): readonly { readonly slot: SlotKey; readonly start: number; readonly end: number }[] {
-  return findNamedFacts(text).map((hit) => ({ slot: hit.kind === 'capacity' ? 'capacity' : hit.slot, start: hit.start, end: hit.end }));
+/** Where the text names a measure, a count or a capacity beside its number, its slot and the size it gives: "Height 67 mm", "40mm gusset". */
+export function namedMeasureSpans(
+  text: string,
+): readonly { readonly slot: SlotKey; readonly start: number; readonly end: number; readonly value: string; readonly unit?: string }[] {
+  return findNamedFacts(text).map((hit) =>
+    hit.kind === 'measure'
+      ? { slot: hit.slot, start: hit.start, end: hit.end, value: hit.value, unit: hit.unit }
+      : { slot: hit.kind === 'capacity' ? 'capacity' : hit.slot, start: hit.start, end: hit.end, value: hit.value },
+  );
 }
 
 /**
@@ -941,8 +947,57 @@ const WHOLE = '(\\d+)';
 const WRITTEN_UNIT =
   '(millimetres?|millimeters?|centimetres?|centimeters?|metres?|meters?|inches|inch|kilograms?|grams?|feet|gsm|µm|um|microns?|mic|mm|cm|kg|in|ft|m|g|"|\'\')';
 
+/** A size's name in a list of names written after its numbers: "(Top Length x Width x Height)". */
+const LABEL = '(?:top\\s+)?(?:lengths?|widths?|heights?|depths?|gussets?)|top\\s+(?:rim\\s+)?dia(?:meter)?|bottom\\s+dia(?:meter)?|[lwhg]';
+const BETWEEN = '\\s*[x×*/,]\\s*';
+/** Two or three numbers, not captured one by one: the list is split after. */
+const NUMBER_LIST = '\\d+(?:\\.\\d+)?(?:\\s*[x×*/,]\\s*\\d+(?:\\.\\d+)?){1,2}';
+const LABELLED = new RegExp(
+  `(?<![a-z0-9.])(${NUMBER_LIST})\\s*${WRITTEN_UNIT}?\\s*\\(?\\s*((?:${LABEL})(?:${BETWEEN}(?:${LABEL})){1,2})\\s*\\)?(?![a-z])`,
+  'gi',
+);
+
+/** The slot a listed name is: "top length" is the length, "depth" the height. */
+function labelSlot(label: string): MeasureSlotKey | undefined {
+  const name = label.toLowerCase().replace(/\s+/g, ' ');
+  if (name.startsWith('top d')) return 'topDiameter';
+  if (name.startsWith('bottom d')) return 'bottomDiameter';
+  const word = name.replace(/^top /, '');
+  if (word === 'l' || word.startsWith('length')) return 'length';
+  if (word === 'w' || word.startsWith('width')) return 'width';
+  if (word === 'h' || word.startsWith('height') || word.startsWith('depth')) return 'height';
+  if (word === 'g' || word.startsWith('gusset')) return 'gusset';
+  return undefined;
+}
+
+/**
+ * "356.44 x 173.08 mm (Top Length x Width)": numbers, then as many names in
+ * the same order, each number the size its name says. Undefined unless every
+ * name is a size's and they are as many as the numbers.
+ */
+function addLabelled(found: NamedFact[], match: RegExpMatchArray): void {
+  const [whole, numbers = '', written, labels = ''] = match;
+  if (match.index === undefined) return;
+  const values = numbers.split(new RegExp(BETWEEN, 'i'));
+  const slots = labels.split(new RegExp(BETWEEN, 'i')).map(labelSlot);
+  if (values.length !== slots.length || slots.some((slot) => slot === undefined) || new Set(slots).size !== slots.length) return;
+  const from = match.index;
+  let offset = 0;
+  values.forEach((value, index) => {
+    const slot = slots[index] as MeasureSlotKey;
+    const unit = unitOf(slot, written, 'mm');
+    const local = whole.indexOf(value, offset);
+    offset = local + value.length;
+    const start = from + local;
+    if (unit === undefined) return;
+    // The first carries the whole list's words, so the names are not left over; the rest carry none.
+    found.push({ kind: 'measure', slot, value, unit, start, end: start + value.length, span: index === 0 ? whole : '' });
+  });
+}
+
 function findNamedFacts(text: string): NamedFact[] {
   const found: NamedFact[] = [];
+  for (const match of text.matchAll(LABELLED)) addLabelled(found, match);
   for (const named of NAMED_MEASURES) {
     // A unit can run into the name, as in "90mmH"; a bare number needs a space.
     const before = new RegExp(`(?<![a-z0-9])${AMOUNT}(?:\\s*${WRITTEN_UNIT}\\s*|\\s+)(?:${named.name})(?![a-z])`, 'gi');

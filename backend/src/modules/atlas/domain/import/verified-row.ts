@@ -187,7 +187,7 @@ export function readVerifiedRow(row: VerifiedRow, dictionary: Dictionary): RowRe
     name,
     nameCut: cut,
     agreement,
-    notes: [...productNotes, ...description.notes, ...weightNotes, ...smallSizes(description, productType, dictionary)],
+    notes: [...productNotes, ...description.notes, ...weightNotes, ...smallSizes(description, tidy(row.dimension), productType, dictionary)],
     kind: 'read',
     facts: { ...description.facts, productType },
     readFromRow: factsInWords(description, dictionary).map(({ key, name: slot, meaning }) => {
@@ -234,19 +234,25 @@ function weightOf(
 /** The most a side may be, in millimetres, before a size with no unit is flagged as likely inches or centimetres. */
 const SMALL_SIDE_MM = 50;
 
+/** A length unit written in a size: `mm`, `in`, an inch mark. */
+const LENGTH_UNIT = /(?<![a-z])(?:mm|cm|in|inch|inches)(?![a-z])|"|''/i;
+
 /**
- * A note for a three-number size written with no unit whose every side is
- * under `SMALL_SIDE_MM`: it is read as millimetres (#58), but "12 x 7.5 x
- * 13" on a bag is likely inches, so the row is worth a look.
+ * A note for sizes written with no unit whose every side is under
+ * `SMALL_SIDE_MM`: they are read as millimetres (#58), but "12 x 7.5 x 13" on
+ * a bag, or "17 x 15.5 (Top Length x Width)" on a napkin, is likely inches,
+ * so the row is worth a look. The sizes are a ruling's words, else the
+ * Dimension cell's.
  */
-function smallSizes(description: TextDescription, productType: string, dictionary: Dictionary): string[] {
-  const sized = description.reading.read.find((fact) => fact.ruling === 'R3' || fact.ruling === 'R5' || fact.ruling === 'R6');
-  if (sized === undefined || /mm|cm|in|"|''/i.test(sized.words)) return [];
+function smallSizes(description: TextDescription, dimension: string, productType: string, dictionary: Dictionary): string[] {
+  const ruled = description.reading.read.find((fact) => fact.ruling === 'R3' || fact.ruling === 'R5' || fact.ruling === 'R6');
+  const sized = ruled?.words ?? dimension;
+  if (sized === '' || LENGTH_UNIT.test(sized)) return [];
   const sides = (['length', 'width', 'height', 'gusset'] as const)
     .map((key) => description.facts[key])
     .filter((side): side is { value: string; unit: string } => side != null && typeof side === 'object');
   if (sides.length === 0 || sides.some((side) => Number(side.value) >= SMALL_SIDE_MM)) return [];
-  return [`${sized.words} has no unit, so it was read in millimetres (#58). That is small for ${productLabel(productType, dictionary)}: check the unit.`];
+  return [`${sized} has no unit, so it was read in millimetres (#58). That is small for ${productLabel(productType, dictionary)}: check the unit.`];
 }
 
 /** A product type as a note names it: `Container lid (A9)`. */
