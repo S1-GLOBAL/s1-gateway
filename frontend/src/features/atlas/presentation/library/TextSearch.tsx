@@ -1,8 +1,6 @@
 import { CircleCheck } from 'lucide-react';
 import * as m from 'motion/react-m';
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '@/shared/ui/Button';
 import { cn } from '@/shared/ui/cn';
 import { ArrowRightIcon } from '@/shared/ui/icons';
 import { useIconTrigger } from '@/shared/ui/motion';
@@ -37,9 +35,9 @@ export interface TextSearchProps {
 }
 
 /**
- * What the text reads as, while it is typed, to confirm before anything is
- * looked up: the code and the way to correct it; or a product type to choose;
- * or that it read nothing. The last reading stays, dimmed, while the next is
+ * What the text reads as, while it is typed: the code, the way to correct it,
+ * and the saved Spec IDs that fit or might; or a product type to choose; or
+ * that it read nothing. The last reading stays, dimmed, while the next is
  * read. Nothing is saved until Save as a new Spec ID is pressed.
  */
 export function TextSearch({ reading, text, dictionary, onChooseProductType, timeZone }: TextSearchProps) {
@@ -90,7 +88,14 @@ function CodeOrMatch(props: {
   timeZone?: string;
 }) {
   const exact = useExactMatch(props.decoded.code);
-  if (exact.data) return <PerfectMatch saved={exact.data} decoded={props.decoded} timeZone={props.timeZone} />;
+  if (exact.data) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PerfectMatch saved={exact.data} decoded={props.decoded} timeZone={props.timeZone} />
+        <TextSearchResults decoded={props.decoded} text={props.text} rules={props.rules} matchedId={exact.data.id} timeZone={props.timeZone} />
+      </div>
+    );
+  }
   return <CodeBuilt {...props} />;
 }
 
@@ -146,7 +151,6 @@ function CodeBuilt({
   busy: boolean;
   timeZone?: string;
 }) {
-  const [proceeding, setProceeding] = useState(false);
   return (
     <div className="flex flex-col gap-6">
       <section aria-label="What Search read" aria-busy={busy} className={cardFor(busy)}>
@@ -161,13 +165,12 @@ function CodeBuilt({
         </p>
         <WhatWasRead reading={reading} />
         <div className="flex flex-wrap gap-3">
-          <Button onClick={() => setProceeding(true)}>Yes, proceed</Button>
           <Link to={`/atlas/new?code=${encodeURIComponent(decoded.code)}`} className={SECONDARY_LINK}>
             No, edit it
           </Link>
         </div>
       </section>
-      {proceeding && <TextSearchResults decoded={decoded} text={text} rules={rules} timeZone={timeZone} />}
+      <TextSearchResults decoded={decoded} text={text} rules={rules} timeZone={timeZone} />
     </div>
   );
 }

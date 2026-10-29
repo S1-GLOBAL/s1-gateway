@@ -21,17 +21,21 @@ export interface TextSearchResultsProps {
   /** The text Search read, trimmed. */
   text: string;
   rules: readonly SlotRuleEntry[];
+  /** The saved Spec ID shown above as a perfect match: left out of both groups. */
+  matchedId?: string;
   timeZone?: string;
 }
 
 /**
  * The saved Spec IDs that fit every fact read, then those that might: nothing
- * contradicts them, but some facts aren't recorded. When none fits, the way to
- * start a Spec ID from the code, and to save it at once, comes before those
- * that might. Nothing is saved until Save as a new Spec ID is pressed.
+ * contradicts them, but some facts aren't recorded. They show as the text is
+ * typed, the last ones dimmed while the next are looked up. When none fits and
+ * there is no perfect match, the way to start a Spec ID from the code, and to
+ * save it at once, comes before those that might. Nothing is saved until Save
+ * as a new Spec ID is pressed.
  */
-export function TextSearchResults({ decoded, text, rules, timeZone }: TextSearchResultsProps) {
-  const similar = useSimilarSpecIds(knownCriteria(decoded));
+export function TextSearchResults({ decoded, text, rules, matchedId, timeZone }: TextSearchResultsProps) {
+  const similar = useSimilarSpecIds(knownCriteria(decoded), { keepPrevious: true });
 
   if (similar.isPending) {
     return (
@@ -44,28 +48,30 @@ export function TextSearchResults({ decoded, text, rules, timeZone }: TextSearch
   }
   if (similar.isError) return <ErrorState message={similar.error.message} onRetry={() => void similar.refetch()} />;
 
-  const { fits, mightFit } = similar.data;
+  const fits = similar.data.fits.filter((saved) => saved.id !== matchedId);
+  const mightFit = similar.data.mightFit.filter((saved) => saved.id !== matchedId);
+  const busy = similar.isPlaceholderData;
   return (
-    <div className="flex flex-col gap-6">
+    <div aria-busy={busy} className={busy ? 'flex flex-col gap-6 opacity-60 transition-opacity' : 'flex flex-col gap-6 transition-opacity'}>
       {fits.length > 0 ? (
         <SpecIdGroup title={FITS} items={fits} timeZone={timeZone} />
       ) : (
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <p role="status" className="text-sm text-ink-muted">
-              No saved Spec ID fits these facts.
-            </p>
-            <Link to={`/atlas/new?code=${encodeURIComponent(decoded.code)}`} className={LINK}>
-              Start a Spec ID from it
-              <ArrowRight size={16} strokeWidth={1.75} aria-hidden="true" />
-            </Link>
+        matchedId === undefined && (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <p role="status" className="text-sm text-ink-muted">
+                No saved Spec ID fits these facts.
+              </p>
+              <Link to={`/atlas/new?code=${encodeURIComponent(decoded.code)}`} className={LINK}>
+                Start a Spec ID from it
+                <ArrowRight size={16} strokeWidth={1.75} aria-hidden="true" />
+              </Link>
+            </div>
+            <SaveFromSearch decoded={decoded} text={text} rules={rules} timeZone={timeZone} />
           </div>
-          <SaveFromSearch decoded={decoded} text={text} rules={rules} timeZone={timeZone} />
-        </div>
+        )
       )}
-      {mightFit.length > 0 && (
-        <SpecIdGroup title={MIGHT_FIT} items={mightFit} timeZone={timeZone} />
-      )}
+      {mightFit.length > 0 && <SpecIdGroup title={MIGHT_FIT} items={mightFit} timeZone={timeZone} />}
     </div>
   );
 }

@@ -82,7 +82,8 @@ describe('AtlasLibrary, Search', () => {
       'Nominal capacity: 14 oz',
     ]);
     expect(screen.getByText('Left out: for, Cava')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Yes, proceed' })).toBeTruthy();
+    // Nothing to press before the Spec IDs that fit are looked up.
+    expect(screen.queryByRole('button', { name: 'Yes, proceed' })).toBeNull();
     expect(screen.getByRole('link', { name: 'No, edit it' }).getAttribute('href')).toBe(
       `/atlas/new?code=${encodeURIComponent(BOWL)}`,
     );
@@ -155,15 +156,13 @@ describe('AtlasLibrary, Search', () => {
     expect(screen.getByRole('link', { name: 'New Spec ID' }).getAttribute('href')).toBe('/atlas/new');
   });
 
-  it('Yes, proceed lists the Spec IDs that fit before those that might, and saves nothing', async () => {
+  it('lists the Spec IDs that fit before those that might as the text is read, and saves nothing', async () => {
     const fits = savedFor(BOWL, '14oz Bagasse Bowl', { id: '00000000-0000-4000-8000-000000000001', manufacturerStages: { specificationsReceived: 2, quoted: 1, sampling: 0, inProduction: 0 } });
     const might = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-000000000002' });
     const findSimilar = vi.fn<AtlasGateway['findSimilar']>(async () => ({ fits: [fits], mightFit: [might] }));
     const save = vi.fn<AtlasGateway['save']>();
     renderLibrary({ readText: async () => READ_BOWL, findSimilar, save });
     type(TEXT);
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Yes, proceed' }));
 
     const headings = await screen.findAllByRole('heading');
     expect(headings.map((heading) => heading.textContent)).toEqual([
@@ -187,7 +186,6 @@ describe('AtlasLibrary, Search', () => {
     const might = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-000000000002' });
     renderLibrary({ readText: async () => READ_BOWL, findSimilar: async () => ({ fits: [], mightFit: [might] }) });
     type(TEXT);
-    fireEvent.click(await screen.findByRole('button', { name: 'Yes, proceed' }));
 
     const nothing = await screen.findByText('No saved Spec ID fits these facts.');
     const start = screen.getByRole('link', { name: 'Start a Spec ID from it' });
@@ -210,6 +208,36 @@ describe('AtlasLibrary, Search', () => {
     expect(
       within(match).getByRole('link', { name: "This is not what I'm looking for, create a Spec ID" }).getAttribute('href'),
     ).toBe(`/atlas/new?code=${encodeURIComponent(BOWL)}`);
+  });
+
+  it('lists the Spec IDs that fit and might under a perfect match, leaving the match out', async () => {
+    const match = lookupFor(BOWL, 'Bagasse bowl, 14 oz');
+    const also = savedFor(BOWL, 'Bagasse bowl with more facts', { id: '00000000-0000-4000-8000-0000000000c1' });
+    const might = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-0000000000c2' });
+    renderLibrary({
+      readText: async () => READ_BOWL,
+      findByCode: async () => match,
+      findSimilar: async () => ({ fits: [match, also], mightFit: [might] }),
+    });
+    type(TEXT);
+
+    await screen.findByRole('region', { name: 'Perfect match' });
+    const fits = await screen.findByRole('region', { name: 'Fits — every fact you gave matches' });
+    expect(within(fits).getByText('Bagasse bowl with more facts')).toBeTruthy();
+    expect(within(fits).queryByText('Bagasse bowl, 14 oz')).toBeNull();
+    expect(screen.getByRole('region', { name: "Might fit — nothing contradicts, but some facts aren't recorded" })).toBeTruthy();
+    expect(screen.queryByText('No saved Spec ID fits these facts.')).toBeNull();
+  });
+
+  it('says nothing fits under a perfect match that is the only fit', async () => {
+    const match = lookupFor(BOWL, 'Bagasse bowl, 14 oz');
+    renderLibrary({ readText: async () => READ_BOWL, findByCode: async () => match, findSimilar: async () => ({ fits: [match], mightFit: [] }) });
+    type(TEXT);
+
+    await screen.findByRole('region', { name: 'Perfect match' });
+    await waitFor(() => expect(screen.queryByRole('heading', { name: /Fits/ })).toBeNull());
+    expect(screen.queryByText('No saved Spec ID fits these facts.')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Save as a new Spec ID/ })).toBeNull();
   });
 
   it('leaves the perfect match out of the names below it, keeping the others', async () => {
@@ -360,10 +388,10 @@ function renderLibraryWithRoutes(overrides: Partial<AtlasGateway> = {}) {
   return gateway;
 }
 
-/** Searches the example and presses Yes, proceed. */
-async function searchAndProceed() {
+/** Searches the example: the Spec IDs that fit show as it is read. */
+async function searchTheExample() {
   type(TEXT);
-  fireEvent.click(await screen.findByRole('button', { name: 'Yes, proceed' }));
+  await screen.findByText('Does this code look right?');
 }
 
 const NOTHING_FITS = async () => ({ fits: [], mightFit: [] });
@@ -373,7 +401,7 @@ describe('AtlasLibrary, saving from Search', () => {
     const saved = savedFor(BOWL, TEXT, { id: '00000000-0000-4000-8000-000000000048' });
     const save = vi.fn<AtlasGateway['save']>(async () => saved);
     renderLibraryWithRoutes({ findSimilar: NOTHING_FITS, save });
-    await searchAndProceed();
+    await searchTheExample();
 
     const name = await screen.findByLabelText('Name');
     expect((name as HTMLInputElement).value).toBe(TEXT);
@@ -392,7 +420,7 @@ describe('AtlasLibrary, saving from Search', () => {
       savedFor(BOWL, '14oz Bagasse Bowl', { id: '00000000-0000-4000-8000-000000000049' }),
     );
     renderLibraryWithRoutes({ findSimilar: NOTHING_FITS, save });
-    await searchAndProceed();
+    await searchTheExample();
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: '14oz Bagasse Bowl' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save as a new Spec ID' }));
@@ -403,7 +431,7 @@ describe('AtlasLibrary, saving from Search', () => {
   it('offers no save while a saved Spec ID fits', async () => {
     const fits = savedFor(BOWL, '14oz Bagasse Bowl', { id: '00000000-0000-4000-8000-000000000001' });
     renderLibraryWithRoutes({ findSimilar: async () => ({ fits: [fits], mightFit: [] }) });
-    await searchAndProceed();
+    await searchTheExample();
 
     await screen.findByRole('heading', { name: 'Fits — every fact you gave matches' });
     expect(screen.queryByLabelText('Name')).toBeNull();
@@ -413,7 +441,7 @@ describe('AtlasLibrary, saving from Search', () => {
   it('offers the save when nothing fits, even when some might', async () => {
     const might = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-000000000002' });
     renderLibraryWithRoutes({ findSimilar: async () => ({ fits: [], mightFit: [might] }) });
-    await searchAndProceed();
+    await searchTheExample();
 
     expect(await screen.findByRole('button', { name: 'Save as a new Spec ID' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: /Might fit/ })).toBeTruthy();
@@ -427,7 +455,7 @@ describe('AtlasLibrary, saving from Search', () => {
         throw new SpecIdExistsError(existing, 'This Spec ID already exists. Nothing new was saved.');
       },
     });
-    await searchAndProceed();
+    await searchTheExample();
     fireEvent.click(await screen.findByRole('button', { name: 'Save as a new Spec ID' }));
 
     expect(
@@ -445,7 +473,7 @@ describe('AtlasLibrary, saving from Search', () => {
         throw new AppError('INVALID_SPEC_ID', 'The Spec ID is not valid.', { name: [message] });
       },
     });
-    await searchAndProceed();
+    await searchTheExample();
     fireEvent.click(await screen.findByRole('button', { name: 'Save as a new Spec ID' }));
 
     expect(await screen.findByText(message)).toBeTruthy();
@@ -458,7 +486,7 @@ describe('AtlasLibrary, saving from Search', () => {
       .mockRejectedValueOnce(new AppError('SIGN_IN_REQUIRED', 'Sign in to continue.'))
       .mockRejectedValueOnce(new AppError('NETWORK', 'Cannot reach the server. Check your connection and try again.'));
     renderLibraryWithRoutes({ findSimilar: NOTHING_FITS, save });
-    await searchAndProceed();
+    await searchTheExample();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Save as a new Spec ID' }));
     expect(await screen.findByText('Sign in to save Spec IDs.')).toBeTruthy();
