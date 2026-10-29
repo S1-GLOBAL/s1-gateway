@@ -50,7 +50,10 @@ describe('ReadSpecIdText', () => {
 
     expect(result.value.read.map((fact) => fact.key)).toEqual(['productType', 'material']);
     expect(result.value.ignored).toEqual([]);
-    expect(result.value.notes).toEqual(['Nominal capacity does not apply to a bowl lid.']);
+    expect(result.value.notes).toEqual([
+      'The product is the lid. It goes on a 14 oz bowl. It is a Bowl lid (A1).',
+      'Nominal capacity does not apply to a bowl lid.',
+    ]);
     expect(result.value.decoded?.code).toBe('A1B3');
   });
 

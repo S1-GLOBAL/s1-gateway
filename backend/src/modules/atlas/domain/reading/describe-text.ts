@@ -104,6 +104,12 @@ export function describeText(text: string, dictionary: Dictionary, productType?:
   }
   const suggested = suggestionsFor({ ...reading, ignored: named.ignored }, kept.facts, dictionary, text);
   notes.push(...suggested.suggestions);
+  // "Printed 500 paper bowl": likely 500 mL, but a number with no unit is never stored as one.
+  const capacityOpen =
+    kept.specId !== null && kept.facts.capacity == null && kept.specId.slot('capacity') !== 'X';
+  for (const bare of capacityOpen ? suggested.ignored.filter((word) => /^\d{2,4}$/.test(word)) : []) {
+    notes.push(`${bare} has no unit. If it is the capacity, write ${bare} ml or ${bare} oz.`);
+  }
   return { specId: kept.specId, facts: kept.facts, reading, conversions, notes, ignored: suggested.ignored };
 }
 

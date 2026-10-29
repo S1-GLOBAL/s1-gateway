@@ -30,21 +30,39 @@ export interface LidFit {
   readonly drop: readonly string[];
 }
 
+/** A vessel a lid can fit, as a text names it. */
+const VESSEL = '(souffl[eé]s?\\s+cups?|portion\\s+cups?|bowls?|containers?|(?<!portion\\s)cups?)';
+
+const DIRECTED = new RegExp(
+  `(?<![a-z0-9])lids?(?![a-z0-9])[^a-z0-9]+(for|fits?(?:\\s+for)?|to\\s+fit)[^a-z0-9]+([\\s\\S]{0,48}?)(?<![a-z0-9])${VESSEL}(?![a-z0-9])`,
+  'i',
+);
+/** "Cup Lids", "Bowl PET Lid": the vessel, a few words, then the lid. */
+const VESSEL_THEN_LID = new RegExp(`(?<![a-z0-9])${VESSEL}(?:[^a-z0-9]+[a-z0-9]+){0,3}?[^a-z0-9]+lids?(?![\\s-]*opening)(?![a-z0-9])`, 'i');
+/** "Lid 32 oz Paper Bowl": the lid, a few words, then the vessel. */
+const LID_THEN_VESSEL = new RegExp(`(?<![a-z0-9])lids?(?![a-z0-9])([\\s\\S]{0,32}?)(?<![a-z0-9])${VESSEL}(?![a-z0-9])`, 'i');
+/** A lid sold with its vessel: "+ lid", "with lid". */
+const JOINED_LID = /(?:(?<![a-z0-9])(?:and|with|w\/|c\/w)|&|\+)[^a-z0-9]*lids?(?![a-z0-9])/i;
+
 /**
- * "Lid for a souffle cup" names the lid. The words after "for" are the cup it
- * fits. A souffle cup is a portion cup, so the lid is a portion cup lid.
+ * The lid a text names by the vessel it fits. "Lid for a souffle cup", "lid
+ * fit for a deli cup": the words after "for" are the vessel. "Cup lids",
+ * "bowl PET lids", "lid 32 oz paper bowl": a lid and one vessel with no "with",
+ * "and" or "+" between, so the lid is the product. A souffle cup is a portion
+ * cup, so its lid is a portion cup lid. A lid sold with its vessel is not one.
  */
 export function lidFits(text: string): LidFit | undefined {
-  const directed = /(?<![a-z0-9])lids?(?![a-z0-9])[^a-z0-9]+for[^a-z0-9]+([\s\S]{0,48}?)(?<![a-z0-9])(souffl[eé]s?\s+cups?|portion\s+cups?|bowls?|containers?|(?<!portion\s)cups?)(?![a-z0-9])/i.exec(text);
-  if (directed?.[2] !== undefined) return fit(directed[2], directed[1] ?? '', true);
-  const named = /(?<![a-z0-9])(souffl[eé]s?\s+cups?)\s+lids?(?![a-z0-9])/i.exec(text);
-  if (named?.[1] !== undefined && named.index !== undefined) {
-    return fit(named[1], text.slice(Math.max(0, named.index - 16), named.index), false);
-  }
+  const directed = DIRECTED.exec(text);
+  if (directed?.[3] !== undefined) return fit(directed[3], directed[2] ?? '', (directed[1] ?? '').toLowerCase().split(/\s+/));
+  if (JOINED_LID.test(text) || combinationFor(text, undefined) !== undefined) return undefined;
+  const after = VESSEL_THEN_LID.exec(text);
+  if (after?.[1] !== undefined) return fit(after[1], text.slice(Math.max(0, after.index - 16), after.index + after[0].length), []);
+  const before = LID_THEN_VESSEL.exec(text);
+  if (before?.[2] !== undefined) return fit(before[2], before[1] ?? '', []);
   return undefined;
 }
 
-function fit(vessel: string, gap: string, directed: boolean): LidFit | undefined {
+function fit(vessel: string, gap: string, joiner: readonly string[]): LidFit | undefined {
   const kind = vessel.toLowerCase();
   const code = kind.startsWith('souffl') || kind.startsWith('portion') ? 'PCL'
     : kind.startsWith('bowl') ? 'BLD'
@@ -52,11 +70,14 @@ function fit(vessel: string, gap: string, directed: boolean): LidFit | undefined
     : kind.startsWith('cup') ? 'CLD'
     : undefined;
   if (code === undefined) return undefined;
-  const size = /(?<![a-z0-9])(\d+(?:\.\d+)?)\s*(oz|ml)\s*$/i.exec(gap);
+  // The vessel's size, the last one written near it: "2oz Cup", "32 oz Paper Bowl".
+  const size = [...gap.matchAll(/(?<![a-z0-9])(\d+(?:\.\d+)?)\s*(oz|ml)(?![a-z0-9])/gi)].at(-1);
   const amount = size?.[1];
   const unit = size?.[2]?.toLowerCase() === 'ml' ? 'mL' : size?.[2]?.toLowerCase();
-  const fits = amount !== undefined && unit !== undefined ? `${amount} ${unit} ${vessel}` : vessel;
-  const drop = directed ? ['for'] : [];
+  // One vessel, as the note names it: "Cups" is "Cup".
+  const one = vessel.replace(/s(?=\s|$)/gi, '');
+  const fits = amount !== undefined && unit !== undefined ? `${amount} ${unit} ${one}` : one;
+  const drop = joiner.filter((word) => word !== '');
   for (const word of kind.split(/[^a-z0-9é]+/)) {
     if (word === 'souffle' || word === 'soufflé' || word === 'portion') drop.push(word);
   }

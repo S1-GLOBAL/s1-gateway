@@ -197,8 +197,9 @@ describe('reading a product description (plan 0011)', () => {
     expect(meanings('Container with lid')).toEqual(['Container with lid']);
 
     const bare = described('12oz PET Cups Lids');
-    expect(bare.notes[0]).toBe('Product type: Cups is Cup (A5). Lids is Cup lid (A2). Both were left out.');
-    expect(bare.code).toBeNull();
+    // No "with", "and" or "+" before the lid: the lid is the product, for 12 oz cups.
+    expect(bare.notes[0]).toBe('The product is the lid. It goes on a 12 oz Cup. It is a Cup lid (A2).');
+    expect(bare.code).toBe('A2B1');
   });
 
   it('stores a decimal capacity, only where its product has a capacity', () => {
@@ -211,6 +212,21 @@ describe('reading a product description (plan 0011)', () => {
     const lid = described('PET Clear lid for 3.25 oz Souffle Cup');
     expect(lid.code).toBe('A7B1D1');
     expect(lid.facts.map((fact) => fact.meaning)).not.toContain('3.25 oz');
+  });
+
+  it('reads a lid named by its vessel in any order, unless it is sold with the vessel', () => {
+    expect(described('PET 2oz Cup Lids').code).toBe('A2B1');
+    expect(described('PET 2oz Cup Lids').notes[0]).toBe('The product is the lid. It goes on a 2 oz Cup. It is a Cup lid (A2).');
+    // Bagasse is the bowl's, PET the lid's: two materials, both left out.
+    expect(described('32oz Bagasse Bowl PET Lids').code).toBe('A1');
+    expect(described('Plastic Lid 32 oz Paper Bowl').notes[0]).toBe('The product is the lid. It goes on a 32 oz Bowl. It is a Bowl lid (A1).');
+    const fitted = described('Plastic Lid fit for 6oz Deli Cup');
+    expect(fitted.code).toBe('A2B11');
+    expect(fitted.ignored).not.toContain('fit');
+
+    expect(described('Bowl with Bowl Lid').code).toBe('A32');
+    expect(described('Paper cup + lid').code).toBe('A33B24');
+    expect(described('Portion cup with lid').code).toContain('A34');
   });
 
   it('reads a lid for a souffle cup as the portion cup lid', () => {
@@ -244,6 +260,13 @@ describe('reading a product description (plan 0011)', () => {
     expect(described('16oz PET CUP unprinted').code).toBe('A5B1R1-G116');
     expect(described('8 oz Paper Cup SW').code).toBe('A5B24Q1-G18');
     expect(described('12 oz Paper Cup DW').code).toBe('A5B24Q2-G112');
+  });
+
+  it('never stores a number with no unit as a capacity, and says how to write it', () => {
+    const container = described('Printed 500 paper container');
+    expect(container.code).toBe('A8B24');
+    expect(container.notes).toContain('500 has no unit. If it is the capacity, write 500 ml or 500 oz.');
+    expect(described('Bowl lid 150').notes.some((note) => note.includes('has no unit'))).toBe(false);
   });
 
   it('reads one capacity written in two units, and still leaves out two amounts', () => {
