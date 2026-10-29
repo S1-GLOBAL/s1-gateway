@@ -18,6 +18,12 @@ export interface SpecIdRewrite {
   readonly expectedVersion: number;
 }
 
+/** A saved Spec ID whose code an approval leaves, but whose slots it reletters (ADR 0032), and the version it was read at. */
+export interface SpecIdRelettering {
+  readonly saved: SavedSpecId;
+  readonly expectedVersion: number;
+}
+
 /** The option an approval rewrites the holders of, and every saved Spec ID holding it when planned, at the version read. */
 export interface OptionHolders {
   readonly slot: DictionarySlotKey;
@@ -44,6 +50,7 @@ export interface DictionaryChangePlan {
   /** Null when the approval rewrites no Spec ID: a new option, or a new wording. */
   readonly holders: OptionHolders | null;
   readonly rewrites: readonly SpecIdRewrite[];
+  readonly relettered: readonly SpecIdRelettering[];
 }
 
 export type DictionaryChangeError =

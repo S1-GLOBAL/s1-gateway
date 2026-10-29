@@ -32,7 +32,8 @@ export interface AtlasGateway {
   findByCode(code: string): Promise<SpecIdLookup>;
   findSimilar(criteria: SimilarCriteria): Promise<SimilarSpecIds>;
   /** Reads the facts in raw text, as `productType` when one is given. Nothing is saved. */
-  readText(input: { text: string; productType?: string }): Promise<SpecIdTextReading>;
+  /** `signal` stops the request once its answer is no longer wanted. */
+  readText(input: { text: string; productType?: string }, signal?: AbortSignal): Promise<SpecIdTextReading>;
   /** One saved Spec ID by its permanent id. */
   getSaved(id: string): Promise<SavedSpecId>;
   /** Changes a saved Spec ID, from the `version` the change was started from. */

@@ -29,13 +29,13 @@ describe('DrizzleDictionaryRepository', () => {
     expect(ruleKeys(dictionary?.slotRules() ?? [])).toEqual(ruleKeys(S1_0_1_0_RULES));
   });
 
-  it('reads release S2 0.1.0 exactly as the seed migration loaded it', async () => {
+  it('reads release S2 0.1.0 exactly as the migrations loaded it', async () => {
     const dictionary = await repository.get('S2 0.1.0');
 
     expect(dictionary?.release).toBe('S2 0.1.0');
     expect(dictionary?.approvedOn).toBe('2026-10-19');
-    expect(dictionary?.values()).toHaveLength(118);
-    expect(dictionary?.slotRules()).toHaveLength(682);
+    expect(dictionary?.values()).toHaveLength(121);
+    expect(dictionary?.slotRules()).toHaveLength(748);
     expect(valueKeys(dictionary?.values() ?? [])).toEqual(valueKeys(S2_0_1_0_VALUES));
     expect(ruleKeys(dictionary?.slotRules() ?? [])).toEqual(ruleKeys(S2_0_1_0_RULES));
   });

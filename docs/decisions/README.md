@@ -61,10 +61,11 @@ Number sequentially. Never renumber.
 | [0022](./0022-saved-spec-ids-can-be-edited-and-every-change-is-recorded.md) | Saved Spec IDs can be edited, and every change is recorded | Accepted |
 | [0023](./0023-accounts-are-created-by-invite-only.md) | Accounts are created by invite only | Accepted |
 | [0024](./0024-spec-ids-move-to-the-s2-format.md) | Spec IDs move to the S2 format | Accepted; partly superseded by 0025 |
-| [0025](./0025-spec-ids-are-written-short.md) | Spec IDs are written short: one letter for an empty slot, and no format tag | Accepted |
+| [0025](./0025-spec-ids-are-written-short.md) | Spec IDs are written short: one letter for an empty slot, and no format tag | Accepted; partly superseded by 0032 |
 | [0026](./0026-raw-text-is-read-by-rules-and-a-public-word-list.md) | Raw text is read by rules and a public word list | Accepted |
 | [0027](./0027-manufacturers-and-quotes-live-in-atlas-behind-sign-in.md) | Manufacturers and quotes live in Atlas, behind sign-in, and never in the repository | Accepted |
 | [0028](./0028-the-door-is-a-full-screen-curtain.md) | The door is a full-screen curtain | Accepted |
 | [0029](./0029-the-library-is-numbered-pages.md) | The library is numbered pages | Accepted |
 | [0030](./0030-roles-live-on-the-account.md) | Roles live on the account, and System Admins change them | Accepted |
 | [0031](./0031-the-dictionary-is-edited-by-suggestion-and-approval.md) | The dictionary is edited in the app, by suggestion and approval | Accepted |
+| [0032](./0032-spec-ids-are-written-tagged.md) | Spec IDs are written tagged: a letter and a number for each known fact | Accepted |

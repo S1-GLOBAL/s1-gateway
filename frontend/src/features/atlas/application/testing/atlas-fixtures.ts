@@ -9,11 +9,18 @@ import {
   type SlotRuleEntry,
   type SpecIdLookup,
 } from '../../domain/atlas';
+import { codeLetter } from '../../domain/code-letters';
 
 /** Test doubles for the Atlas feature. Never imported by production code. */
 
-/** The specification's illustrative bowl lid. Every other value in the tests is invented. */
+/**
+ * The specification's illustrative bowl lid, slot by slot, as the dotted code
+ * it was given out as. Every other value in the tests is invented.
+ */
 export const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
+
+/** The same bowl lid as a code is written today: a letter and a number per known fact. */
+export const ILLUSTRATIVE_V2 = 'A1B4D1E1F1-H90N33';
 
 /** `code` with one slot's text replaced: `withSlot(ILLUSTRATIVE, 'height', '0062')`. */
 export function withSlot(code: string, key: SlotKey, raw: string): string {
@@ -53,35 +60,35 @@ export const testDictionary: AtlasDictionary = {
       key: 'productType',
       name: 'Product type',
       values: [
-        { code: 'BLD', meaning: 'Bowl lid', searchWords: [] },
-        { code: 'BWL', meaning: 'Bowl', searchWords: [] },
+        { code: 'BLD', meaning: 'Bowl lid', number: 1, searchWords: [] },
+        { code: 'BWL', meaning: 'Bowl', number: 3, searchWords: [] },
       ],
     },
     {
       key: 'material',
       name: 'Material',
       values: [
-        { code: 'APS', meaning: 'Polymer, PS (polystyrene)', searchWords: [] },
-        { code: 'BPA', meaning: 'Paper, plain', searchWords: [] },
+        { code: 'APS', meaning: 'Polymer, PS (polystyrene)', number: 4, searchWords: [] },
+        { code: 'BPA', meaning: 'Paper, plain', number: 35, searchWords: [] },
       ],
     },
-    { key: 'coating', name: 'Coating', values: [{ code: 'PE', meaning: 'Polyethylene', searchWords: [] }] },
-    { key: 'colourClarity', name: 'Colour / clarity', values: [{ code: 'CL', meaning: 'Clear', searchWords: [] }] },
+    { key: 'coating', name: 'Coating', values: [{ code: 'PE', meaning: 'Polyethylene', number: 12, searchWords: [] }] },
+    { key: 'colourClarity', name: 'Colour / clarity', values: [{ code: 'CL', meaning: 'Clear', number: 1, searchWords: [] }] },
     {
       key: 'shape',
       name: 'Shape',
       values: [
-        { code: 'RD', meaning: 'Round', searchWords: [] },
-        { code: 'SQ', meaning: 'Square', searchWords: [] },
+        { code: 'RD', meaning: 'Round', number: 1, searchWords: [] },
+        { code: 'SQ', meaning: 'Square', number: 2, searchWords: [] },
       ],
     },
-    { key: 'profile', name: 'Profile', values: [{ code: 'DM', meaning: 'Dome', searchWords: [] }] },
+    { key: 'profile', name: 'Profile', values: [{ code: 'DM', meaning: 'Dome', number: 1, searchWords: [] }] },
     {
       key: 'capacity',
       name: 'Nominal capacity',
       values: [
-        { code: 'Z', meaning: 'Ounces', searchWords: [] },
-        { code: 'M', meaning: 'Millilitres', searchWords: [] },
+        { code: 'Z', meaning: 'Ounces', number: 1, searchWords: [] },
+        { code: 'M', meaning: 'Millilitres', number: 2, searchWords: [] },
       ],
     },
   ],
@@ -121,7 +128,11 @@ export const testDictionary: AtlasDictionary = {
   ],
 };
 
-/** The 25 slots of `code`, each meaning just the raw text, except the product type. */
+/**
+ * The 25 slots of the dotted `code`, each meaning just the raw text, except
+ * the product type, and each written as a code writes it today: `BLD` is `A1`,
+ * `0090` is `H90`.
+ */
 export function decodedFor(code: string): DecodedSpecId {
   const parts = code.split('.');
   return {
@@ -134,11 +145,28 @@ export function decodedFor(code: string): DecodedSpecId {
         key: slot.key,
         name: slot.name,
         raw,
+        part: partOf(slot.key, raw),
         state: 'value' as const,
         meaning: slot.key === 'productType' ? 'Bowl lid' : raw,
       };
     }),
   };
+}
+
+/** How a code written today writes a slot's raw text, numbered as in `s2Dictionary`; empty when left out. */
+function partOf(key: SlotKey, raw: string): string {
+  const letter = codeLetter(key);
+  if (letter === undefined || raw === '' || raw === 'Y' || raw === 'X') return '';
+  const numberOf = (slotKey: SlotKey, code: string) =>
+    s2Dictionary.slots.find((slot) => slot.key === slotKey)?.values.find((value) => value.code === code)?.number;
+  if (key === 'capacity') return `${letter}${numberOf('capacity', raw.slice(0, 1)) ?? ''}${trimZeros(raw.slice(1))}`;
+  if (/^[\d.]+$/.test(raw)) return `${letter}${trimZeros(raw)}`;
+  return `${letter}${numberOf(key, raw) ?? raw}`;
+}
+
+/** `0090` → `90`. */
+function trimZeros(digits: string): string {
+  return digits.replace(/^0+(?=\d)/, '');
 }
 
 /**
@@ -171,30 +199,30 @@ export const s1Dictionary: AtlasDictionary = {
       key: 'productType',
       name: 'Product type',
       values: [
-        { code: 'BLD', meaning: 'Bowl lid', searchWords: [] },
-        { code: 'CLD', meaning: 'Cup lid', searchWords: [] },
-        { code: 'BWL', meaning: 'Bowl', searchWords: [] },
-        { code: 'SUP', meaning: 'Stand-up pouch', searchWords: [] },
+        { code: 'BLD', meaning: 'Bowl lid', number: 1, searchWords: [] },
+        { code: 'CLD', meaning: 'Cup lid', number: 2, searchWords: [] },
+        { code: 'BWL', meaning: 'Bowl', number: 3, searchWords: [] },
+        { code: 'SUP', meaning: 'Stand-up pouch', number: 4, searchWords: [] },
       ],
     },
     {
       key: 'material',
       name: 'Material',
       values: [
-        { code: 'APS', meaning: 'Polymer, PS (polystyrene)', searchWords: [] },
-        { code: 'BKR', meaning: 'Paper and paperboard, kraft', searchWords: [] },
+        { code: 'APS', meaning: 'Polymer, PS (polystyrene)', number: 4, searchWords: [] },
+        { code: 'BKR', meaning: 'Paper and paperboard, kraft', number: 12, searchWords: [] },
       ],
     },
     {
       key: 'shape',
       name: 'Shape',
       values: [
-        { code: 'RD', meaning: 'Round', searchWords: [] },
-        { code: 'SQ', meaning: 'Square', searchWords: [] },
+        { code: 'RD', meaning: 'Round', number: 1, searchWords: [] },
+        { code: 'SQ', meaning: 'Square', number: 2, searchWords: [] },
       ],
     },
-    { key: 'profile', name: 'Profile', values: [{ code: 'DM', meaning: 'Dome', searchWords: [] }] },
-    { key: 'capacity', name: 'Nominal capacity', values: [{ code: 'Z', meaning: 'Ounces, nominal trade size', searchWords: [] }] },
+    { key: 'profile', name: 'Profile', values: [{ code: 'DM', meaning: 'Dome', number: 1, searchWords: [] }] },
+    { key: 'capacity', name: 'Nominal capacity', values: [{ code: 'Z', meaning: 'Ounces, nominal trade size', number: 1, searchWords: [] }] },
   ],
   rules: [
     ...rulesFor('BLD', [
@@ -339,196 +367,196 @@ export const s2Dictionary: AtlasDictionary = {
       key: 'productType',
       name: 'Product type',
       values: [
-        { code: 'BAG', meaning: 'Bag', searchWords: [] },
-        { code: 'BLD', meaning: 'Bowl lid', searchWords: [] },
-        { code: 'BWL', meaning: 'Bowl', searchWords: [] },
-        { code: 'CCR', meaning: 'Cup carrier', searchWords: [] },
-        { code: 'CKT', meaning: 'Cutlery kit', searchWords: [] },
-        { code: 'CLD', meaning: 'Cup lid', searchWords: [] },
-        { code: 'CTL', meaning: 'Container lid', searchWords: [] },
-        { code: 'CTN', meaning: 'Container', searchWords: [] },
-        { code: 'CUP', meaning: 'Cup', searchWords: [] },
-        { code: 'CWL', meaning: 'Container with lid', searchWords: [] },
-        { code: 'FCB', meaning: 'Folding carton', searchWords: [] },
-        { code: 'FLM', meaning: 'Film or roll', searchWords: [] },
-        { code: 'FRC', meaning: 'Fry carton', searchWords: [] },
-        { code: 'FRK', meaning: 'Fork', searchWords: [] },
-        { code: 'HCT', meaning: 'Hinged container (clamshell)', searchWords: [] },
-        { code: 'KNF', meaning: 'Knife', searchWords: [] },
-        { code: 'LBL', meaning: 'Label', searchWords: [] },
-        { code: 'NPK', meaning: 'Napkin', searchWords: [] },
-        { code: 'PAN', meaning: 'Pan', searchWords: [] },
-        { code: 'PCL', meaning: 'Portion cup lid', searchWords: [] },
-        { code: 'PCP', meaning: 'Portion cup', searchWords: [] },
-        { code: 'PLT', meaning: 'Plate', searchWords: [] },
-        { code: 'RSC', meaning: 'Shipping box (RSC)', searchWords: [] },
-        { code: 'SCH', meaning: 'Sachet', searchWords: [] },
-        { code: 'SPN', meaning: 'Spoon', searchWords: [] },
-        { code: 'STR', meaning: 'Stirrer', searchWords: [] },
-        { code: 'STW', meaning: 'Straw', searchWords: [] },
-        { code: 'SUP', meaning: 'Stand-up pouch', searchWords: [] },
-        { code: 'TKB', meaning: 'Takeout box', searchWords: [] },
-        { code: 'TRY', meaning: 'Tray', searchWords: [] },
-        { code: 'WRP', meaning: 'Wrap or sheet', searchWords: [] },
+        { code: 'BAG', meaning: 'Bag', number: 16, searchWords: [] },
+        { code: 'BLD', meaning: 'Bowl lid', number: 1, searchWords: [] },
+        { code: 'BWL', meaning: 'Bowl', number: 3, searchWords: [] },
+        { code: 'CCR', meaning: 'Cup carrier', number: 23, searchWords: [] },
+        { code: 'CKT', meaning: 'Cutlery kit', number: 29, searchWords: [] },
+        { code: 'CLD', meaning: 'Cup lid', number: 2, searchWords: [] },
+        { code: 'CTL', meaning: 'Container lid', number: 9, searchWords: [] },
+        { code: 'CTN', meaning: 'Container', number: 8, searchWords: [] },
+        { code: 'CUP', meaning: 'Cup', number: 5, searchWords: [] },
+        { code: 'CWL', meaning: 'Container with lid', number: 10, searchWords: [] },
+        { code: 'FCB', meaning: 'Folding carton', number: 14, searchWords: [] },
+        { code: 'FLM', meaning: 'Film or roll', number: 19, searchWords: [] },
+        { code: 'FRC', meaning: 'Fry carton', number: 13, searchWords: [] },
+        { code: 'FRK', meaning: 'Fork', number: 26, searchWords: [] },
+        { code: 'HCT', meaning: 'Hinged container (clamshell)', number: 11, searchWords: [] },
+        { code: 'KNF', meaning: 'Knife', number: 27, searchWords: [] },
+        { code: 'LBL', meaning: 'Label', number: 31, searchWords: [] },
+        { code: 'NPK', meaning: 'Napkin', number: 17, searchWords: [] },
+        { code: 'PAN', meaning: 'Pan', number: 22, searchWords: [] },
+        { code: 'PCL', meaning: 'Portion cup lid', number: 7, searchWords: [] },
+        { code: 'PCP', meaning: 'Portion cup', number: 6, searchWords: [] },
+        { code: 'PLT', meaning: 'Plate', number: 20, searchWords: [] },
+        { code: 'RSC', meaning: 'Shipping box (RSC)', number: 15, searchWords: [] },
+        { code: 'SCH', meaning: 'Sachet', number: 30, searchWords: [] },
+        { code: 'SPN', meaning: 'Spoon', number: 28, searchWords: [] },
+        { code: 'STR', meaning: 'Stirrer', number: 25, searchWords: [] },
+        { code: 'STW', meaning: 'Straw', number: 24, searchWords: [] },
+        { code: 'SUP', meaning: 'Stand-up pouch', number: 4, searchWords: [] },
+        { code: 'TKB', meaning: 'Takeout box', number: 12, searchWords: [] },
+        { code: 'TRY', meaning: 'Tray', number: 21, searchWords: [] },
+        { code: 'WRP', meaning: 'Wrap or sheet', number: 18, searchWords: [] },
       ],
     },
     {
       key: 'material',
       name: 'Material',
       values: [
-        { code: 'A00', meaning: 'Polymer, grade not known', searchWords: [] },
-        { code: 'AEP', meaning: 'Polymer, EPS foam', searchWords: [] },
-        { code: 'AHD', meaning: 'Polymer, HDPE', searchWords: [] },
-        { code: 'ALD', meaning: 'Polymer, LDPE', searchWords: [] },
-        { code: 'ALL', meaning: 'Polymer, LLDPE', searchWords: [] },
-        { code: 'APL', meaning: 'Polymer, PLA', searchWords: [] },
-        { code: 'APM', meaning: 'Polymer, PSM (starch blend)', searchWords: [] },
-        { code: 'APP', meaning: 'Polymer, PP', searchWords: [] },
-        { code: 'APS', meaning: 'Polymer, PS (polystyrene)', searchWords: [] },
-        { code: 'APT', meaning: 'Polymer, PET', searchWords: [] },
-        { code: 'ARP', meaning: 'Polymer, rPET', searchWords: [] },
-        { code: 'B00', meaning: 'Paper and paperboard, grade not known', searchWords: [] },
-        { code: 'BCB', meaning: 'Paper and paperboard, corrugated', searchWords: [] },
-        { code: 'BCS', meaning: 'Paper and paperboard, cup stock', searchWords: [] },
-        { code: 'BGP', meaning: 'Paper and paperboard, greaseproof', searchWords: [] },
-        { code: 'BKB', meaning: 'Paper and paperboard, brown kraft', searchWords: [] },
-        { code: 'BKC', meaning: 'Paper and paperboard, recycled kraft', searchWords: [] },
-        { code: 'BKR', meaning: 'Paper and paperboard, kraft', searchWords: [] },
-        { code: 'BKV', meaning: 'Paper and paperboard, virgin kraft', searchWords: [] },
-        { code: 'BKW', meaning: 'Paper and paperboard, white kraft', searchWords: [] },
-        { code: 'BSB', meaning: 'Paper and paperboard, SBS', searchWords: [] },
-        { code: 'BSG', meaning: 'Paper and paperboard, semi-gloss', searchWords: [] },
-        { code: 'BTS', meaning: 'Paper and paperboard, tissue', searchWords: [] },
-        { code: 'BWP', meaning: 'Paper and paperboard, wax paper', searchWords: [] },
-        { code: 'C00', meaning: 'Molded fibre, grade not known', searchWords: [] },
-        { code: 'CBG', meaning: 'Molded fibre, bagasse', searchWords: [] },
-        { code: 'CBM', meaning: 'Molded fibre, bamboo', searchWords: [] },
-        { code: 'CGR', meaning: 'Molded fibre, grass', searchWords: [] },
-        { code: 'CSW', meaning: 'Molded fibre, seaweed', searchWords: [] },
-        { code: 'D00', meaning: 'Metal, grade not known', searchWords: [] },
-        { code: 'DAL', meaning: 'Metal, aluminium', searchWords: [] },
-        { code: 'FBW', meaning: 'Wood, birch / hardwood', searchWords: [] },
-        { code: 'HSI', meaning: 'Elastomer, silicone', searchWords: [] },
-        { code: 'JPP', meaning: 'Laminate, paper / polymer', searchWords: [] },
+        { code: 'A00', meaning: 'Polymer, grade not known', number: 11, searchWords: [] },
+        { code: 'AEP', meaning: 'Polymer, EPS foam', number: 5, searchWords: [] },
+        { code: 'AHD', meaning: 'Polymer, HDPE', number: 6, searchWords: [] },
+        { code: 'ALD', meaning: 'Polymer, LDPE', number: 7, searchWords: [] },
+        { code: 'ALL', meaning: 'Polymer, LLDPE', number: 8, searchWords: [] },
+        { code: 'APL', meaning: 'Polymer, PLA', number: 9, searchWords: [] },
+        { code: 'APM', meaning: 'Polymer, PSM (starch blend)', number: 10, searchWords: [] },
+        { code: 'APP', meaning: 'Polymer, PP', number: 3, searchWords: [] },
+        { code: 'APS', meaning: 'Polymer, PS (polystyrene)', number: 4, searchWords: [] },
+        { code: 'APT', meaning: 'Polymer, PET', number: 1, searchWords: [] },
+        { code: 'ARP', meaning: 'Polymer, rPET', number: 2, searchWords: [] },
+        { code: 'B00', meaning: 'Paper and paperboard, grade not known', number: 24, searchWords: [] },
+        { code: 'BCB', meaning: 'Paper and paperboard, corrugated', number: 19, searchWords: [] },
+        { code: 'BCS', meaning: 'Paper and paperboard, cup stock', number: 17, searchWords: [] },
+        { code: 'BGP', meaning: 'Paper and paperboard, greaseproof', number: 20, searchWords: [] },
+        { code: 'BKB', meaning: 'Paper and paperboard, brown kraft', number: 13, searchWords: [] },
+        { code: 'BKC', meaning: 'Paper and paperboard, recycled kraft', number: 16, searchWords: [] },
+        { code: 'BKR', meaning: 'Paper and paperboard, kraft', number: 12, searchWords: [] },
+        { code: 'BKV', meaning: 'Paper and paperboard, virgin kraft', number: 15, searchWords: [] },
+        { code: 'BKW', meaning: 'Paper and paperboard, white kraft', number: 14, searchWords: [] },
+        { code: 'BSB', meaning: 'Paper and paperboard, SBS', number: 18, searchWords: [] },
+        { code: 'BSG', meaning: 'Paper and paperboard, semi-gloss', number: 23, searchWords: [] },
+        { code: 'BTS', meaning: 'Paper and paperboard, tissue', number: 21, searchWords: [] },
+        { code: 'BWP', meaning: 'Paper and paperboard, wax paper', number: 22, searchWords: [] },
+        { code: 'C00', meaning: 'Molded fibre, grade not known', number: 29, searchWords: [] },
+        { code: 'CBG', meaning: 'Molded fibre, bagasse', number: 25, searchWords: [] },
+        { code: 'CBM', meaning: 'Molded fibre, bamboo', number: 26, searchWords: [] },
+        { code: 'CGR', meaning: 'Molded fibre, grass', number: 27, searchWords: [] },
+        { code: 'CSW', meaning: 'Molded fibre, seaweed', number: 28, searchWords: [] },
+        { code: 'D00', meaning: 'Metal, grade not known', number: 31, searchWords: [] },
+        { code: 'DAL', meaning: 'Metal, aluminium', number: 30, searchWords: [] },
+        { code: 'FBW', meaning: 'Wood, birch / hardwood', number: 32, searchWords: [] },
+        { code: 'HSI', meaning: 'Elastomer, silicone', number: 33, searchWords: [] },
+        { code: 'JPP', meaning: 'Laminate, paper / polymer', number: 34, searchWords: [] },
       ],
     },
     {
       key: 'coating',
       name: 'Coating',
       values: [
-        { code: 'CP', meaning: 'CPET coated', searchWords: [] },
-        { code: 'GR', meaning: 'Grease-resistant coating', searchWords: [] },
-        { code: 'LM', meaning: 'Film laminated', searchWords: [] },
-        { code: 'NC', meaning: 'No coating, as stated by the source', searchWords: [] },
-        { code: 'PB', meaning: 'PE both sides', searchWords: [] },
-        { code: 'PI', meaning: 'PE inside only', searchWords: [] },
-        { code: 'PL', meaning: 'PLA lined', searchWords: [] },
-        { code: 'PO', meaning: 'PE outside only', searchWords: [] },
-        { code: 'PU', meaning: 'PE, side not stated', searchWords: [] },
-        { code: 'SC', meaning: 'Silicone coated', searchWords: [] },
-        { code: 'WC', meaning: 'Wax coated', searchWords: [] },
+        { code: 'CP', meaning: 'CPET coated', number: 7, searchWords: [] },
+        { code: 'GR', meaning: 'Grease-resistant coating', number: 8, searchWords: [] },
+        { code: 'LM', meaning: 'Film laminated', number: 10, searchWords: [] },
+        { code: 'NC', meaning: 'No coating, as stated by the source', number: 1, searchWords: [] },
+        { code: 'PB', meaning: 'PE both sides', number: 4, searchWords: [] },
+        { code: 'PI', meaning: 'PE inside only', number: 2, searchWords: [] },
+        { code: 'PL', meaning: 'PLA lined', number: 6, searchWords: [] },
+        { code: 'PO', meaning: 'PE outside only', number: 3, searchWords: [] },
+        { code: 'PU', meaning: 'PE, side not stated', number: 5, searchWords: [] },
+        { code: 'SC', meaning: 'Silicone coated', number: 11, searchWords: [] },
+        { code: 'WC', meaning: 'Wax coated', number: 9, searchWords: [] },
       ],
     },
     {
       key: 'colourClarity',
       name: 'Colour / clarity',
       values: [
-        { code: 'BK', meaning: 'Black', searchWords: [] },
-        { code: 'BR', meaning: 'Brown', searchWords: [] },
-        { code: 'CL', meaning: 'Clear', searchWords: [] },
-        { code: 'TL', meaning: 'Translucent', searchWords: [] },
-        { code: 'WH', meaning: 'White', searchWords: [] },
+        { code: 'BK', meaning: 'Black', number: 5, searchWords: [] },
+        { code: 'BR', meaning: 'Brown', number: 4, searchWords: [] },
+        { code: 'CL', meaning: 'Clear', number: 1, searchWords: [] },
+        { code: 'TL', meaning: 'Translucent', number: 2, searchWords: [] },
+        { code: 'WH', meaning: 'White', number: 3, searchWords: [] },
       ],
     },
     {
       key: 'shape',
       name: 'Shape',
       values: [
-        { code: 'OV', meaning: 'Oval', searchWords: [] },
-        { code: 'RC', meaning: 'Rectangular', searchWords: [] },
-        { code: 'RD', meaning: 'Round', searchWords: [] },
-        { code: 'SQ', meaning: 'Square', searchWords: [] },
+        { code: 'OV', meaning: 'Oval', number: 4, searchWords: [] },
+        { code: 'RC', meaning: 'Rectangular', number: 3, searchWords: [] },
+        { code: 'RD', meaning: 'Round', number: 1, searchWords: [] },
+        { code: 'SQ', meaning: 'Square', number: 2, searchWords: [] },
       ],
     },
     {
       key: 'profile',
       name: 'Profile',
       values: [
-        { code: 'DM', meaning: 'Dome', searchWords: [] },
-        { code: 'FL', meaning: 'Flat', searchWords: [] },
-        { code: 'HD', meaning: 'Half dome', searchWords: [] },
+        { code: 'DM', meaning: 'Dome', number: 1, searchWords: [] },
+        { code: 'FL', meaning: 'Flat', number: 3, searchWords: [] },
+        { code: 'HD', meaning: 'Half dome', number: 2, searchWords: [] },
       ],
     },
     {
       key: 'capacity',
       name: 'Nominal capacity',
       values: [
-        { code: 'G', meaning: 'Grams', searchWords: [] },
-        { code: 'M', meaning: 'Millilitres', searchWords: [] },
-        { code: 'N', meaning: 'Count', searchWords: [] },
-        { code: 'S', meaning: 'Servings', searchWords: [] },
-        { code: 'Z', meaning: 'Ounces, nominal trade size', searchWords: [] },
+        { code: 'G', meaning: 'Grams', number: 5, searchWords: [] },
+        { code: 'M', meaning: 'Millilitres', number: 2, searchWords: [] },
+        { code: 'N', meaning: 'Count', number: 4, searchWords: [] },
+        { code: 'S', meaning: 'Servings', number: 3, searchWords: [] },
+        { code: 'Z', meaning: 'Ounces, nominal trade size', number: 1, searchWords: [] },
       ],
     },
     {
       key: 'wall',
       name: 'Wall',
       values: [
-        { code: 'DW', meaning: 'Double wall', searchWords: [] },
-        { code: 'RW', meaning: 'Ripple wall', searchWords: [] },
-        { code: 'SW', meaning: 'Single wall', searchWords: [] },
+        { code: 'DW', meaning: 'Double wall', number: 2, searchWords: [] },
+        { code: 'RW', meaning: 'Ripple wall', number: 3, searchWords: [] },
+        { code: 'SW', meaning: 'Single wall', number: 1, searchWords: [] },
       ],
     },
     {
       key: 'print',
       name: 'Print',
       values: [
-        { code: '01', meaning: '1 colour', searchWords: [] },
-        { code: '02', meaning: '2 colours', searchWords: [] },
-        { code: '03', meaning: '3 colours', searchWords: [] },
-        { code: '04', meaning: '4 colours', searchWords: [] },
-        { code: '05', meaning: '5 colours', searchWords: [] },
-        { code: '06', meaning: '6 colours', searchWords: [] },
-        { code: '07', meaning: '7 colours', searchWords: [] },
-        { code: '08', meaning: '8 colours', searchWords: [] },
-        { code: 'FC', meaning: 'Full colour', searchWords: [] },
-        { code: 'NP', meaning: 'No print', searchWords: [] },
+        { code: '01', meaning: '1 colour', number: 2, searchWords: [] },
+        { code: '02', meaning: '2 colours', number: 3, searchWords: [] },
+        { code: '03', meaning: '3 colours', number: 4, searchWords: [] },
+        { code: '04', meaning: '4 colours', number: 5, searchWords: [] },
+        { code: '05', meaning: '5 colours', number: 6, searchWords: [] },
+        { code: '06', meaning: '6 colours', number: 7, searchWords: [] },
+        { code: '07', meaning: '7 colours', number: 8, searchWords: [] },
+        { code: '08', meaning: '8 colours', number: 9, searchWords: [] },
+        { code: 'FC', meaning: 'Full colour', number: 10, searchWords: [] },
+        { code: 'NP', meaning: 'No print', number: 1, searchWords: [] },
       ],
     },
     {
       key: 'lidOpening',
       name: 'Lid opening',
       values: [
-        { code: 'CO', meaning: 'Closed', searchWords: [] },
-        { code: 'SH', meaning: 'Straw hole or slit', searchWords: [] },
-        { code: 'SP', meaning: 'Sip-through opening', searchWords: [] },
+        { code: 'CO', meaning: 'Closed', number: 1, searchWords: [] },
+        { code: 'SH', meaning: 'Straw hole or slit', number: 3, searchWords: [] },
+        { code: 'SP', meaning: 'Sip-through opening', number: 2, searchWords: [] },
       ],
     },
     {
       key: 'handle',
       name: 'Handle',
       values: [
-        { code: 'FT', meaning: 'Flat tape', searchWords: [] },
-        { code: 'NH', meaning: 'No handle', searchWords: [] },
-        { code: 'TS', meaning: 'T-shirt (vest)', searchWords: [] },
-        { code: 'TW', meaning: 'Twisted paper', searchWords: [] },
+        { code: 'FT', meaning: 'Flat tape', number: 3, searchWords: [] },
+        { code: 'NH', meaning: 'No handle', number: 1, searchWords: [] },
+        { code: 'TS', meaning: 'T-shirt (vest)', number: 4, searchWords: [] },
+        { code: 'TW', meaning: 'Twisted paper', number: 2, searchWords: [] },
       ],
     },
     {
       key: 'wrap',
       name: 'Individual wrap',
       values: [
-        { code: 'FW', meaning: 'Film-wrapped', searchWords: [] },
-        { code: 'NW', meaning: 'Not wrapped', searchWords: [] },
-        { code: 'PW', meaning: 'Paper-wrapped', searchWords: [] },
+        { code: 'FW', meaning: 'Film-wrapped', number: 3, searchWords: [] },
+        { code: 'NW', meaning: 'Not wrapped', number: 1, searchWords: [] },
+        { code: 'PW', meaning: 'Paper-wrapped', number: 2, searchWords: [] },
       ],
     },
     {
       key: 'window',
       name: 'Window',
       values: [
-        { code: 'NN', meaning: 'No window', searchWords: [] },
-        { code: 'WN', meaning: 'With window', searchWords: [] },
+        { code: 'NN', meaning: 'No window', number: 1, searchWords: [] },
+        { code: 'WN', meaning: 'With window', number: 2, searchWords: [] },
       ],
     },
   ],

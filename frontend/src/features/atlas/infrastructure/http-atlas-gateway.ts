@@ -111,11 +111,15 @@ export class HttpAtlasGateway implements AtlasGateway {
     }
   }
 
-  async readText(input: { text: string; productType?: string }): Promise<SpecIdTextReading> {
+  async readText(input: { text: string; productType?: string }, signal?: AbortSignal): Promise<SpecIdTextReading> {
     const body: ReadSpecIdTextRequest = { text: input.text };
     if (input.productType !== undefined) body.productType = input.productType;
     try {
-      const response = await this.http.post<DataEnvelope<SpecIdTextReadingContract>>('/atlas/spec-ids/read', body);
+      const response = await this.http.post<DataEnvelope<SpecIdTextReadingContract>>(
+        '/atlas/spec-ids/read',
+        body,
+        signal === undefined ? undefined : { signal },
+      );
       return toTextReading(response.data.data);
     } catch (error) {
       throw toAppError(error);
@@ -228,9 +232,10 @@ function toDictionary(contract: AtlasDictionaryContract): AtlasDictionary {
     slots: contract.slots.map((slot) => ({
       key: slot.key,
       name: slot.name,
-      values: slot.values.map(({ code, meaning, searchWords }) => ({
+      values: slot.values.map(({ code, meaning, number, searchWords }) => ({
         code,
         meaning,
+        number,
         // An API older than plan 0010's phase 5 sends none: no approved words yet.
         searchWords: [...(searchWords ?? [])],
       })),
@@ -245,7 +250,15 @@ function toDecodedSpecId(contract: DecodedSpecIdContract): DecodedSpecId {
   return {
     code: contract.code,
     dictionaryRelease: contract.dictionaryRelease,
-    slots: contract.slots.map(({ number, key, name, raw, state, meaning }) => ({ number, key, name, raw, state, meaning })),
+    slots: contract.slots.map(({ number, key, name, raw, part, state, meaning }) => ({
+      number,
+      key,
+      name,
+      raw,
+      part,
+      state,
+      meaning,
+    })),
   };
 }
 
@@ -254,6 +267,7 @@ function toTextReading(contract: SpecIdTextReadingContract): SpecIdTextReading {
     read: contract.read.map(({ key, name, meaning, words, ruling }) => ({ key, name, meaning, words, ruling })),
     ignored: [...contract.ignored],
     conflicts: contract.conflicts.map(({ key, name, found }) => ({ key, name, found: [...found] })),
+    notes: [...contract.notes],
     decoded: contract.decoded === null ? null : toDecodedSpecId(contract.decoded),
   };
 }

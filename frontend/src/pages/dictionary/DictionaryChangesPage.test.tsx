@@ -24,7 +24,7 @@ const DICTIONARY: AtlasDictionary = {
   release: 'S2 0.1.0',
   approvedOn: '2026-10-19',
   change: null,
-  slots: [{ key: 'material', name: 'Material', values: [{ code: 'APS', meaning: 'Polymer, PS', searchWords: [] }, { code: 'APP', meaning: 'Polymer, PP', searchWords: [] }] }],
+  slots: [{ key: 'material', name: 'Material', values: [{ code: 'APS', meaning: 'Polymer, PS', number: 4, searchWords: [] }, { code: 'APP', meaning: 'Polymer, PP', number: 3, searchWords: [] }] }],
   rules: [],
 };
 

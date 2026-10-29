@@ -18,7 +18,7 @@ export function connectTestDatabase(): DatabaseConnection {
  */
 export async function resetTables(db: Database): Promise<void> {
   await db.execute(
-    sql`truncate table account_invites, atlas_dictionary_renames, atlas_dictionary_search_words, atlas_dictionary_changes, atlas_dictionary_suggestion_events, atlas_dictionary_suggestions, atlas_manufacturer_stage_changes, atlas_quotes, atlas_manufacturers, atlas_spec_id_changes, atlas_spec_ids, password_reset_tokens, sessions, accounts, tools restart identity cascade`,
+    sql`truncate table account_invites, atlas_dictionary_renames, atlas_dictionary_retired_numbers, atlas_dictionary_search_words, atlas_dictionary_changes, atlas_dictionary_suggestion_events, atlas_dictionary_suggestions, atlas_manufacturer_stage_changes, atlas_quotes, atlas_manufacturers, atlas_spec_id_changes, atlas_spec_ids, password_reset_tokens, sessions, accounts, tools restart identity cascade`,
   );
   await restoreDictionary(db);
 }

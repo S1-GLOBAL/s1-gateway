@@ -1,8 +1,10 @@
 import { err, ok, type Result } from '../../../shared/domain/result.js';
 import { expectedFill, isDoesNotApply, isNotKnown } from './applicability.js';
+import { capacityValue, isDottedCode, partOf, readCodeFacts, writeCode, writtenSlots } from './code.js';
 import type { Dictionary } from './dictionary.js';
-import { multiply, readDecimal, roundHalfUp } from './measurement.js';
+import { MAX_DECIMAL_PLACES, multiply, readDecimal, roundHalfUp } from './measurement.js';
 import { S1_ADDED_SLOTS, S1_LENGTH, S1_PARTS, shortForm } from './old-codes.js';
+import type { CapacityInput, MeasurementInput, SpecIdFactsInput } from './spec-id-facts.js';
 import { InvalidSpecIdError, type SpecIdIssues } from './spec-id.errors.js';
 import { specIdMessages as messages } from './spec-id.messages.js';
 import {
@@ -27,50 +29,7 @@ import {
   type SlotKey,
 } from './slots.js';
 
-/** A measured value as typed: `{ value: "1.375", unit: "in" }`. */
-export interface MeasurementInput {
-  readonly value: string;
-  readonly unit: string;
-}
-
-/** A capacity unit letter and a whole number: `{ unit: "Z", value: "6" }`. */
-export interface CapacityInput {
-  readonly unit: string;
-  readonly value: string;
-}
-
-/**
- * What is known about a product. A slot left out, or `null`, has no value:
- * the encoder writes `X` where the slot doesn't apply and `Y` everywhere else.
- */
-export interface SpecIdFactsInput {
-  readonly productType: string;
-  readonly material?: string | null | undefined;
-  readonly coating?: string | null | undefined;
-  readonly colourClarity?: string | null | undefined;
-  readonly shape?: string | null | undefined;
-  readonly profile?: string | null | undefined;
-  readonly capacity?: CapacityInput | null | undefined;
-  readonly topDiameter?: MeasurementInput | null | undefined;
-  readonly bottomDiameter?: MeasurementInput | null | undefined;
-  readonly height?: MeasurementInput | null | undefined;
-  readonly length?: MeasurementInput | null | undefined;
-  readonly width?: MeasurementInput | null | undefined;
-  readonly gusset?: MeasurementInput | null | undefined;
-  readonly unitWeight?: MeasurementInput | null | undefined;
-  readonly basisWeight?: MeasurementInput | null | undefined;
-  readonly thickness?: MeasurementInput | null | undefined;
-  readonly wall?: string | null | undefined;
-  readonly print?: string | null | undefined;
-  /** A whole number as text, 1–12. */
-  readonly compartments?: string | null | undefined;
-  /** A whole number as text, 1–4. */
-  readonly plies?: string | null | undefined;
-  readonly lidOpening?: string | null | undefined;
-  readonly handle?: string | null | undefined;
-  readonly wrap?: string | null | undefined;
-  readonly window?: string | null | undefined;
-}
+export type { CapacityInput, MeasurementInput, SpecIdFactsInput } from './spec-id-facts.js';
 
 export type SlotState = 'value' | 'not-known' | 'does-not-apply';
 
@@ -79,8 +38,10 @@ export interface DescribedSlot {
   readonly number: number;
   readonly key: SlotKey;
   readonly name: string;
-  /** The slot's characters, exactly as they appear in the code. */
+  /** The slot's value as it is stored: `BCS`, `Z0012`, `0090`, or the marker `Y` or `X` (ADR 0025). */
   readonly raw: string;
+  /** How the code writes it: `B17`, `G112`, `H90`; empty when it is left out (ADR 0032). */
+  readonly part: string;
   readonly state: SlotState;
   /** "Bowl lid", "90 mm", "3.3 g", "Not known", "Doesn't apply". */
   readonly meaning: string;
@@ -89,6 +50,8 @@ export interface DescribedSlot {
 type SlotValues = Readonly<Record<SlotKey, string>>;
 
 const DIGITS = /^\d+$/;
+/** A capacity's amount as its slot holds it: four digits, then perhaps a point and up to six more. */
+const CAPACITY_DIGITS = new RegExp(`^\\d{4}(?:\\.\\d{1,${MAX_DECIMAL_PLACES}})?$`);
 
 /** The dictionary slots that hold a code as they are, without a number after it. */
 const CODE_SLOTS = [
@@ -123,24 +86,29 @@ const MEASURE_SLOTS: readonly MeasureSlotKey[] = [
 type Reading = { readonly raw: string; readonly problem?: undefined } | { readonly problem: string };
 
 /**
- * A Spec ID (ADR 0019, ADR 0024, ADR 0025): 25 dot-separated slots, product
- * type first, saying what a product physically is. A slot not known is `Y`,
- * one that doesn't apply `X`. Every instance is valid against the dictionary
- * it was read or built with.
+ * A Spec ID (ADR 0019, ADR 0024, ADR 0025, ADR 0032): 25 slots, product type
+ * first, saying what a product physically is. A slot not known holds `Y`, one
+ * that doesn't apply `X`. Its code writes each known slot as a letter and a
+ * number, `A5B17D3E1Q2R3-G112H90J110`, leaving the others out. Every instance
+ * is valid against the dictionary it was read or built with.
  */
 export class SpecId {
-  private constructor(private readonly values: SlotValues) {}
+  private constructor(
+    private readonly values: SlotValues,
+    private readonly writtenCode: string,
+  ) {}
 
   /**
-   * Reads a code, reporting every problem at once with at most one message
-   * per slot, so the page can show each beside the slot it concerns. A code
-   * given out before (S1, or starting `S2.`) is read as the short code it
-   * converts to, and a marker written wide (`0000`, `XX`) as its one letter
-   * (ADR 0025).
+   * Reads a code. One written today may have its letters in any order and
+   * either case; its messages are about the whole code. A dotted code given
+   * out before is read slot by slot, with at most one message per slot: S1,
+   * long (`S2.`) or short, a marker written wide (`0000`, `XX`) as its one
+   * letter (ADR 0025), and an option in the letters it has now (ADR 0031).
    */
   static parse(input: string, dictionary: Dictionary): Result<SpecId, InvalidSpecIdError> {
     const trimmed = input.trim();
     if (trimmed.length === 0) return err(new InvalidSpecIdError({ code: [messages.empty()] }));
+    if (!isDottedCode(trimmed)) return SpecId.readCode(trimmed, dictionary);
     const s1 = checkS1(trimmed);
     if (s1) return err(s1);
     const parts = shortForm(trimmed).split('.');
@@ -148,8 +116,24 @@ export class SpecId {
       return err(new InvalidSpecIdError({ code: [messages.wrongPartCount(parts.length)] }));
     }
     const written = Object.fromEntries(SLOTS.map((slot, index) => [slot.key, parts[index] ?? ''])) as SlotValues;
-    const values = live(written, dictionary);
+    return SpecId.fromSlots(live(written, dictionary), dictionary);
+  }
 
+  /** A code written today: its facts, built. Every message is about the whole code. */
+  private static readCode(input: string, dictionary: Dictionary): Result<SpecId, InvalidSpecIdError> {
+    const facts = readCodeFacts(input, dictionary);
+    if (!facts.ok) return err(new InvalidSpecIdError({ code: facts.error }));
+    const built = SpecId.build(facts.value, dictionary);
+    if (built.ok) return built;
+    const problems = Object.values(built.error.issues).flatMap((list) => list ?? []);
+    return err(new InvalidSpecIdError({ code: problems }));
+  }
+
+  /**
+   * A Spec ID from each slot's value, checked as a code is: each value on its
+   * own, then against what its product type, shape and material allow.
+   */
+  static fromSlots(values: SlotValues, dictionary: Dictionary): Result<SpecId, InvalidSpecIdError> {
     const issues: SpecIdIssues = {};
     const passed = new Set<SlotKey>();
     for (const { key } of SLOTS) {
@@ -169,7 +153,7 @@ export class SpecId {
     }
 
     if (Object.keys(issues).length > 0) return err(new InvalidSpecIdError(issues));
-    return ok(new SpecId(values));
+    return ok(SpecId.checked(values, dictionary));
   }
 
   /**
@@ -229,34 +213,60 @@ export class SpecId {
     }
 
     if (Object.keys(issues).length > 0) return err(new InvalidSpecIdError(issues));
-    return ok(new SpecId(values));
+    return ok(SpecId.checked(values, dictionary));
   }
 
-  /** Rebuilds a Spec ID that was valid when it was stored. For persistence only. */
-  static restore(values: SlotValues): SpecId {
-    return new SpecId(values);
+  /** Values just checked against `dictionary`, whose every option has a number. */
+  private static checked(values: SlotValues, dictionary: Dictionary): SpecId {
+    const code = writeCode((key) => values[key], dictionary);
+    if (code === null) throw new Error(`Dictionary ${dictionary.release} has an option without a number`);
+    return new SpecId(values, code);
   }
 
-  /** Rebuilds a stored code, written out, that was valid when it was stored. For persistence only. */
-  static restoreCode(code: string): SpecId {
-    const parts = code.split('.');
-    return new SpecId(Object.fromEntries(SLOTS.map((slot, index) => [slot.key, parts[index] ?? ''])) as SlotValues);
+  /** Rebuilds a Spec ID that was valid when it was stored, with the code stored with it. For persistence only. */
+  static restore(values: SlotValues, code: string): SpecId {
+    return new SpecId(values, code);
   }
 
+  /**
+   * The Spec ID a code said when it was written, not checked against today's
+   * rules, for History: today's spelling, or a dotted code given out before.
+   * Null when the text is not a code.
+   */
+  static restoreWritten(code: string, dictionary: Dictionary): SpecId | null {
+    const values = writtenSlots(code, dictionary);
+    if (values === null) return null;
+    return new SpecId(values, writeCode((key) => values[key], dictionary) ?? code);
+  }
+
+  /** The code: each known slot's letter and number, in the standard order (ADR 0032). */
   get code(): string {
+    return this.writtenCode;
+  }
+
+  /**
+   * The slots as the dotted code an API before ADR 0032 wrote them, to find
+   * a row an older API saves during a deploy. A decimal capacity has none.
+   */
+  get dottedCode(): string {
     return SLOTS.map((slot) => this.values[slot.key]).join('.');
   }
 
-  /** A slot's characters, exactly as they appear in the code. */
+  /** A slot's value as it is stored: `BCS`, `Z0012`, `0090`, `Y`, `X`. */
   slot(key: SlotKey): string {
     return this.values[key];
+  }
+
+  /** Whether every slot holds the same value as `other`'s: one code, the same letters and markers. */
+  sameSlotsAs(other: SpecId): boolean {
+    return SLOTS.every(({ key }) => this.values[key] === other.slot(key));
   }
 
   /** The 25 slots in order, each read in plain words. */
   describe(dictionary: Dictionary): DescribedSlot[] {
     return SLOTS.map((slot) => {
       const raw = this.values[slot.key];
-      const base = { number: slot.number, key: slot.key, name: slot.name, raw };
+      const base = { number: slot.number, key: slot.key, name: slot.name, raw, part: partOf(slot.key, raw, dictionary) ?? '' };
       if (isNotKnown(raw)) return { ...base, state: 'not-known', meaning: 'Not known' };
       if (isDoesNotApply(raw)) return { ...base, state: 'does-not-apply', meaning: "Doesn't apply" };
       return { ...base, state: 'value', meaning: meaningOf(slot, raw, dictionary) };
@@ -272,7 +282,8 @@ export class SpecId {
 export function checkSlotValue(key: SlotKey, raw: string, dictionary: Dictionary): string | undefined {
   const { name, width, kind } = slotDefinition(key);
   if (isNotKnown(raw) || isDoesNotApply(raw)) return markerProblem(key, raw);
-  if (raw.length !== width) return messages.wrongWidth(name, raw, width);
+  // A capacity with decimals is longer than its width: `Z0003.25` (ADR 0032).
+  if (raw.length !== width && !(kind === 'capacity' && raw.includes('.'))) return messages.wrongWidth(name, raw, width);
   if (raw.includes(DOES_NOT_APPLY)) return messages.mixedMarker(name, raw);
 
   switch (kind) {
@@ -284,8 +295,8 @@ export function checkSlotValue(key: SlotKey, raw: string, dictionary: Dictionary
       const letter = raw.slice(0, 1);
       const digits = raw.slice(1);
       if (dictionary.meaningOf('capacity', letter) === undefined) return messages.notInDictionary(name, raw);
-      if (!DIGITS.test(digits)) return messages.notANumber(name, raw);
-      if (/^0+$/.test(digits)) return messages.outOfRange(name, raw, capacityRange(letter, dictionary));
+      if (!CAPACITY_DIGITS.test(digits)) return messages.notANumber(name, raw);
+      if (/^0+(?:\.0+)?$/.test(digits)) return messages.outOfRange(name, raw, capacityRange(letter, dictionary));
       return undefined;
     }
     case 'measure':
@@ -386,15 +397,23 @@ function readCapacity(fact: CapacityInput, dictionary: Dictionary): Reading {
   }
   const label = capacityLabel(fact.unit, dictionary);
   const reading = readDecimal(fact.value);
-  if (!reading.ok) return { problem: messages.notANumber(name, fact.value) };
-  // Whole when the exact value has nothing after the point: 6 and 6.0 are both 6.
+  if (!reading.ok) {
+    return {
+      problem:
+        reading.reason === 'not-a-number'
+          ? messages.notANumber(name, fact.value)
+          : messages.tooManyDecimals(name, `${fact.value} ${label}`),
+    };
+  }
+  // More than 0 and at most the most. A decimal keeps its point; 6 and 6.0 are both 6 (ADR 0032).
   const { numerator, denominator } = reading.value;
-  if (numerator % denominator !== 0n) return { problem: messages.notWhole(name, fact.value) };
-  const amount = numerator / denominator;
-  if (amount < 1n || amount > CAPACITY_MAX) {
+  if (numerator <= 0n || numerator > CAPACITY_MAX * denominator) {
     return { problem: messages.outOfRange(name, `${fact.value} ${label}`, capacityRange(fact.unit, dictionary)) };
   }
-  return { raw: fact.unit + amount.toString().padStart(4, '0') };
+  const whole = numerator / denominator;
+  const places = denominator.toString().length - 1;
+  const decimals = (numerator % denominator).toString().padStart(places, '0').replace(/0+$/, '');
+  return { raw: capacityValue(fact.unit, decimals === '' ? whole.toString() : `${whole}.${decimals}`) };
 }
 
 /** Exact decimal arithmetic, rounded half up to the slot's step (ADR 0019). */
@@ -474,19 +493,7 @@ function live(values: SlotValues, dictionary: Dictionary): SlotValues {
   return now;
 }
 
-/**
- * A short code in `dictionary`'s live letters: each option an approved change
- * renamed, in its new letters (ADR 0031). Anything that is not 25 parts is
- * itself.
- */
-export function liveCode(code: string, dictionary: Dictionary): string {
-  const parts = code.split('.');
-  if (parts.length !== SLOT_COUNT) return code;
-  const now = live(Object.fromEntries(SLOTS.map((slot, index) => [slot.key, parts[index] ?? ''])) as SlotValues, dictionary);
-  return SLOTS.map(({ key }) => now[key]).join('.');
-}
-
-/** A slot holding a value, in plain words (4.5). Whole numbers of at most four digits only. */
+/** A slot holding a value, in plain words (4.5). A capacity may have decimals; every other number is whole. */
 function meaningOf(slot: SlotDefinition, raw: string, dictionary: Dictionary): string {
   switch (slot.kind) {
     case 'variant':
@@ -494,7 +501,7 @@ function meaningOf(slot: SlotDefinition, raw: string, dictionary: Dictionary): s
     case 'dictionary':
       return dictionary.meaningOf(slot.key as DictionarySlotKey, raw) ?? raw;
     case 'capacity':
-      return `${Number.parseInt(raw.slice(1), 10)} ${capacityLabel(raw.slice(0, 1), dictionary)}`;
+      return `${raw.slice(1).replace(/^0+(?=\d)/, '')} ${capacityLabel(raw.slice(0, 1), dictionary)}`;
     case 'count': {
       const count = Number.parseInt(raw, 10);
       const { one, many } = COUNTS[slot.key as CountSlotKey];

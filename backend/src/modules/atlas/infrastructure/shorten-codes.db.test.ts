@@ -19,6 +19,8 @@ import { DrizzleSourcingRepository } from './drizzle-sourcing-repository.js';
 
 const connection = connectTestDatabase();
 const SHORTEN = readFileSync(new URL('../../../../drizzle/0012_shorten_atlas_codes.sql', import.meta.url), 'utf8');
+/** The migration that follows and tags every code (ADR 0032). */
+const TAGGED = readFileSync(new URL('../../../../drizzle/0019_write_atlas_codes_tagged.sql', import.meta.url), 'utf8');
 const SAVER_ID = '00000000-0000-4000-8000-0000000000aa';
 const SAVED_AT = new Date('2026-10-19T08:00:00.000Z');
 
@@ -135,12 +137,13 @@ describe('the shortening migration, 0012', () => {
       nameBefore: 'Lid',
     });
     await connection.db.execute(sql.raw(SHORTEN));
+    await connection.db.execute(sql.raw(TAGGED));
     const find = new FindSpecIdByCode(new DrizzleDictionaryRepository(connection.db), new DrizzleSpecIdRepository(connection.db), new DrizzleSourcingRepository(connection.db));
 
     for (const code of [ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1.toLowerCase(), ILLUSTRATIVE]) {
       const result = await find.execute({ code });
       expect(result.ok && result.value.id, code).toBe('00000000-0000-4000-8000-000000000001');
-      expect(result.ok && result.value.replacedCode, code).toBe(ILLUSTRATIVE);
+      expect(result.ok && result.value.replacedCode, code).toBe('A1B4D1E1F1-H90N33');
     }
   });
 
@@ -157,13 +160,12 @@ describe('the shortening migration, 0012', () => {
 });
 
 describe('a row an older API saved during the deploy', () => {
-  it('is read in the short form, and found by it', async () => {
+  it('is read with its slots in the short form', async () => {
     await connection.db.insert(atlasSpecIds).values(longRow('00000000-0000-4000-8000-000000000001', CUP, 'Cup'));
     const repository = new DrizzleSpecIdRepository(connection.db);
 
     const byId = await repository.findById('00000000-0000-4000-8000-000000000001');
-    expect(byId?.savedSpecId.specId.code).toBe(toShort(CUP));
-    expect((await repository.findByCode(toShort(CUP) ?? ''))?.savedSpecId.id).toBe('00000000-0000-4000-8000-000000000001');
+    expect(byId?.savedSpecId.specId.dottedCode).toBe(toShort(CUP));
   });
 
   it('counts its slots written wide as not known in the similar lookup', async () => {

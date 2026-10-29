@@ -4,6 +4,7 @@ import {
   Dictionary,
   type DictionaryChangeStamp,
   type DictionaryRename,
+  type DictionaryRetiredNumber,
   type DictionarySearchWord,
   type DictionaryValue,
   type SlotRuleEntry,
@@ -36,12 +37,14 @@ export function applyProposal(
   let rules: SlotRuleEntry[] = dictionary.slotRules();
   let words: DictionarySearchWord[] = dictionary.searchWords();
   let renames: DictionaryRename[] = dictionary.renames();
+  let retired: DictionaryRetiredNumber[] = dictionary.retired();
   const wordsFor = (optionCode: string, list: readonly string[]): DictionarySearchWord[] =>
     list.map((word) => ({ slot, word, code: optionCode, changeNumber: stamp.number }));
 
   switch (proposal.kind) {
     case 'add': {
-      values = [...values, { slot, code, meaning: proposal.meaning }];
+      // A new option takes the next number in its list (ADR 0032).
+      values = [...values, { slot, code, meaning: proposal.meaning, number: dictionary.nextNumber(slot) }];
       if (slot === 'productType' && proposal.rules !== null) {
         rules = [...rules, ...RULED_SLOTS.map((ruled) => ({ productType: code, slot: ruled, rule: proposal.rules![ruled] }))];
       }
@@ -52,7 +55,7 @@ export function applyProposal(
       const newCode = proposal.newCode ?? code;
       values = values.map((value) =>
         value.slot === slot && value.code === code
-          ? { slot, code: newCode, meaning: proposal.meaning ?? value.meaning }
+          ? { ...value, code: newCode, meaning: proposal.meaning ?? value.meaning }
           : value,
       );
       if (newCode !== code) {
@@ -68,6 +71,11 @@ export function applyProposal(
       break;
     }
     case 'delete': {
+      // Its number is never given again, and a code written with it still reads (ADR 0032).
+      const deleted = values.find((value) => value.slot === slot && value.code === code);
+      if (deleted?.number !== undefined) {
+        retired = [...retired, { slot, number: deleted.number, code, meaning: deleted.meaning, changeNumber: stamp.number }];
+      }
       values = values.filter((value) => !(value.slot === slot && value.code === code));
       if (slot === 'productType') rules = rules.filter((entry) => entry.productType !== code);
       words = words.filter((word) => !(word.slot === slot && word.code === code));
@@ -86,6 +94,7 @@ export function applyProposal(
   return new Dictionary(dictionary.release, dictionary.approvedOn, values, rules, {
     renames,
     searchWords: words,
+    retired,
     change: stamp,
   });
 }
@@ -153,7 +162,7 @@ export function rewriteSpecId(
     else if (values[key] === DOES_NOT_APPLY) values[key] = NOT_KNOWN;
   }
 
-  return SpecId.parse(SLOTS.map(({ key }) => values[key]).join('.'), next);
+  return SpecId.fromSlots(values, next);
 }
 
 /** A slot's value with its option replaced: a capacity keeps its number under a new unit; Not known is `Y` alone. */

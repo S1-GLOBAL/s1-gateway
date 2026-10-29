@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FixedClock, SequentialIdGenerator } from '../../../shared/application/testing/fakes.js';
-import type { VerifiedRow } from '../domain/import/verified-row.js';
+import { NO_PRODUCT_TYPE, type VerifiedRow } from '../domain/import/verified-row.js';
 import { ImportVerifiedList } from './import-verified-list.js';
 import type { ImportReport, ImportReportSink } from './ports/import-report-sink.js';
 import { SaveSpecId } from './save-spec-id.js';
@@ -19,8 +19,10 @@ function rows(...given: Partial<VerifiedRow>[]): VerifiedRow[] {
     itemName: '',
     category: '',
     material: '',
+    materialType: '',
     dimension: '',
     weight: '',
+    printing: '',
     company: '',
     country: '',
     quote: NO_QUOTE,
@@ -45,7 +47,7 @@ function setup(given: VerifiedRow[]) {
   return { run, specIds, sourcing, saveSpy, save, report: () => written.at(-1) as ImportReport };
 }
 
-const PP_CUP = { category: 'Cup', material: 'Plastic - PP' };
+const PP_CUP = { category: 'Cup', material: 'Plastic', materialType: 'PP' };
 
 describe('ImportVerifiedList', () => {
   it('makes one Spec ID of three rows with one code, named by the item name most of them use', async () => {
@@ -71,14 +73,14 @@ describe('ImportVerifiedList', () => {
     expect(await specIds.list({ limit: 10 })).toHaveLength(2);
   });
 
-  it('drops a fact the save rules refuse, reports it, and still saves the row', async () => {
-    const { run, specIds, report } = setup(rows({ itemName: '14oz Invented lid', category: 'Lid', material: 'Plastic - PET' }));
+  it("flags what the reader left out, and why, and still saves the row", async () => {
+    const { run, specIds, report } = setup(rows({ itemName: '14oz Invented lid', category: 'Lid', material: 'Plastic', materialType: 'PET' }));
 
     await run(true);
 
     const [line] = report().rows;
     expect(line?.outcome).toBe('new');
-    expect(line?.dropped).toEqual([expect.stringMatching(/^Nominal capacity: /)]);
+    expect(line?.flags).toContain('Nominal capacity does not apply to a cup lid.');
     expect(await specIds.list({ limit: 10 })).toHaveLength(1);
   });
 
@@ -94,7 +96,7 @@ describe('ImportVerifiedList', () => {
   });
 
   it('flags a value read under a ruling with the ruling and the words', async () => {
-    const { run, report } = setup(rows({ itemName: 'Invented lid', category: 'Lid', material: 'Plastic - PET', dimension: '90' }));
+    const { run, report } = setup(rows({ itemName: 'Invented lid', category: 'Lid', material: 'Plastic', materialType: 'PET', dimension: '90' }));
 
     await run(false);
 
@@ -102,7 +104,7 @@ describe('ImportVerifiedList', () => {
   });
 
   it('skips a row with no product type, giving its row number and why', async () => {
-    const { run, report } = setup(rows({ itemName: 'Invented cup', ...PP_CUP }, { itemName: 'Invented order', material: 'Plastic - PP' }));
+    const { run, report } = setup(rows({ itemName: 'Invented cup', ...PP_CUP }, { itemName: 'Invented order', material: 'Plastic', materialType: 'PP' }));
 
     const summary = await run(false);
 
@@ -110,7 +112,7 @@ describe('ImportVerifiedList', () => {
       row: 5,
       outcome: 'skipped',
       code: null,
-      reason: 'No product type in the Category, Material or item name.',
+      reason: NO_PRODUCT_TYPE,
     });
     expect(summary.skipped).toBe(1);
   });
@@ -126,11 +128,11 @@ describe('ImportVerifiedList', () => {
     expect(report().rows.map((line) => line.outcome)).toEqual(['already saved', 'already saved']);
   });
 
-  it('counts how often the item name agrees with the columns, on rows where both give one', async () => {
+  it('counts how often the Category column names the product type a row reads as, on rows where both give one', async () => {
     const { run } = setup(
       rows(
         { itemName: 'PP Cup', ...PP_CUP },
-        { itemName: 'PET Cup', ...PP_CUP },
+        { itemName: 'PP Bowl', ...PP_CUP },
         { itemName: 'Invented drink', category: 'Cup' },
       ),
     );
@@ -150,9 +152,9 @@ describe('ImportVerifiedList, manufacturers and quotes (#56)', () => {
     const { run, sourcing, report } = setup(
       rows(
         { itemName: 'Invented cup', ...PP_CUP, ...ACME, quote: PRICED },
-        { itemName: 'Invented lid', category: 'Lid', material: 'Plastic - PET', ...ACME },
-        { itemName: 'Invented bowl', category: 'Bowl', material: 'Plastic - PP', ...BOREALIS },
-        { itemName: 'Invented tray', category: 'Tray', material: 'Plastic - PP' },
+        { itemName: 'Invented lid', category: 'Lid', material: 'Plastic', materialType: 'PET', ...ACME },
+        { itemName: 'Invented bowl', category: 'Bowl', material: 'Plastic', materialType: 'PP', ...BOREALIS },
+        { itemName: 'Invented tray', category: 'Tray', material: 'Plastic', materialType: 'PP' },
       ),
     );
 
@@ -223,7 +225,7 @@ describe('ImportVerifiedList, manufacturers and quotes (#56)', () => {
   });
 
   it('records no quote for a row it skips, though it names a manufacturer', async () => {
-    const { run, sourcing, report } = setup(rows({ itemName: 'Invented order', material: 'Plastic - PP', ...ACME }));
+    const { run, sourcing, report } = setup(rows({ itemName: 'Invented order', material: 'Plastic', materialType: 'PP', ...ACME }));
 
     const summary = await run(true);
 

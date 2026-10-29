@@ -19,6 +19,7 @@ import { atlasDictionarySuggestionEvents } from './atlas-dictionary-suggestion-e
 import { atlasDictionarySuggestions } from './atlas-dictionary-suggestions.table.js';
 import {
   atlasDictionaryRenames,
+  atlasDictionaryRetiredNumbers,
   atlasDictionarySearchWords,
   atlasDictionaryValues,
   atlasSlotRules,
@@ -40,7 +41,7 @@ class Refused extends Error {
 
 /**
  * The one writer of the dictionary. An approval writes the whole next
- * release, its renames and search words, the numbered change, the approved
+ * release, its renames, search words and retired numbers, the numbered change, the approved
  * suggestion, and every Spec ID it rewrites with its history entry, in one
  * transaction, or nothing. Approvals are rare and the release is about 800
  * rows, so it is written whole rather than row by row. It holds the
@@ -77,6 +78,9 @@ export class DrizzleDictionaryChangeStore implements DictionaryChangeStore {
         const words = plan.dictionary.searchWords();
         await tx.delete(atlasDictionarySearchWords);
         if (words.length > 0) await tx.insert(atlasDictionarySearchWords).values(words);
+        const retired = plan.dictionary.retired();
+        await tx.delete(atlasDictionaryRetiredNumbers);
+        if (retired.length > 0) await tx.insert(atlasDictionaryRetiredNumbers).values(retired);
 
         const approved = await tx
           .update(atlasDictionarySuggestions)
@@ -100,6 +104,15 @@ export class DrizzleDictionaryChangeStore implements DictionaryChangeStore {
             .returning({ id: atlasSpecIds.id });
           if (updated.length === 0) throw new Refused(new SpecIdMovedOnError());
           await tx.insert(atlasSpecIdChanges).values(toChangeRow(rewrite.change));
+        }
+        // The code stays, so neither the version nor History moves (ADR 0032).
+        for (const relettering of plan.relettered) {
+          const updated = await tx
+            .update(atlasSpecIds)
+            .set(toRow(relettering.saved))
+            .where(and(eq(atlasSpecIds.id, relettering.saved.id), eq(atlasSpecIds.version, relettering.expectedVersion)))
+            .returning({ id: atlasSpecIds.id });
+          if (updated.length === 0) throw new Refused(new SpecIdMovedOnError());
         }
       });
       return ok(undefined);

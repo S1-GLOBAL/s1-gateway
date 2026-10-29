@@ -30,11 +30,24 @@ describe('readText', () => {
   it('leaves out a fact the text gives twice, and reports both as written', () => {
     const reading = read('clear PET and PP lid');
     expect(reading.facts).not.toHaveProperty('material');
-    expect(reading.conflicts).toEqual([{ key: 'material', found: ['PET', 'PP'] }]);
+    expect(reading.conflicts).toEqual([{ key: 'material', found: ['PET', 'PP'], values: ['APT', 'APP'] }]);
   });
 
   it('reads text glued with punctuation and in capitals', () => {
     expect(read('14OZ,Bagasse-Bowl').facts).toEqual(read('14oz bagasse bowl').facts);
+  });
+
+  it('leaves a print colour range unknown', () => {
+    const reading = read('22oz White Single Wall Paper Cold Cup (2-3 color print)');
+    expect(reading.facts).toEqual({
+      productType: 'CUP',
+      material: 'B00',
+      colourClarity: 'WH',
+      wall: 'SW',
+      capacity: { unit: 'Z', value: '22' },
+    });
+    expect(reading.conflicts).toEqual([{ key: 'print', found: ['2 colour', '3 colour'], values: ['02', '03'] }]);
+    expect(reading.ignored).toEqual(['Cold']);
   });
 
   it('reads a product type inside a longer name as the longer one', () => {
@@ -89,7 +102,7 @@ describe('readText, #58', () => {
   ])('leaves the capacity of a range, %s, not known, and reads neither end as a size', (text, found) => {
     const reading = read(text);
     expect(reading.facts).toEqual({ productType: 'CLD' });
-    expect(reading.conflicts).toEqual([{ key: 'capacity', found }]);
+    expect(reading.conflicts).toEqual([expect.objectContaining({ key: 'capacity', found })]);
     expect(reading.ignored).toEqual([]);
   });
 

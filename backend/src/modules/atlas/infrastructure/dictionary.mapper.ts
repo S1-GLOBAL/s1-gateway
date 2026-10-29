@@ -3,6 +3,7 @@ import type { DictionarySlotKey, RuledSlotKey, SlotRule } from '../domain/slots.
 import type {
   atlasDictionaryReleases,
   atlasDictionaryRenames,
+  atlasDictionaryRetiredNumbers,
   atlasDictionarySearchWords,
   atlasDictionaryValues,
   atlasSlotRules,
@@ -13,6 +14,7 @@ type ValueRow = typeof atlasDictionaryValues.$inferSelect;
 type RuleRow = typeof atlasSlotRules.$inferSelect;
 type RenameRow = typeof atlasDictionaryRenames.$inferSelect;
 type SearchWordRow = typeof atlasDictionarySearchWords.$inferSelect;
+type RetiredRow = typeof atlasDictionaryRetiredNumbers.$inferSelect;
 type NewValueRow = typeof atlasDictionaryValues.$inferInsert;
 type NewRuleRow = typeof atlasSlotRules.$inferInsert;
 
@@ -20,6 +22,7 @@ type NewRuleRow = typeof atlasSlotRules.$inferInsert;
 export interface HistoryRows {
   renames: readonly RenameRow[];
   searchWords: readonly SearchWordRow[];
+  retired: readonly RetiredRow[];
   latest: { number: number; at: Date } | null;
 }
 
@@ -28,12 +31,18 @@ export function toDomain(
   release: ReleaseRow,
   values: readonly ValueRow[],
   rules: readonly RuleRow[],
-  history: HistoryRows = { renames: [], searchWords: [], latest: null },
+  history: HistoryRows = { renames: [], searchWords: [], retired: [], latest: null },
 ): Dictionary {
   return new Dictionary(
     release.release,
     release.approvedOn,
-    values.map((row) => ({ slot: row.slot as DictionarySlotKey, code: row.code, meaning: row.meaning })),
+    // A value without a number, only in S1 0.1.0, is numbered in the order read.
+    values.map((row) => ({
+      slot: row.slot as DictionarySlotKey,
+      code: row.code,
+      meaning: row.meaning,
+      ...(row.number === null ? {} : { number: row.number }),
+    })),
     rules.map((row) => ({ productType: row.productType, slot: row.slot as RuledSlotKey, rule: row.rule as SlotRule })),
     {
       renames: history.renames.map((row) => ({
@@ -48,6 +57,13 @@ export function toDomain(
         code: row.code,
         changeNumber: row.changeNumber,
       })),
+      retired: history.retired.map((row) => ({
+        slot: row.slot as DictionarySlotKey,
+        number: row.number,
+        code: row.code,
+        meaning: row.meaning,
+        changeNumber: row.changeNumber,
+      })),
       change: history.latest,
     },
   );
@@ -55,7 +71,7 @@ export function toDomain(
 
 /** A dictionary's values and rules as rows of its release, for the change store to write. */
 export function toValueRows(dictionary: Dictionary): NewValueRow[] {
-  return dictionary.values().map(({ slot, code, meaning }) => ({ release: dictionary.release, slot, code, meaning }));
+  return dictionary.values().map(({ slot, code, meaning, number }) => ({ release: dictionary.release, slot, code, meaning, number }));
 }
 
 export function toRuleRows(dictionary: Dictionary): NewRuleRow[] {

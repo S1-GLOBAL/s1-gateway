@@ -89,6 +89,10 @@ export class ApproveDictionarySuggestion
       suggestionVersion: input.version,
       holders: planned.value.holders,
       rewrites,
+      relettered: planned.value.relettered.map(({ record, after }) => ({
+        saved: record.savedSpecId.relettered(after),
+        expectedVersion: record.savedSpecId.version,
+      })),
     });
     if (!applied.ok) return err(applied.error);
 

@@ -76,41 +76,40 @@ async function suggested(context: ReturnType<typeof setup>, slot: 'material' | '
 const RENAME_APS: Proposal = { kind: 'edit', newCode: 'APZ', meaning: null, searchWords: null };
 
 describe('ApproveDictionarySuggestion', () => {
-  it('renames a material used by 3 saved Spec IDs, rewriting each with a history entry naming the change', async () => {
+  it('renames a material used by 3 saved Spec IDs, relettering each without changing its code, version or history', async () => {
     const context = setup();
     const lids = [await saved(context, 'Lid 90', lid('90')), await saved(context, 'Lid 95', lid('95')), await saved(context, 'Lid 100', lid('100'))];
-    await saved(context, 'PP lid', lid('90', 'APP'));
+    const pp = await saved(context, 'PP lid', lid('90', 'APP'));
     const { id } = await suggested(context, 'material', 'APS', RENAME_APS);
 
     const preview = await context.get.execute({ id });
-    expect(preview.ok && preview.value.rewrites?.map((rewrite) => rewrite.codeAfter)).toEqual(
-      lids.map((one) => one.code.replace('.APS.', '.APZ.')).sort(),
-    );
+    expect(preview.ok && preview.value.rewrites).toEqual([]);
 
     const result = await context.approve.execute({ id, version: 1, by: BEN });
 
-    expect(result.ok && result.value).toMatchObject({ changeNumber: 1, specIdsRewritten: 3, suggestion: { state: 'approved' } });
+    expect(result.ok && result.value).toMatchObject({ changeNumber: 1, specIdsRewritten: 0, suggestion: { state: 'approved' } });
+    expect(lids.map((one) => one.code)).toEqual(['A1B4E1F1-H90', 'A1B4E1F1-H95', 'A1B4E1F1-H100']);
     for (const one of lids) {
       const record = await context.specIds.findById(one.id);
-      expect(record?.savedSpecId.specId.code).toBe(one.code.replace('.APS.', '.APZ.'));
-      expect(record?.savedSpecId.version).toBe(2);
-      expect(record?.savedSpecId.updatedBy).toBe(BEN.id);
-      const [latest] = await context.specIds.history(one.id);
-      expect(latest?.change).toMatchObject({ kind: 'updated', changedBy: BEN.id, dictionaryChangeNumber: 1, codeBefore: one.code });
+      expect(record?.savedSpecId.specId.code).toBe(one.code);
+      expect(record?.savedSpecId.specId.slot('material')).toBe('APZ');
+      expect(record?.savedSpecId.version).toBe(1);
+      expect(record?.savedSpecId.updatedBy).toBeNull();
+      const history = await context.specIds.history(one.id);
+      expect(history.map(({ change }) => change.kind)).toEqual(['created']);
     }
+    expect((await context.specIds.findById(pp.id))?.savedSpecId.specId.slot('material')).toBe('APP');
+    expect(await context.specIds.usageOf('material', 'APS')).toBe(0);
     const history = await new GetSpecIdHistory(context.dictionaries, context.specIds).execute({ id: lids[0]!.id });
-    expect(history.ok && history.value[0]?.dictionaryChange).toEqual({
-      number: 1,
-      suggestedBy: { id: ADA.id, fullName: 'Ada Invented' },
-      approvedBy: { id: BEN.id, fullName: 'Ben Invented' },
-    });
-    expect(history.ok && history.value[1]?.dictionaryChange).toBeNull();
+    expect(history.ok && history.value.map((entry) => entry.dictionaryChange)).toEqual([null]);
     const dictionary = await new GetDictionary(context.dictionaries).execute();
     expect(dictionary.change).toEqual({ number: 1, at: NOW.toISOString() });
-    expect(dictionary.slots.find((slot) => slot.key === 'material')?.values.some((value) => value.code === 'APS')).toBe(false);
+    const materials = dictionary.slots.find((slot) => slot.key === 'material')?.values ?? [];
+    expect(materials.some((value) => value.code === 'APS')).toBe(false);
+    expect(materials.find((value) => value.code === 'APZ')?.number).toBe(4);
   });
 
-  it('turns a field a rules change rules out to X on every Spec ID of that product type', async () => {
+  it('turns a field a rules change rules out to X on every Spec ID of that product type, with a history entry naming the change', async () => {
     const context = setup();
     const cup = (value: string): SpecIdFactsInput => ({
       productType: 'CUP',
@@ -125,11 +124,29 @@ describe('ApproveDictionarySuggestion', () => {
     const result = await context.approve.execute({ id, version: 1, by: BEN });
 
     expect(result.ok && result.value.specIdsRewritten).toBe(2);
+    expect(cups.map((one) => one.code)).toEqual(['A5B17E1Q2-G112', 'A5B17E1Q2-G116']);
     for (const one of cups) {
       const record = await context.specIds.findById(one.id);
       expect(record?.savedSpecId.specId.slot('wall')).toBe('X');
+      expect(record?.savedSpecId.specId.code).toBe(one.code.replace('Q2', ''));
       expect(record?.savedSpecId.version).toBe(2);
+      expect(record?.savedSpecId.updatedBy).toBe(BEN.id);
+      const [latest] = await context.specIds.history(one.id);
+      expect(latest?.change).toMatchObject({
+        kind: 'updated',
+        changedBy: BEN.id,
+        dictionaryChangeNumber: 1,
+        codeBefore: one.code,
+        codeAfter: one.code.replace('Q2', ''),
+      });
     }
+    const history = await new GetSpecIdHistory(context.dictionaries, context.specIds).execute({ id: cups[0]!.id });
+    expect(history.ok && history.value[0]?.dictionaryChange).toEqual({
+      number: 1,
+      suggestedBy: { id: ADA.id, fullName: 'Ada Invented' },
+      approvedBy: { id: BEN.id, fullName: 'Ben Invented' },
+    });
+    expect(history.ok && history.value[1]?.dictionaryChange).toBeNull();
   });
 
   it('refuses a deletion whose replacement would make two Spec IDs one, naming both, and changes nothing', async () => {

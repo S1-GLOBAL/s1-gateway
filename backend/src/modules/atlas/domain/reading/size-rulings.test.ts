@@ -19,6 +19,14 @@ describe('readSize, by #28 rulings', () => {
     ['R6', 'takeout box 200 x 150 x 60 mm', 'TKB', { length: mm('200'), width: mm('150'), height: mm('60') }],
     ['R6', 'tray 200 x 150 x 60', 'TRY', { shape: 'RC', length: mm('200'), width: mm('150'), height: mm('60') }],
     ['R6', 'clamshell 200 x 150 x 80', 'HCT', { shape: 'RC', length: mm('200'), width: mm('150'), height: mm('80') }],
+    ['R6', 'fry carton 100 x 140 x 50', 'FRC', { length: mm('100'), width: mm('140'), height: mm('50') }],
+    ['R6', 'container 280 x 200 x 60', 'CTN', { length: mm('280'), width: mm('200'), height: mm('60') }],
+    ['R6', 'plate 250 x 190 x 25', 'PLT', { length: mm('250'), width: mm('190'), height: mm('25') }],
+    ['R6', 'container lid 240 x 190 x 15', 'CTL', { length: mm('240'), width: mm('190'), height: mm('15') }],
+    ['R6', 'cup carrier 215 x 215 x 50', 'CCR', { length: mm('215'), width: mm('215'), height: mm('50') }],
+    ['R1', 'cup 98mm diameter plain', 'CUP', { shape: 'RD', topDiameter: mm('98') }],
+    ['R1', 'cup 95 dia, 0.5', 'CUP', { shape: 'RD', topDiameter: mm('95') }],
+    ['R1', 'cup φ80', 'CUP', { shape: 'RD', topDiameter: mm('80') }],
   ])('%s reads "%s" on %s', (ruling, text, productType, facts) => {
     expect(readSize(text, productType, dictionary)).toMatchObject({ ruling, facts });
   });
@@ -33,6 +41,14 @@ describe('readSize, by #28 rulings', () => {
     ['a Dia by height on a bag, which R1b does not cover', 'bag 94 dia x 115', 'BAG'],
     ['R3 with the gusset not the smallest', 'pouch 80 x 210 x 140', 'SUP'],
     ['R5 with the gusset not the smallest', 'bag 120 x 250 x 300', 'BAG'],
+    ['a weight with decimals, whose whole part is no rim', 'portion cup 1.9g', 'PCP'],
+    ['a capacity with decimals', 'portion cup 3.25oz', 'PCP'],
+    ['a bare number wider than any rim', 'paper bowl 500', 'BWL'],
+    ['a rim over 300 mm in another unit', 'bowl lid 31 cm', 'BLD'],
+    ['a rim narrower than any cup', 'cup 20', 'CUP'],
+    ['a model code', 'bowl deli-34', 'BWL'],
+    ['the second of two numbers', 'cup 90 x 110', 'CUP'],
+    ['two sizes written with a slash, not a fraction', 'bowl lid 24/32', 'BLD'],
   ])('reads nothing for %s', (_case, text, productType) => {
     expect(readSize(text, productType, dictionary)).toBeNull();
   });
@@ -50,6 +66,15 @@ describe('readSize, a fraction (#58)', () => {
     ['R6', 'box 20 1/8 x 13 x 10 mm', 'FCB', { length: { value: '20.125', unit: 'mm' }, width: { value: '13', unit: 'mm' } }],
   ])('%s reads %s on %s', (ruling, text, productType, facts) => {
     expect(readSize(text, productType, dictionary)).toMatchObject({ ruling, facts });
+  });
+
+  it('reads the size with its unit written over the same size with none, and the other as a repeat', () => {
+    expect(readSize('bag 10 x 7 x 12, 10 x 7 x 12 in', 'BAG', dictionary)).toMatchObject({
+      ruling: 'R5',
+      words: '10 x 7 x 12 in',
+      facts: { width: inches('10'), gusset: inches('7'), height: inches('12') },
+      repeats: ['10 x 7 x 12'],
+    });
   });
 
   it('reads no part of a fraction as a number of its own', () => {

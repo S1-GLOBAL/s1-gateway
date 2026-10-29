@@ -26,6 +26,7 @@ import { SuggestDictionaryChange } from './application/suggest-dictionary-change
 import { UpdateSpecId } from './application/update-spec-id.js';
 import { WithdrawDictionarySuggestion } from './application/withdraw-dictionary-suggestion.js';
 import { DrizzleDictionaryChangeStore } from './infrastructure/drizzle-dictionary-change-store.js';
+import { CachedDictionaryRepository } from './infrastructure/cached-dictionary-repository.js';
 import { DrizzleDictionaryRepository } from './infrastructure/drizzle-dictionary-repository.js';
 import { DrizzleSourcingRepository } from './infrastructure/drizzle-sourcing-repository.js';
 import { DrizzleSpecIdRepository } from './infrastructure/drizzle-spec-id-repository.js';
@@ -51,7 +52,7 @@ export interface AtlasModuleDependencies {
  * with deciding them behind the admin gate (#95).
  */
 export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule[] {
-  const dictionaries = new DrizzleDictionaryRepository(deps.db);
+  const dictionaries = new CachedDictionaryRepository(new DrizzleDictionaryRepository(deps.db));
   const specIds = new DrizzleSpecIdRepository(deps.db);
   const sourcing = new DrizzleSourcingRepository(deps.db);
   const suggestions = new DrizzleSuggestionRepository(deps.db);

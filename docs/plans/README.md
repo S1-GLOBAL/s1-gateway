@@ -70,3 +70,4 @@ does not exist yet, say so and mark the plan blocked rather than inventing it.
 | [0008](./0008-manufacturers-page.md) | Manufacturers on each Spec ID, with stages admins set | In progress |
 | [0009](./0009-stage-icons-on-spec-id-cards.md) | Stage icons on every Spec ID card | In progress |
 | [0010](./0010-dictionary-suggestions.md) | The dictionary, edited by suggestion and approval | In progress |
+| [0011](./0011-tagged-spec-id-v2.md) | Tagged Spec ID, the V2 spelling | In progress |

@@ -29,10 +29,10 @@ export type SlotKey =
 /** Whether a slot applies to a product type, or what it depends on. */
 export type SlotRule = 'applies' | 'never' | 'round_only' | 'non_round_only' | 'paper_only';
 
-/** The specification's own words for each rule. */
+/** Each rule in words. A slot that never applies is left out of the code. */
 export const RULE_LABELS: Readonly<Record<SlotRule, string>> = {
   applies: 'Applies',
-  never: 'X',
+  never: "Doesn't apply",
   round_only: 'Round only',
   non_round_only: 'Non-round only',
   paper_only: 'Paper family only',
@@ -41,6 +41,8 @@ export const RULE_LABELS: Readonly<Record<SlotRule, string>> = {
 export interface DictionaryValue {
   code: string;
   meaning: string;
+  /** Its number in its list, written after the list's letter in a code: material 17 is `B17`. */
+  number: number;
   /** Words an approved suggestion gave it, read in pasted text as it (ADR 0031). */
   searchWords: string[];
 }
@@ -82,8 +84,10 @@ export interface DecodedSlot {
   number: number;
   key: SlotKey;
   name: string;
-  /** The slot's characters, exactly as they appear in the code. */
+  /** The slot's value as it is stored: `BCS`, `Z0012`, `0090`, or `Y` (not known) or `X` (doesn't apply). */
   raw: string;
+  /** How the code writes it: `B17`, `G112`, `H90`; empty when the code leaves it out. */
+  part: string;
   state: 'value' | 'not-known' | 'does-not-apply';
   /** "Bowl lid", "90 mm", "3.3 g", "Not known", "Doesn't apply". */
   meaning: string;
@@ -91,6 +95,7 @@ export interface DecodedSlot {
 
 /** A Spec ID, read slot by slot. */
 export interface DecodedSpecId {
+  /** Each known fact as a letter and a number, sizes after one hyphen: `A5B17D3E1Q2R3-G112H90J110`. */
   code: string;
   dictionaryRelease: string;
   /** Always 25, in code order. */
@@ -107,11 +112,11 @@ export interface MeasurementFact {
 export interface CapacityFact {
   /** A capacity unit letter from the dictionary. */
   unit: string;
-  /** A whole number, 1–9999. */
+  /** More than 0, at most 9999, at most 6 decimal places: `12`, `3.25`. */
   value: string;
 }
 
-/** What is known about a product. A slot left out has no value: the server writes `X` or `0` for it. */
+/** What is known about a product. A slot left out has no value: the code leaves it out. */
 export interface SpecIdFacts {
   productType: string;
   material?: string;
@@ -292,7 +297,7 @@ export interface TextReadFact {
   name: string;
   /** As the slot reads in a decoded code: "14 oz", "Molded fibre, bagasse". */
   meaning: string;
-  /** As the text wrote them. */
+  /** As the text wrote them; empty for a fact a later pass read, such as a size written beside its name. */
   words: string;
   ruling: TextRuling | null;
 }
@@ -312,6 +317,8 @@ export interface SpecIdTextReading {
   /** The words no rule used, as the text wrote them. */
   ignored: string[];
   conflicts: TextConflict[];
+  /** Plain sentences about what was read: a lid named by what it fits, two values for one fact, a size converted, what a leftover word could mean. */
+  notes: string[];
   /** Null when no product type was found or given. */
   decoded: DecodedSpecId | null;
 }

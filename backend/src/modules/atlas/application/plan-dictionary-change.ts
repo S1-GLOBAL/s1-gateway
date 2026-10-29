@@ -31,6 +31,8 @@ export interface PlannedChange {
   readonly holders: OptionHolders | null;
   /** Only the Spec IDs whose code would change. */
   readonly rewrites: readonly PlannedRewrite[];
+  /** The Spec IDs whose code would stay, but whose slots would not: an option renamed, a marker refitted (ADR 0032). */
+  readonly relettered: readonly PlannedRewrite[];
 }
 
 export type PlanError = SuggestionOutOfDateError | SpecIdWouldBeInvalidError | SpecIdsWouldClashError;
@@ -61,7 +63,7 @@ export async function planDictionaryChange(
 
   const stamp = { number: (dictionary.change?.number ?? 0) + 1, at };
   const next = applyProposal(dictionary, checked.value.target, checked.value.proposal, stamp);
-  if (!rewritesSpecIds(checked.value.proposal)) return ok({ dictionary, stamp, next, holders: null, rewrites: [] });
+  if (!rewritesSpecIds(checked.value.proposal)) return ok({ dictionary, stamp, next, holders: null, rewrites: [], relettered: [] });
 
   const held = await specIds.holding(slot, code);
   const holders = {
@@ -70,6 +72,7 @@ export async function planDictionaryChange(
     specIds: held.map(({ savedSpecId }) => ({ id: savedSpecId.id, version: savedSpecId.version })),
   };
   const rewrites: PlannedRewrite[] = [];
+  const relettered: PlannedRewrite[] = [];
   for (const record of held) {
     const before = record.savedSpecId.specId;
     const after = rewriteSpecId(before, checked.value.target, checked.value.proposal, next);
@@ -78,11 +81,12 @@ export async function planDictionaryChange(
       return err(new SpecIdWouldBeInvalidError(before.code, problem));
     }
     if (after.value.code !== before.code) rewrites.push({ record, after: after.value });
+    else if (!after.value.sameSlotsAs(before)) relettered.push({ record, after: after.value });
   }
 
   const clash = await findClash(specIds, rewrites);
   if (clash) return err(new SpecIdsWouldClashError(clash));
-  return ok({ dictionary, stamp, next, holders, rewrites });
+  return ok({ dictionary, stamp, next, holders, rewrites, relettered });
 }
 
 /** Two codes, as they are now, of Spec IDs the rewrites would give one code; undefined when none would. */

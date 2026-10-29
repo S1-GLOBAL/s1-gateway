@@ -82,6 +82,11 @@ export class InMemorySpecIdRepository implements SpecIdRepository {
     return ok(undefined);
   }
 
+  /** Saves a relettered Spec ID over its row, with no history entry, as the real change store does (ADR 0032). */
+  reletter(saved: SavedSpecId): void {
+    this.saved.set(saved.id, saved);
+  }
+
   private async dictionaryMovedOn(dictionaryChange: number | null): Promise<boolean> {
     if (!this.dictionaries) return false;
     const live = await this.dictionaries.get(CURRENT_RELEASE);

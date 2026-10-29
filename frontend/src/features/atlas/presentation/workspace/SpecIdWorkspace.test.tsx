@@ -70,7 +70,7 @@ describe('SpecIdWorkspace, the slots that apply', () => {
     renderWorkspace({ productType });
 
     for (const label of hidden) expect(field(label)).toBeNull();
-    expect(screen.getByText(`Not asked for a ${typeName}: ${named}. They're written as X in the code.`)).toBeTruthy();
+    expect(screen.getByText(`Not asked for a ${typeName}: ${named}. They're left out of the code.`)).toBeTruthy();
     expect(field('Height')).not.toBeNull();
   });
 
@@ -138,7 +138,7 @@ describe('SpecIdWorkspace, already saved', () => {
 
   it('says nothing about similar Spec IDs when there are none', async () => {
     renderWorkspace();
-    await screen.findByText('Not asked for a bowl lid: nominal capacity, bottom diameter and gusset. They\'re written as X in the code.');
+    await screen.findByText('Not asked for a bowl lid: nominal capacity, bottom diameter and gusset. They\'re left out of the code.');
     expect(screen.queryByText(/similar Spec ID/)).toBeNull();
   });
 });

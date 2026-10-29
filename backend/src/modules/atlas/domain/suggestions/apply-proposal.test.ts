@@ -22,7 +22,8 @@ function approve(target: SuggestionTarget, proposal: Proposal, specId: SpecId, s
   const next = applyProposal(dictionary, target, proposal, stamp);
   const rewritten = rewriteSpecId(specId, target, proposal, next);
   if (!rewritten.ok) throw new Error(JSON.stringify(rewritten.error.issues));
-  return { next, code: rewritten.value.code };
+  // The slots as a dotted code: what each test checks. The code itself is in `specId`.
+  return { next, code: rewritten.value.dottedCode, specId: rewritten.value };
 }
 
 describe('applyProposal', () => {
@@ -36,7 +37,8 @@ describe('applyProposal', () => {
     expect(next.meaningOf('material', 'AZZ')).toBe('Polymer, invented');
     expect(next.searchWordsOf('material', 'AZZ')).toEqual(['invented polymer']);
     expect(next.change).toEqual(STAMP);
-    expect(next.values()).toHaveLength(119);
+    expect(next.values()).toHaveLength(122);
+    expect(next.numberOf('material', 'AZZ')).toBe(35);
     expect(dictionary.meaningOf('material', 'AZZ')).toBeUndefined();
   });
 
@@ -90,20 +92,22 @@ describe('applyProposal', () => {
 describe('rewriteSpecId', () => {
   it("gives a renamed option's Spec IDs the new letters", () => {
     const lid = built(LID);
-    const { code } = approve({ slot: 'material', code: 'APS' }, { kind: 'edit', newCode: 'APZ', meaning: null, searchWords: null }, lid);
-    expect(code).toBe(lid.code.replace('.APS.', '.APZ.'));
+    const { code, specId } = approve({ slot: 'material', code: 'APS' }, { kind: 'edit', newCode: 'APZ', meaning: null, searchWords: null }, lid);
+    expect(code).toBe(lid.dottedCode.replace('.APS.', '.APZ.'));
+    // The option keeps its number, so the code does not change (ADR 0032).
+    expect(specId.code).toBe(lid.code);
   });
 
   it('replaces a deleted option with the one named, or with Not known', () => {
     const lid = built(LID);
-    expect(approve({ slot: 'material', code: 'APS' }, { kind: 'delete', replacement: 'APP' }, lid).code).toBe(lid.code.replace('.APS.', '.APP.'));
-    expect(SpecId.restoreCode(approve({ slot: 'material', code: 'APS' }, { kind: 'delete', replacement: 'Y' }, lid).code).slot('material')).toBe('Y');
+    expect(approve({ slot: 'material', code: 'APS' }, { kind: 'delete', replacement: 'APP' }, lid).code).toBe(lid.dottedCode.replace('.APS.', '.APP.'));
+    expect(approve({ slot: 'material', code: 'APS' }, { kind: 'delete', replacement: 'Y' }, lid).specId.slot('material')).toBe('Y');
   });
 
   it('turns a paper-only field from X to Y when the material it depends on becomes not known', () => {
     const lid = built(LID);
     expect(lid.slot('basisWeight')).toBe('X');
-    const unknown = SpecId.restoreCode(approve({ slot: 'material', code: 'APS' }, { kind: 'delete', replacement: 'Y' }, lid).code);
+    const unknown = approve({ slot: 'material', code: 'APS' }, { kind: 'delete', replacement: 'Y' }, lid).specId;
     expect(unknown.slot('material')).toBe('Y');
     expect(unknown.slot('basisWeight')).toBe('Y');
   });
@@ -112,25 +116,25 @@ describe('rewriteSpecId', () => {
     const cup = built(CUP);
     const capacity = cup.slot('capacity');
     expect(approve({ slot: 'capacity', code: 'Z' }, { kind: 'edit', newCode: 'O', meaning: null, searchWords: null }, cup).code).toBe(
-      cup.code.replace(`.${capacity}.`, `.O${capacity.slice(1)}.`),
+      cup.dottedCode.replace(`.${capacity}.`, `.O${capacity.slice(1)}.`),
     );
-    expect(approve({ slot: 'capacity', code: 'Z' }, { kind: 'delete', replacement: 'Y' }, cup).code).toBe(cup.code.replace(`.${capacity}.`, '.Y.'));
+    expect(approve({ slot: 'capacity', code: 'Z' }, { kind: 'delete', replacement: 'Y' }, cup).code).toBe(cup.dottedCode.replace(`.${capacity}.`, '.Y.'));
   });
 
   it('turns a field to X when its rule becomes never, and from X to Y when it starts to apply', () => {
     const cup = built(CUP);
     const never = approve({ slot: 'productType', code: 'CUP' }, { kind: 'rules', rules: { wall: 'never' } }, cup);
-    expect(SpecId.restoreCode(never.code).slot('wall')).toBe('X');
+    expect(never.specId.slot('wall')).toBe('X');
 
     expect(cup.slot('profile')).toBe('X');
     const applies = approve({ slot: 'productType', code: 'CUP' }, { kind: 'rules', rules: { profile: 'applies' } }, cup);
-    expect(SpecId.restoreCode(applies.code).slot('profile')).toBe('Y');
+    expect(applies.specId.slot('profile')).toBe('Y');
   });
 
   it("refits every field to the product type a deleted one's Spec IDs move to", () => {
     const cup = built(CUP);
     const { next, code } = approve({ slot: 'productType', code: 'CUP' }, { kind: 'delete', replacement: 'BWL' }, cup);
-    const moved = SpecId.restoreCode(code);
+    const moved = approve({ slot: 'productType', code: 'CUP' }, { kind: 'delete', replacement: 'BWL' }, cup).specId;
     expect(moved.slot('productType')).toBe('BWL');
     // Whatever BWL rules, every ruled field now fits it: reading the code with `next` passed.
     expect(SpecId.parse(code, next).ok).toBe(true);
@@ -138,7 +142,7 @@ describe('rewriteSpecId', () => {
 
   it('leaves a Spec ID the change does not touch as it was', () => {
     const lid = built(LID);
-    expect(approve({ slot: 'material', code: 'APP' }, { kind: 'edit', newCode: 'APQ', meaning: null, searchWords: null }, lid).code).toBe(lid.code);
+    expect(approve({ slot: 'material', code: 'APP' }, { kind: 'edit', newCode: 'APQ', meaning: null, searchWords: null }, lid).code).toBe(lid.dottedCode);
   });
 });
 

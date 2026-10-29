@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, date, foreignKey, index, integer, pgTable, primaryKey, varchar } from 'drizzle-orm/pg-core';
+import { check, date, foreignKey, index, integer, pgTable, primaryKey, uniqueIndex, varchar } from 'drizzle-orm/pg-core';
 import { atlasDictionaryChanges } from './atlas-dictionary-changes.table.js';
 
 /*
@@ -21,9 +21,16 @@ export const atlasDictionaryValues = pgTable(
     slot: varchar('slot', { length: 32 }).notNull(),
     code: varchar('code', { length: 5 }).notNull(),
     meaning: varchar('meaning', { length: 120 }).notNull(),
+    /**
+     * The option's number in its list, written after the list's letter in a
+     * code: `B17` (ADR 0032). Given in the order options were issued, kept
+     * through a rename, never given again once deleted. Null only in S1 0.1.0.
+     */
+    number: integer('number'),
   },
   (table) => [
     primaryKey({ columns: [table.release, table.slot, table.code] }),
+    uniqueIndex('atlas_dictionary_values_number_unique').on(table.release, table.slot, table.number),
     // Named here: Drizzle's generated name is longer than Postgres's 63-character limit.
     foreignKey({
       name: 'atlas_dictionary_values_release_fk',
@@ -76,6 +83,31 @@ export const atlasDictionaryRenames = pgTable(
     primaryKey({ name: 'atlas_dictionary_renames_pk', columns: [table.slot, table.oldCode] }),
     foreignKey({
       name: 'atlas_dictionary_renames_change_number_fk',
+      columns: [table.changeNumber],
+      foreignColumns: [atlasDictionaryChanges.number],
+    }),
+  ],
+);
+
+/**
+ * Every number whose option an approved change deleted, with the letters and
+ * meaning it had (ADR 0032): no new option takes it, and a code written with
+ * it still reads. Null `change_number` for one deleted before numbers were
+ * stored.
+ */
+export const atlasDictionaryRetiredNumbers = pgTable(
+  'atlas_dictionary_retired_numbers',
+  {
+    slot: varchar('slot', { length: 32 }).notNull(),
+    number: integer('number').notNull(),
+    code: varchar('code', { length: 5 }).notNull(),
+    meaning: varchar('meaning', { length: 120 }).notNull(),
+    changeNumber: integer('change_number'),
+  },
+  (table) => [
+    primaryKey({ name: 'atlas_dictionary_retired_numbers_pk', columns: [table.slot, table.number] }),
+    foreignKey({
+      name: 'atlas_dictionary_retired_numbers_change_number_fk',
       columns: [table.changeNumber],
       foreignColumns: [atlasDictionaryChanges.number],
     }),

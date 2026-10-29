@@ -43,7 +43,7 @@ describe('FactGroups, the slots S2 0.1.0 applies', () => {
     renderGroups('CUP');
     expect(
       screen.getByText(
-        "Not asked for a cup: profile, gusset, compartments, plies, lid opening, handle, individual wrap and window. They're written as X in the code.",
+        "Not asked for a cup: profile, gusset, compartments, plies, lid opening, handle, individual wrap and window. They're left out of the code.",
       ),
     ).toBeTruthy();
   });
@@ -61,11 +61,11 @@ describe('FactGroups, the slots S2 0.1.0 applies', () => {
 });
 
 describe('FactGroups, the controls', () => {
-  it('lists all 31 product types in code order, each with its code', () => {
+  it('lists all 31 product types in code order, each as a code writes it', () => {
     renderGroups('BAG');
     const labels = optionLabels('Product type');
     expect(labels).toHaveLength(31);
-    expect(labels.slice(0, 3)).toEqual(['BAG — Bag', 'BLD — Bowl lid', 'BWL — Bowl']);
+    expect(labels.slice(0, 3)).toEqual(['A1 — Bowl lid', 'A2 — Cup lid', 'A3 — Bowl']);
     expect((screen.getByLabelText('Product type') as HTMLSelectElement).value).toBe('BAG');
   });
 
@@ -77,7 +77,7 @@ describe('FactGroups, the controls', () => {
 
   it('offers each new choice with "Not known" first', () => {
     renderGroups('CUP');
-    expect(optionLabels('Wall')).toEqual(['Not known', 'DW — Double wall', 'RW — Ripple wall', 'SW — Single wall']);
+    expect(optionLabels('Wall')).toEqual(['Not known', 'Q1 — Single wall', 'Q2 — Double wall', 'Q3 — Ripple wall']);
     expect(optionLabels('Print')[0]).toBe('Not known');
     expect(optionLabels('Print')).toHaveLength(11);
   });
@@ -89,6 +89,11 @@ describe('FactGroups, the controls', () => {
     expect(plies.inputMode).toBe('numeric');
     expect(plies.value).toBe('');
     expect(within(screen.getByRole('region', { name: 'Weight and thickness' })).getByLabelText('Plies')).toBe(plies);
+  });
+
+  it('asks for a capacity amount that may have decimals, such as 3.25', () => {
+    renderGroups('CUP');
+    expect((screen.getByLabelText('Nominal capacity amount') as HTMLInputElement).inputMode).toBe('decimal');
   });
 
   it('puts print, handle and window under 06 Print and features', () => {

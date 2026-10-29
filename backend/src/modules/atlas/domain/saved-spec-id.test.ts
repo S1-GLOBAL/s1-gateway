@@ -58,7 +58,7 @@ describe('SavedSpecId.create', () => {
   it('keeps the code, the release, who saved it and when', () => {
     const result = create('Illustrative lid');
     if (!result.ok) throw result.error;
-    expect(result.value.specId.code).toBe(ILLUSTRATIVE);
+    expect(result.value.specId.dottedCode).toBe(ILLUSTRATIVE);
     expect(result.value.dictionaryRelease).toBe('S2 0.1.0');
     expect(result.value.savedBy).toBe('00000000-0000-4000-8000-0000000000aa');
     expect(result.value.savedAt.toISOString()).toBe('2026-10-16T08:00:00.000Z');

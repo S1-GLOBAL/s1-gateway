@@ -1,3 +1,4 @@
+import { writeCode } from '../domain/code.js';
 import type { Dictionary } from '../domain/dictionary.js';
 import type { SlotState, SpecId, SpecIdFactsInput } from '../domain/spec-id.js';
 import type { FormerHolderRecord, SavedSpecIdRecord } from '../domain/spec-id-repository.js';
@@ -27,6 +28,8 @@ export interface DictionarySlotDto {
 export interface DictionaryValueDto {
   code: string;
   meaning: string;
+  /** Its number in its list, written after the list's letter in a code (ADR 0032). */
+  number: number;
   /** Its approved search words, in order (ADR 0031). The word list in the code is not among them. */
   searchWords: string[];
 }
@@ -49,7 +52,10 @@ export interface DecodedSlotDto {
   number: number;
   key: SlotKey;
   name: string;
+  /** The value as it is stored: `BCS`, `Z0012`, `Y`, `X`. */
   raw: string;
+  /** How the code writes it: `B17`; empty when it is left out (ADR 0032). */
+  part: string;
   state: SlotState;
   meaning: string;
 }
@@ -69,9 +75,10 @@ export function toDictionaryDto(dictionary: Dictionary): DictionaryDto {
     slots: DICTIONARY_SLOTS.map((key) => ({
       key,
       name: slotDefinition(key).name,
-      values: dictionary.valuesOf(key).map(({ code, meaning }) => ({
+      values: dictionary.valuesOf(key).map(({ code, meaning, number }) => ({
         code,
         meaning,
+        number,
         searchWords: dictionary.searchWordsOf(key, code),
       })),
     })),
@@ -80,15 +87,20 @@ export function toDictionaryDto(dictionary: Dictionary): DictionaryDto {
   };
 }
 
+/**
+ * A Spec ID read slot by slot. Its code is written from its slots, so a row an
+ * older API saved with a dotted code during a deploy still shows today's (ADR 0032).
+ */
 export function toDecodedSpecIdDto(specId: SpecId, dictionary: Dictionary): DecodedSpecIdDto {
   return {
-    code: specId.code,
+    code: writeCode((key) => specId.slot(key), dictionary) ?? specId.code,
     dictionaryRelease: dictionary.release,
     slots: specId.describe(dictionary).map((slot) => ({
       number: slot.number,
       key: slot.key,
       name: slot.name,
       raw: slot.raw,
+      part: slot.part,
       state: slot.state,
       meaning: slot.meaning,
     })),
@@ -257,6 +269,12 @@ export interface SpecIdTextReadingDto {
   read: TextReadFactDto[];
   ignored: string[];
   conflicts: TextConflictDto[];
+  /**
+   * Sentences about what was read: a lid named by what it fits, two values
+   * for one fact, a size converted, and what a word left over could mean
+   * (plan 0011).
+   */
+  notes: string[];
   /** Null until a product type is found or given. */
   decoded: DecodedSpecIdDto | null;
 }

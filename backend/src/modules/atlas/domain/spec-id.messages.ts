@@ -26,6 +26,5 @@ export const specIdMessages = {
     `${slot}: ${valueWithUnit} has more than 6 decimal places.`,
   wrongUnit: (slot: string, unit: string, units: string): string =>
     `${slot}: ${unit} is not a unit for this slot. Use ${units}.`,
-  notWhole: (slot: string, value: string): string => `${slot}: ${value} must be a whole number.`,
   outOfRange: (slot: string, value: string, range: string): string => `${slot}: ${value} is outside ${range}.`,
 } as const;

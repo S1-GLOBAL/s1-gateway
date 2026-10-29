@@ -2,14 +2,13 @@ import type { Clock } from '../../../shared/application/ports/clock.js';
 import type { IdGenerator } from '../../../shared/application/ports/id-generator.js';
 import type { UseCase } from '../../../shared/application/use-case.js';
 import { buildKeepingWhatFits } from '../domain/build-keeping-what-fits.js';
-import type { Dictionary } from '../domain/dictionary.js';
 import type { DictionaryRepository } from '../domain/dictionary-repository.js';
-import { QUOTE_COLUMNS, readVerifiedRow, type RowNote, type RowReading, type VerifiedRow } from '../domain/import/verified-row.js';
+import { QUOTE_COLUMNS, readVerifiedRow, type RowReading, type VerifiedRow } from '../domain/import/verified-row.js';
 import { CURRENT_RELEASE, slotDefinition } from '../domain/slots.js';
 import { manufacturerKey } from '../domain/sourcing/manufacturer.js';
 import type { QuoteValues } from '../domain/sourcing/quote.js';
 import type { QuoteToRecord, SourcingRepository } from '../domain/sourcing/sourcing-repository.js';
-import { meaningOfFact, type SpecIdFactsInput } from '../domain/spec-id.js';
+import type { SpecIdFactsInput } from '../domain/spec-id.js';
 import type { SpecIdRepository } from '../domain/spec-id-repository.js';
 import type { ImportReportRow, ImportReportSink, ImportSummary, RowOutcome } from './ports/import-report-sink.js';
 import type { VerifiedListSource } from './ports/verified-list-source.js';
@@ -70,12 +69,12 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
         if (reading.agreement) agreed += 1;
       }
       if (reading.kind === 'skipped') {
-        lines.set(row.row, skippedLine(row, reading.reason, reading.nameCut));
+        lines.set(row.row, skippedLine(row, reading.reason, reading.nameCut, reading.notes));
         continue;
       }
       const build = buildKeepingWhatFits(reading.facts, dictionary);
       if (!build.specId) {
-        lines.set(row.row, skippedLine(row, `${reading.facts.productType} is not a product type in ${dictionary.release}.`, reading.nameCut));
+        lines.set(row.row, skippedLine(row, `${reading.facts.productType} is not a product type in ${dictionary.release}.`, reading.nameCut, reading.notes));
         continue;
       }
       const dropped = build.dropped.map(({ key, reasons }) => `${slotDefinition(key).name}: ${reasons.join(' ')}`);
@@ -127,11 +126,11 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
           outcome,
           code,
           reason: null,
-          readFromRow: notesOf(member.reading, member.facts, dictionary),
+          readFromRow: [...member.reading.readFromRow],
           dropped: member.dropped,
           manufacturer: company === '' ? 'no manufacturer' : 'found',
           quote: recorded ? 'recorded' : 'not recorded',
-          flags: flagsOf(member.row, member.reading.nameCut),
+          flags: flagsOf(member.row, member.reading.nameCut, member.reading.notes),
         });
       }
     }
@@ -153,7 +152,7 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
 }
 
 /** A row not imported: it records no quote (#56). */
-function skippedLine(row: VerifiedRow, reason: string, nameCut: boolean): ImportReportRow {
+function skippedLine(row: VerifiedRow, reason: string, nameCut: boolean, notes: readonly string[]): ImportReportRow {
   return {
     row: row.row,
     itemName: row.itemName,
@@ -164,13 +163,15 @@ function skippedLine(row: VerifiedRow, reason: string, nameCut: boolean): Import
     dropped: [],
     manufacturer: row.company.trim() === '' ? 'no manufacturer' : 'found',
     quote: 'not recorded',
-    flags: flagsOf(row, nameCut),
+    flags: flagsOf(row, nameCut, notes),
   };
 }
 
-function flagsOf(row: VerifiedRow, nameCut: boolean): string[] {
+/** A name cut to fit, a quote formula with no saved value, and the reader's notes on the row. */
+function flagsOf(row: VerifiedRow, nameCut: boolean, notes: readonly string[]): string[] {
   return [
     ...(nameCut ? [NAME_CUT] : []),
+    ...notes,
     ...row.unsavedFormulas.map((column) => `${QUOTE_COLUMNS[column]}: a formula with no value saved in the workbook`),
   ];
 }
@@ -201,17 +202,4 @@ function nameOf(members: readonly Coded[]): string {
   let best = members[0]?.reading.name ?? '';
   for (const { reading } of members) if ((counts.get(reading.name) ?? 0) > (counts.get(best) ?? 0)) best = reading.name;
   return best;
-}
-
-/** Each fact read from the item name or under a ruling, as the report lists it, if the build kept it. */
-function notesOf(reading: Extract<RowReading, { kind: 'read' }>, kept: Partial<SpecIdFactsInput>, dictionary: Dictionary): string[] {
-  const notes: RowNote[] = [...reading.fromItemName, ...reading.underRuling.filter((note) => !reading.fromItemName.includes(note))];
-  const facts = kept as Record<string, unknown>;
-  return notes
-    .filter((note) => facts[note.key] !== undefined && facts[note.key] !== null)
-    .map((note) => {
-      const fact = facts[note.key] as Parameters<typeof meaningOfFact>[1];
-      const meaning = meaningOfFact(note.key, fact, dictionary) ?? note.words;
-      return `${slotDefinition(note.key).name}: ${meaning}${note.ruling ? ` (${note.ruling}, from "${note.words}")` : ''}`;
-    });
 }

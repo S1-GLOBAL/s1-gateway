@@ -4,6 +4,7 @@ import type { DictionaryRepository } from '../domain/dictionary-repository.js';
 import {
   classifyMatch,
   isSearchableSlot,
+  materialFamiliesIn,
   notKnownCount,
   recordedCount,
   type SearchableSlotKey,
@@ -24,8 +25,9 @@ import { stageCountsOf } from './stage-counts.js';
 
 /**
  * Finds saved Spec IDs by the slots chosen: those that fit, the fewest slots
- * not known first; then those that might (a chosen slot is not known), the
- * most chosen slots recorded first. Ties stay newest first.
+ * not known first; then those that might (a chosen slot is not known, or
+ * records only the family of the material asked for), the most chosen slots
+ * recorded first. Ties stay newest first.
  */
 export class FindSimilarSpecIds
   implements UseCase<FindSimilarSpecIdsInput, Result<SimilarSpecIdsDto, InvalidLookupError>>
@@ -56,15 +58,18 @@ export class FindSimilarSpecIds
     if (Object.keys(issues).length > 0) return err(new InvalidLookupError(issues));
 
     // Candidates come newest first; each group is then ordered by closeness, and a
-    // stable sort keeps a tie newest first (#50).
-    const candidates = await this.specIds.findCandidates(criteria);
+    // stable sort keeps a tie newest first (#50). The material is compared here, not
+    // in the lookup: a family fits its grades, so equal codes are not all that fit.
+    const families = materialFamiliesIn(dictionary);
+    const { material: _material, ...beyondMaterial } = criteria;
+    const candidates = await this.specIds.findCandidates(beyondMaterial);
     const fits: { record: SavedSpecIdRecord; notKnown: number }[] = [];
     const mightFit: { record: SavedSpecIdRecord; recorded: number }[] = [];
     for (const record of candidates) {
       const slotOf = (key: SearchableSlotKey) => record.savedSpecId.specId.slot(key);
-      const match = classifyMatch(slotOf, criteria);
+      const match = classifyMatch(slotOf, criteria, families);
       if (match === 'fits') fits.push({ record, notKnown: notKnownCount(slotOf) });
-      else if (match === 'might-fit') mightFit.push({ record, recorded: recordedCount(slotOf, criteria) });
+      else if (match === 'might-fit') mightFit.push({ record, recorded: recordedCount(slotOf, criteria, families) });
     }
     fits.sort((a, b) => a.notKnown - b.notKnown);
     mightFit.sort((a, b) => b.recorded - a.recorded);

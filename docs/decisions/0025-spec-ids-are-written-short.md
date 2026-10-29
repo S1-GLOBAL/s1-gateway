@@ -1,6 +1,7 @@
 # 0025. Spec IDs are written short: one letter for an empty slot, and no format tag
 
-- **Status:** Accepted
+- **Status:** Accepted; superseded in part by [0032](./0032-spec-ids-are-written-tagged.md): codes are written
+  tagged, each known fact a letter and a number; slots still hold `Y` and `X`
 - **Date:** 2026-10-20
 - **Related:** [Issue #36](https://github.com/S1-GLOBAL/s1-gateway/issues/36) ·
   [ADR 0019](./0019-the-s1-spec-id-format.md) ·

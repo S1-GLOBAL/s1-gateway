@@ -1,5 +1,6 @@
 import type { UseCase } from '../../../shared/application/use-case.js';
 import { err, ok, type Result } from '../../../shared/domain/result.js';
+import { codeInToday } from '../domain/code.js';
 import type { Dictionary } from '../domain/dictionary.js';
 import type { DictionaryRepository } from '../domain/dictionary-repository.js';
 import { diffCodes } from '../domain/diff-codes.js';
@@ -37,8 +38,8 @@ function toSpecIdChangeDto(
     kind: change.kind,
     changedBy: { id: change.changedBy, fullName: changedByName },
     changedAt: change.changedAt.toISOString(),
-    codeBefore: change.codeBefore,
-    codeAfter: change.codeAfter,
+    codeBefore: change.codeBefore === null ? null : (codeInToday(change.codeBefore, dictionary) ?? change.codeBefore),
+    codeAfter: codeInToday(change.codeAfter, dictionary) ?? change.codeAfter,
     nameBefore: change.nameBefore,
     nameAfter: change.nameAfter,
     slots: change.codeBefore === null ? [] : slotChanges(change.codeBefore, change.codeAfter, dictionary),
@@ -47,13 +48,14 @@ function toSpecIdChangeDto(
 }
 
 /**
- * Today's dictionary reads both codes. A code an approved change renamed or
- * deleted since reads as its letters, and a reworded one in today's words
- * (ADR 0031).
+ * Today's dictionary reads both codes, as they were written: today's spelling,
+ * or a dotted code from before ADR 0032. An option an approved change renamed
+ * reads in today's words, one deleted since as its letters (ADR 0031).
  */
 function slotChanges(codeBefore: string, codeAfter: string, dictionary: Dictionary): SlotChangeDto[] {
-  const before = SpecId.restoreCode(codeBefore);
-  const after = SpecId.restoreCode(codeAfter);
+  const before = SpecId.restoreWritten(codeBefore, dictionary);
+  const after = SpecId.restoreWritten(codeAfter, dictionary);
+  if (before === null || after === null) return [];
   const meaningsBefore = new Map(before.describe(dictionary).map((slot) => [slot.key, slot]));
   const meaningsAfter = new Map(after.describe(dictionary).map((slot) => [slot.key, slot.meaning]));
   return diffCodes(before, after).map((difference) => ({

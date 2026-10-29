@@ -15,11 +15,13 @@ afterEach(() => rm(folder, { recursive: true, force: true }));
 /** An invented one-row verified list whose item name carries a cell comment. */
 async function commentedWorkbook(): Promise<Buffer> {
   const book = new ExcelJS.Workbook();
-  const sheet = book.addWorksheet('Main Table');
+  const sheet = book.addWorksheet('Restructured Main Table');
   sheet.getCell('C4').value = 'Invented PP cup';
   sheet.getCell('C4').note = 'Invented comment';
   sheet.getCell('D4').value = 'Cup';
-  sheet.getCell('E4').value = 'Plastic - PP';
+  sheet.getCell('E4').value = 'Plastic';
+  sheet.getCell('F4').value = 'PP';
+  sheet.getCell('I4').value = '1c print';
   return Buffer.from(await book.xlsx.writeBuffer());
 }
 
@@ -50,9 +52,11 @@ describe('ExcelVerifiedListSource', () => {
         row: 4,
         itemName: 'Invented PP cup',
         category: 'Cup',
-        material: 'Plastic - PP',
+        material: 'Plastic',
+        materialType: 'PP',
         dimension: '',
         weight: '',
+        printing: '1c print',
         company: '',
         country: '',
         quote: { fobPerUnit: '', fobPerCase: '', fobTotal: '', moldCost: '', moldLeadTime: '', sampleLeadTime: '', productionLeadTime: '' },
@@ -64,14 +68,14 @@ describe('ExcelVerifiedListSource', () => {
 
   it("reads a row's manufacturer, and its quote as Excel shows it, noting a formula with no saved value", async () => {
     const book = new ExcelJS.Workbook();
-    const sheet = book.addWorksheet('Main Table');
+    const sheet = book.addWorksheet('Restructured Main Table');
     sheet.getCell('A4').value = 'Acme Packaging';
     sheet.getCell('B4').value = 'Atlantis';
     sheet.getCell('C4').value = 'Invented PP cup';
-    sheet.getCell('O4').value = { formula: 'P4/50' } as ExcelJS.CellFormulaValue;
-    sheet.getCell('P4').value = 6;
-    sheet.getCell('P4').numFmt = '"$"#,##0.00';
-    sheet.getCell('U4').value = '30 days';
+    sheet.getCell('U4').value = { formula: 'V4/50' } as ExcelJS.CellFormulaValue;
+    sheet.getCell('V4').value = 6;
+    sheet.getCell('V4').numFmt = '"$"#,##0.00';
+    sheet.getCell('AA4').value = '30 days';
     const path = join(folder, 'invented.xlsx');
     await book.xlsx.writeFile(path);
 
@@ -85,12 +89,12 @@ describe('ExcelVerifiedListSource', () => {
     });
   });
 
-  it('says so when the workbook has no "Main Table" sheet', async () => {
+  it('says so when the workbook has no "Restructured Main Table" sheet', async () => {
     const book = new ExcelJS.Workbook();
     book.addWorksheet('Sheet1');
     const path = join(folder, 'invented.xlsx');
     await book.xlsx.writeFile(path);
 
-    await expect(new ExcelVerifiedListSource(path).rows()).rejects.toThrow('The workbook has no sheet called "Main Table".');
+    await expect(new ExcelVerifiedListSource(path).rows()).rejects.toThrow('The workbook has no sheet called "Restructured Main Table".');
   });
 });

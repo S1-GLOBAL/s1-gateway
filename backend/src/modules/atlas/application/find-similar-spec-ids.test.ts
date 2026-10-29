@@ -125,3 +125,48 @@ describe('FindSimilarSpecIds, closest first (#50)', () => {
     expect(result.value.mightFit).toEqual([]);
   });
 });
+
+describe('FindSimilarSpecIds, a material family (plan 0011)', () => {
+  /** Invented bags that differ only in their material. */
+  async function bags() {
+    const dictionaries = new InMemoryDictionaryRepository();
+    const specIds = new InMemorySpecIdRepository();
+    specIds.nameSaver(SAVER.id, SAVER.fullName);
+    const clock = new SteppingClock(new Date('2026-10-14T08:00:00.000Z'));
+    const save = new SaveSpecId(dictionaries, specIds, new InMemorySourcingRepository(), clock, new SequentialIdGenerator());
+    const materials: [string, string][] = [
+      ['Recycled kraft bag', 'BKC'],
+      ['Kraft bag', 'BKR'],
+      ['Paper bag', 'B00'],
+      ['White kraft bag', 'BKW'],
+      ['Plastic bag', 'A00'],
+    ];
+    for (const [index, [name, material]] of materials.entries()) {
+      clock.set(`2026-10-1${index}T08:00:00.000Z`);
+      const result = await save.execute({ name, facts: { productType: 'BAG', material }, savedBy: SAVER });
+      if (!result.ok) throw result.error;
+    }
+    return new FindSimilarSpecIds(dictionaries, specIds, new InMemorySourcingRepository());
+  }
+
+  it('fits every grade of the family asked for: paper of unknown grade fits any paper, kraft any kraft', async () => {
+    const find = await bags();
+    const paper = await find.execute({ productType: 'BAG', material: 'B00' });
+    if (!paper.ok) throw paper.error;
+    expect(paper.value.fits.map((saved) => saved.name).sort()).toEqual(['Kraft bag', 'Paper bag', 'Recycled kraft bag', 'White kraft bag']);
+    expect(paper.value.mightFit).toEqual([]);
+
+    const kraft = await find.execute({ productType: 'BAG', material: 'BKR' });
+    if (!kraft.ok) throw kraft.error;
+    expect(kraft.value.fits.map((saved) => saved.name).sort()).toEqual(['Kraft bag', 'Recycled kraft bag', 'White kraft bag']);
+    expect(kraft.value.mightFit.map((saved) => saved.name)).toEqual(['Paper bag']);
+  });
+
+  it('might fit a grade to a Spec ID that records only its family, and leaves another grade out', async () => {
+    const find = await bags();
+    const result = await find.execute({ productType: 'BAG', material: 'BKC' });
+    if (!result.ok) throw result.error;
+    expect(result.value.fits.map((saved) => saved.name)).toEqual(['Recycled kraft bag']);
+    expect(result.value.mightFit.map((saved) => saved.name).sort()).toEqual(['Kraft bag', 'Paper bag']);
+  });
+});

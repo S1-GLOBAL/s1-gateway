@@ -2,9 +2,11 @@ import { Dictionary, type DictionaryValue, type SlotRuleEntry } from '../diction
 import type { RuledSlotKey, SlotRule } from '../slots.js';
 
 /*
- * Release S2 0.1.0 exactly as the seed migration loads it
- * (backend/drizzle/0010_seed_atlas_dictionary_s2_0_1_0.sql). For tests only;
- * the repository test proves the database holds the same.
+ * Release S2 0.1.0 exactly as the migrations load it: the seed
+ * (backend/drizzle/0010_seed_atlas_dictionary_s2_0_1_0.sql), then the three
+ * vessels sold with their lids (0018, ADR 0032). Values are in the order they
+ * were issued, which numbers them. For tests only; the repository test proves
+ * the database holds the same.
  */
 
 export const S2_0_1_0_VALUES: readonly DictionaryValue[] = [
@@ -39,6 +41,10 @@ export const S2_0_1_0_VALUES: readonly DictionaryValue[] = [
   { slot: 'productType', code: 'CKT', meaning: 'Cutlery kit' },
   { slot: 'productType', code: 'SCH', meaning: 'Sachet' },
   { slot: 'productType', code: 'LBL', meaning: 'Label' },
+  // Added by migration 0018 (ADR 0032), after the seed, so A32–A34.
+  { slot: 'productType', code: 'BWB', meaning: 'Bowl with Bowl Lid' },
+  { slot: 'productType', code: 'CWC', meaning: 'Cup with Cup Lid' },
+  { slot: 'productType', code: 'PWC', meaning: 'Portion cup with Portion cup lid' },
   { slot: 'material', code: 'APT', meaning: 'Polymer, PET' },
   { slot: 'material', code: 'ARP', meaning: 'Polymer, rPET' },
   { slot: 'material', code: 'APP', meaning: 'Polymer, PP' },
@@ -186,6 +192,10 @@ const TABLE: Readonly<Record<string, readonly SlotRule[]>> = {
   CKT: ['never', 'applies', 'never', 'never', 'never', 'never', 'never', 'never', 'never', 'never', 'never', 'applies', 'never', 'never', 'never', 'applies', 'never', 'never', 'never', 'never', 'applies', 'never'],
   SCH: ['applies', 'applies', 'never', 'never', 'applies', 'never', 'never', 'never', 'applies', 'applies', 'never', 'applies', 'paper_only', 'applies', 'never', 'applies', 'never', 'never', 'never', 'never', 'never', 'never'],
   LBL: ['applies', 'applies', 'applies', 'never', 'never', 'round_only', 'never', 'never', 'non_round_only', 'non_round_only', 'never', 'never', 'paper_only', 'applies', 'never', 'applies', 'never', 'never', 'never', 'never', 'never', 'never'],
+  // Added by migration 0018 (ADR 0032): a slot applies when the vessel or its lid has it.
+  BWB: ['applies', 'applies', 'applies', 'applies', 'applies', 'round_only', 'round_only', 'applies', 'non_round_only', 'non_round_only', 'never', 'applies', 'paper_only', 'applies', 'applies', 'applies', 'applies', 'never', 'never', 'never', 'never', 'never'],
+  CWC: ['applies', 'applies', 'applies', 'applies', 'applies', 'round_only', 'round_only', 'applies', 'non_round_only', 'non_round_only', 'never', 'applies', 'paper_only', 'applies', 'applies', 'applies', 'never', 'never', 'applies', 'never', 'never', 'never'],
+  PWC: ['applies', 'applies', 'applies', 'applies', 'applies', 'round_only', 'round_only', 'applies', 'non_round_only', 'non_round_only', 'never', 'applies', 'paper_only', 'applies', 'never', 'applies', 'never', 'never', 'applies', 'never', 'never', 'never'],
 };
 
 export const S2_0_1_0_RULES: readonly SlotRuleEntry[] = Object.entries(TABLE).flatMap(([productType, rules]) =>

@@ -140,33 +140,42 @@ control character (U+0000–U+001F, U+007F).
 
 ### Atlas
 
-A Spec ID is written short, [ADR 0025](../decisions/0025-spec-ids-are-written-short.md),
-in the layout of [ADR 0024](../decisions/0024-spec-ids-move-to-the-s2-format.md)
-on the rules of [ADR 0019](../decisions/0019-the-s1-spec-id-format.md): 25
-slots separated by dots, product type first, with no format tag. A slot not
-known is `Y`, one that doesn't apply `X`; a known value keeps its width
-(`0045`, `Z0012`). Slots are named by key, in code order:
+A Spec ID is written tagged, [ADR 0032](../decisions/0032-spec-ids-are-written-tagged.md):
+one letter per known fact, then its number, the facts in words first, then one
+hyphen and the sizes: `A5B17D3E1Q2R3-G112H90J110`. A dictionary option's
+number is its place in its list; a size's is its amount; a capacity is `G`, its
+unit's number, then its amount, which may have up to 6 decimal places
+(`G13.25`). A slot not known, or that doesn't apply, is left out, and so is the
+variant. Letters may be typed in any order and either case; codes are answered
+in the standard order. A Spec ID still has 25 slots, each holding a stored
+value in the layout of [ADR 0024](../decisions/0024-spec-ids-move-to-the-s2-format.md)
+and [ADR 0025](../decisions/0025-spec-ids-are-written-short.md): `Y` not known,
+`X` doesn't apply, a known value at its width (`0045`, `Z0012`, `Z0003.25`).
+Slots are named by key, in code order:
 `productType`, `material`, `coating`, `colourClarity`,
 `shape`, `profile`, `capacity`, `topDiameter`, `bottomDiameter`, `height`,
 `length`, `width`, `gusset`, `unitWeight`, `basisWeight`, `thickness`, `wall`,
 `print`, `compartments`, `plies`, `lidOpening`, `handle`, `wrap`, `window`,
 `variant`.
 
-Every route that takes a code also takes a code given out before: an S1 code
-(74 characters, 18 slots) or a long S2 code (starting `S2.`, 97 characters,
-each marker as wide as its slot), and reads it as the short code it converts
-to. A marker written wide in a short code (`0000`, `XX`) is read as its letter.
-A code written before an approved dictionary change renamed one of its options
-is read in the option's live letters, and a capacity keeps its unit's label
+Every route that takes a code also takes a code given out before: a dotted
+short code (25 parts), an S1 code (74 characters, 18 slots) or a long S2 code
+(starting `S2.`, 97 characters, each marker as wide as its slot), and reads it
+as the tagged code it converts to. A marker written wide in a dotted code
+(`0000`, `XX`) is read as its letter. A dotted code written before an approved
+dictionary change renamed one of its options is read in the option's live
+letters, and a capacity keeps its unit's label
 ([ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md)).
-No route issues anything but short codes.
+A rename keeps an option's number, so it changes no tagged code. No route
+issues anything but tagged codes.
 
 `AtlasDictionary` is `{ release, approvedOn, slots, rules, change }`. `slots` holds the
 thirteen dictionary slots in code order (`productType` to `profile`, then
 `capacity` for its unit letters, then `wall`, `print`, `lidOpening`, `handle`,
-`wrap` and `window`), each `{ key, name, values: { code, meaning, searchWords }[] }`;
-`searchWords` are the words approved suggestions gave the option, in order,
-and never the word list in the code
+`wrap` and `window`), each `{ key, name, values: { code, meaning, number, searchWords }[] }`;
+`number` is written after the slot's letter in a code (material 17 is `B17`),
+and `searchWords` are the words approved suggestions gave the option, in
+order, and never the word list in the code
 ([ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md)).
 `rules` holds one `{ productType, slot, rule }` per product type and ruled
 slot, where `rule` is `applies`, `never`, `round_only`, `non_round_only` or
@@ -181,17 +190,20 @@ order:
 | `number` | number | 1–25 |
 | `key` | string | The slot key |
 | `name` | string | As people read it, e.g. `Colour / clarity` |
-| `raw` | string | The slot's characters, exactly as in the code |
+| `raw` | string | The slot's stored value: `BCS`, `Z0012`, `0090`, `Y` or `X` |
+| `part` | string | How the code writes it: `B17`, `G112`, `H90`; empty when the code leaves it out |
 | `state` | string | `value`, `not-known` (`Y`) or `does-not-apply` (`X`) |
 | `meaning` | string | `Bowl lid`, `90 mm`, `3.3 g`, `6 oz`, `3 compartments`, `Not known`, `Doesn't apply` |
 
 `POST /atlas/spec-ids/decode` takes `{ code }`; surrounding spaces are trimmed.
 `POST /atlas/spec-ids/encode` takes `{ facts }`. `facts.productType` is
 required; every other slot may be left out or `null`, meaning no value: the
-encoder writes `X` where the slot doesn't apply and `Y` everywhere else.
+code leaves it out, and its slot holds `X` where it doesn't apply and `Y`
+everywhere else.
 Dictionary slots take a code (`"APS"`). `compartments` (1–12) and `plies`
 (1–4) take a whole number as a string (`"3"`). `capacity` is `{ unit, value }`: a
-unit letter and a whole number. Measured slots are `{ value, unit }`, where
+unit letter and an amount, more than 0 and at most 9999, with at most 6 decimal
+places (`"3.25"`). Measured slots are `{ value, unit }`, where
 `value` is a decimal string with at most 6 decimal places, never a JSON
 number:
 
@@ -203,8 +215,12 @@ number:
 | `thickness` | `um` |
 
 `INVALID_SPEC_ID` reports every problem at once in `details.fields`, keyed by
-slot. A problem with the whole code (its length or its number of parts) is
-under `code`.
+slot. A problem with the whole code is under `code`. A tagged code is only ever
+refused under `code`: decode answers what is wrong with each part so far
+(`B99: This key/part is unknown.`, `Material (B) has no value.`,
+`Height: This part is not applicable for a bowl lid.`), and when no part is,
+why the whole code is refused (`Product type (A) is missing. Every code
+includes it, for example A1.`).
 
 `POST /atlas/spec-ids/read` takes `{ text, productType? }` and reads the facts
 in raw text by rules ([ADR 0026](../decisions/0026-raw-text-is-read-by-rules-and-a-public-word-list.md)).
@@ -221,9 +237,10 @@ that product type, over any the text names; one not in the dictionary answers
 
 | Field | Type | Notes |
 |---|---|---|
-| `read` | `{ key, name, meaning, words, ruling }[]` | Each fact read, in code order. `meaning` reads as a decoded slot does (`14 oz`); `words` as the text wrote them; `ruling` is #28's ruling for a size (`R1`, `R1b`, `R2`, `R3`, `R5`, `R6`), else null |
-| `ignored` | `string[]` | The words no rule used, and the words of a fact the product type cannot have, as the text wrote them |
+| `read` | `{ key, name, meaning, words, ruling }[]` | Each fact kept, in code order. `meaning` reads as a decoded slot does (`14 oz`), with any conversion (`229 mm (converted from 9 inch)`); `words` as the text wrote them, empty for a fact a later pass read; `ruling` is #28's ruling for a size (`R1`, `R1b`, `R2`, `R3`, `R5`, `R6`), else null |
+| `ignored` | `string[]` | The words nothing used, and no note explains, as the text wrote them |
 | `conflicts` | `{ key, name, found }[]` | A slot the text gives two values for, with each value's words; it is left out of the code |
+| `notes` | `string[]` | Sentences about what was read ([plan 0011](../plans/0011-tagged-spec-id-v2.md)): a lid named by what it fits, two values for one fact, a fact the product type cannot have, a size converted, and what a word left over could mean |
 | `decoded` | `DecodedSpecId \| null` | The code the facts make, once a product type is found or given; else null |
 
 Nothing is saved.

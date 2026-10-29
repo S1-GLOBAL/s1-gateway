@@ -11,13 +11,14 @@ describe('ReadSpecIdText', () => {
     const result = await readText.execute({ text: '  14oz Bagasse Bowl for Cava ' });
     if (!result.ok) throw result.error;
 
-    expect(result.value.decoded?.code).toBe('BWL.CBG.Y.Y.Y.X.Z0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X');
+    expect(result.value.decoded?.code).toBe('A3B25-G114');
     expect(result.value.read).toEqual([
       { key: 'productType', name: 'Product type', meaning: 'Bowl', words: 'Bowl', ruling: null },
       { key: 'material', name: 'Material', meaning: 'Molded fibre, bagasse', words: 'Bagasse', ruling: null },
       { key: 'capacity', name: 'Nominal capacity', meaning: '14 oz', words: '14oz', ruling: null },
     ]);
     expect(result.value.ignored).toEqual(['for', 'Cava']);
+    expect(result.value.notes).toEqual([]);
   });
 
   it('keeps a tray\'s length and width by reading the shape as rectangular', async () => {
@@ -43,13 +44,17 @@ describe('ReadSpecIdText', () => {
     expect(meaning.height).toBe('60 mm');
   });
 
-  it('drops a fact the product type cannot have, lists its words as ignored, and still builds the code', async () => {
+  it('drops a fact the product type cannot have, says why in a note, and still builds the code', async () => {
     const result = await readText.execute({ text: '14oz bowl lid PP' });
     if (!result.ok) throw result.error;
 
     expect(result.value.read.map((fact) => fact.key)).toEqual(['productType', 'material']);
-    expect(result.value.ignored).toEqual(['14oz']);
-    expect(result.value.decoded?.code.startsWith('BLD.APP.')).toBe(true);
+    expect(result.value.ignored).toEqual([]);
+    expect(result.value.notes).toEqual([
+      'The product is the lid. It goes on a 14 oz bowl. It is a Bowl lid (A1).',
+      'Nominal capacity does not apply to a bowl lid.',
+    ]);
+    expect(result.value.decoded?.code).toBe('A1B3');
   });
 
   it('answers no code until there is a product type, with each fact in plain words', async () => {
@@ -63,7 +68,7 @@ describe('ReadSpecIdText', () => {
   it('builds the code with a product type given for text that names none', async () => {
     const result = await readText.execute({ text: 'clear PET 12oz', productType: 'CUP' });
     if (!result.ok) throw result.error;
-    expect(result.value.decoded?.code.startsWith('CUP.APT.Y.CL.')).toBe(true);
+    expect(result.value.decoded?.code).toBe('A5B1D1-G112');
   });
 
   it('reads 500 characters, and refuses 501 and empty text', async () => {

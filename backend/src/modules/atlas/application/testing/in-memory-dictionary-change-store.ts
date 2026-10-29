@@ -41,6 +41,10 @@ export class InMemoryDictionaryChangeStore implements DictionaryChangeStore {
       const same = now.length === read.size && now.every(({ savedSpecId }) => read.get(savedSpecId.id) === savedSpecId.version);
       if (!same) return err(new SpecIdMovedOnError());
     }
+    for (const relettering of plan.relettered) {
+      const held = await this.specIds.findById(relettering.saved.id);
+      if (held?.savedSpecId.version !== relettering.expectedVersion) return err(new SpecIdMovedOnError());
+    }
     for (const rewrite of plan.rewrites) {
       const held = await this.specIds.findById(rewrite.saved.id);
       if (held?.savedSpecId.version !== rewrite.expectedVersion) return err(new SpecIdMovedOnError());
@@ -56,6 +60,7 @@ export class InMemoryDictionaryChangeStore implements DictionaryChangeStore {
     });
     await this.suggestions.save(plan.suggestion, plan.suggestionVersion);
     for (const rewrite of plan.rewrites) await this.specIds.update(rewrite.saved, rewrite.change, rewrite.expectedVersion, plan.change.number);
+    for (const relettering of plan.relettered) this.specIds.reletter(relettering.saved);
     this.applied.push(plan);
     return ok(undefined);
   }

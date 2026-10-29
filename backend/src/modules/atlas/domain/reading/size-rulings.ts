@@ -10,13 +10,20 @@ export interface SizeReading {
   readonly ruling: Ruling;
   /** The text the size was read from, as it appears in the text given. */
   readonly words: string;
+  /** The same size written again elsewhere, each as it appears: `96MM LIDS, 96mm`. */
+  readonly repeats?: readonly string[];
 }
 
 /** Product types each ruling reads, as #28's table gives them, in S2 0.1.0's letters. */
 const R1_TYPES = new Set(['CUP', 'CLD', 'BWL', 'BLD', 'PCP', 'PCL']);
 const R1B_TYPES = new Set(['CUP', 'BWL', 'PCP']);
 const R2_TYPES = new Set(['CUP', 'BWL', 'CTN', 'PCP']);
-const R6_TYPES = new Set(['TKB', 'FCB', 'RSC', 'TRY', 'HCT']);
+/**
+ * #28's R6, and what plan 0011 adds of the products with a length, width and
+ * height: fry cartons, containers, pans, plates, container lids and cup
+ * carriers, read as a box's are.
+ */
+const R6_TYPES = new Set(['TKB', 'FCB', 'RSC', 'TRY', 'HCT', 'FRC', 'CTN', 'CWL', 'PAN', 'PLT', 'CTL', 'CCR']);
 const SUP = new Set(['SUP']);
 const BAG = new Set(['BAG']);
 /** Of those, the ones whose shape slot applies. Length and width need a shape that is not round. */
@@ -24,8 +31,12 @@ const R6_WITH_SHAPE = new Set(['TRY', 'HCT']);
 /** The shape R6 names for those, in S2 0.1.0's letters. */
 const RECTANGULAR = 'RC';
 
-/** A fraction as an inch ruler marks it, halves to sixty-fourths: `1/8`. */
-const FRACTION = '\\d{1,2}\\/(?:2|4|8|16|32|64)(?!\\d)';
+/**
+ * A fraction as an inch ruler marks it, halves to sixty-fourths, in lowest
+ * terms and under one: `1/8`, `15/16`. "24/32" is two sizes, not a fraction.
+ */
+const FRACTION =
+  '(?:1\\/2|[13]\\/4|[1357]\\/8|(?:1[135]|[13579])\\/16|(?:[12][13579]|31|[13579])\\/32|(?:[1-5][13579]|6[13]|[13579])\\/64)(?!\\d)';
 const GLYPHS: Readonly<Record<string, readonly [number, number]>> = {
   '½': [1, 2],
   '¼': [1, 4],
@@ -39,19 +50,49 @@ const GLYPH = `[${Object.keys(GLYPHS).join('')}]`;
 /** A whole number and a fraction (`20-1/8`, `20 1/8`, `10½`), a fraction alone, or a decimal. */
 const NUMBER = `(\\d+[\\s-]+${FRACTION}|\\d*${GLYPH}|${FRACTION}|\\d+(?:\\.\\d+)?)`;
 /** A unit a size may be written in; none written is millimetres (ADR 0019), or inches beside a fraction (#58). */
-const UNIT = '\\s*(mm|cm|inches|inch|in|")?';
+const UNIT = '\\s*(mm|cm|inches|inch|in|"|\'\')?';
 const TIMES = '\\s*[x×*]\\s*';
-const EDGE_BEFORE = '(?<![a-z0-9./])';
-const EDGE_AFTER = '(?![a-z0-9/])';
+/** A number joined to another by `+` is a layer of something, not a size: `300+300+250` gsm. */
+/** Nor is a number joined to a word by a hyphen: "DELI-34" is a model, not a 32 mm rim. */
+const EDGE_BEFORE = '(?<![a-z0-9./+])(?<![a-z]-)';
+/** No letter, digit, slash or `+` after a number, and no decimal point either: `1.9g` holds no size `1`. */
+const EDGE_AFTER = '(?![a-z0-9/+]|\\.\\d)';
 
 const THREE = new RegExp(`${EDGE_BEFORE}${NUMBER}${UNIT}(\\s*dia)?${TIMES}${NUMBER}${UNIT}${TIMES}${NUMBER}${UNIT}${EDGE_AFTER}`, 'g');
 const DIA_BY = new RegExp(`${EDGE_BEFORE}${NUMBER}${UNIT}\\s*dia${TIMES}${NUMBER}${UNIT}${EDGE_AFTER}`, 'g');
-/** One number, alone or with "dia", "rim", "ø" or a length unit; a number followed by any other word is not a size. */
-const ONE = new RegExp(`(?:(?:ø|dia|rim)\\s*)?${EDGE_BEFORE}${NUMBER}${UNIT}(?:\\s*(?:dia|rim))?${EDGE_AFTER}(?!\\s*[a-z])`, 'g');
+/** The words that say a number is a diameter. */
+const MARK = '(?:ø|φ|⌀|diameter|dia|rim)';
+/** Not the second of two numbers: "90 x 110" is no 110 mm rim. */
+const NOT_SECOND = '(?<!\\d\\s*(?:mm|cm|in|")?\\s*[x×*]\\s*)';
+/**
+ * One number, with "dia", "rim", "ø" or "φ" before or after it, or alone with
+ * at most a length unit; a lone number followed by any other word is not a
+ * size, nor is the second of two.
+ */
+const ONE_MARKED_BEFORE = new RegExp(`${MARK}\\s*${EDGE_BEFORE}${NUMBER}${UNIT}${EDGE_AFTER}`, 'g');
+const ONE_MARKED_AFTER = new RegExp(`${NOT_SECOND}${EDGE_BEFORE}${NUMBER}${UNIT}\\s*${MARK}(?![a-z])`, 'g');
+const ONE = new RegExp(`${NOT_SECOND}${EDGE_BEFORE}${NUMBER}${UNIT}${EDGE_AFTER}(?!\\s*[a-z])`, 'g');
+
+/**
+ * The one-number sizes in `text`, in the order written: those marked as a
+ * diameter, when any is, since "95 Dia" says what it measures and a stray
+ * "0.5" does not; else the lone ones.
+ */
+function oneSizes(text: string): RegExpExecArray[] {
+  const marked = ([...text.matchAll(ONE_MARKED_BEFORE), ...text.matchAll(ONE_MARKED_AFTER)] as RegExpExecArray[]).sort(
+    (left, right) => left.index - right.index,
+  );
+  return marked.length > 0 ? marked : ([...text.matchAll(ONE)] as RegExpExecArray[]);
+}
+
+/** The narrowest and widest rims R1 reads (ADR 0019's R1, plan 0011). */
+const RIM_MIN_MM = 30;
+const RIM_MAX_MM = 300;
+const MM_PER_UNIT: Readonly<Record<string, number>> = { mm: 1, cm: 10, in: 25.4 };
 
 function unitOf(written: string | undefined): string {
   if (written === 'cm') return 'cm';
-  if (written === 'in' || written === 'inch' || written === 'inches' || written === '"') return 'in';
+  if (written === 'in' || written === 'inch' || written === 'inches' || written === '"' || written === "''") return 'in';
   return 'mm';
 }
 
@@ -68,6 +109,18 @@ function decimalOf(written: string): string {
 const hasFraction = (written: string | undefined) => written !== undefined && new RegExp(`\\/|${GLYPH}`).test(written);
 
 /**
+ * The three-number sizes in `text`, one with its unit written before one
+ * without, as an item name's "10 x 7 x 12 in" is read over a Dimension cell's
+ * "10 x 7 x 12"; else in the order written. One with no unit is still
+ * millimetres (#58).
+ */
+function threeSizes(text: string): RegExpExecArray[] {
+  const found = [...text.matchAll(THREE)] as RegExpExecArray[];
+  const written = (match: RegExpExecArray) => (match[2] ?? match[5] ?? match[7]) !== undefined;
+  return [...found.filter(written), ...found.filter((match) => !written(match))];
+}
+
+/**
  * Numbers with their units; a number with no unit takes the last unit
  * written, else inches when any number has a fraction (only inches are
  * written with fractions, #58), else mm.
@@ -75,6 +128,15 @@ const hasFraction = (written: string | undefined) => written !== undefined && ne
 function measures(values: readonly (string | undefined)[], units: readonly (string | undefined)[]): MeasurementInput[] {
   const last = [...units].reverse().find((unit) => unit !== undefined) ?? (values.some(hasFraction) ? 'in' : undefined);
   return values.map((value, index) => ({ value: decimalOf(value ?? ''), unit: unitOf(units[index] ?? last) }));
+}
+
+/**
+ * The shape a product with a named length and width has, as R6 names it: a
+ * tray's or a hinged container's is rectangular. Undefined for any other.
+ */
+export function shapeOfLengthAndWidth(productType: string, dictionary: Dictionary): string | undefined {
+  const named = [...R6_WITH_SHAPE].some((type) => dictionary.liveOriginal('productType', type) === productType);
+  return named ? dictionary.liveOriginal('shape', RECTANGULAR) : undefined;
 }
 
 /**
@@ -87,21 +149,27 @@ export function readSize(text: string, productType: string, dictionary: Dictiona
   const is = (types: ReadonlySet<string>) => [...types].some((type) => dictionary.liveOriginal('productType', type) === productType);
   const round = dictionary.liveOriginal('shape', ROUND_SHAPE) ?? ROUND_SHAPE;
   const rectangular = dictionary.liveOriginal('shape', RECTANGULAR);
-  for (const match of text.matchAll(THREE)) {
+  const threes = threeSizes(text);
+  // The size written again, "304.8 x 152.4 x 508 mm (12 x 6 x 20 in)", is that size, so none of it is left over.
+  const again = (chosen: RegExpExecArray) => {
+    const repeats = threes.filter((other) => other !== chosen).map((other) => other[0].trim());
+    return repeats.length > 0 ? { repeats } : {};
+  };
+  for (const match of threes) {
     const [words, a, ua, dia, b, ub, c, uc] = match;
     const [x, y, z] = measures([a, b, c], [ua, ub, uc]) as [MeasurementInput, MeasurementInput, MeasurementInput];
     const n = (m: MeasurementInput) => Number.parseFloat(m.value);
     if (dia !== undefined) {
       if (is(R2_TYPES) && n(y) < n(x)) {
-        return { facts: { shape: round, topDiameter: x, bottomDiameter: y, height: z }, ruling: 'R2', words };
+        return { facts: { shape: round, topDiameter: x, bottomDiameter: y, height: z }, ruling: 'R2', words, ...again(match) };
       }
       return null;
     }
     if (is(SUP) && n(z) < n(x) && n(z) < n(y)) {
-      return { facts: { width: x, height: y, gusset: z }, ruling: 'R3', words };
+      return { facts: { width: x, height: y, gusset: z }, ruling: 'R3', words, ...again(match) };
     }
     if (is(BAG) && n(y) < n(x) && n(y) < n(z)) {
-      return { facts: { width: x, gusset: y, height: z }, ruling: 'R5', words };
+      return { facts: { width: x, gusset: y, height: z }, ruling: 'R5', words, ...again(match) };
     }
     if (is(R6_TYPES)) {
       // A tray or a hinged container cannot keep a length until its shape is
@@ -111,7 +179,7 @@ export function readSize(text: string, productType: string, dictionary: Dictiona
         is(R6_WITH_SHAPE) && rectangular !== undefined
           ? { shape: rectangular, length: x, width: y, height: z }
           : { length: x, width: y, height: z };
-      return { facts, ruling: 'R6', words };
+      return { facts, ruling: 'R6', words, ...again(match) };
     }
     return null;
   }
@@ -122,10 +190,14 @@ export function readSize(text: string, productType: string, dictionary: Dictiona
     return { facts: { shape: round, topDiameter: x, height: y }, ruling: 'R1b', words };
   }
   if (!is(R1_TYPES)) return null;
-  const ones = [...text.matchAll(ONE)];
-  if (ones.length !== 1) return null;
-  const [match] = ones as [RegExpExecArray];
-  const [words, value, unit] = match;
-  const [rim] = measures([value], [unit]) as [MeasurementInput];
-  return { facts: { shape: round, topDiameter: rim }, ruling: 'R1', words: words.trim() };
+  // One size, though it may be written more than once, as an item name and its Dimension column both do.
+  const ones = oneSizes(text);
+  const sizes = ones.map(([, value, unit]) => measures([value], [unit])[0] as MeasurementInput);
+  const [rim] = sizes;
+  if (rim === undefined || sizes.some((size) => size.value !== rim.value || size.unit !== rim.unit)) return null;
+  // No cup, bowl or lid is wider or narrower than these: "500 paper bowl" is no rim, but likely 500 mL, which is never guessed.
+  const millimetres = Number(rim.value) * (MM_PER_UNIT[rim.unit] ?? 1);
+  if (millimetres > RIM_MAX_MM || millimetres < RIM_MIN_MM) return null;
+  const [words, ...repeats] = ones.map(([written]) => written.trim()) as [string, ...string[]];
+  return { facts: { shape: round, topDiameter: rim }, ruling: 'R1', words, ...(repeats.length > 0 ? { repeats } : {}) };
 }

@@ -6,7 +6,7 @@ import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-rep
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
 
-const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
+const ILLUSTRATIVE = 'A1B4D1E1F1-H90N33';
 const FACTS = {
   productType: 'BLD',
   material: 'APS',

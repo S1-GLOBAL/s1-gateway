@@ -127,6 +127,20 @@
       "when": 1793041676187,
       "tag": "0017_atlas_dictionary_changes",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793209379491,
+      "tag": "0018_number_atlas_options",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793209386365,
+      "tag": "0019_write_atlas_codes_tagged",
+      "breakpoints": true
     }
   ]
 }

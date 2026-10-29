@@ -194,7 +194,7 @@ export function describeSuggestion(suggestion: Suggestion, dictionary: AtlasDict
         replacing === null
           ? 'Nothing: no saved Spec ID holds it'
           : replacing === 'Y'
-            ? 'Not known (Y)'
+            ? 'Not known'
             : meaningOf(replacing) === undefined
               ? replacing
               : `${replacing} (${meaningOf(replacing)})`;

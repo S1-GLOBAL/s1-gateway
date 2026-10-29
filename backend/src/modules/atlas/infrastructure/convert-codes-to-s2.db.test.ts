@@ -4,7 +4,9 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { connectTestDatabase, resetTables } from '../../../test/database.js';
 import { accountsTable } from '../../accounts/index.js';
 import { FindSpecIdByCode } from '../application/find-spec-id-by-code.js';
-import { fromS1, toShort } from '../domain/old-codes.js';
+import { fromS1 } from '../domain/old-codes.js';
+import { SpecId } from '../domain/spec-id.js';
+import { s2Dictionary } from '../domain/testing/s2-dictionary.js';
 import { atlasSpecIdChanges } from './atlas-spec-id-changes.table.js';
 import { atlasSpecIds } from './atlas-spec-ids.table.js';
 import { DrizzleDictionaryRepository } from './drizzle-dictionary-repository.js';
@@ -13,6 +15,10 @@ import { DrizzleSourcingRepository } from './drizzle-sourcing-repository.js';
 
 const connection = connectTestDatabase();
 const CONVERT = readFileSync(new URL('../../../../drizzle/0011_convert_atlas_codes_to_s2.sql', import.meta.url), 'utf8');
+/** The migrations that follow 0011 and rewrite codes again: 0012 shortens them (ADR 0025), 0019 tags them (ADR 0032). */
+const LATER = ['0012_shorten_atlas_codes', '0019_write_atlas_codes_tagged'].map((name) =>
+  readFileSync(new URL(`../../../../drizzle/${name}.sql`, import.meta.url), 'utf8'),
+);
 const SAVER_ID = '00000000-0000-4000-8000-0000000000aa';
 
 /** The illustrative bowl lid as S1 wrote it. Every other value here is invented. */
@@ -106,12 +112,14 @@ describe('the conversion migration, 0011', () => {
       nameBefore: 'Lid',
     });
     await connection.db.execute(sql.raw(CONVERT));
+    for (const later of LATER) await connection.db.execute(sql.raw(later));
 
     const find = new FindSpecIdByCode(new DrizzleDictionaryRepository(connection.db), new DrizzleSpecIdRepository(connection.db), new DrizzleSourcingRepository(connection.db));
     const result = await find.execute({ code: LID.toLowerCase() });
 
     expect(result.ok && result.value.id).toBe('00000000-0000-4000-8000-000000000001');
-    expect(result.ok && result.value.replacedCode).toBe(toShort(LID));
+    const tagged = SpecId.parse(LID, s2Dictionary());
+    expect(result.ok && result.value.replacedCode).toBe(tagged.ok && tagged.value.code);
   });
 
   it('touches nothing already in S2', async () => {

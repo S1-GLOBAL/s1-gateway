@@ -30,7 +30,7 @@ export class CsvImportReport implements ImportReportSink {
       csvLine(['Rows skipped', summary.skipped]),
       csvLine(['Manufacturers found', summary.manufacturers]),
       csvLine(['Quotes recorded', summary.quotes]),
-      csvLine(['Item name agreed with Category and Material', `${summary.agreement.agreed} of ${summary.agreement.compared}`]),
+      csvLine(['Category agreed with the rest of the row', `${summary.agreement.agreed} of ${summary.agreement.compared}`]),
       '',
       csvLine(HEADER),
       ...report.rows.map((row) =>

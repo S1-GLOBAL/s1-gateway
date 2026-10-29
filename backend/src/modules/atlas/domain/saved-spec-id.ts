@@ -62,6 +62,16 @@ export class SavedSpecId {
     );
   }
 
+  /**
+   * The same Spec ID, its code unchanged, its slots as an approved dictionary
+   * change leaves them: an option in its new letters, or a marker its rules
+   * change (ADR 0032). Nothing a person reads changes, so it is no new version
+   * and adds nothing to History.
+   */
+  relettered(specId: SpecId): SavedSpecId {
+    return new SavedSpecId({ ...this.props, specId });
+  }
+
   get id(): string {
     return this.props.id;
   }

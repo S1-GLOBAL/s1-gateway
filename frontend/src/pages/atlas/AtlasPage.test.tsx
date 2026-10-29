@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, useLocation } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouteBoundary } from '@/app/shell/RouteBoundary';
 import { AtlasGatewayProvider, SuggestionsGatewayProvider, type AtlasGateway, type SuggestionsGateway } from '@/features/atlas';
 import {
@@ -13,8 +13,14 @@ import {
 import { AppError } from '@/shared/application/app-error';
 import { AtlasPage } from './AtlasPage';
 import { AtlasPageSkeleton } from './AtlasPageSkeleton';
+import { LAST_SEARCH_KEY } from './last-search';
 
 const EMPTY = { items: [], page: 1, pageSize: 20, total: 0 };
+
+/** The address's query, as the page left it. */
+function Address() {
+  return <p>{`Address: ${useLocation().search}`}</p>;
+}
 
 const pending = () => new Promise<never>(() => undefined);
 
@@ -31,17 +37,18 @@ const suggestions: SuggestionsGateway = {
   withdraw: pending,
 };
 
-function renderPage(overrides: Partial<AtlasGateway> = {}) {
+function renderPage(overrides: Partial<AtlasGateway> = {}, at = '/atlas') {
   const library = overrides.library ?? vi.fn<AtlasGateway['library']>(async () => EMPTY);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
       <AtlasGatewayProvider gateway={gatewayWith({ dictionary: async () => s1Dictionary, ...overrides, library })}>
         <SuggestionsGatewayProvider gateway={suggestions}>
-          <MemoryRouter>
+          <MemoryRouter initialEntries={[at]}>
             <RouteBoundary skeleton={<AtlasPageSkeleton />}>
               <AtlasPage />
             </RouteBoundary>
+            <Address />
           </MemoryRouter>
         </SuggestionsGatewayProvider>
       </AtlasGatewayProvider>
@@ -51,6 +58,44 @@ function renderPage(overrides: Partial<AtlasGateway> = {}) {
 }
 
 describe('AtlasPage', () => {
+  beforeEach(() => window.sessionStorage.clear());
+
+  it('asks the last search again when Atlas opens without one, as from a Spec ID', async () => {
+    window.sessionStorage.setItem(LAST_SEARCH_KEY, 'bowl lid');
+    const library = vi.fn<AtlasGateway['library']>(async () => EMPTY);
+    renderPage({ library });
+
+    expect(((await screen.findByRole('searchbox', { name: 'Search' })) as HTMLInputElement).value).toBe('bowl lid');
+    expect(await screen.findByText('Address: ?q=bowl+lid')).toBeTruthy();
+  });
+
+  it('forgets the last search once the box is cleared', async () => {
+    window.sessionStorage.setItem(LAST_SEARCH_KEY, 'bowl lid');
+    renderPage();
+    fireEvent.change(await screen.findByRole('searchbox', { name: 'Search' }), { target: { value: '' } });
+
+    await waitFor(() => expect(window.sessionStorage.getItem(LAST_SEARCH_KEY)).toBeNull());
+  });
+
+  it('asks again the search the address holds, as on the way back to the page', async () => {
+    const library = vi.fn<AtlasGateway['library']>(async () => EMPTY);
+    renderPage({ library }, '/atlas?q=bowl%20lid');
+
+    expect(((await screen.findByRole('searchbox', { name: 'Search' })) as HTMLInputElement).value).toBe('bowl lid');
+    await waitFor(() => expect(library).toHaveBeenCalledWith({ q: 'bowl lid', productType: '', page: 1 }));
+  });
+
+  it('keeps what Search asks in the address once typing pauses, and clears it with the box', async () => {
+    renderPage();
+    const search = await screen.findByRole('searchbox', { name: 'Search' });
+
+    fireEvent.change(search, { target: { value: ' bowl lid ' } });
+    expect(await screen.findByText('Address: ?q=bowl+lid')).toBeTruthy();
+
+    fireEvent.change(search, { target: { value: '' } });
+    expect(await screen.findByText('Address:')).toBeTruthy();
+  });
+
   it('draws the search stage before the page arrives', () => {
     render(<AtlasPageSkeleton />);
     expect(screen.getByRole('status', { name: 'Loading Atlas' })).toBeTruthy();
@@ -67,7 +112,8 @@ describe('AtlasPage', () => {
       items: [savedFor(ILLUSTRATIVE, 'Bowl lid')],
       total: 1,
     }));
-    renderPage({ library });
+    // A name the reader finds no facts in, so its names show with nothing to confirm.
+    renderPage({ library, readText: async () => ({ read: [], ignored: [], conflicts: [], notes: [], decoded: null }) });
     expect(await screen.findByRole('heading', { level: 1, name: 'Atlas' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: 'Atlas' }).className).toContain('sr-only');
     expect(screen.getByRole('tab', { name: 'Search' }).getAttribute('aria-selected')).toBe('true');

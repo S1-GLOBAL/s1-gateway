@@ -84,8 +84,8 @@ describe('describeSuggestion', () => {
     approvedOn: '2026-10-19',
     change: null,
     slots: [
-      { key: 'productType', name: 'Product type', values: [{ code: 'CUP', meaning: 'Cup', searchWords: [] }] },
-      { key: 'material', name: 'Material', values: [{ code: 'APS', meaning: 'Polymer, PS', searchWords: [] }, { code: 'APP', meaning: 'Polymer, PP', searchWords: [] }] },
+      { key: 'productType', name: 'Product type', values: [{ code: 'CUP', meaning: 'Cup', number: 5, searchWords: [] }] },
+      { key: 'material', name: 'Material', values: [{ code: 'APS', meaning: 'Polymer, PS', number: 4, searchWords: [] }, { code: 'APP', meaning: 'Polymer, PP', number: 3, searchWords: [] }] },
     ],
     rules: [{ productType: 'CUP', slot: 'wall', rule: 'applies' }],
   };
@@ -112,7 +112,7 @@ describe('describeSuggestion', () => {
     ]);
     expect(describeSuggestion({ ...deletion, state: 'approved' }, dictionary).rows[0]?.before).toBeNull();
     expect(describeSuggestion({ ...deletion, proposal: { kind: 'delete', replacement: 'Y' } }, dictionary).rows[1]?.after).toBe(
-      'Not known (Y)',
+      'Not known',
     );
   });
 
@@ -120,7 +120,7 @@ describe('describeSuggestion', () => {
     const rules = suggestion({ kind: 'rules', slot: 'productType', code: 'CUP', proposal: { kind: 'rules', rules: { wall: 'never' } } });
     expect(describeSuggestion(rules, dictionary)).toEqual({
       title: 'Change which fields apply to CUP',
-      rows: [{ label: 'Wall', before: 'Applies', after: 'X' }],
+      rows: [{ label: 'Wall', before: 'Applies', after: "Doesn't apply" }],
     });
   });
 
@@ -148,7 +148,7 @@ describe('editedFields', () => {
       { label: 'Search words', before: 'styrene', after: 'None' },
     ]);
     expect(editedFields({ kind: 'rules', rules: { wall: 'never' } }, { kind: 'rules', rules: { wall: 'applies' } })).toEqual([
-      { label: 'Field rules', before: 'Wall: X', after: 'Wall: Applies' },
+      { label: 'Field rules', before: "Wall: Doesn't apply", after: 'Wall: Applies' },
     ]);
   });
 });

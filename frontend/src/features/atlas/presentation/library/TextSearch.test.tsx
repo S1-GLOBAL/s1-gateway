@@ -6,9 +6,9 @@ import { AppError } from '@/shared/application/app-error';
 import type { AtlasGateway } from '../../application/atlas-gateway';
 import { AtlasGatewayProvider } from '../../application/atlas-gateway-context';
 import { SpecIdExistsError } from '../../application/spec-id-exists-error';
-import { gatewayWith, ILLUSTRATIVE, readCode, s1Dictionary, savedFor } from '../../application/testing/atlas-fixtures';
+import { gatewayWith, ILLUSTRATIVE, lookupFor, readCode, s1Dictionary, savedFor } from '../../application/testing/atlas-fixtures';
 import type { DecodedSpecId, SpecIdTextReading } from '../../domain/atlas';
-import { AtlasLibrary } from './AtlasLibrary';
+import { AtlasLibrary, READ_MIN_LENGTH, SEARCH_WAIT_MS } from './AtlasLibrary';
 
 const TEXT = '14oz Bagasse Bowl for Cava';
 const BOWL = 'BWL.CBG.Y.Y.Y.X.Z0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X';
@@ -28,13 +28,17 @@ const READ_BOWL: SpecIdTextReading = {
   ],
   ignored: ['for', 'Cava'],
   conflicts: [],
+  notes: [],
   decoded: bowl,
 };
 
 const EMPTY = { items: [], page: 1, pageSize: 20, total: 0 };
 
+/** No saved Spec ID has the code read, as the lookup answers for a code not yet saved. */
+const NO_SUCH_CODE = async () => Promise.reject(new AppError('SPEC_ID_NOT_FOUND', 'No saved Spec ID has this code.'));
+
 function renderLibrary(overrides: Partial<AtlasGateway> = {}) {
-  const gateway = gatewayWith({ library: vi.fn(async () => EMPTY), ...overrides });
+  const gateway = gatewayWith({ library: vi.fn(async () => EMPTY), findByCode: NO_SUCH_CODE, ...overrides });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
@@ -49,57 +53,77 @@ function renderLibrary(overrides: Partial<AtlasGateway> = {}) {
 }
 
 const type = (text: string) => fireEvent.change(screen.getByLabelText('Search'), { target: { value: text } });
-const pressSearch = () => fireEvent.click(screen.getByRole('button', { name: 'Search' }));
 
 describe('AtlasLibrary, Search', () => {
-  it('offers Search for text that is not a code, and not for a pasted code', () => {
-    renderLibrary();
+  it('reads text that is not a code as it is typed, with no button to press, and never a pasted code', async () => {
+    const readText = vi.fn<AtlasGateway['readText']>(async () => READ_BOWL);
+    renderLibrary({ readText });
+    expect(screen.queryByRole('button', { name: 'Search' })).toBeNull();
 
     type('bagasse bowl');
-    expect(screen.getByRole('button', { name: 'Search' })).toBeTruthy();
+    await waitFor(() => expect(readText).toHaveBeenCalledWith({ text: 'bagasse bowl' }, expect.any(AbortSignal)));
 
     type(ILLUSTRATIVE.toLowerCase());
-    expect(screen.queryByRole('button', { name: 'Search' })).toBeNull();
-
+    await new Promise((resolve) => setTimeout(resolve, SEARCH_WAIT_MS * 2));
     type('   ');
-    expect(screen.queryByRole('button', { name: 'Search' })).toBeNull();
+    expect(readText).toHaveBeenCalledTimes(1);
   });
 
-  it('reads the text, then shows what it read, what it ignored and the code, and No, edit it opens New Spec ID', async () => {
+  it('reads the text, then shows the code, each fact it read and what it left out, and No, edit it opens New Spec ID', async () => {
     const readText = vi.fn<AtlasGateway['readText']>(async () => READ_BOWL);
     renderLibrary({ readText });
 
     type(`  ${TEXT} `);
-    pressSearch();
 
     expect(await screen.findByText('Does this code look right?')).toBeTruthy();
-    expect(readText).toHaveBeenCalledWith({ text: TEXT });
-    expect(screen.getByText('Read from your text: Bowl · Molded fibre, bagasse · 14 oz')).toBeTruthy();
-    expect(screen.getByText('Ignored: for, Cava')).toBeTruthy();
-    expect(screen.getByText(BOWL)).toBeTruthy();
+    expect(readText).toHaveBeenCalledWith({ text: TEXT }, expect.any(AbortSignal));
+    expect(screen.getByLabelText('Spec ID').textContent).toBe(BOWL);
+    const facts = screen.getByRole('list', { name: 'Read from your text' });
+    expect(within(facts).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Product type: Bowl',
+      'Material: Molded fibre, bagasse',
+      'Nominal capacity: 14 oz',
+    ]);
+    expect(screen.getByText('Left out: for, Cava')).toBeTruthy();
+    // Nothing is looked up until Yes, proceed is pressed.
     expect(screen.getByRole('button', { name: 'Yes, proceed' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'No, edit it' }).getAttribute('href')).toBe(
       `/atlas/new?code=${encodeURIComponent(BOWL)}`,
     );
   });
 
-  it('says nothing about ignored words when there were none', async () => {
+  it('says nothing about words left out when there were none', async () => {
     renderLibrary({ readText: async () => ({ ...READ_BOWL, ignored: [] }) });
     type('14oz Bagasse Bowl');
-    pressSearch();
 
     await screen.findByText('Does this code look right?');
-    expect(screen.queryByText(/Ignored:/)).toBeNull();
+    expect(screen.queryByText(/Left out:/)).toBeNull();
   });
 
-  it('names each fact found twice', async () => {
+  it("lists the reader's notes, such as a fact found twice, one sentence each", async () => {
+    const notes = [
+      'Material: PET is Polymer, PET (B1). PP is Polymer, PP (B3). Both were left out.',
+      'The 3.25 inch height was converted to 83 mm.',
+    ];
     renderLibrary({
-      readText: async () => ({ ...READ_BOWL, conflicts: [{ key: 'material', name: 'Material', found: ['PET', 'PP'] }] }),
+      readText: async () => ({
+        ...READ_BOWL,
+        conflicts: [{ key: 'material', name: 'Material', found: ['PET', 'PP'] }],
+        notes,
+      }),
     });
     type('PET and PP bowl');
-    pressSearch();
 
-    expect(await screen.findByText("Material: found both PET and PP, so it's left as not known.")).toBeTruthy();
+    const list = await screen.findByRole('list', { name: 'Notes' });
+    expect(within(list).getAllByRole('listitem').map((item) => item.textContent)).toEqual(notes);
+  });
+
+  it('shows no notes when the reader has none', async () => {
+    renderLibrary({ readText: async () => READ_BOWL });
+    type(TEXT);
+
+    await screen.findByText('Does this code look right?');
+    expect(screen.queryByRole('list', { name: 'Notes' })).toBeNull();
   });
 
   it('asks for the product type when the text names none, and reads the text again as the one chosen', async () => {
@@ -110,20 +134,24 @@ describe('AtlasLibrary, Search', () => {
       .mockResolvedValueOnce(READ_BOWL);
     renderLibrary({ readText });
     type('14oz bagasse');
-    pressSearch();
 
     expect(await screen.findByText("Couldn't tell what product this is. Choose a product type:")).toBeTruthy();
-    expect(screen.getByText('Read from your text: Molded fibre, bagasse · 14 oz')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Product type'), { target: { value: 'BWL' } });
+    const facts = screen.getByRole('list', { name: 'Read from your text' });
+    expect(within(facts).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Material: Molded fibre, bagasse',
+      'Nominal capacity: 14 oz',
+    ]);
+    fireEvent.change(screen.getByLabelText('Product type to read as'), { target: { value: 'BWL' } });
 
     expect(await screen.findByText('Does this code look right?')).toBeTruthy();
-    expect(readText).toHaveBeenLastCalledWith({ text: '14oz bagasse', productType: 'BWL' });
+    expect(readText).toHaveBeenLastCalledWith({ text: '14oz bagasse', productType: 'BWL' }, expect.any(AbortSignal));
   });
 
   it('says when it found no facts, with New Spec ID', async () => {
-    renderLibrary({ readText: async () => ({ read: [], ignored: ['Cava', 'order', '12'], conflicts: [], decoded: null }) });
+    renderLibrary({
+      readText: async () => ({ read: [], ignored: ['Cava', 'order', '12'], conflicts: [], notes: [], decoded: null }),
+    });
     type('Cava order 12');
-    pressSearch();
 
     expect(
       await screen.findByText('No facts found in your text. Check the wording, or start a Spec ID by hand.'),
@@ -133,14 +161,14 @@ describe('AtlasLibrary, Search', () => {
 
   it('Yes, proceed lists the Spec IDs that fit before those that might, and saves nothing', async () => {
     const fits = savedFor(BOWL, '14oz Bagasse Bowl', { id: '00000000-0000-4000-8000-000000000001', manufacturerStages: { specificationsReceived: 2, quoted: 1, sampling: 0, inProduction: 0 } });
+    const alsoFits = savedFor(BOWL, '14oz Bagasse Bowl, printed', { id: '00000000-0000-4000-8000-000000000003' });
     const might = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-000000000002' });
-    const findSimilar = vi.fn<AtlasGateway['findSimilar']>(async () => ({ fits: [fits], mightFit: [might] }));
+    // Two that fit: no single answer to highlight, so both are listed.
+    const findSimilar = vi.fn<AtlasGateway['findSimilar']>(async () => ({ fits: [fits, alsoFits], mightFit: [might] }));
     const save = vi.fn<AtlasGateway['save']>();
     renderLibrary({ readText: async () => READ_BOWL, findSimilar, save });
     type(TEXT);
-    pressSearch();
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Yes, proceed' }));
+    await proceed();
 
     const headings = await screen.findAllByRole('heading');
     expect(headings.map((heading) => heading.textContent)).toEqual([
@@ -148,12 +176,12 @@ describe('AtlasLibrary, Search', () => {
       "Might fit — nothing contradicts, but some facts aren't recorded",
     ]);
     // Fits and Might fit cards open the Spec ID's manufacturers first (#57).
-    expect(screen.getByRole('link', { name: /14oz Bagasse Bowl/ }).getAttribute('href')).toBe(`/atlas/${fits.id}/manufacturers`);
+    expect(screen.getByRole('link', { name: /14oz Bagasse Bowl$/ }).getAttribute('href')).toBe(`/atlas/${fits.id}/manufacturers`);
     expect(screen.getByRole('link', { name: /Bagasse bowl, size unknown/ }).getAttribute('href')).toBe(
       `/atlas/${might.id}/manufacturers`,
     );
     // The fits card shows its stage icons (#73). Copy sits beside the code, outside the link.
-    const fitsCard = screen.getByRole('link', { name: /14oz Bagasse Bowl/ }).parentElement!;
+    const fitsCard = screen.getByRole('link', { name: /14oz Bagasse Bowl$/ }).parentElement!;
     expect(within(fitsCard).getByRole('list', { name: 'Manufacturer stages' })).toBeTruthy();
     expect(within(fitsCard).getByRole('button', { name: 'Copy code' })).toBeTruthy();
     expect(findSimilar).toHaveBeenCalledWith({ productType: 'BWL', material: 'CBG', capacity: 'Z0014' });
@@ -164,8 +192,7 @@ describe('AtlasLibrary, Search', () => {
     const might = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-000000000002' });
     renderLibrary({ readText: async () => READ_BOWL, findSimilar: async () => ({ fits: [], mightFit: [might] }) });
     type(TEXT);
-    pressSearch();
-    fireEvent.click(await screen.findByRole('button', { name: 'Yes, proceed' }));
+    await proceed();
 
     const nothing = await screen.findByText('No saved Spec ID fits these facts.');
     const start = screen.getByRole('link', { name: 'Start a Spec ID from it' });
@@ -174,20 +201,223 @@ describe('AtlasLibrary, Search', () => {
     expect(nothing.compareDocumentPosition(mightFit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('hides the type filter while Search shows, and goes back to the name list when the text changes', async () => {
-    renderLibrary({ readText: async () => READ_BOWL });
-    await screen.findByText('No Spec IDs yet');
+  it('Yes, proceed shows a saved Spec ID with exactly the facts read as a perfect match, under the code', async () => {
+    const findByCode = vi.fn<AtlasGateway['findByCode']>(async () => lookupFor(BOWL, 'Bagasse bowl, 14 oz'));
+    renderLibrary({ readText: async () => READ_BOWL, findByCode });
     type(TEXT);
-    pressSearch();
+    await proceed();
+
+    const match = await screen.findByRole('region', { name: 'Perfect match' });
+    expect(within(match).getByText('We found a perfect match!')).toBeTruthy();
+    expect(within(match).getByText('Bagasse bowl, 14 oz')).toBeTruthy();
+    expect(findByCode).toHaveBeenCalledWith(BOWL);
+    expect(screen.getByText('Does this code look right?')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Yes, proceed' })).toBeNull();
+    expect(
+      within(match).getByRole('link', { name: "This is not what I'm looking for, create a Spec ID" }).getAttribute('href'),
+    ).toBe(`/atlas/new?code=${encodeURIComponent(BOWL)}`);
+  });
+
+  it('lists the Spec IDs that fit and might under a perfect match, leaving the match out', async () => {
+    const match = lookupFor(BOWL, 'Bagasse bowl, 14 oz');
+    const also = savedFor(BOWL, 'Bagasse bowl with more facts', { id: '00000000-0000-4000-8000-0000000000c1' });
+    const might = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-0000000000c2' });
+    renderLibrary({
+      readText: async () => READ_BOWL,
+      findByCode: async () => match,
+      findSimilar: async () => ({ fits: [match, also], mightFit: [might] }),
+    });
+    type(TEXT);
+    await proceed();
+
+    await screen.findByRole('region', { name: 'Perfect match' });
+    const fits = await screen.findByRole('region', { name: 'Fits — every fact you gave matches' });
+    expect(within(fits).getByText('Bagasse bowl with more facts')).toBeTruthy();
+    expect(within(fits).queryByText('Bagasse bowl, 14 oz')).toBeNull();
+    expect(screen.getByRole('region', { name: "Might fit — nothing contradicts, but some facts aren't recorded" })).toBeTruthy();
+    expect(screen.queryByText('No saved Spec ID fits these facts.')).toBeNull();
+  });
+
+  it('says nothing fits under a perfect match that is the only fit', async () => {
+    const match = lookupFor(BOWL, 'Bagasse bowl, 14 oz');
+    renderLibrary({ readText: async () => READ_BOWL, findByCode: async () => match, findSimilar: async () => ({ fits: [match], mightFit: [] }) });
+    type(TEXT);
+    await proceed();
+
+    await screen.findByRole('region', { name: 'Perfect match' });
+    await waitFor(() => expect(screen.queryByRole('heading', { name: /Fits/ })).toBeNull());
+    expect(screen.queryByText('No saved Spec ID fits these facts.')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Save as a new Spec ID/ })).toBeNull();
+  });
+
+  it('Yes, proceed shows the only Spec ID that fits as a match that records more, instead of a Fits group', async () => {
+    const only = savedFor(BOWL, 'Bagasse bowl with its sizes', { id: '00000000-0000-4000-8000-0000000000d1' });
+    const might = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-0000000000d2' });
+    renderLibrary({
+      readText: async () => READ_BOWL,
+      findByCode: async () => Promise.reject(new AppError('SPEC_ID_NOT_FOUND', 'No saved Spec ID has this code.')),
+      findSimilar: async () => ({ fits: [only], mightFit: [might] }),
+    });
+    type(TEXT);
+    await proceed();
+
+    const match = await screen.findByRole('region', { name: 'Match' });
+    expect(within(match).getByText('We found a match!')).toBeTruthy();
+    expect(within(match).getByText('It has every fact you typed, and records more.')).toBeTruthy();
+    expect(within(match).getByText('Bagasse bowl with its sizes')).toBeTruthy();
+    expect(screen.getByText('Does this code look right?')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: /Fits/ })).toBeNull();
+    expect(screen.getByRole('heading', { name: /Might fit/ })).toBeTruthy();
+    expect(screen.getAllByText('Bagasse bowl with its sizes')).toHaveLength(1);
+  });
+
+  it('highlights none of several Spec IDs that fit, and lists them', async () => {
+    const one = savedFor(BOWL, 'Bagasse bowl A', { id: '00000000-0000-4000-8000-0000000000e1' });
+    const two = savedFor(BOWL, 'Bagasse bowl B', { id: '00000000-0000-4000-8000-0000000000e2' });
+    renderLibrary({
+      readText: async () => READ_BOWL,
+      findByCode: async () => Promise.reject(new AppError('SPEC_ID_NOT_FOUND', 'No saved Spec ID has this code.')),
+      findSimilar: async () => ({ fits: [one, two], mightFit: [] }),
+    });
+    type(TEXT);
+    await proceed();
+
+    const fits = await screen.findByRole('region', { name: 'Fits — every fact you gave matches' });
+    expect(within(fits).getByText('Bagasse bowl A')).toBeTruthy();
+    expect(within(fits).getByText('Bagasse bowl B')).toBeTruthy();
+    expect(screen.getByText('Does this code look right?')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Match' })).toBeNull();
+  });
+
+  it('leaves the perfect match out of the names below it, keeping the others', async () => {
+    const match = lookupFor(BOWL, 'Bagasse bowl, 14 oz');
+    const other = savedFor(ILLUSTRATIVE, 'Bagasse bowl lid');
+    renderLibrary({
+      readText: async () => READ_BOWL,
+      findByCode: async () => match,
+      library: async () => ({ items: [match, { ...other, id: '00000000-0000-4000-8000-0000000000b2' }], page: 1, pageSize: 20, total: 2 }),
+    });
+    type(TEXT);
+    await proceed();
+
+    await screen.findByRole('region', { name: 'Perfect match' });
+    expect(await screen.findByText('Bagasse bowl lid')).toBeTruthy();
+    expect(screen.getAllByText('Bagasse bowl, 14 oz')).toHaveLength(1);
+  });
+
+  it('says nothing under a perfect match when it was the only name that matched', async () => {
+    const match = lookupFor(BOWL, 'Bagasse bowl, 14 oz');
+    renderLibrary({
+      readText: async () => READ_BOWL,
+      findByCode: async () => match,
+      library: async () => ({ items: [match], page: 1, pageSize: 20, total: 1 }),
+    });
+    type(TEXT);
+    await proceed();
+
+    await screen.findByRole('region', { name: 'Perfect match' });
+    await waitFor(() => expect(screen.getAllByText('Bagasse bowl, 14 oz')).toHaveLength(1));
+    expect(screen.queryByText('No names match.')).toBeNull();
+  });
+
+  it('moves focus to what Search found when Yes, proceed is pressed, since the button goes', async () => {
+    renderLibrary({ readText: async () => READ_BOWL, findSimilar: async () => ({ fits: [], mightFit: [] }) });
+    type(TEXT);
+    await proceed();
+
+    const found = await screen.findByRole('region', { name: 'What Search found' });
+    expect(document.activeElement).toBe(found);
+    expect(screen.queryByRole('button', { name: 'Yes, proceed' })).toBeNull();
+  });
+
+  it('shows nothing Search finds, not even names, until Yes, proceed', async () => {
+    const findByCode = vi.fn<AtlasGateway['findByCode']>(async () => lookupFor(BOWL, 'Bagasse bowl, 14 oz'));
+    const findSimilar = vi.fn<AtlasGateway['findSimilar']>(async () => ({ fits: [], mightFit: [] }));
+    const named = { ...savedFor(ILLUSTRATIVE, 'Bagasse bowl lid'), id: '00000000-0000-4000-8000-0000000000f1' };
+    renderLibrary({
+      readText: async () => READ_BOWL,
+      findByCode,
+      findSimilar,
+      library: async () => ({ items: [named], page: 1, pageSize: 20, total: 1 }),
+    });
+    type(TEXT);
 
     await screen.findByText('Does this code look right?');
-    expect(screen.queryByRole('radio', { name: 'All' })).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, SEARCH_WAIT_MS * 2));
+    expect(screen.queryByText('Bagasse bowl lid')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Perfect match' })).toBeNull();
+    expect(findByCode).not.toHaveBeenCalled();
+    expect(findSimilar).not.toHaveBeenCalled();
 
-    type(`${TEXT}s`);
+    await proceed();
+    expect(await screen.findByRole('region', { name: 'Perfect match' })).toBeTruthy();
+    expect(await screen.findByText('Bagasse bowl lid')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Yes, proceed' })).toBeNull();
+  });
 
-    expect(screen.queryByText('Does this code look right?')).toBeNull();
-    expect(document.querySelector('summary')?.textContent).toBe('Product type · All');
-    expect(await screen.findByText('No names match. Press Search to read the facts from your text.')).toBeTruthy();
+  it('asks to confirm the code when no saved Spec ID has it', async () => {
+    renderLibrary({
+      readText: async () => READ_BOWL,
+      findByCode: async () => Promise.reject(new AppError('SPEC_ID_NOT_FOUND', 'No saved Spec ID has this code.')),
+    });
+    type(TEXT);
+
+    expect(await screen.findByText('Does this code look right?')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Perfect match' })).toBeNull());
+  });
+
+  it('reads nothing for one character', async () => {
+    const readText = vi.fn<AtlasGateway['readText']>(async () => READ_BOWL);
+    renderLibrary({ readText });
+    type('b');
+    await new Promise((resolve) => setTimeout(resolve, SEARCH_WAIT_MS * 2));
+    expect(readText).not.toHaveBeenCalled();
+
+    type('bo');
+    await waitFor(() => expect(readText).toHaveBeenCalledWith({ text: 'bo' }, expect.any(AbortSignal)));
+    expect(READ_MIN_LENGTH).toBe(2);
+  });
+
+  it('stops the request for text that has since changed', async () => {
+    const signals: AbortSignal[] = [];
+    const readText = vi.fn<AtlasGateway['readText']>((_input, signal) => {
+      if (signal) signals.push(signal);
+      return signals.length === 1 ? new Promise(() => undefined) : Promise.resolve(READ_BOWL);
+    });
+    renderLibrary({ readText });
+    type(TEXT);
+    await waitFor(() => expect(signals).toHaveLength(1));
+
+    type(`${TEXT} lid`);
+    await waitFor(() => expect(signals).toHaveLength(2));
+    await waitFor(() => expect(signals[0]?.aborted).toBe(true));
+    expect(signals[1]?.aborted).toBe(false);
+  });
+
+  it('reads the text again as it changes, keeping the last reading until the next arrives, above the name list once proceeded', async () => {
+    let answer: (reading: SpecIdTextReading) => void = () => undefined;
+    const readText = vi
+      .fn<AtlasGateway['readText']>()
+      .mockResolvedValueOnce(READ_BOWL)
+      .mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)));
+    renderLibrary({ readText });
+    await screen.findByText('No Spec IDs yet');
+    type(TEXT);
+
+    expect((await screen.findByLabelText('Spec ID')).textContent).toBe(BOWL);
+    expect(screen.queryByRole('radiogroup', { name: 'Product type' })).toBeNull();
+    expect(screen.queryByText('No names match.')).toBeNull();
+    await proceed();
+    expect(await screen.findByText('No names match.')).toBeTruthy();
+
+    type(`${TEXT} lid`);
+    await waitFor(() => expect(readText).toHaveBeenLastCalledWith({ text: `${TEXT} lid` }, expect.any(AbortSignal)));
+    expect(screen.getByLabelText('Spec ID').textContent).toBe(BOWL);
+    expect(screen.getByRole('region', { name: 'What Search read' }).getAttribute('aria-busy')).toBe('true');
+
+    answer({ ...READ_BOWL, decoded: { ...bowl, code: 'A1B25' } });
+    await waitFor(() => expect(screen.getByLabelText('Spec ID').textContent).toBe('A1B25'));
+    expect(screen.getByRole('region', { name: 'What Search read' }).getAttribute('aria-busy')).toBe('false');
   });
 
   it('puts refused text beside the box', async () => {
@@ -198,7 +428,6 @@ describe('AtlasLibrary, Search', () => {
       },
     });
     type('x '.repeat(251));
-    pressSearch();
 
     expect(await screen.findByText(message)).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
@@ -211,14 +440,13 @@ describe('AtlasLibrary, Search', () => {
       .mockResolvedValue(READ_BOWL);
     renderLibrary({ readText });
     type(TEXT);
-    pressSearch();
 
     expect(await screen.findByText('Cannot reach the server. Check your connection and try again.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByText('Does this code look right?')).toBeTruthy();
     await waitFor(() => expect(readText).toHaveBeenCalledTimes(2));
-    expect(readText).toHaveBeenLastCalledWith({ text: TEXT });
+    expect(readText).toHaveBeenLastCalledWith({ text: TEXT }, expect.any(AbortSignal));
   });
 });
 
@@ -231,7 +459,7 @@ function SavedPage() {
 
 /** The library at /atlas, with a page for /atlas/<id> to open after a save. */
 function renderLibraryWithRoutes(overrides: Partial<AtlasGateway> = {}) {
-  const gateway = gatewayWith({ library: vi.fn(async () => EMPTY), readText: async () => READ_BOWL, ...overrides });
+  const gateway = gatewayWith({ library: vi.fn(async () => EMPTY), readText: async () => READ_BOWL, findByCode: NO_SUCH_CODE, ...overrides });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
@@ -248,11 +476,15 @@ function renderLibraryWithRoutes(overrides: Partial<AtlasGateway> = {}) {
   return gateway;
 }
 
-/** Searches the example and presses Yes, proceed. */
-async function searchAndProceed() {
-  type(TEXT);
-  pressSearch();
+/** Presses Yes, proceed on the code read. */
+async function proceed() {
   fireEvent.click(await screen.findByRole('button', { name: 'Yes, proceed' }));
+}
+
+/** Searches the example and presses Yes, proceed. */
+async function searchTheExample() {
+  type(TEXT);
+  await proceed();
 }
 
 const NOTHING_FITS = async () => ({ fits: [], mightFit: [] });
@@ -262,7 +494,7 @@ describe('AtlasLibrary, saving from Search', () => {
     const saved = savedFor(BOWL, TEXT, { id: '00000000-0000-4000-8000-000000000048' });
     const save = vi.fn<AtlasGateway['save']>(async () => saved);
     renderLibraryWithRoutes({ findSimilar: NOTHING_FITS, save });
-    await searchAndProceed();
+    await searchTheExample();
 
     const name = await screen.findByLabelText('Name');
     expect((name as HTMLInputElement).value).toBe(TEXT);
@@ -281,7 +513,7 @@ describe('AtlasLibrary, saving from Search', () => {
       savedFor(BOWL, '14oz Bagasse Bowl', { id: '00000000-0000-4000-8000-000000000049' }),
     );
     renderLibraryWithRoutes({ findSimilar: NOTHING_FITS, save });
-    await searchAndProceed();
+    await searchTheExample();
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: '14oz Bagasse Bowl' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save as a new Spec ID' }));
@@ -292,9 +524,10 @@ describe('AtlasLibrary, saving from Search', () => {
   it('offers no save while a saved Spec ID fits', async () => {
     const fits = savedFor(BOWL, '14oz Bagasse Bowl', { id: '00000000-0000-4000-8000-000000000001' });
     renderLibraryWithRoutes({ findSimilar: async () => ({ fits: [fits], mightFit: [] }) });
-    await searchAndProceed();
+    await searchTheExample();
 
-    await screen.findByRole('heading', { name: 'Fits — every fact you gave matches' });
+    // The only one that fits shows as the match.
+    await screen.findByRole('region', { name: 'Match' });
     expect(screen.queryByLabelText('Name')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Save as a new Spec ID' })).toBeNull();
   });
@@ -302,7 +535,7 @@ describe('AtlasLibrary, saving from Search', () => {
   it('offers the save when nothing fits, even when some might', async () => {
     const might = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-000000000002' });
     renderLibraryWithRoutes({ findSimilar: async () => ({ fits: [], mightFit: [might] }) });
-    await searchAndProceed();
+    await searchTheExample();
 
     expect(await screen.findByRole('button', { name: 'Save as a new Spec ID' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: /Might fit/ })).toBeTruthy();
@@ -316,7 +549,7 @@ describe('AtlasLibrary, saving from Search', () => {
         throw new SpecIdExistsError(existing, 'This Spec ID already exists. Nothing new was saved.');
       },
     });
-    await searchAndProceed();
+    await searchTheExample();
     fireEvent.click(await screen.findByRole('button', { name: 'Save as a new Spec ID' }));
 
     expect(
@@ -334,7 +567,7 @@ describe('AtlasLibrary, saving from Search', () => {
         throw new AppError('INVALID_SPEC_ID', 'The Spec ID is not valid.', { name: [message] });
       },
     });
-    await searchAndProceed();
+    await searchTheExample();
     fireEvent.click(await screen.findByRole('button', { name: 'Save as a new Spec ID' }));
 
     expect(await screen.findByText(message)).toBeTruthy();
@@ -347,7 +580,7 @@ describe('AtlasLibrary, saving from Search', () => {
       .mockRejectedValueOnce(new AppError('SIGN_IN_REQUIRED', 'Sign in to continue.'))
       .mockRejectedValueOnce(new AppError('NETWORK', 'Cannot reach the server. Check your connection and try again.'));
     renderLibraryWithRoutes({ findSimilar: NOTHING_FITS, save });
-    await searchAndProceed();
+    await searchTheExample();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Save as a new Spec ID' }));
     expect(await screen.findByText('Sign in to save Spec IDs.')).toBeTruthy();

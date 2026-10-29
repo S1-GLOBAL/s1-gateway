@@ -25,11 +25,11 @@ describe('GetDictionary', () => {
       'wrap/Individual wrap',
       'window/Window',
     ]);
-    expect(dictionary.slots.flatMap((slot) => slot.values)).toHaveLength(118);
+    expect(dictionary.slots.flatMap((slot) => slot.values)).toHaveLength(121);
     expect(dictionary.slots[0]?.values.slice(0, 3)).toEqual([
-      { code: 'BAG', meaning: 'Bag', searchWords: [] },
-      { code: 'BLD', meaning: 'Bowl lid', searchWords: [] },
-      { code: 'BWL', meaning: 'Bowl', searchWords: [] },
+      { code: 'BAG', meaning: 'Bag', number: 16, searchWords: [] },
+      { code: 'BLD', meaning: 'Bowl lid', number: 1, searchWords: [] },
+      { code: 'BWB', meaning: 'Bowl with Bowl Lid', number: 32, searchWords: [] },
     ]);
   });
 
@@ -54,7 +54,7 @@ describe('GetDictionary', () => {
   it('orders the rules by product type, then slot', async () => {
     const { rules } = await new GetDictionary(new InMemoryDictionaryRepository()).execute();
 
-    expect(rules).toHaveLength(682);
+    expect(rules).toHaveLength(748);
     expect(rules[0]).toEqual({ productType: 'BAG', slot: 'coating', rule: 'applies' });
     expect(rules[21]).toEqual({ productType: 'BAG', slot: 'window', rule: 'applies' });
     expect(rules[22]).toEqual({ productType: 'BLD', slot: 'coating', rule: 'applies' });

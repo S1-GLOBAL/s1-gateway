@@ -22,7 +22,8 @@ export const atlasSpecIds = pgTable(
     colourClarity: varchar('colour_clarity', { length: 2 }).notNull(),
     shape: varchar('shape', { length: 2 }).notNull(),
     profile: varchar('profile', { length: 2 }).notNull(),
-    capacity: varchar('capacity', { length: 5 }).notNull(),
+    // A unit and four digits, then perhaps a point and up to six decimals: `Z0003.25` (ADR 0032).
+    capacity: varchar('capacity', { length: 12 }).notNull(),
     topDiameter: varchar('top_diameter', { length: 4 }).notNull(),
     bottomDiameter: varchar('bottom_diameter', { length: 4 }).notNull(),
     height: varchar('height', { length: 4 }).notNull(),

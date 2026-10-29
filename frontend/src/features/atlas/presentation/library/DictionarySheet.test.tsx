@@ -16,9 +16,9 @@ const DICTIONARY: AtlasDictionary = {
   release: 'S2 0.1.0',
   approvedOn: '2026-10-19',
   slots: [
-    { key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid', searchWords: [] }, { code: 'BWL', meaning: 'Bowl', searchWords: [] }] },
-    { key: 'material', name: 'Material', values: [{ code: 'APP', meaning: 'Polymer, PP', searchWords: [] }, { code: 'APS', meaning: 'Polymer, PS', searchWords: ['styrene foam', 'invented foam'] }] },
-    { key: 'shape', name: 'Shape', values: [{ code: 'RD', meaning: 'Round', searchWords: [] }, { code: 'SQ', meaning: 'Square', searchWords: [] }] },
+    { key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid', number: 1, searchWords: [] }, { code: 'BWL', meaning: 'Bowl', number: 2, searchWords: [] }] },
+    { key: 'material', name: 'Material', values: [{ code: 'APP', meaning: 'Polymer, PP', number: 1, searchWords: [] }, { code: 'APS', meaning: 'Polymer, PS', number: 2, searchWords: ['styrene foam', 'invented foam'] }] },
+    { key: 'shape', name: 'Shape', values: [{ code: 'RD', meaning: 'Round', number: 1, searchWords: [] }, { code: 'SQ', meaning: 'Square', number: 2, searchWords: [] }] },
   ],
   rules: [
     { productType: 'BLD', slot: 'coating', rule: 'applies' },

@@ -5,18 +5,33 @@ import type { VerifiedListSource } from '../application/ports/verified-list-sour
 import type { QuoteColumn, VerifiedRow } from '../domain/import/verified-row.js';
 import { shownCell } from './excel-cell-text.js';
 
-/** The verified list's one sheet, its first product row, and the columns the import reads (#28, #56). */
-export const SHEET = 'Main Table';
+/**
+ * The verified list's one sheet, its first product row, and the columns the
+ * import reads (#28, #56): the restructured layout, with Material Type and
+ * Printing beside the product's columns, and the case's columns between them
+ * and the prices.
+ */
+export const SHEET = 'Restructured Main Table';
 const FIRST_ROW = 4;
-const COLUMNS = { company: 1, country: 2, itemName: 3, category: 4, material: 5, dimension: 6, weight: 7 } as const;
-const QUOTE: Record<QuoteColumn, number> = {
-  fobPerUnit: 15,
-  fobPerCase: 16,
-  fobTotal: 17,
-  moldCost: 18,
-  moldLeadTime: 19,
-  sampleLeadTime: 20,
-  productionLeadTime: 21,
+const COLUMNS = {
+  company: 1,
+  country: 2,
+  itemName: 3,
+  category: 4,
+  material: 5,
+  materialType: 6,
+  dimension: 7,
+  weight: 8,
+  printing: 9,
+} as const;
+/** The quote's columns: U and V are FOB per unit and per case, X to AA the mold and lead times. It has no FOB total. */
+const QUOTE: Partial<Record<QuoteColumn, number>> = {
+  fobPerUnit: 21,
+  fobPerCase: 22,
+  moldCost: 24,
+  moldLeadTime: 25,
+  sampleLeadTime: 26,
+  productionLeadTime: 27,
 };
 
 /**
@@ -24,9 +39,8 @@ const QUOTE: Record<QuoteColumn, number> = {
  * repository (ADR 0027). A merged cell's value applies to every row it spans:
  * the workbook merges some item names, dimensions and weights down groups of
  * rows, and COMPANY and COUNTRY down every manufacturer's rows. A number in
- * columns C to G reads as its value, `90` as `90`; the quote's columns, O to
- * U, read as Excel shows them, `$0.0350`. A row with no item name is not a
- * product.
+ * columns C to I reads as its value, `90` as `90`; the quote's columns read as
+ * Excel shows them, `$0.0350`. A row with no item name is not a product.
  */
 export class ExcelVerifiedListSource implements VerifiedListSource {
   constructor(private readonly path: string) {}
@@ -46,7 +60,7 @@ export class ExcelVerifiedListSource implements VerifiedListSource {
     for (let row = FIRST_ROW; row <= sheet.rowCount; row += 1) {
       const itemName = text(row, COLUMNS.itemName);
       if (itemName === '') continue;
-      const quote = {} as Record<QuoteColumn, string>;
+      const quote = { fobTotal: '' } as Record<QuoteColumn, string>;
       const unsavedFormulas: QuoteColumn[] = [];
       for (const [column, at] of Object.entries(QUOTE) as [QuoteColumn, number][]) {
         const shown = shownCell(cellAt(row, at));
@@ -58,8 +72,10 @@ export class ExcelVerifiedListSource implements VerifiedListSource {
         itemName,
         category: text(row, COLUMNS.category),
         material: text(row, COLUMNS.material),
+        materialType: text(row, COLUMNS.materialType),
         dimension: text(row, COLUMNS.dimension),
         weight: text(row, COLUMNS.weight),
+        printing: text(row, COLUMNS.printing),
         company: text(row, COLUMNS.company),
         country: text(row, COLUMNS.country),
         quote,

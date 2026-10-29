@@ -5,12 +5,12 @@ import { SpecIdChangedError } from '../application/spec-id-changed-error';
 import { SpecIdExistsError } from '../application/spec-id-exists-error';
 import { HttpAtlasGateway } from './http-atlas-gateway';
 
-const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
+const ILLUSTRATIVE = 'A1B4D1E1F1-H90N33';
 
 const wireDictionary = {
   release: 'S2 0.1.0',
   approvedOn: '2026-10-16',
-  slots: [{ key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid', searchWords: ['bowl cover'] }] }],
+  slots: [{ key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid', number: 1, searchWords: ['bowl cover'] }] }],
   rules: [{ productType: 'BLD', slot: 'capacity', rule: 'never' }],
   change: null,
 };
@@ -18,7 +18,7 @@ const wireDictionary = {
 const wireDecoded = {
   code: ILLUSTRATIVE,
   dictionaryRelease: 'S2 0.1.0',
-  slots: [{ number: 2, key: 'productType', name: 'Product type', raw: 'BLD', state: 'value', meaning: 'Bowl lid' }],
+  slots: [{ number: 2, key: 'productType', name: 'Product type', raw: 'BLD', part: 'A1', state: 'value', meaning: 'Bowl lid' }],
 };
 
 interface Sent {
@@ -254,6 +254,7 @@ describe('HttpAtlasGateway, reading raw text', () => {
     read: [{ key: 'productType', name: 'Product type', meaning: 'Bowl lid', words: 'Lid', ruling: null }],
     ignored: ['for', 'Cava'],
     conflicts: [{ key: 'material', name: 'Material', found: ['PET', 'PP'] }],
+    notes: ['Material: PET is Polymer, PET (B1). PP is Polymer, PP (B3). Both were left out.'],
     decoded: wireDecoded,
   };
 

@@ -4,6 +4,14 @@ export interface DictionaryValue {
   readonly slot: DictionarySlotKey;
   readonly code: string;
   readonly meaning: string;
+  /**
+   * The option's number in its list, written after the list's letter in a
+   * code: `B17` (ADR 0032). Given once, in the order options were issued, and
+   * never moved. A capacity unit's number is the digit after `G`: `G112` is
+   * 12 of unit 1, oz. Left out, the dictionary numbers it after every number
+   * it already holds.
+   */
+  readonly number?: number;
 }
 
 export interface SlotRuleEntry {
@@ -34,6 +42,24 @@ export interface DictionarySearchWord {
   readonly changeNumber: number;
 }
 
+/** A value as the dictionary holds it: always numbered. */
+export type NumberedValue = DictionaryValue & { readonly number: number };
+
+/**
+ * A number whose option an approved change deleted, kept so a code written
+ * before still reads, and so the number is never given to another option
+ * (ADR 0032).
+ */
+export interface DictionaryRetiredNumber {
+  readonly slot: DictionarySlotKey;
+  readonly number: number;
+  /** The option's letters when it was deleted. */
+  readonly code: string;
+  readonly meaning: string;
+  /** The change that deleted it; null for one deleted before numbers were stored. */
+  readonly changeNumber: number | null;
+}
+
 /** The latest approved change: dictionary change #N, and when it was approved. */
 export interface DictionaryChangeStamp {
   readonly number: number;
@@ -44,6 +70,7 @@ export interface DictionaryChangeStamp {
 export interface DictionaryHistory {
   readonly renames?: readonly DictionaryRename[];
   readonly searchWords?: readonly DictionarySearchWord[];
+  readonly retired?: readonly DictionaryRetiredNumber[];
   readonly change?: DictionaryChangeStamp | null;
 }
 
@@ -56,18 +83,64 @@ export class Dictionary {
   private readonly meanings = new Map<string, string>();
   private readonly rules = new Map<string, SlotRule>();
   private readonly liveLetters = new Map<string, string | null>();
+  private readonly allValues: readonly NumberedValue[];
+  private readonly numbers = new Map<string, number>();
+  private readonly numbered = new Map<string, NumberedValue>();
+  private readonly highest = new Map<DictionarySlotKey, number>();
 
   constructor(
     readonly release: string,
     /** `YYYY-MM-DD`. */
     readonly approvedOn: string,
-    private readonly allValues: readonly DictionaryValue[],
+    values: readonly DictionaryValue[],
     private readonly allRules: readonly SlotRuleEntry[],
     private readonly history: DictionaryHistory = {},
   ) {
-    for (const value of allValues) this.meanings.set(`${value.slot}:${value.code}`, value.meaning);
+    for (const value of values) if (value.number !== undefined) this.raise(value.slot, value.number);
+    for (const retired of history.retired ?? []) this.raise(retired.slot, retired.number);
+    // A value without a number takes the next one, in the order given: the order it was issued.
+    this.allValues = values.map((value): NumberedValue => {
+      if (value.number !== undefined) return { ...value, number: value.number };
+      const number = (this.highest.get(value.slot) ?? 0) + 1;
+      this.raise(value.slot, number);
+      return { ...value, number };
+    });
+    for (const value of this.allValues) {
+      this.meanings.set(`${value.slot}:${value.code}`, value.meaning);
+      this.numbers.set(`${value.slot}:${value.code}`, value.number);
+      this.numbered.set(`${value.slot}:${value.number}`, value);
+    }
     for (const entry of allRules) this.rules.set(`${entry.productType}:${entry.slot}`, entry.rule);
     for (const rename of history.renames ?? []) this.liveLetters.set(`${rename.slot}:${rename.oldCode}`, rename.newCode);
+  }
+
+  private raise(slot: DictionarySlotKey, number: number): void {
+    this.highest.set(slot, Math.max(this.highest.get(slot) ?? 0, number));
+  }
+
+  /** The number of option `code` in `slot`, or undefined when the dictionary does not have it. */
+  numberOf(slot: DictionarySlotKey, code: string): number | undefined {
+    return this.numbers.get(`${slot}:${code}`);
+  }
+
+  /** The live option numbered `number` in `slot`, or undefined when none is, or it was deleted. */
+  valueNumbered(slot: DictionarySlotKey, number: number): NumberedValue | undefined {
+    return this.numbered.get(`${slot}:${number}`);
+  }
+
+  /** The deleted option that had `number` in `slot`, or undefined. */
+  retiredNumbered(slot: DictionarySlotKey, number: number): DictionaryRetiredNumber | undefined {
+    return this.history.retired?.find((retired) => retired.slot === slot && retired.number === number);
+  }
+
+  /** The number a new option in `slot` takes: one more than any it has had, deleted ones included. */
+  nextNumber(slot: DictionarySlotKey): number {
+    return (this.highest.get(slot) ?? 0) + 1;
+  }
+
+  /** Every deleted option's number, by list, then number. */
+  retired(): DictionaryRetiredNumber[] {
+    return [...(this.history.retired ?? [])].sort((a, b) => compare(a.slot, b.slot) || a.number - b.number);
   }
 
   /** The latest approved change, or null before the first. */
@@ -134,12 +207,12 @@ export class Dictionary {
   }
 
   /** A slot's values, ordered by code. */
-  valuesOf(slot: DictionarySlotKey): DictionaryValue[] {
+  valuesOf(slot: DictionarySlotKey): NumberedValue[] {
     return this.allValues.filter((value) => value.slot === slot).sort((a, b) => compare(a.code, b.code));
   }
 
   /** Every value, slot by slot in code order, each slot's values ordered by code. */
-  values(): DictionaryValue[] {
+  values(): NumberedValue[] {
     return DICTIONARY_SLOTS.flatMap((slot) => this.valuesOf(slot));
   }
 

@@ -1,8 +1,10 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AtlasLibrary, DictionarySheet, useDictionary } from '@/features/atlas';
 import { Button } from '@/shared/ui/Button';
 import { cn } from '@/shared/ui/cn';
 import { BookOpenIcon } from '@/shared/ui/icons';
+import { readLastSearch, rememberSearch } from './last-search';
 
 const ATLAS_TABS = [
   { id: 'search', label: 'Search' },
@@ -12,9 +14,15 @@ const ATLAS_TABS = [
 
 type AtlasTab = (typeof ATLAS_TABS)[number]['id'];
 
-/** `/atlas`. Search asks; Browse and Analyze are the other two places, still empty. */
+/**
+ * `/atlas`. Search asks; Browse and Analyze are the other two places, still
+ * empty. What Search asks is kept in the address, `?q=`, so going back to the
+ * page, or reloading it, asks it again; and for the tab, so opening Atlas
+ * without one, from a Spec ID or New Spec ID, asks the last one again.
+ */
 export function AtlasPage() {
   const [tab, setTab] = useState<AtlasTab>('search');
+  const [params, setParams] = useSearchParams();
   const [dictionaryOpen, setDictionaryOpen] = useState(false);
   const { data: dictionary } = useDictionary();
 
@@ -31,7 +39,16 @@ export function AtlasPage() {
 
       {/* Stays mounted, so a question survives a trip to the other tabs. */}
       <div role="tabpanel" id="atlas-panel-search" aria-labelledby="atlas-tab-search" hidden={tab !== 'search'}>
-        <AtlasLibrary dictionary={dictionary} untilAsked />
+        <AtlasLibrary
+          dictionary={dictionary}
+          untilAsked
+          initialText={params.get('q') ?? readLastSearch()}
+          onAsk={(text) => {
+            // Replaced, not pushed: Back leaves Atlas rather than stepping through every pause in typing.
+            setParams(text === '' ? {} : { q: text }, { replace: true });
+            rememberSearch(text);
+          }}
+        />
       </div>
       {tab !== 'search' && <div role="tabpanel" id={`atlas-panel-${tab}`} aria-labelledby={`atlas-tab-${tab}`} />}
       <DictionarySheet dictionary={dictionary} open={dictionaryOpen} onClose={() => setDictionaryOpen(false)} />
