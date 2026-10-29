@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Badge } from './Badge';
 import { Button } from './Button';
 import { Logo, SourceOneName } from './Logo';
+import { TextAreaField } from './TextAreaField';
 import { TextField } from './TextField';
 
 describe('Button', () => {
@@ -63,5 +64,18 @@ describe('TextField', () => {
     expect(screen.getByLabelText('Search')).toBe(input);
     expect(document.activeElement).toBe(input);
     expect(screen.getByRole('button', { name: 'Go' })).toBeTruthy();
+  });
+});
+
+describe('TextAreaField', () => {
+  it('is labelled, and its error replaces its hint and is announced with it', () => {
+    const { rerender } = render(<TextAreaField label="Search words" hint="One per line." />);
+    const area = screen.getByRole('textbox', { name: 'Search words' });
+    expect(area.tagName).toBe('TEXTAREA');
+    expect(document.getElementById(area.getAttribute('aria-describedby') ?? '')?.textContent).toBe('One per line.');
+
+    rerender(<TextAreaField label="Search words" hint="One per line." errors={['Too many words.']} />);
+    expect(area.getAttribute('aria-invalid')).toBe('true');
+    expect(document.getElementById(area.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Too many words.');
   });
 });

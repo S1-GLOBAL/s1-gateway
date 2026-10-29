@@ -1,4 +1,4 @@
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { cn } from '@/shared/ui/cn';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { BookCheckIcon } from '@/shared/ui/icons';
@@ -19,14 +19,21 @@ interface ListProps {
   onNotice(message: string): void;
 }
 
+export interface DictionaryChangesProps {
+  viewer: Viewer;
+  timeZone?: string;
+  /** A dictionary change a link asked for: the history opens on it, with its trail. */
+  change?: number | null;
+}
+
 /**
  * Every suggested change to the dictionary (#95): those waiting for an admin,
  * oldest first, each in full; and the history, latest decision first. What an
  * action did is announced above the list.
  */
-export function DictionaryChanges({ viewer, timeZone }: { viewer: Viewer; timeZone?: string }) {
+export function DictionaryChanges({ viewer, timeZone, change = null }: DictionaryChangesProps) {
   const { data: dictionary } = useDictionary();
-  const [tab, setTab] = useState<Tab>('waiting');
+  const [tab, setTab] = useState<Tab>(change === null ? 'waiting' : 'history');
   const [notice, setNotice] = useState<string | null>(null);
   const list: ListProps = { dictionary, viewer, timeZone, onNotice: setNotice };
 
@@ -58,7 +65,7 @@ export function DictionaryChanges({ viewer, timeZone }: { viewer: Viewer; timeZo
           </SkeletonRegion>
         }
       >
-        {tab === 'waiting' ? <Waiting {...list} /> : <History {...list} />}
+        {tab === 'waiting' ? <Waiting {...list} /> : <History {...list} change={change} />}
       </Suspense>
     </div>
   );
@@ -90,18 +97,30 @@ function Waiting(props: ListProps) {
   );
 }
 
-function History(props: ListProps) {
+function History({ change, ...props }: ListProps & { change: number | null }) {
   const { data: decided } = useSuggestionList('decided');
+
+  useEffect(() => {
+    if (change !== null) document.getElementById(changeId(change))?.scrollIntoView?.({ block: 'start' });
+  }, [change]);
+
   if (decided.length === 0) {
     return <EmptyState icon={<BookCheckIcon size={20} />} title="No dictionary changes yet." description="Approved changes appear here." />;
   }
   return (
     <ul className="flex flex-col gap-4">
-      {decided.map((suggestion) => (
-        <li key={suggestion.id}>
-          <SuggestionCard suggestion={suggestion} detail={null} {...props} />
-        </li>
-      ))}
+      {decided.map((suggestion) => {
+        const asked = change !== null && suggestion.changeNumber === change;
+        return (
+          <li key={suggestion.id} id={suggestion.changeNumber === null ? undefined : changeId(suggestion.changeNumber)}>
+            <SuggestionCard suggestion={suggestion} detail={null} opened={asked} {...props} />
+          </li>
+        );
+      })}
     </ul>
   );
+}
+
+function changeId(number: number): string {
+  return `dictionary-change-${number}`;
 }

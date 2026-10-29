@@ -5,6 +5,7 @@ import { CheckIcon, PlusIcon, ToolsIcon } from '@/shared/ui/icons';
 import { Pagination } from '@/shared/ui/Pagination';
 import { SegmentedControl } from '@/shared/ui/SegmentedControl';
 import { SelectField } from '@/shared/ui/SelectField';
+import { TextAreaField } from '@/shared/ui/TextAreaField';
 import { TextField } from '@/shared/ui/TextField';
 import { ShowcaseSection } from '../ShowcaseSection';
 
@@ -60,6 +61,8 @@ export function ControlsSection() {
             ]}
           />
           <SelectField label="Gusset" disabled options={[{ value: 'X', label: "Doesn't apply" }]} />
+          <TextAreaField label="Search words" defaultValue={'invented fibre\ncane pulp'} hint="One per line." />
+          <TextAreaField label="Notes" rows={2} errors={['Keep it to 500 characters.']} />
         </div>
         <Row label="Badges">
           <Badge>Neutral</Badge>

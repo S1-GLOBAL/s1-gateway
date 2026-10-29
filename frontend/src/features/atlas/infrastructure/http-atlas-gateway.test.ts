@@ -10,8 +10,9 @@ const ILLUSTRATIVE = 'A1B4D1E1F1-H90N33';
 const wireDictionary = {
   release: 'S2 0.1.0',
   approvedOn: '2026-10-16',
-  slots: [{ key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid', number: 1 }] }],
+  slots: [{ key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid', number: 1, searchWords: ['bowl cover'] }] }],
   rules: [{ productType: 'BLD', slot: 'capacity', rule: 'never' }],
+  change: null,
 };
 
 const wireDecoded = {
@@ -48,6 +49,23 @@ describe('HttpAtlasGateway', () => {
     const dictionary = await gatewayAnswering(200, { data: wireDictionary }, sent).dictionary();
     expect(sent).toEqual([{ method: 'get', url: '/atlas/dictionary', body: undefined }]);
     expect(dictionary).toEqual(wireDictionary);
+  });
+
+  it("reads the dictionary's latest change, its date as a Date", async () => {
+    const dictionary = await gatewayAnswering(200, {
+      data: { ...wireDictionary, change: { number: 3, at: '2026-10-27T09:30:00.000Z' } },
+    }).dictionary();
+    expect(dictionary.change).toEqual({ number: 3, at: new Date('2026-10-27T09:30:00.000Z') });
+  });
+
+  it('reads search words an older API omits as none, during a release', async () => {
+    const dictionary = await gatewayAnswering(200, {
+      data: {
+        ...wireDictionary,
+        slots: [{ key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid' }] }],
+      },
+    }).dictionary();
+    expect(dictionary.slots[0]?.values).toEqual([{ code: 'BLD', meaning: 'Bowl lid', searchWords: [] }]);
   });
 
   it('sends the code to decode and returns its slots', async () => {
@@ -275,6 +293,7 @@ describe('HttpAtlasGateway, reading raw text', () => {
 
 describe('HttpAtlasGateway, changing a saved Spec ID', () => {
   const ben = { id: '00000000-0000-4000-8000-0000000000bb', fullName: 'Ben Invented' };
+  const ada = { id: '00000000-0000-4000-8000-0000000000aa', fullName: 'Ada Invented' };
 
   it('opens a saved Spec ID by its id, with who last changed it and when', async () => {
     const sent: Sent[] = [];
@@ -339,10 +358,27 @@ describe('HttpAtlasGateway, changing a saved Spec ID', () => {
       nameBefore: 'Lid',
       nameAfter: 'Illustrative lid',
       slots: [{ key: 'height', name: 'Height', before: 'Not known', after: '62 mm', corrected: false }],
+      dictionaryChange: null,
     };
     const history = await gatewayAnswering(200, { data: [wire] }, sent).history(SPEC_ID);
     expect(sent).toEqual([{ method: 'get', url: `/atlas/saved/${SPEC_ID}/history`, body: undefined }]);
     expect(history).toEqual([{ ...wire, changedAt: new Date('2026-10-17T14:32:00.000Z') }]);
+  });
+
+  it('reads a history entry a dictionary change made, with who suggested and who approved it', async () => {
+    const wire = {
+      kind: 'updated',
+      changedBy: ben,
+      changedAt: '2026-10-27T09:30:00.000Z',
+      codeBefore: 'S2.BEFORE',
+      codeAfter: ILLUSTRATIVE,
+      nameBefore: 'Lid',
+      nameAfter: 'Lid',
+      slots: [],
+      dictionaryChange: { number: 3, suggestedBy: ada, approvedBy: ben },
+    };
+    const [entry] = await gatewayAnswering(200, { data: [wire] }).history(SPEC_ID);
+    expect(entry?.dictionaryChange).toEqual({ number: 3, suggestedBy: ada, approvedBy: ben });
   });
 });
 

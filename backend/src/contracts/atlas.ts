@@ -33,6 +33,8 @@ export interface DictionaryValue {
   meaning: string;
   /** Its number in its list, written after the list's letter in a code: material 17 is `B17` (ADR 0032). */
   number: number;
+  /** Words an approved suggestion gave it, read in pasted text as it (ADR 0031); the word list in the code is not among them. */
+  searchWords: string[];
 }
 
 export interface DictionarySlot {

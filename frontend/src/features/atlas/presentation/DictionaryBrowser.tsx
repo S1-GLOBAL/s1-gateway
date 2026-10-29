@@ -1,18 +1,28 @@
 import { useEffect, useId, useState, type KeyboardEvent } from 'react';
+import { Button } from '@/shared/ui/Button';
 import { SelectField } from '@/shared/ui/SelectField';
 import { TextField } from '@/shared/ui/TextField';
 import { cn } from '@/shared/ui/cn';
 import type { AtlasDictionary, SlotKey } from '../domain/atlas';
 import { RULE_LABELS, SLOT_NAMES } from '../domain/atlas';
 import { byNumber, valueCode } from '../domain/code-letters';
+import type { SuggestionTarget } from '../domain/suggestion-form';
 import { dictionaryOptions } from './dictionary-options';
 import { SUGGESTIONS_SHOWN, searchDictionary, type DictionaryHit } from './dictionary-search';
 
+export interface DictionaryBrowserProps {
+  dictionary: AtlasDictionary;
+  /** Offers a suggestion for each list, each option and the rules table (#95); without it, the dictionary is only read. */
+  onSuggest?: (target: SuggestionTarget) => void;
+}
+
 /**
  * Every value of every dictionary slot, each as a code writes it (`B17`), then
- * which slots apply to one product type.
+ * which slots apply to one product type. With `onSuggest`, each list offers
+ * Suggest an option, an option opened offers Suggest edit and Suggest delete,
+ * and the rules table Suggest rule changes.
  */
-export function DictionaryBrowser({ dictionary }: { dictionary: AtlasDictionary }) {
+export function DictionaryBrowser({ dictionary, onSuggest }: DictionaryBrowserProps) {
   const productTypes = byNumber(dictionary.slots.find((slot) => slot.key === 'productType')?.values ?? []);
   const [chosen, setChosen] = useState(productTypes[0]?.code ?? '');
   const [query, setQuery] = useState('');
@@ -133,14 +143,28 @@ export function DictionaryBrowser({ dictionary }: { dictionary: AtlasDictionary 
               aria-labelledby={`atlas-slot-${slot.key}`}
               className="rounded-surface border border-border bg-surface p-5"
             >
-              <h3 id={`atlas-slot-${slot.key}`} className="text-md font-medium text-ink">
-                {slot.name}
-              </h3>
+              <div className="flex items-center justify-between gap-3">
+                <h3 id={`atlas-slot-${slot.key}`} className="text-md font-medium text-ink">
+                  {slot.name}
+                </h3>
+                {onSuggest && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Suggest an option for ${slot.name}`}
+                    onClick={() => onSuggest({ kind: 'add', slot: slot.key })}
+                    className="-mr-2"
+                  >
+                    Suggest an option
+                  </Button>
+                )}
+              </div>
               <dl className="mt-3 flex flex-col gap-1.5 text-sm">
                 {byNumber(slot.values).map((value) => {
                   const part = valueCode(slot.key, value.number);
                   const hit = { slotKey: slot.key, slotName: slot.name, code: value.code, part, meaning: value.meaning };
                   const current = picked?.slotKey === slot.key && picked.code === value.code;
+                  const words = value.searchWords;
                   return (
                     <div
                       key={value.code}
@@ -148,7 +172,31 @@ export function DictionaryBrowser({ dictionary }: { dictionary: AtlasDictionary 
                       className={cn('flex gap-3 rounded-control px-2 py-0.5', current && 'bg-surface-sunken')}
                     >
                       <dt className="w-10 shrink-0 font-mono text-ink">{part}</dt>
-                      <dd className="text-ink-muted">{value.meaning}</dd>
+                      <dd className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        {onSuggest ? (
+                          <button
+                            type="button"
+                            aria-expanded={current}
+                            onClick={() => setPicked(current ? null : hit)}
+                            className="self-start text-left text-ink-muted transition-colors duration-150 ease-standard hover:text-ink"
+                          >
+                            {value.meaning}
+                          </button>
+                        ) : (
+                          <span className="text-ink-muted">{value.meaning}</span>
+                        )}
+                        {words.length > 0 && <span className="text-xs text-ink-subtle">{words.join(', ')}</span>}
+                        {onSuggest && current && (
+                          <span className="flex flex-wrap gap-2 py-1.5">
+                            <Button size="sm" variant="secondary" onClick={() => onSuggest({ kind: 'edit', slot: slot.key, code: value.code })}>
+                              Suggest edit
+                            </Button>
+                            <Button size="sm" variant="secondary" onClick={() => onSuggest({ kind: 'delete', slot: slot.key, code: value.code })}>
+                              Suggest delete
+                            </Button>
+                          </span>
+                        )}
+                      </dd>
                     </div>
                   );
                 })}
@@ -160,9 +208,16 @@ export function DictionaryBrowser({ dictionary }: { dictionary: AtlasDictionary 
 
       {asked === '' && (
         <div className="flex flex-col gap-4">
-          <h3 id="atlas-which-slots" className="text-md font-medium text-ink">
-            Which slots apply
-          </h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 id="atlas-which-slots" className="text-md font-medium text-ink">
+              Which slots apply
+            </h3>
+            {onSuggest && selected !== '' && (
+              <Button size="sm" variant="secondary" onClick={() => onSuggest({ kind: 'rules', slot: 'productType', code: selected })}>
+                Suggest rule changes
+              </Button>
+            )}
+          </div>
           {selected !== '' && (
             <SelectField
               label="Product type"

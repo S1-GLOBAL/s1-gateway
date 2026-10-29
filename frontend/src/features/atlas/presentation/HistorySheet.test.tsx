@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import type { AtlasGateway } from '../application/atlas-gateway';
 import { AtlasGatewayProvider } from '../application/atlas-gateway-context';
@@ -22,6 +23,7 @@ const HISTORY: SpecIdChange[] = [
     nameBefore: 'Lid',
     nameAfter: 'Illustrative lid',
     slots: [],
+    dictionaryChange: null,
   },
   {
     kind: 'updated',
@@ -35,6 +37,7 @@ const HISTORY: SpecIdChange[] = [
       { key: 'height', name: 'Height', before: 'Not known', after: '62 mm', corrected: false },
       { key: 'unitWeight', name: 'Unit weight', before: '3.3 g', after: '3.5 g', corrected: true },
     ],
+    dictionaryChange: null,
   },
   {
     kind: 'created',
@@ -45,6 +48,7 @@ const HISTORY: SpecIdChange[] = [
     nameBefore: null,
     nameAfter: 'Lid',
     slots: [],
+    dictionaryChange: null,
   },
 ];
 
@@ -53,7 +57,9 @@ function renderSheet(history: AtlasGateway['history'] = async () => HISTORY) {
   render(
     <QueryClientProvider client={queryClient}>
       <AtlasGatewayProvider gateway={gatewayWith({ history })}>
-        <HistorySheet id={ID} name="Illustrative lid" open onClose={() => undefined} timeZone="UTC" />
+        <MemoryRouter>
+          <HistorySheet id={ID} name="Illustrative lid" open onClose={() => undefined} timeZone="UTC" />
+        </MemoryRouter>
       </AtlasGatewayProvider>
     </QueryClientProvider>,
   );
@@ -109,6 +115,27 @@ describe('HistorySheet', () => {
     expect(entries()).toHaveLength(1);
     expect(screen.queryByText('Ben Invented renamed it')).toBeNull();
     expect(screen.getByText('Ben Invented updated 2 facts')).toBeTruthy();
+  });
+
+  it("names the dictionary change that made an entry, in #95's words, linking to the change", async () => {
+    const byChange: SpecIdChange = {
+      kind: 'updated',
+      changedBy: ben,
+      changedAt: new Date('2026-10-27T09:30:00Z'),
+      codeBefore: 'S1.CODE.B',
+      codeAfter: 'S1.CODE.C',
+      nameBefore: 'Illustrative lid',
+      nameAfter: 'Illustrative lid',
+      slots: [{ key: 'material', name: 'Material', before: 'Polymer, PS', after: 'Polymer, invented', corrected: true }],
+      dictionaryChange: { number: 3, suggestedBy: ada, approvedBy: ben },
+    };
+    renderSheet(async () => [byChange, ...HISTORY]);
+
+    const line = 'Changed by dictionary change #3 — suggested by Ada Invented, approved by Ben Invented';
+    const link = await screen.findByRole('link', { name: line });
+    expect(link.textContent).toBe(line);
+    expect(link.getAttribute('href')).toBe('/dictionary/changes?change=3');
+    expect(screen.queryByText('Ben Invented updated 1 fact')).toBeNull();
   });
 
   it('shows a failure with Try again', async () => {

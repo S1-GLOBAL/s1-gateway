@@ -43,6 +43,8 @@ export interface DictionaryValue {
   meaning: string;
   /** Its number in its list, written after the list's letter in a code: material 17 is `B17`. */
   number: number;
+  /** Words an approved suggestion gave it, read in pasted text as it (ADR 0031). */
+  searchWords: string[];
 }
 
 export interface DictionarySlot {
@@ -58,6 +60,12 @@ export interface SlotRuleEntry {
   rule: SlotRule;
 }
 
+/** An approved change to the dictionary, numbered from 1 in the order approved (ADR 0031). */
+export interface DictionaryChange {
+  number: number;
+  at: Date;
+}
+
 /** One release of the Atlas dictionary. */
 export interface AtlasDictionary {
   release: string;
@@ -67,6 +75,8 @@ export interface AtlasDictionary {
   slots: DictionarySlot[];
   /** By product type code, then slot order. */
   rules: SlotRuleEntry[];
+  /** The latest approved change; null before the first. */
+  change: DictionaryChange | null;
 }
 
 export interface DecodedSlot {
@@ -209,6 +219,8 @@ export interface SpecIdChange {
   nameAfter: string;
   /** Empty for `created`, and for a change of name only. */
   slots: SlotChange[];
+  /** The approved dictionary change that made it, with who suggested and who approved it; null for anyone's own edit. */
+  dictionaryChange: { number: number; suggestedBy: Staff; approvedBy: Staff } | null;
 }
 
 /** The slots a lookup asks about, each with a raw slot value (`topDiameter: "0090"`). */

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { applyProposal } from '../domain/suggestions/apply-proposal.js';
+import { s2Dictionary } from '../domain/testing/s2-dictionary.js';
 import { GetDictionary } from './get-dictionary.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 
@@ -25,10 +27,28 @@ describe('GetDictionary', () => {
     ]);
     expect(dictionary.slots.flatMap((slot) => slot.values)).toHaveLength(121);
     expect(dictionary.slots[0]?.values.slice(0, 3)).toEqual([
-      { code: 'BAG', meaning: 'Bag', number: 16 },
-      { code: 'BLD', meaning: 'Bowl lid', number: 1 },
-      { code: 'BWB', meaning: 'Bowl with Bowl Lid', number: 32 },
+      { code: 'BAG', meaning: 'Bag', number: 16, searchWords: [] },
+      { code: 'BLD', meaning: 'Bowl lid', number: 1, searchWords: [] },
+      { code: 'BWB', meaning: 'Bowl with Bowl Lid', number: 32, searchWords: [] },
     ]);
+  });
+
+  it("hands out each option's approved search words", async () => {
+    const dictionaries = new InMemoryDictionaryRepository();
+    dictionaries.replace(
+      applyProposal(
+        s2Dictionary(),
+        { slot: 'material', code: 'CBG' },
+        { kind: 'edit', newCode: null, meaning: null, searchWords: ['sugarcane fibre', 'cane pulp'] },
+        { number: 1, at: new Date('2026-10-29T08:00:00.000Z') },
+      ),
+    );
+
+    const { slots } = await new GetDictionary(dictionaries).execute();
+
+    const materials = slots.find((slot) => slot.key === 'material')?.values ?? [];
+    expect(materials.find((value) => value.code === 'CBG')?.searchWords).toEqual(['cane pulp', 'sugarcane fibre']);
+    expect(materials.find((value) => value.code === 'APS')?.searchWords).toEqual([]);
   });
 
   it('orders the rules by product type, then slot', async () => {

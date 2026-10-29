@@ -44,6 +44,51 @@ function gatewayAnswering(status: number, data: unknown, sent: Sent[] = []): Htt
 }
 
 describe('HttpSuggestionsGateway', () => {
+  it('suggests a change, and answers the waiting suggestion', async () => {
+    const sent: Sent[] = [];
+    const proposal = { kind: 'add', meaning: 'Polymer, invented', searchWords: ['invented polymer'], rules: null } as const;
+    const suggestion = await gatewayAnswering(201, { data: { ...wireSuggestion, kind: 'add', code: 'AZZ', proposal, version: 1 } }, sent).suggest({
+      slot: 'material',
+      code: 'AZZ',
+      proposal,
+    });
+
+    expect(sent[0]).toMatchObject({ method: 'post', url: '/atlas/dictionary/suggestions', body: { slot: 'material', code: 'AZZ', proposal } });
+    expect(suggestion).toMatchObject({ kind: 'add', code: 'AZZ', state: 'waiting', proposal });
+  });
+
+  it("keeps a suggestion's problems under the field each is about", async () => {
+    const fields = { newCode: ["RD is how Atlas knows a shape is round, so its letters can't change and it can't be deleted."] };
+    const refused = gatewayAnswering(400, {
+      error: { code: 'VALIDATION_FAILED', message: 'The suggestion is not valid.', details: { fields } },
+    }).suggest({ slot: 'shape', code: 'RD', proposal: { kind: 'edit', newCode: 'RO', meaning: null, searchWords: null } });
+    await expect(refused).rejects.toMatchObject({ code: 'VALIDATION_FAILED', fields });
+  });
+
+  it('edits a waiting suggestion from the version read', async () => {
+    const sent: Sent[] = [];
+    const proposal = { kind: 'edit', newCode: 'APY', meaning: null, searchWords: null } as const;
+    const edited = await gatewayAnswering(200, { data: { ...wireSuggestion, proposal, version: 3 } }, sent).edit('s1', {
+      slot: 'material',
+      code: 'APS',
+      proposal,
+      version: 2,
+    });
+
+    expect(sent[0]).toMatchObject({
+      method: 'put',
+      url: '/atlas/dictionary/suggestions/s1',
+      body: { slot: 'material', code: 'APS', proposal, version: 2 },
+    });
+    expect(edited).toMatchObject({ version: 3, proposal });
+  });
+
+  it('asks how many saved Spec IDs hold an option', async () => {
+    const sent: Sent[] = [];
+    expect(await gatewayAnswering(200, { data: { count: 4 } }, sent).usage('material', 'APS')).toBe(4);
+    expect(sent[0]).toMatchObject({ method: 'get', url: '/atlas/dictionary/usage/material/APS' });
+  });
+
   it('asks for one list by state, and reads its dates', async () => {
     const sent: Sent[] = [];
     const [suggestion] = await gatewayAnswering(200, { data: [wireSuggestion] }, sent).list('decided');

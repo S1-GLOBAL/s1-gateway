@@ -1,4 +1,4 @@
-import type { SimilarCriteria, SpecIdFacts } from '../domain/atlas';
+import type { SimilarCriteria, SlotKey, SpecIdFacts } from '../domain/atlas';
 
 export const atlasKeys = {
   all: ['atlas'] as const,
@@ -13,6 +13,7 @@ export const atlasKeys = {
   library: (request: { q: string; productType: string; page: number }) => [...atlasKeys.all, 'library', request] as const,
   code: (code: string) => [...atlasKeys.all, 'code', code] as const,
   reading: (text: string, productType: string) => [...atlasKeys.all, 'reading', text, productType] as const,
+  usage: (slot: SlotKey, code: string) => [...atlasKeys.all, 'usage', slot, code] as const,
   suggestions: () => [...atlasKeys.all, 'suggestions'] as const,
   suggestionList: (state: 'waiting' | 'decided') => [...atlasKeys.suggestions(), 'list', state] as const,
   suggestion: (id: string) => [...atlasKeys.suggestions(), 'one', id] as const,

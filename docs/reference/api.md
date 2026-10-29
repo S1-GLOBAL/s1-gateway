@@ -172,8 +172,11 @@ issues anything but tagged codes.
 `AtlasDictionary` is `{ release, approvedOn, slots, rules, change }`. `slots` holds the
 thirteen dictionary slots in code order (`productType` to `profile`, then
 `capacity` for its unit letters, then `wall`, `print`, `lidOpening`, `handle`,
-`wrap` and `window`), each `{ key, name, values: { code, meaning, number }[] }`;
-`number` is written after the slot's letter in a code (material 17 is `B17`).
+`wrap` and `window`), each `{ key, name, values: { code, meaning, number, searchWords }[] }`;
+`number` is written after the slot's letter in a code (material 17 is `B17`),
+and `searchWords` are the words approved suggestions gave the option, in
+order, and never the word list in the code
+([ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md)).
 `rules` holds one `{ productType, slot, rule }` per product type and ruled
 slot, where `rule` is `applies`, `never`, `round_only`, `non_round_only` or
 `paper_only`. `change` is the latest approved dictionary change,

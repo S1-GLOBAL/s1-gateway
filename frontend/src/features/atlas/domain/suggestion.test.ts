@@ -65,12 +65,16 @@ describe('usageLine', () => {
 });
 
 describe('actionsFor', () => {
-  it('lets the suggester withdraw, and an admin who did not suggest it decide, only while it waits', () => {
-    expect(actionsFor(suggestion(), { id: 'ada', isAdmin: false })).toEqual({ withdraw: true, decide: false });
-    expect(actionsFor(suggestion(), { id: 'ben', isAdmin: true })).toEqual({ withdraw: false, decide: true });
-    expect(actionsFor(suggestion(), { id: 'ada', isAdmin: true })).toEqual({ withdraw: true, decide: false });
-    expect(actionsFor(suggestion(), { id: 'cy', isAdmin: false })).toEqual({ withdraw: false, decide: false });
-    expect(actionsFor(suggestion({ state: 'approved' }), { id: 'ben', isAdmin: true })).toEqual({ withdraw: false, decide: false });
+  it('lets the suggester edit and withdraw, and an admin who did not suggest it decide, only while it waits', () => {
+    expect(actionsFor(suggestion(), { id: 'ada', isAdmin: false })).toEqual({ edit: true, withdraw: true, decide: false });
+    expect(actionsFor(suggestion(), { id: 'ben', isAdmin: true })).toEqual({ edit: false, withdraw: false, decide: true });
+    expect(actionsFor(suggestion(), { id: 'ada', isAdmin: true })).toEqual({ edit: true, withdraw: true, decide: false });
+    expect(actionsFor(suggestion(), { id: 'cy', isAdmin: false })).toEqual({ edit: false, withdraw: false, decide: false });
+    expect(actionsFor(suggestion({ state: 'approved' }), { id: 'ada', isAdmin: true })).toEqual({
+      edit: false,
+      withdraw: false,
+      decide: false,
+    });
   });
 });
 
@@ -78,9 +82,10 @@ describe('describeSuggestion', () => {
   const dictionary: AtlasDictionary = {
     release: 'S2 0.1.0',
     approvedOn: '2026-10-19',
+    change: null,
     slots: [
-      { key: 'productType', name: 'Product type', values: [{ code: 'CUP', meaning: 'Cup', number: 5 }] },
-      { key: 'material', name: 'Material', values: [{ code: 'APS', meaning: 'Polymer, PS', number: 4 }, { code: 'APP', meaning: 'Polymer, PP', number: 3 }] },
+      { key: 'productType', name: 'Product type', values: [{ code: 'CUP', meaning: 'Cup', number: 5, searchWords: [] }] },
+      { key: 'material', name: 'Material', values: [{ code: 'APS', meaning: 'Polymer, PS', number: 4, searchWords: [] }, { code: 'APP', meaning: 'Polymer, PP', number: 3, searchWords: [] }] },
     ],
     rules: [{ productType: 'CUP', slot: 'wall', rule: 'applies' }],
   };

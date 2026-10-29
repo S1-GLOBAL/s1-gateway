@@ -30,3 +30,19 @@ export function historySentence(entry: SpecIdChange): string {
   if (count > 0) return `${who} ${facts}`;
   return `${who} renamed it`;
 }
+
+/**
+ * An entry an approved dictionary change made, as #95 words it: "Changed by
+ * dictionary change #3 — suggested by Ada, approved by Ben"; null for anyone's
+ * own edit.
+ */
+export function dictionaryChangeLine(entry: SpecIdChange): string | null {
+  const change = entry.dictionaryChange;
+  if (!change) return null;
+  return `Changed by dictionary change #${change.number} — suggested by ${change.suggestedBy.fullName}, approved by ${change.approvedBy.fullName}`;
+}
+
+/** Where a dictionary change is shown, with its trail. */
+export function dictionaryChangePath(number: number): string {
+  return `/dictionary/changes?change=${number}`;
+}
