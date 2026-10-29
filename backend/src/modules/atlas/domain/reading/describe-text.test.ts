@@ -236,6 +236,7 @@ describe('reading a product description (plan 0011)', () => {
     expect(described('90mm PET Lid, PET, Top dia 90mm').code).toBe('A2B1E1-H90');
     expect(described('Cup 90mm, 80mm').code).toBe('A5');
     expect(described('96MM LIDS - KRAFT, Kraft, 96mm, 300+300+250').code).toBe('A2B12D4E1-H96');
+    expect(described('98mm diameter PET dome lid').code).toBe('A2B1E1F1-H98');
   });
 
   it('reads supplier shorthand for print and wall: 1c print, SW, DW', () => {

@@ -51,7 +51,10 @@ const EDGE_AFTER = '(?![a-z0-9/+]|\\.\\d)';
 const THREE = new RegExp(`${EDGE_BEFORE}${NUMBER}${UNIT}(\\s*dia)?${TIMES}${NUMBER}${UNIT}${TIMES}${NUMBER}${UNIT}${EDGE_AFTER}`, 'g');
 const DIA_BY = new RegExp(`${EDGE_BEFORE}${NUMBER}${UNIT}\\s*dia${TIMES}${NUMBER}${UNIT}${EDGE_AFTER}`, 'g');
 /** One number, alone or with "dia", "rim", "ø" or a length unit; a number followed by any other word is not a size. */
-const ONE = new RegExp(`(?:(?:ø|dia|rim)\\s*)?${EDGE_BEFORE}${NUMBER}${UNIT}(?:\\s*(?:dia|rim))?${EDGE_AFTER}(?!\\s*[a-z])`, 'g');
+const ONE = new RegExp(
+  `(?:(?:ø|diameter|dia|rim)\\s*)?${EDGE_BEFORE}${NUMBER}${UNIT}(?:\\s*(?:diameter|dia|rim))?${EDGE_AFTER}(?!\\s*[a-z])`,
+  'g',
+);
 
 function unitOf(written: string | undefined): string {
   if (written === 'cm') return 'cm';
