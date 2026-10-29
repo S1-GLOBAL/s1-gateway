@@ -35,6 +35,8 @@ describe('readSize, by #28 rulings', () => {
     ['R5 with the gusset not the smallest', 'bag 120 x 250 x 300', 'BAG'],
     ['a weight with decimals, whose whole part is no rim', 'portion cup 1.9g', 'PCP'],
     ['a capacity with decimals', 'portion cup 3.25oz', 'PCP'],
+    ['a bare number wider than any rim', 'paper bowl 500', 'BWL'],
+    ['a rim over 300 mm in another unit', 'bowl lid 31 cm', 'BLD'],
   ])('reads nothing for %s', (_case, text, productType) => {
     expect(readSize(text, productType, dictionary)).toBeNull();
   });

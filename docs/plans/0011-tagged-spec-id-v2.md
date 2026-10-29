@@ -299,7 +299,7 @@ A description goes through the existing Atlas reader, then these extra passes, a
 
 **A lid named by its vessel in any order** is the lid: `Cup Lids`, `Bowl PET Lids`, `Lid 32 oz Paper Bowl`, `Lid fit for 6oz Deli Cup`. A lid joined to its vessel by with, and, &, w/, c/w or + is still sold with it.
 
-**A number with no unit is never stored** as a capacity. When the product has a capacity and none was read, a bare number of 2 to 4 digits gets a note: "500 has no unit. If it is the capacity, write 500 ml or 500 oz." #28's ruling R1 still reads a lone bare number on a cup, bowl or lid as its rim.
+**A number with no unit is never stored** as a capacity. When the product has a capacity and none was read, a bare number of 2 to 4 digits gets a note: "500 has no unit. If it is the capacity, write 500 ml or 500 oz." #28's ruling R1 still reads a lone bare number on a cup, bowl or lid as its rim, up to 300 mm: no cup, bowl or lid is wider, so `500 paper bowl` is no rim.
 
 ## Suggestions
 

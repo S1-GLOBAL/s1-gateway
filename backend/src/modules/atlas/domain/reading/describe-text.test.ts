@@ -266,6 +266,10 @@ describe('reading a product description (plan 0011)', () => {
     const container = described('Printed 500 paper container');
     expect(container.code).toBe('A8B24');
     expect(container.notes).toContain('500 has no unit. If it is the capacity, write 500 ml or 500 oz.');
+    // No bowl is 500 mm across, so it is no rim either.
+    const bowl = described('Printed 500 paper bowl');
+    expect(bowl.code).toBe('A3B24');
+    expect(bowl.notes).toContain('500 has no unit. If it is the capacity, write 500 ml or 500 oz.');
     expect(described('Bowl lid 150').notes.some((note) => note.includes('has no unit'))).toBe(false);
   });
 

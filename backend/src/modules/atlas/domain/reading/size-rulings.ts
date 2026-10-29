@@ -56,6 +56,10 @@ const ONE = new RegExp(
   'g',
 );
 
+/** The widest rim R1 reads (ADR 0019's R1, plan 0011). */
+const RIM_MAX_MM = 300;
+const MM_PER_UNIT: Readonly<Record<string, number>> = { mm: 1, cm: 10, in: 25.4 };
+
 function unitOf(written: string | undefined): string {
   if (written === 'cm') return 'cm';
   if (written === 'in' || written === 'inch' || written === 'inches' || written === '"') return 'in';
@@ -134,6 +138,8 @@ export function readSize(text: string, productType: string, dictionary: Dictiona
   const sizes = ones.map(([, value, unit]) => measures([value], [unit])[0] as MeasurementInput);
   const [rim] = sizes;
   if (rim === undefined || sizes.some((size) => size.value !== rim.value || size.unit !== rim.unit)) return null;
+  // No cup, bowl or lid is wider than this: "500 paper bowl" is no rim, but likely 500 mL, which is never guessed.
+  if (Number(rim.value) * (MM_PER_UNIT[rim.unit] ?? 1) > RIM_MAX_MM) return null;
   const [words, ...repeats] = ones.map(([written]) => written.trim()) as [string, ...string[]];
   return { facts: { shape: round, topDiameter: rim }, ruling: 'R1', words, ...(repeats.length > 0 ? { repeats } : {}) };
 }
