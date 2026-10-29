@@ -289,7 +289,7 @@ A description goes through the existing Atlas reader, then these extra passes, a
 
 **A vessel sold with its lid** becomes one product when the text joins them with and, &, with, w/, c/w, or +. Portion cup with lid is A34. Cup with lid is A33. Bowl with lid is A32. Container with lid is the existing A10. "Lid for a cup" is the lid, so it does not become Cup with Cup Lid. `Cups w/ lids` keeps the cup and notes that the lids come with it.
 
-**Two values for one fact** are both left out. `PET and Plastic` on one cup says: "Material: PET is Polymer, PET (B1). Plastic is Polymer, grade not known (B11). Both were left out." The same shape is used for any named slot. `5 oz` and `6 oz` on one cup leaves capacity out, twice when one reader saw `6oz` and another saw `6 oz`, and the code is `A5B24`.
+**Two values for one fact** are both left out. `PET and PP` on one cup says: "Material: PET is Polymer, PET (B1). PP is Polymer, PP (B3). Both were left out." The same shape is used for any named slot. One exception, ruled by reyxdz on 2026-10-29: paper or plastic of unknown grade (`Paper`, `Plastic`) beside one grade of the same family is that grade, so `Plastic` and `PET` is Polymer, PET (B1), and `Paper` and `White Kraft` is Paper and paperboard, white kraft (B14). `Paper` and `PET` are two families, and are both left out. `5 oz` and `6 oz` on one cup leaves capacity out, twice when one reader saw `6oz` and another saw `6 oz`, and the code is `A5B24`.
 
 **Words that sit next to each other** are read as the one dictionary entry they name. `Polymer HDPE` is B6, with no extra "Polymer matches…" line. `Laminate, paper / polymer` is B34 and does not also become paper of unknown grade. A family word that matches several materials lists all of them.
 

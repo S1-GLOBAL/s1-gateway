@@ -160,7 +160,9 @@ export function readText(text: string, dictionary: Dictionary, productType?: str
   const conflicts: { key: SlotKey; found: string[] }[] = [];
   const decide = (key: SlotKey, found: readonly ReadMatch[]) => {
     const values = [...new Set(found.map((match) => match.value))];
+    const grade = key === 'material' ? gradeOverFamily(values, dictionary) : undefined;
     if (values.length === 1) facts[key] = factOf(key, values[0] ?? '');
+    else if (grade !== undefined) facts[key] = factOf(key, grade);
     else {
       const first = (value: string) => found.find((match) => match.value === value) as ReadMatch;
       conflicts.push({ key, found: values.map((value) => first(value).words ?? wordsOf(text, [first(value)])) });
@@ -214,4 +216,26 @@ export function readText(text: string, dictionary: Dictionary, productType?: str
     .filter((word) => word.length > 0);
 
   return { facts: facts as Partial<SpecIdFactsInput>, read, ignored, conflicts };
+}
+
+/**
+ * Paper and plastic of unknown grade, as S2 0.1.0 names them: a text that
+ * names one beside one grade of the same family means that grade.
+ */
+const FAMILY_WORDS = ['B00', 'A00'] as const;
+
+/**
+ * The one specific material among `values` when the rest only name its family
+ * ("Paper" beside "White Kraft", "Plastic" beside "PET"); undefined otherwise,
+ * so two grades ("PET" and "PP") are still left out.
+ */
+function gradeOverFamily(values: readonly string[], dictionary: Dictionary): string | undefined {
+  const families = FAMILY_WORDS.map((code) => dictionary.liveOriginal('material', code)).filter(
+    (code): code is string => code !== undefined,
+  );
+  const grades = values.filter((value) => !families.includes(value));
+  const [grade] = grades;
+  if (grades.length !== 1 || grade === undefined || grades.length === values.length) return undefined;
+  const family = (code: string) => code.slice(0, 1);
+  return values.every((value) => value === grade || family(value) === family(grade)) ? grade : undefined;
 }

@@ -229,10 +229,24 @@ describe('reading a product description (plan 0011)', () => {
     expect(meanings('Portion cup lid')).toEqual(['Portion cup lid']);
   });
 
-  it('names both materials when PET and Plastic are written together', () => {
+  it('reads a grade over the family named beside it: Plastic and PET is PET, Paper and White Kraft is white kraft', () => {
     const cup = described('12 oz PET Plastic Cold Cup with 2 color print');
-    expect(cup.notes).toContain('Material: PET is Polymer, PET (B1). Plastic is Polymer, grade not known (B11). Both were left out.');
-    expect(cup.facts.map((fact) => fact.name)).toContain('Product type');
-    expect(cup.facts.map((fact) => fact.name)).not.toContain('Material');
+    expect(cup.facts).toContainEqual({ name: 'Material', meaning: 'Polymer, PET' });
+    expect(cup.notes.some((note) => note.startsWith('Material:'))).toBe(false);
+
+    expect(described('Twisted Handle Paper Bag, White Kraft').facts).toContainEqual({
+      name: 'Material',
+      meaning: 'Paper and paperboard, white kraft',
+    });
+  });
+
+  it('still leaves out two grades, or a grade beside another family', () => {
+    const grades = described('PET PP cup');
+    expect(grades.notes).toContain('Material: PET is Polymer, PET (B1). PP is Polymer, PP (B3). Both were left out.');
+    expect(grades.facts.map((fact) => fact.name)).not.toContain('Material');
+
+    const families = described('Paper PET cup');
+    expect(families.notes.some((note) => note.startsWith('Material:'))).toBe(true);
+    expect(families.facts.map((fact) => fact.name)).not.toContain('Material');
   });
 });
