@@ -223,3 +223,16 @@ describe('DictionaryBrowser', () => {
     expect(screen.queryByRole('listbox')).toBeNull();
   });
 });
+
+describe('DictionaryBrowser, the letters that hold a number', () => {
+  it('says what each size and count letter holds, and how its number reads', () => {
+    render(<DictionaryBrowser dictionary={dictionary} />);
+
+    const guide = screen.getByRole('region', { name: 'Sizes and counts' });
+    const height = within(guide).getByText('J').parentElement!;
+    expect(within(height).getByText('Height')).toBeTruthy();
+    expect(within(height).getByText('Millimetres: J110 is 110 mm')).toBeTruthy();
+    expect(within(guide).getByText('Tenths of a gram: N33 is 3.3 g')).toBeTruthy();
+    expect(within(guide).getByText('G')).toBeTruthy();
+  });
+});

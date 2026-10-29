@@ -122,7 +122,7 @@ describe('AtlasLibrary, the list', () => {
     expect(link?.getAttribute('href')).toBe(`/atlas/${lid.id}/manufacturers`);
     expect(within(card!).getByText('Lid 1')).toBeTruthy();
     expect(within(card!).getByText(ILLUSTRATIVE)).toBeTruthy();
-    expect(within(card!).getByText('Bowl lid · APS · CL · RD · DM · 0090 · 0033')).toBeTruthy();
+    expect(within(card!).getByText('Bowl lid · APS · CL · RD · DM · Top diameter 0090 · Unit weight 0033')).toBeTruthy();
     expect(within(card!).getByText('4 not known')).toBeTruthy();
     expect(within(card!).getByText('Last updated by Ben Invented on 17 October 2026')).toBeTruthy();
     // How far its manufacturers have come (#73).

@@ -337,6 +337,8 @@ No field holds a glove's size, so a glove's small, medium, large and extra-large
 
 **Search shows what it finds only once Yes, proceed is pressed** (reyxdz, 2026-10-30). Under the code read, **Yes, proceed** and **No, edit it**; until Yes, proceed is pressed for that text and code, nothing is looked up and no Spec ID shows, not even by name. Text the reader finds no product in shows its names as before, with nothing to confirm. Once pressed, a saved Spec ID whose code is exactly the one read shows as **We found a perfect match!**; else the only saved Spec ID that fits every fact read shows as **We found a match!**, "It has every fact you typed, and records more", as an imported Spec ID with the sizes its Dimension cell gave does. Several that fit are no single answer: none is highlighted and they stay under Fits. The match waits for both lookups, so it never moves once shown, and is left out of the groups and names below it; under it there is no "No saved Spec ID fits" and no save.
 
+**The Dictionary says what a number's letter holds** (2026-10-30). Its **Sizes and counts** list gives each letter that holds a number, G to P, S and T, with its field and how its number reads: `J110` is a 110 mm height, `N33` 3.3 g. A Spec ID's facts in words name each size: "Height 60 mm", not "60 mm".
+
 **A material family fits its grades** (2026-10-30). Paper, plastic, molded fibre or metal of unknown grade, and kraft, fit each of their grades: a search for a paper bag fits a saved recycled kraft one, which the import read from the Material Type cell. A grade might fit a Spec ID that records only its family. Two grades still exclude each other.
 
 ## Suggestions

@@ -19,7 +19,7 @@ describe('CodePanel', () => {
     expect(screen.getByText('Facts not known are left out.')).toBeTruthy();
     expect(screen.queryByText('Not known yet')).toBeNull();
     expect(screen.queryByText("Doesn't apply")).toBeNull();
-    expect(screen.getByText('Bowl lid · APS · CL · RD · DM · 0090 · 0033')).toBeTruthy();
+    expect(screen.getByText('Bowl lid · APS · CL · RD · DM · Top diameter 0090 · Unit weight 0033')).toBeTruthy();
   });
 
   it('writes the code in one style: no letter, number or hyphen looks different from the rest', () => {
