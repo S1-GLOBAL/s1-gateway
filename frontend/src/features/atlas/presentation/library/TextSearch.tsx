@@ -1,5 +1,6 @@
 import { CircleCheck } from 'lucide-react';
 import * as m from 'motion/react-m';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
 import { cn } from '@/shared/ui/cn';
@@ -69,22 +70,43 @@ export function TextSearch({ reading, text, dictionary, onChooseProductType, pro
     return (
       <div className="flex flex-col gap-6">
         <CodeBuilt reading={found} decoded={found.decoded} busy={busy} proceeded={proceeded} onProceed={onProceed} />
-        {proceeded && match === undefined && (
-          <SkeletonRegion label="Spec IDs" className="flex flex-col gap-3">
-            {[0, 1, 2].map((card) => (
-              <SkeletonBlock key={card} className="h-32 w-full rounded-surface" order={card} />
-            ))}
-          </SkeletonRegion>
-        )}
-        {proceeded && match && <Match match={match} decoded={found.decoded} timeZone={timeZone} />}
-        {proceeded && match !== undefined && (
-          <TextSearchResults decoded={found.decoded} text={text} rules={dictionary.rules} matchedId={match?.saved.id} timeZone={timeZone} />
+        {proceeded && (
+          <WhatSearchFound>
+            {match === undefined && (
+              <SkeletonRegion label="Spec IDs" className="flex flex-col gap-3">
+                {[0, 1, 2].map((card) => (
+                  <SkeletonBlock key={card} className="h-32 w-full rounded-surface" order={card} />
+                ))}
+              </SkeletonRegion>
+            )}
+            {match && <Match match={match} decoded={found.decoded} timeZone={timeZone} />}
+            {match !== undefined && (
+              <TextSearchResults decoded={found.decoded} text={text} rules={dictionary.rules} matchedId={match?.saved.id} timeZone={timeZone} />
+            )}
+          </WhatSearchFound>
         )}
       </div>
     );
   }
   if (found.read.length === 0) return <NoFacts reading={found} busy={busy} />;
   return <NoProductType reading={found} dictionary={dictionary} busy={busy} onChoose={onChooseProductType} />;
+}
+
+/**
+ * What Search found, once Yes, proceed is pressed. Pressing it removes the
+ * button, so focus moves here, and the next Tab reaches the first Spec ID
+ * rather than the top of the page.
+ */
+function WhatSearchFound({ children }: { children: ReactNode }) {
+  const region = useRef<HTMLElement>(null);
+  useEffect(() => {
+    region.current?.focus();
+  }, []);
+  return (
+    <section ref={region} tabIndex={-1} aria-label="What Search found" className="flex flex-col gap-6 focus:outline-none">
+      {children}
+    </section>
+  );
 }
 
 /**

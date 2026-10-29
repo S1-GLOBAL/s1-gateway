@@ -320,6 +320,16 @@ describe('AtlasLibrary, Search', () => {
     expect(screen.queryByText('No names match.')).toBeNull();
   });
 
+  it('moves focus to what Search found when Yes, proceed is pressed, since the button goes', async () => {
+    renderLibrary({ readText: async () => READ_BOWL, findSimilar: async () => ({ fits: [], mightFit: [] }) });
+    type(TEXT);
+    await proceed();
+
+    const found = await screen.findByRole('region', { name: 'What Search found' });
+    expect(document.activeElement).toBe(found);
+    expect(screen.queryByRole('button', { name: 'Yes, proceed' })).toBeNull();
+  });
+
   it('shows nothing Search finds, not even names, until Yes, proceed', async () => {
     const findByCode = vi.fn<AtlasGateway['findByCode']>(async () => lookupFor(BOWL, 'Bagasse bowl, 14 oz'));
     const findSimilar = vi.fn<AtlasGateway['findSimilar']>(async () => ({ fits: [], mightFit: [] }));
