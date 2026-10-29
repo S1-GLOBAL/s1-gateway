@@ -30,7 +30,7 @@ describe('readText', () => {
   it('leaves out a fact the text gives twice, and reports both as written', () => {
     const reading = read('clear PET and PP lid');
     expect(reading.facts).not.toHaveProperty('material');
-    expect(reading.conflicts).toEqual([{ key: 'material', found: ['PET', 'PP'] }]);
+    expect(reading.conflicts).toEqual([{ key: 'material', found: ['PET', 'PP'], values: ['APT', 'APP'] }]);
   });
 
   it('reads text glued with punctuation and in capitals', () => {
@@ -46,7 +46,7 @@ describe('readText', () => {
       wall: 'SW',
       capacity: { unit: 'Z', value: '22' },
     });
-    expect(reading.conflicts).toEqual([{ key: 'print', found: ['2 colour', '3 colour'] }]);
+    expect(reading.conflicts).toEqual([{ key: 'print', found: ['2 colour', '3 colour'], values: ['02', '03'] }]);
     expect(reading.ignored).toEqual(['Cold']);
   });
 
@@ -102,7 +102,7 @@ describe('readText, #58', () => {
   ])('leaves the capacity of a range, %s, not known, and reads neither end as a size', (text, found) => {
     const reading = read(text);
     expect(reading.facts).toEqual({ productType: 'CLD' });
-    expect(reading.conflicts).toEqual([{ key: 'capacity', found }]);
+    expect(reading.conflicts).toEqual([expect.objectContaining({ key: 'capacity', found })]);
     expect(reading.ignored).toEqual([]);
   });
 

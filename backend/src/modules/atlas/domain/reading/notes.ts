@@ -1,5 +1,6 @@
 import { expectedFill, type ExpectedFill } from '../applicability.js';
 import type { Dictionary, DictionaryValue } from '../dictionary.js';
+import { isIncluded, joinerBefore } from './combined-products.js';
 import type { TextReading } from './read-text.js';
 import { WORD_LIST } from './word-list.js';
 import type { FactDraft, SpecIdFactsInput } from '../spec-id-facts.js';
@@ -72,9 +73,28 @@ const COUNT_WORDS: Readonly<Record<string, CountSlotKey>> = {
   plies: 'plies',
 };
 
-const NAMED_MEASURES: readonly { readonly slot: MeasureSlotKey; readonly name: string; readonly unit: string }[] = [
-  { slot: 'topDiameter', name: 'top\\s+diameters?', unit: 'mm' },
-  { slot: 'bottomDiameter', name: 'bottom\\s+diameters?', unit: 'mm' },
+/**
+ * A measure's name, written before or after its number: "40mm gusset",
+ * "Height: 68". A one-letter name is read only before its number, as "L115 x
+ * W120 x H72" writes it, since "1.5 L" is a capacity; "48 H" is a height too.
+ */
+const NAMED_MEASURES: readonly {
+  readonly slot: MeasureSlotKey;
+  readonly name: string;
+  readonly unit: string;
+  /** Read only with the name first, "L115"; or only with the number first, "230 Dia". */
+  readonly firstOnly?: true;
+  readonly lastOnly?: true;
+}[] = [
+  { slot: 'topDiameter', name: 'top\\s+(?:rim\\s+)?dia(?:meter)?s?|rim\\s+diameters?|dia(?:meter)?\\s+rim|top\\s*[øφ⌀]', unit: 'mm' },
+  { slot: 'bottomDiameter', name: '(?:bottom|base)\\s+dia(?:meter)?s?|dia(?:meter)?\\s+bottom|(?:bottom|base)\\s*[øφ⌀]', unit: 'mm' },
+  // "Rim: 80 mm", "Top 90", "Bottom: 56mm", "t:88mm*h:96mm*b:58mm", as a cup's sizes are listed.
+  { slot: 'topDiameter', name: 'rim|top|t(?=\\s*[:=])', unit: 'mm', firstOnly: true },
+  { slot: 'bottomDiameter', name: 'bottom|base|b(?=\\s*[:=])', unit: 'mm', firstOnly: true },
+  // "230 Dia", a plate's or a straw's diameter.
+  { slot: 'topDiameter', name: 'dia(?:meter)?', unit: 'mm', lastOnly: true },
+  // "GSM:16", as a weight is listed.
+  { slot: 'basisWeight', name: 'gsm(?=\\s*[:=])', unit: 'gsm', firstOnly: true },
   { slot: 'unitWeight', name: 'unit\\s+weights?', unit: 'g' },
   { slot: 'basisWeight', name: 'basis\\s+weights?', unit: 'gsm' },
   { slot: 'thickness', name: 'micrometres?|micrometers?|microns?|thickness', unit: 'um' },
@@ -82,11 +102,16 @@ const NAMED_MEASURES: readonly { readonly slot: MeasureSlotKey; readonly name: s
   { slot: 'length', name: 'lengths?', unit: 'mm' },
   { slot: 'width', name: 'widths?', unit: 'mm' },
   { slot: 'gusset', name: 'gussets?', unit: 'mm' },
+  { slot: 'gusset', name: 'sg', unit: 'mm', firstOnly: true },
+  { slot: 'height', name: 'h', unit: 'mm' },
+  { slot: 'length', name: 'l', unit: 'mm', firstOnly: true },
+  { slot: 'width', name: 'w', unit: 'mm', firstOnly: true },
 ];
 
 /** A unit that names one slot on its own: 280 gsm is basis weight, 350 µm is thickness. */
 const UNIT_MEASURES: readonly { readonly slot: MeasureSlotKey; readonly unit: string; readonly pattern: string }[] = [
-  { slot: 'basisWeight', unit: 'gsm', pattern: 'gsm' },
+  // "280g paper" is the paper's weight, as gsm.
+  { slot: 'basisWeight', unit: 'gsm', pattern: 'gsm|g(?=\\s*(?:paper|paperboard|board|kraft|cup\\s*stock))' },
   { slot: 'thickness', unit: 'um', pattern: 'um|µm|microns?|micrometres?|micrometers?' },
 ];
 
@@ -232,6 +257,11 @@ export function readNamedMeasures(
   return { facts, ignored: without(reading.ignored, taken), warnings };
 }
 
+/** Where the text names a measure, a count or a capacity beside its number, and its slot: "Height 67 mm", "40mm gusset". */
+export function namedMeasureSpans(text: string): readonly { readonly slot: SlotKey; readonly start: number; readonly end: number }[] {
+  return findNamedFacts(text).map((hit) => ({ slot: hit.kind === 'capacity' ? 'capacity' : hit.slot, start: hit.start, end: hit.end }));
+}
+
 /**
  * A dictionary value whose own name is written in the text is that value,
  * for every slot. "Translucent" is the colour, "Closed" is the lid opening,
@@ -246,7 +276,8 @@ export function readIssuedMeanings(
   const facts: Partial<SpecIdFactsInput> = {};
   const warnings: string[] = [];
   const taken: string[] = [];
-  const values = dictionary.values().filter((value) => value.slot !== 'capacity');
+  // readText reads every product type by its own name, and settles two of them: this pass does not undo that.
+  const values = dictionary.values().filter((value) => value.slot !== 'capacity' && value.slot !== 'productType');
   const found: MeaningMatch[] = [];
   for (const value of values) {
     const words = tokens(value.meaning.toLowerCase());
@@ -272,8 +303,11 @@ export function readIssuedMeanings(
     list.push(hit);
     bySlot.set(hit.slot, list);
   }
+  const conflicted = new Set<SlotKey>(reading.conflicts.map((conflict) => conflict.key));
   for (const [slot, list] of bySlot) {
     for (const hit of list) taken.push(...pieces(hit.span));
+    // "White/Black" was left out as two colours: "Black", a colour's own name, does not settle it.
+    if (conflicted.has(slot)) continue;
     const blocked = block(slot, slotDefinition(slot).name, reading.facts, dictionary);
     if (blocked !== undefined) {
       if (!warnings.includes(blocked)) warnings.push(blocked);
@@ -363,8 +397,6 @@ export function productIncludedWith(
   };
 }
 
-const INCLUDED_BEFORE = /(?:^|[^a-z0-9])(?:c\/w|w\/|with|\+)\s*$/i;
-
 function productCodeOf(words: string, dictionary: Dictionary): string | undefined {
   const listed = WORD_LIST[words.toLowerCase()];
   if (listed !== undefined && 'productType' in listed) return listed.productType;
@@ -382,7 +414,7 @@ function mentionPlaces(text: string, words: string): boolean[] {
   const places: boolean[] = [];
   for (const match of text.matchAll(pattern)) {
     if (match.index === undefined) continue;
-    places.push(INCLUDED_BEFORE.test(text.slice(0, match.index)));
+    places.push(isIncluded(text.slice(0, match.index)));
   }
   return places;
 }
@@ -392,8 +424,7 @@ function markerWord(text: string, words: string): string[] {
   const dropped: string[] = [];
   for (const match of text.matchAll(pattern)) {
     if (match.index === undefined) continue;
-    const marker = /(?:^|[^a-z0-9])(c\/w|w\/|\+)\s*$/i.exec(text.slice(0, match.index));
-    const token = marker?.[1]?.toLowerCase();
+    const token = joinerBefore(text.slice(0, match.index));
     if (token === 'w/') dropped.push('w');
     else if (token === 'c/w') dropped.push('c/w');
   }
@@ -647,7 +678,8 @@ function side(words: string, index: Map<string, Hit[]>, numbering: Numbering): s
 }
 
 function closeHits(word: string, index: Map<string, Hit[]>, kept: Partial<SpecIdFactsInput>): Hit[] {
-  if (word.length < 3) return [];
+  // "210" or "18g" is an amount, never the start of a word: "210gsm" in a spelling is no match for it.
+  if (word.length < 3 || /^\d/.test(word)) return [];
   const hits: Hit[] = [];
   const seen = new Set<string>();
   const prefixes: string[] = [];
@@ -847,7 +879,8 @@ function factInside(reading: TextReading, slot: SlotKey, words: readonly string[
 function hitIndex(dictionary: Dictionary): Map<string, Hit[]> {
   const index = new Map<string, Hit[]>();
   const add = (token: string, hit: Hit) => {
-    if (token.length === 0) return;
+    // A number in a phrase ("300 cupstock") is no word to suggest the phrase by.
+    if (token.length === 0 || /^\d+(?:\.\d+)?$/.test(token)) return;
     const list = index.get(token) ?? [];
     if (list.some((entry) => entry.slot === hit.slot && entry.code === hit.code)) {
       index.set(token, list);
@@ -904,16 +937,18 @@ type NamedFact =
 
 const AMOUNT = '(\\d+(?:\\.\\d+)?)';
 const WHOLE = '(\\d+)';
+/** Units a measure is written in. Metres and feet are read so that "457 m" is not taken for 457 mm, but no slot stores them. */
 const WRITTEN_UNIT =
-  '(millimetres?|millimeters?|centimetres?|centimeters?|inches|inch|kilograms?|grams?|gsm|µm|um|microns?|mm|cm|kg|in|g)';
+  '(millimetres?|millimeters?|centimetres?|centimeters?|metres?|meters?|inches|inch|kilograms?|grams?|feet|gsm|µm|um|microns?|mic|mm|cm|kg|in|ft|m|g|"|\'\')';
 
 function findNamedFacts(text: string): NamedFact[] {
   const found: NamedFact[] = [];
   for (const named of NAMED_MEASURES) {
-    const before = new RegExp(`(?<![a-z0-9])${AMOUNT}\\s*${WRITTEN_UNIT}?\\s+(?:${named.name})(?![a-z])`, 'gi');
-    const after = new RegExp(`(?<![a-z])(?:${named.name})\\s+(?:of\\s+)?${AMOUNT}\\s*${WRITTEN_UNIT}?(?![a-z0-9])`, 'gi');
-    for (const match of text.matchAll(before)) addMeasure(found, named, match);
-    for (const match of text.matchAll(after)) addMeasure(found, named, match);
+    // A unit can run into the name, as in "90mmH"; a bare number needs a space.
+    const before = new RegExp(`(?<![a-z0-9])${AMOUNT}(?:\\s*${WRITTEN_UNIT}\\s*|\\s+)(?:${named.name})(?![a-z])`, 'gi');
+    const after = new RegExp(`(?<![a-z])(?:${named.name})\\s*[:=]?\\s*(?:of\\s+)?${AMOUNT}\\s*${WRITTEN_UNIT}?(?![a-z0-9])`, 'gi');
+    if (named.firstOnly !== true) for (const match of text.matchAll(before)) addMeasure(found, named, match);
+    if (named.lastOnly !== true) for (const match of text.matchAll(after)) addMeasure(found, named, match);
   }
   for (const named of UNIT_MEASURES) {
     const expression = new RegExp(`(?<![a-z0-9])${AMOUNT}\\s*(?:${named.pattern})(?![a-z0-9])`, 'gi');
@@ -925,7 +960,8 @@ function findNamedFacts(text: string): NamedFact[] {
   }
   for (const named of NAMED_COUNTS) {
     const before = new RegExp(`(?<![a-z0-9])${WHOLE}\\s+(?:${named.name})(?![a-z])`, 'gi');
-    const after = new RegExp(`(?<![a-z])(?:${named.name})\\s+(?:of\\s+)?${WHOLE}(?![a-z0-9])`, 'gi');
+    // "3 compartments", "ply 2", "PLY:2".
+    const after = new RegExp(`(?<![a-z])(?:${named.name})(?:\\s*[:=]\\s*|\\s+)(?:of\\s+)?${WHOLE}(?![a-z0-9])`, 'gi');
     for (const match of [...text.matchAll(before), ...text.matchAll(after)]) addCount(found, named.slot, match);
   }
   for (const named of NAMED_CAPACITIES) {
@@ -1010,7 +1046,9 @@ function adoptLooseGrams(
   warnings: string[],
   taken: string[],
 ): void {
-  const expression = /(?<![a-z0-9])(?:(\d+(?:\.\d+)?)\s*(?:grams?|g)|grams?\s+(?:of\s+)?(\d+(?:\.\d+)?))(?![a-z0-9])/gi;
+  // "310+18pe+90+150g" is a stack of paper weights, no unit weight: a `+` before a number makes it a layer.
+  // "4,2 grams" is a decimal written with a comma, or a thousand: neither is read, nor its "2".
+  const expression = /(?<![a-z0-9+])(?<!\d[,.])(?:(\d+(?:\.\d+)?)\s*(?:grams?|g)|grams?\s+(?:of\s+)?(\d+(?:\.\d+)?))(?![a-z0-9])/gi;
   const loose: NamedFact[] = [];
   for (const match of text.matchAll(expression)) {
     const value = match[1] ?? match[2];
@@ -1051,10 +1089,10 @@ function unitOf(slot: MeasureSlotKey, written: string | undefined, fallback: str
 function normalUnit(written: string | undefined): string | undefined {
   if (written === undefined || written === '') return undefined;
   const unit = written.toLowerCase();
-  if (unit === 'inch' || unit === 'inches') return 'in';
+  if (unit === 'inch' || unit === 'inches' || unit === '"' || unit === "''") return 'in';
   if (unit === 'millimetre' || unit === 'millimetres' || unit === 'millimeter' || unit === 'millimeters') return 'mm';
   if (unit === 'centimetre' || unit === 'centimetres' || unit === 'centimeter' || unit === 'centimeters') return 'cm';
-  if (unit === 'µm' || unit === 'micron' || unit === 'microns') return 'um';
+  if (unit === 'µm' || unit === 'micron' || unit === 'microns' || unit === 'mic') return 'um';
   if (unit === 'gram' || unit === 'grams') return 'g';
   if (unit === 'kilogram' || unit === 'kilograms') return 'kg';
   return unit;

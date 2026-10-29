@@ -34,25 +34,25 @@ describe('reading a product description (plan 0011)', () => {
 
   it('suggests the dictionary entry or the missing number for words it could not use', () => {
     const bag = described('HDPE T-shirt Bag with Printing on Gusset');
-    expect(bag.facts.map((fact) => fact.meaning)).toEqual(['Bag', 'T-shirt (vest)']);
+    expect(bag.facts.map((fact) => fact.meaning)).toEqual(['Bag', 'Polymer, HDPE', 'T-shirt (vest)']);
     expect(bag.notes).toEqual([
-      "HDPE isn't listed on its own. It matches Polymer, HDPE, B6.",
       'Printing is mentioned, but not which one. No print is R1. 1 colour is R2. 2 colours is R3. 3 colours is R4. 4 colours is R5. 5 colours is R6. 6 colours is R7. 7 colours is R8. 8 colours is R9. Full colour is R10.',
       'Gusset is mentioned, but no width in millimetres. The range is 1–9999 mm. 40 mm is M40.',
     ]);
     expect(bag.ignored).toEqual(['with', 'on']);
-    expect(bag.code).toBe('A16V4');
+    expect(bag.code).toBe('A16B6V4');
   });
 
   it('reads a size written beside the part it measures', () => {
     const bag = described('HDPE T-shirt Bag with Printing on 40mm gusset');
     expect(bag.facts).toEqual([
       { name: 'Product type', meaning: 'Bag' },
+      { name: 'Material', meaning: 'Polymer, HDPE' },
       { name: 'Gusset', meaning: '40 mm' },
       { name: 'Handle', meaning: 'T-shirt (vest)' },
     ]);
     expect(bag.notes.some((note) => note.includes('no width'))).toBe(false);
-    expect(bag.code).toBe('A16V4-M40');
+    expect(bag.code).toBe('A16B6V4-M40');
 
     const sizes = described('Bag 110mm height, width of 200 mm, gusset 40mm, unit weight 3.3g and thickness 350um');
     expect(sizes.facts.map((fact) => fact.meaning)).toEqual(['Bag', '110 mm', '200 mm', '40 mm', '3.3 g', '350 µm']);

@@ -299,7 +299,24 @@ A description goes through the existing Atlas reader, then these extra passes, a
 
 **A lid named by its vessel in any order** is the lid: `Cup Lids`, `Bowl PET Lids`, `Lid 32 oz Paper Bowl`, `Lid fit for 6oz Deli Cup`. A lid joined to its vessel by with, and, &, w/, c/w or + is still sold with it.
 
-**A number with no unit is never stored** as a capacity. When the product has a capacity and none was read, a bare number of 2 to 4 digits gets a note: "500 has no unit. If it is the capacity, write 500 ml or 500 oz." #28's ruling R1 still reads a lone bare number on a cup, bowl or lid as its rim, up to 300 mm: no cup, bowl or lid is wider, so `500 paper bowl` is no rim.
+**A number with no unit is never stored** as a capacity. When the product has a capacity and none was read, a bare number of 2 to 4 digits gets a note: "500 has no unit. If it is the capacity, write 500 ml or 500 oz." #28's ruling R1 still reads a lone bare number on a cup, bowl or lid as its rim, from 30 to 300 mm: no cup, bowl or lid is wider or narrower, so `500 paper bowl` is no rim, nor is a bare weight of `9.5`. The hint is only for a number that stands alone: none beside an `x`, a unit or an inch mark.
+
+**Product types, as the restructured verified list writes them**, added on 2026-10-30 after a second dry run. Each settles what would otherwise be left out as two product types:
+
+- A product type is read one or many: `napkins`, `boxes`.
+- A kind beside its general word is the kind: a pouch over a bag, a clamshell, fry carton, takeout box or shipping box over a box, a portion cup, bowl, tray or clamshell over a container, a bowl, portion cup or container lid over a lid. Of two product words that overlap, the last is the head: `paper cup carrier` is a cup carrier.
+- Two kinds of cutlery, with nothing a kit does not hold, are a cutlery kit: `knife + fork + napkin`.
+- A wrap beside a product that is wrapped (straws, stirrers, cutlery, napkins) is how it is wrapped, and the paper or film it names is the wrap's, not the product's: `PLA straw with individual paper wrap`. `no wrap` and `unwrapped` are not wrapped.
+- A vessel and a lid joined by with, w/, +, & or and, with up to three words between (`with dome lid`, `w/ printed lids`, `with clear lid combo`), are the vessel sold with its lid, wherever in the text the vessel is named. A product named only after such a word, `w/ printed lids` with nothing before it, is not the product: a note says the product is not named.
+- A lid for a tray or a box is a container lid; `hinge lid` is a clamshell's.
+- A box that is not paperboard, of plastic, fibre or foil, is a container.
+- With no product word, a fact only one product type has names it, and a note says so: a handle is a bag's, plies a napkin's.
+- Words that hold a product word but name something else are not read: `printing plate`, `plate fee`, `dispenser box`.
+- A product type a reader has chosen, as Search's chooser does, is final: no pass changes it.
+
+**Sizes and weights, as the list writes them.** A size named beside its number (`Height: 68`, `t:88mm*h:96mm*b:58mm`, `L115 x W120 x H72`, `topφ: 81.4`, `Rim: 80 mm`, `GSM:16, PLY:2`, `230 Dia`) wins over a size a ruling read from one of the same numbers for another slot: `Top diameter 180 x Bottom diameter 150 X Height 70 mm` is no 70 mm rim. A named diameter makes the product round; a tray's or clamshell's named length and width make it rectangular, as R6 does. A one-letter name is read only before its number, since `1.5 L` is a capacity. A rim marked `dia`, `rim`, `ø` or `φ` outranks a stray bare number, and the second of two numbers (`90 x 110`) is no rim. A model code (`DELI-34`) is no size. Only a ruler's fractions, in lowest terms, are fractions: `24/32` is two sizes. Of three-number sizes, one with its unit written is read over one without, and the other is its restatement, not leftover numbers; with none written, it is still millimetres (#58). R6 also reads fry cartons, containers, pans, plates, container lids and cup carriers. `280g paper` is a basis weight; a weight joined by `+` is a layer, and a comma decimal (`4,2 grams`) is not read.
+
+**The importer reads a row by its columns.** The product type comes from the item name; failing that, from the Category column, which also settles two the item name gives; failing that, from the sizes, weight and printing as well. The material cells name the material, never a product type, though they or the Category column may name a kind of the item name's general product (`Container Lid` beside `dome lids`). The cells' material wins over a vessel's a lid's name mentions, and a grade in the item name over a family in the cells. Then the rest of the row is read with both fixed, the Dimension cell first, and the Category column fills only the facts the rest leaves unsaid. A bare number in the Weight column, whose header is grams or gsm, is grams on a product with no basis weight and gsm on one with no unit weight; otherwise it is not read. A three-number size with no unit and every side under 50 is flagged in the report as likely inches.
 
 ## Suggestions
 

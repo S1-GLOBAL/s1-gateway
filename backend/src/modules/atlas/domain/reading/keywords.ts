@@ -61,7 +61,12 @@ export const KEYWORDS: readonly Keyword[] = [
   { pattern: word('oval'), slot: 'shape', value: 'OV' },
   { pattern: word('half[\\s-]*dome'), slot: 'profile', value: 'HD' },
   { pattern: word('dome'), slot: 'profile', value: 'DM' },
-  { pattern: word('flat[\\s-]*lid'), slot: 'profile', value: 'FL' },
+  // "Flat lid", "Flat PP Lids", "paper cup lid - Flat": flat beside a lid, as "dome" is anywhere.
+  {
+    pattern: word('flat(?=(?:[\\s-]+[a-z0-9]+){0,3}?[\\s-]+lids?(?![a-z]))|(?<=lids?(?:[\\s-]+[a-z0-9]+){0,3}?[\\s-]+)flat'),
+    slot: 'profile',
+    value: 'FL',
+  },
   // "SW" and "DW" are how suppliers shorten single and double wall.
   { pattern: word('single[\\s-]*wall|sw'), slot: 'wall', value: 'SW' },
   { pattern: word('double[\\s-]*wall|dw'), slot: 'wall', value: 'DW' },
@@ -87,10 +92,12 @@ export const KEYWORDS: readonly Keyword[] = [
   { pattern: word('(\\d+)[\\s-]*ply'), slot: 'plies', value: number },
   { pattern: word('sip|strawless'), slot: 'lidOpening', value: 'SP' },
   { pattern: word('straw[\\s-]*hole|x[\\s-]*cross|cross[\\s-]*cut'), slot: 'lidOpening', value: 'SH' },
-  { pattern: word('twisted[\\s-]*handle'), slot: 'handle', value: 'TW' },
+  // "Twisted handle", "twist handle", "twisted paper bag": a twist is the handle's, but a twist tie is not.
+  { pattern: word('twist(?:ed)?(?:[\\s-]+(?:paper[\\s-]+)?handle[sd]?)?(?![\\s-]*ties?(?![a-z]))'), slot: 'handle', value: 'TW' },
   { pattern: word('flat[\\s-]*handle'), slot: 'handle', value: 'FT' },
   { pattern: word('t[\\s-]*shirt|vest'), slot: 'handle', value: 'TS' },
   { pattern: word('no[\\s-]*handle|sos'), slot: 'handle', value: 'NH' },
+  { pattern: word('no[\\s-]*wrap(?:per|ped|ping)?|unwrapped|not[\\s-]*wrapped|without[\\s-]*wrap(?:per|ping)?'), slot: 'wrap', value: 'NW' },
   { pattern: word('paper[\\s-]*wrapped'), slot: 'wrap', value: 'PW' },
   { pattern: word('(?:plastic|film)[\\s-]*wrapped'), slot: 'wrap', value: 'FW' },
   { pattern: word('window'), slot: 'window', value: 'WN' },

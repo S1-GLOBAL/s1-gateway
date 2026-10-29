@@ -1,12 +1,21 @@
 import { buildKeepingWhatFits } from '../build-keeping-what-fits.js';
 import type { Dictionary } from '../dictionary.js';
 import { fraction, multiply, readDecimal, roundHalfUp, type Fraction } from '../measurement.js';
-import { SLOTS, slotDefinition, type MeasureSlotKey, type SlotKey } from '../slots.js';
+import { ROUND_SHAPE, SLOTS, slotDefinition, type MeasureSlotKey, type SlotKey } from '../slots.js';
 import type { MeasurementInput, SpecIdFactsInput } from '../spec-id-facts.js';
 import { meaningOfFact, type SpecId } from '../spec-id.js';
-import { combinationFor, lidFits } from './combined-products.js';
-import { combineAdjacent, conflictLine, productIncludedWith, readIssuedMeanings, readNamedMeasures, suggestionsFor } from './notes.js';
+import { combinationFor, joinerWords, lidFits } from './combined-products.js';
+import {
+  combineAdjacent,
+  conflictLine,
+  namedMeasureSpans,
+  productIncludedWith,
+  readIssuedMeanings,
+  readNamedMeasures,
+  suggestionsFor,
+} from './notes.js';
 import { readText, type TextReading } from './read-text.js';
+import { shapeOfLengthAndWidth } from './size-rulings.js';
 
 /** What a product description says, kept to the facts its product has (ADR 0026, ADR 0032). */
 export interface TextDescription {
@@ -20,6 +29,10 @@ export interface TextDescription {
   readonly conversions: ReadonlyMap<SlotKey, string>;
   /** Sentences about what was read, left out, or could still be meant, in the order they arose. */
   readonly notes: readonly string[];
+  /** Of `notes`, those that say how the product type was settled: a lid's fit, what comes with it. */
+  readonly productNotes: readonly string[];
+  /** Every fact read, each size in the unit its slot stores, before those its product cannot have were left out. */
+  readonly drafted: Partial<SpecIdFactsInput>;
   /** The words nothing used, nor any note explains. */
   readonly ignored: readonly string[];
 }
@@ -29,37 +42,53 @@ export interface TextDescription {
  * passes the plan 0011 reader adds: a lid named by what it fits, a vessel
  * sold with its lid, two values for one fact, words that together name one
  * option, a size written beside its name. A range is not a fact. A size in
- * another unit is converted into the unit its slot stores, and says so.
+ * another unit is converted into the unit its slot stores, and says so. A
+ * `productType` or `material` given is final: no pass changes it.
  */
-export function describeText(text: string, dictionary: Dictionary, productType?: string): TextDescription {
-  const read = readText(text, dictionary, productType);
-  const fitted = lidFits(text);
+export function describeText(text: string, dictionary: Dictionary, productType?: string, material?: string): TextDescription {
+  const read = readText(text, dictionary, productType, material);
+  const open = productType === undefined;
+  const fitted = open ? lidFits(text) : undefined;
   const fittedCode =
     fitted !== undefined && dictionary.meaningOf('productType', fitted.code) !== undefined ? fitted.code : undefined;
-  const included = fittedCode === undefined ? productIncludedWith(text, read, dictionary) : undefined;
+  const included = open && fittedCode === undefined ? productIncludedWith(text, read, dictionary) : undefined;
   const base = fittedCode ?? included?.code ?? (typeof read.facts.productType === 'string' ? read.facts.productType : undefined);
-  const paired = fittedCode === undefined ? combinationFor(text, base) : undefined;
+  const paired = open && fittedCode === undefined ? combinationFor(text, base) : undefined;
   const chosen = paired !== undefined && dictionary.meaningOf('productType', paired) !== undefined ? paired : undefined;
   const settled = chosen ?? fittedCode ?? included?.code;
-  const drops = [...(included?.drop ?? []), ...(fittedCode !== undefined ? (fitted?.drop ?? []) : [])];
-  const reading: TextReading =
+  const drops = [
+    ...(included?.drop ?? []),
+    ...(fittedCode !== undefined ? (fitted?.drop ?? []) : []),
+    ...(included === undefined ? joinerWords(text, settled ?? read.facts.productType) : []),
+  ];
+  const ignored = drops.length === 0 ? read.ignored : withoutWords(read.ignored, drops);
+  const reading: TextReading = withNamedSizes(
+    text,
+    dictionary,
     settled === undefined
-      ? read
+      ? { ...read, ignored }
       : {
           ...read,
           facts: { ...read.facts, productType: settled },
           conflicts: read.conflicts.filter((conflict) => conflict.key !== 'productType'),
-          ignored: drops.length === 0 ? read.ignored : withoutWords(read.ignored, drops),
-        };
+          ignored,
+        },
+  );
 
-  const notes = reading.conflicts.map((conflict) => conflictLine(conflict.key, conflict.found, dictionary));
-  if (included !== undefined && chosen === undefined) notes.unshift(included.note);
+  const productNotes: string[] = [];
   if (fitted !== undefined && fittedCode !== undefined && chosen === undefined) {
-    const meaning = dictionary.meaningOf('productType', fittedCode) ?? fittedCode;
-    const number = dictionary.numberOf('productType', fittedCode);
-    const label = number === undefined ? meaning : `${meaning} (A${number})`;
-    notes.unshift(`The product is the lid. It goes on ${articleBefore(fitted.fits)} ${fitted.fits}. It is ${articleBefore(label)} ${label}.`);
+    const label = productLabel(fittedCode, dictionary);
+    productNotes.push(`The product is the lid. It goes on ${articleBefore(fitted.fits)} ${fitted.fits}. It is ${articleBefore(label)} ${label}.`);
   }
+  if (included !== undefined && chosen === undefined) productNotes.push(included.note);
+  if (read.addOn !== undefined) {
+    productNotes.push(`${productLabel(read.addOn, dictionary)} comes with the product, but the product itself is not named.`);
+  }
+  if (read.productTypeFrom !== undefined && settled === undefined && typeof read.facts.productType === 'string') {
+    const label = productLabel(read.facts.productType, dictionary);
+    productNotes.push(`Only ${label} has a ${slotDefinition(read.productTypeFrom).name.toLowerCase()}, so that is the product.`);
+  }
+  const notes = [...productNotes, ...reading.conflicts.map((conflict) => conflictLine(conflict.key, conflict.found, dictionary))];
 
   const combined = combineAdjacent(text, reading, dictionary);
   notes.push(...combined.warnings);
@@ -107,10 +136,81 @@ export function describeText(text: string, dictionary: Dictionary, productType?:
   // "Printed 500 paper bowl": likely 500 mL, but a number with no unit is never stored as one.
   const capacityOpen =
     kept.specId !== null && kept.facts.capacity == null && kept.specId.slot('capacity') !== 'X';
-  for (const bare of capacityOpen ? suggested.ignored.filter((word) => /^\d{2,4}$/.test(word)) : []) {
+  for (const bare of capacityOpen ? suggested.ignored.filter((word) => /^\d{2,4}$/.test(word) && standsAlone(text, word)) : []) {
     notes.push(`${bare} has no unit. If it is the capacity, write ${bare} ml or ${bare} oz.`);
   }
-  return { specId: kept.specId, facts: kept.facts, reading, conversions, notes, ignored: suggested.ignored };
+  return {
+    specId: kept.specId,
+    facts: kept.facts,
+    reading,
+    conversions,
+    notes,
+    productNotes,
+    drafted: facts as Partial<SpecIdFactsInput>,
+    ignored: suggested.ignored,
+  };
+}
+
+/**
+ * The reading ready for the sizes the text names. A size a ruling read from a
+ * number the text names as another size is left out: in "Top diameter 180 x
+ * Bottom diameter 150 X Height 70 mm", "70 mm" is the height, no rim, and the
+ * named measures give each size that ruling read. A diameter the text names
+ * makes the product round, as a ruling's rim does; a tray's or a clamshell's
+ * length and width make it rectangular, as R6 does.
+ */
+function withNamedSizes(text: string, dictionary: Dictionary, given: TextReading): TextReading {
+  const lower = text.toLowerCase();
+  const named = namedMeasureSpans(text);
+  const round = dictionary.liveOriginal('shape', ROUND_SHAPE);
+  const diameter = named.some((span) => span.slot === 'topDiameter' || span.slot === 'bottomDiameter');
+  // "L115 x W120 x H72" on a clamshell: R6 would name it rectangular, so the named sizes do.
+  const sides = named.some((span) => span.slot === 'length') && named.some((span) => span.slot === 'width');
+  const type = typeof given.facts.productType === 'string' ? given.facts.productType : undefined;
+  const boxed = sides && type !== undefined ? shapeOfLengthAndWidth(type, dictionary) : undefined;
+  const shape = given.facts.shape === undefined ? (diameter ? round : boxed) : undefined;
+  const reading: TextReading = shape === undefined ? given : { ...given, facts: { ...given.facts, shape } };
+  // A ruling is wrong when the text names one of its numbers as a size it did not read it as.
+  const ruled = reading.read.filter((fact) => fact.ruling !== null);
+  const claimed = new Set(
+    ruled
+      .filter((fact) => {
+        const start = lower.indexOf(fact.words.toLowerCase());
+        const end = start + fact.words.length;
+        const read = new Set(ruled.filter((other) => other.ruling === fact.ruling).map((other) => other.key));
+        return start !== -1 && named.some((span) => span.start < end && start < span.end && !read.has(span.slot));
+      })
+      .map((fact) => fact.ruling),
+  );
+  if (claimed.size === 0) return reading;
+  // The ruling's shape stays: a rim or a diameter, named or not, is on a round product.
+  const dropped = new Set(
+    reading.read.filter((fact) => fact.ruling !== null && claimed.has(fact.ruling) && fact.key !== 'shape').map((fact) => fact.key),
+  );
+  const facts: Record<string, unknown> = { ...reading.facts };
+  for (const key of dropped) delete facts[key];
+  // The shape it named stays, but no longer from that ruling's words.
+  const read = reading.read
+    .filter((fact) => !dropped.has(fact.key))
+    .map((fact) => (fact.ruling !== null && claimed.has(fact.ruling) ? { ...fact, ruling: null, words: '' } : fact));
+  return { ...reading, facts: facts as Partial<SpecIdFactsInput>, read };
+}
+
+/**
+ * Whether `number` is written somewhere with nothing that makes it a size or
+ * a count beside it: no "x", unit, inch mark, "+", "/" or decimal point.
+ * "500" in "Printed 500 paper bowl" stands alone; "355" in "355 x 355 mm" does not.
+ */
+function standsAlone(text: string, number: string): boolean {
+  const alone = new RegExp(`(?<![\\d.,/+'"x×*-]\\s*)(?<![\\d.])${number}(?![\\d.])(?!\\s*(?:[x×*/+'"%-]|mm|cm|in|g|gsm|kg|ml|oz|ft|m)(?![a-z]))`, 'i');
+  return alone.test(text);
+}
+
+/** A product type as a note names it: `Bag (A16)`. */
+function productLabel(code: string, dictionary: Dictionary): string {
+  const meaning = dictionary.meaningOf('productType', code) ?? code;
+  const number = dictionary.numberOf('productType', code);
+  return number === undefined ? meaning : `${meaning} (A${number})`;
 }
 
 /** One fact a description kept, in plain words. */

@@ -1,9 +1,10 @@
 import type { Dictionary } from '../dictionary.js';
-import { DICTIONARY_SLOTS, PAPER_FAMILY, ROUND_SHAPE, SLOTS, type DictionarySlotKey, type SlotKey } from '../slots.js';
+import { DICTIONARY_SLOTS, PAPER_FAMILY, ROUND_SHAPE, RULED_SLOTS, SLOTS, type DictionarySlotKey, type SlotKey } from '../slots.js';
 import type { CapacityInput, MeasurementInput, SpecIdFactsInput } from '../spec-id.js';
+import { isIncluded, vesselWithLid } from './combined-products.js';
 import { KEYWORDS } from './keywords.js';
 import { readSize, type Ruling } from './size-rulings.js';
-import { WORD_LIST } from './word-list.js';
+import { NOT_PRODUCTS, WORD_LIST } from './word-list.js';
 
 export interface ReadFact {
   readonly key: SlotKey;
@@ -19,8 +20,12 @@ export interface TextReading {
   readonly read: readonly ReadFact[];
   /** The words no rule used, as the text wrote them, in text order. */
   readonly ignored: readonly string[];
-  /** Slots the text gives two different values for: each left out of `facts`. */
-  readonly conflicts: readonly { readonly key: SlotKey; readonly found: readonly string[] }[];
+  /** Slots the text gives two different values for, as written and as codes: each left out of `facts`. */
+  readonly conflicts: readonly { readonly key: SlotKey; readonly found: readonly string[]; readonly values: readonly string[] }[];
+  /** The fact that named the product type, when no words did: a handle is only ever on a bag. */
+  readonly productTypeFrom?: SlotKey;
+  /** A product type named only as coming with the product, which is not named: "w/ printed lids". */
+  readonly addOn?: string;
 }
 
 type FactValue = string | CapacityInput | MeasurementInput;
@@ -35,6 +40,7 @@ interface Match {
    */
   readonly value: string | null;
   readonly paperOnly: boolean;
+  readonly held?: true;
   /** How a conflict reports this value, when not as the span's own words: one end of a range. */
   readonly words?: string;
 }
@@ -58,11 +64,15 @@ interface Phrase {
   readonly pattern: RegExp;
   readonly key: SlotKey;
   readonly value: (match: RegExpExecArray) => string | null;
+  /** Words that name no product, and are not left over either: "printing plate". */
+  readonly held?: true;
 }
 
 /** A number before a unit's search word, as a capacity keyword reads one: `12`, `12.5`. */
 const NUMBER = '(\\d+(?:\\.\\d+)?)';
 const wholePhrase = (source: string) => new RegExp(`(?<![a-z0-9])${source}(?![a-z0-9])`, 'g');
+/** A product is named one or many: "napkin" and "napkins", "box" and "boxes". */
+const oneOrMany = (source: string) => wholePhrase(`${source}(?:e?s)?`);
 
 /**
  * Every phrase of the word list, every product-type name, and every approved
@@ -72,12 +82,16 @@ const wholePhrase = (source: string) => new RegExp(`(?<![a-z0-9])${source}(?![a-
 function phrases(dictionary: Dictionary): Phrase[] {
   const fixed = (value: string | null) => () => value;
   const found: Phrase[] = Object.entries(WORD_LIST).map(([phrase, meaning]) => {
-    const [key, code] = 'productType' in meaning ? (['productType', meaning.productType] as const) : (['material', meaning.material] as const);
-    return { pattern: wholePhrase(escape(phrase)), key, value: fixed(liveValue(key, code, dictionary)) };
+    if ('productType' in meaning) {
+      return { pattern: oneOrMany(escape(phrase)), key: 'productType', value: fixed(liveValue('productType', meaning.productType, dictionary)) };
+    }
+    return { pattern: wholePhrase(escape(phrase)), key: 'material', value: fixed(liveValue('material', meaning.material, dictionary)) };
   });
   for (const { code, meaning } of dictionary.valuesOf('productType')) {
-    found.push({ pattern: wholePhrase(escape(meaning.toLowerCase())), key: 'productType', value: fixed(code) });
+    found.push({ pattern: oneOrMany(escape(meaning.toLowerCase())), key: 'productType', value: fixed(code) });
   }
+  // Their words hold their place, so the product type inside them is not read.
+  for (const phrase of NOT_PRODUCTS) found.push({ pattern: wholePhrase(escape(phrase)), key: 'productType', value: fixed(null), held: true });
   for (const { slot, word, code } of dictionary.searchWords()) {
     found.push(
       slot === 'capacity'
@@ -90,9 +104,9 @@ function phrases(dictionary: Dictionary): Phrase[] {
 
 function allMatches(lower: string, dictionary: Dictionary): Match[] {
   const found: Match[] = [];
-  for (const { pattern, key, value } of phrases(dictionary)) {
+  for (const { pattern, key, value, held } of phrases(dictionary)) {
     for (const match of lower.matchAll(pattern)) {
-      found.push({ start: match.index, end: match.index + match[0].length, key, value: value(match), paperOnly: false });
+      found.push({ start: match.index, end: match.index + match[0].length, key, value: value(match), paperOnly: false, ...(held ? { held } : {}) });
     }
   }
   // Keywords name S2 0.1.0's letters: each is read as the dictionary has it now.
@@ -133,6 +147,19 @@ function withoutInner<M extends Match>(matches: readonly M[]): M[] {
   );
 }
 
+/**
+ * Of two product types whose words overlap, the one that ends later: the last
+ * noun is the head, so "paper cup carrier" is a cup carrier, not a paper cup,
+ * and "paper container lid" a container lid.
+ */
+function headLast<M extends Match>(matches: readonly M[]): M[] {
+  return matches.filter(
+    (match) =>
+      match.key !== 'productType' ||
+      !matches.some((other) => other.key === 'productType' && other.start > match.start && other.start < match.end && other.end > match.end),
+  );
+}
+
 function factOf(key: SlotKey, value: string): FactValue {
   if (key === 'capacity') return { unit: value.slice(0, 1), value: value.slice(1) };
   return value;
@@ -145,48 +172,88 @@ const wordsOf = (text: string, spans: readonly { start: number; end: number }[])
 /**
  * Reads the facts in raw text by rules (ADR 0026): the word list and the
  * product-type names for product type and material, plan 0006's keywords for
- * the other facts, then #28's rulings for a size. `productType` wins over any
- * the text names.
+ * the other facts, then #28's rulings for a size. A `productType` or
+ * `material` given wins over any the text names.
  */
-export function readText(text: string, dictionary: Dictionary, productType?: string): TextReading {
+export function readText(text: string, dictionary: Dictionary, productType?: string, material?: string): TextReading {
   const lower = text.toLowerCase();
   // A deleted option's words still hold their place, so no shorter phrase inside them is read, but read as nothing.
-  let matches = withoutInner(allMatches(lower, dictionary)).filter((match): match is ReadMatch => match.value !== null);
+  const outer = headLast(withoutInner(allMatches(lower, dictionary)));
+  const held = outer.filter((match) => match.held === true).map(({ start, end }) => ({ start, end }));
+  let matches = outer.filter((match): match is ReadMatch => match.value !== null);
+  matches = wrapsAsFeature(matches, lower, dictionary, productType);
 
   const byKey = new Map<SlotKey, ReadMatch[]>();
   for (const match of matches) byKey.set(match.key, [...(byKey.get(match.key) ?? []), match]);
 
   const facts: Record<string, FactValue> = {};
-  const conflicts: { key: SlotKey; found: string[] }[] = [];
+  const conflicts: { key: SlotKey; found: string[]; values: string[] }[] = [];
   const decide = (key: SlotKey, found: readonly ReadMatch[]) => {
     const values = [...new Set(found.map((match) => match.value))];
     const grade = key === 'material' ? gradeOverFamily(values, dictionary) : undefined;
     const amount = key === 'capacity' ? oneAmount(values, dictionary) : undefined;
+    const kind =
+      key === 'productType'
+        ? (kitOf(values, dictionary) ?? kindOverGeneric(values, dictionary) ?? soldWithLid(values, lower, dictionary))
+        : undefined;
     if (values.length === 1) facts[key] = factOf(key, values[0] ?? '');
     else if (grade !== undefined) facts[key] = factOf(key, grade);
     else if (amount !== undefined) facts[key] = factOf(key, amount);
+    else if (kind !== undefined) facts[key] = factOf(key, kind);
     else {
       const first = (value: string) => found.find((match) => match.value === value) as ReadMatch;
-      conflicts.push({ key, found: values.map((value) => first(value).words ?? wordsOf(text, [first(value)])) });
+      conflicts.push({ key, found: values.map((value) => first(value).words ?? wordsOf(text, [first(value)])), values });
     }
   };
+  const given = { productType, material };
   for (const key of ['productType', 'material'] as const) {
     const found = byKey.get(key);
-    if (found) decide(key, found);
+    const value = given[key];
+    if (value !== undefined) facts[key] = value;
+    else if (found) decide(key, found);
   }
-  if (productType !== undefined) facts.productType = productType;
+  // "W/ printed lids" with no product before it: the lids come with a product the text does not name.
+  const products = byKey.get('productType') ?? [];
+  let addOn: string | undefined;
+  if (
+    productType === undefined &&
+    typeof facts.productType === 'string' &&
+    products.length > 0 &&
+    products.every((match) => isIncluded(lower.slice(0, match.start)))
+  ) {
+    addOn = facts.productType;
+    delete facts.productType;
+  }
+  const madeOf = typeof facts.material === 'string' ? facts.material : undefined;
+  if (productType === undefined && boxIsContainer(facts.productType, madeOf, byKey.get('productType') ?? [], lower, dictionary)) {
+    facts.productType = dictionary.liveOriginal('productType', CONTAINER) ?? CONTAINER;
+  }
 
-  // Kraft is brown only on paper: a colour read from "kraft" waits for a paper material.
-  const material = typeof facts.material === 'string' ? facts.material : undefined;
-  matches = matches.filter((match) => !match.paperOnly || material?.startsWith(PAPER_FAMILY) === true);
+  // Kraft is brown only on paper, and not on white kraft: a colour read from "kraft" waits for such a material.
+  const whiteKraft = dictionary.liveOriginal('material', WHITE_KRAFT);
+  matches = matches.filter((match) => !match.paperOnly || (madeOf?.startsWith(PAPER_FAMILY) === true && madeOf !== whiteKraft));
   for (const [key, found] of byKey) {
     if (key === 'productType' || key === 'material') continue;
     const kept = found.filter((match) => matches.includes(match));
     if (kept.length > 0) decide(key, kept);
   }
 
+  // No words name the product, but a fact only one product type has does: a handle, or plies.
+  let productTypeFrom: SlotKey | undefined;
+  if (facts.productType === undefined && addOn === undefined && !conflicts.some((conflict) => conflict.key === 'productType')) {
+    for (const key of RULED_SLOTS) {
+      if (facts[key] === undefined) continue;
+      const only = dictionary.valuesOf('productType').filter(({ code }) => dictionary.ruleFor(code, key) !== 'never');
+      if (only.length !== 1 || only[0] === undefined) continue;
+      facts.productType = only[0].code;
+      productTypeFrom = key;
+      break;
+    }
+  }
+
   const rulings = new Map<SlotKey, Ruling>();
-  const used = matches.map(({ start, end }) => ({ start, end }));
+  let sizeSpan: { start: number; end: number } | undefined;
+  const used = [...matches.map(({ start, end }) => ({ start, end })), ...held];
   const type = typeof facts.productType === 'string' ? facts.productType : undefined;
   if (type !== undefined) {
     let masked = lower;
@@ -196,14 +263,13 @@ export function readText(text: string, dictionary: Dictionary, productType?: str
     const round = size?.facts.shape === roundShape;
     if (size && !(round && facts.shape !== undefined && facts.shape !== roundShape)) {
       const start = masked.indexOf(size.words);
-      used.push({ start, end: start + size.words.length });
-      // The same size written again is used too, so it is not left out.
-      let from = start + size.words.length;
+      sizeSpan = { start, end: start + size.words.length };
+      used.push(sizeSpan);
+      // The same size written again, before or after, is used too, so it is not left out.
       for (const repeat of size.repeats ?? []) {
-        const at = masked.indexOf(repeat, from);
-        if (at === -1) continue;
-        used.push({ start: at, end: at + repeat.length });
-        from = at + repeat.length;
+        let at = masked.indexOf(repeat);
+        while (at !== -1 && used.some((span) => span.start < at + repeat.length && at < span.end)) at = masked.indexOf(repeat, at + 1);
+        if (at !== -1) used.push({ start: at, end: at + repeat.length });
       }
       for (const [key, value] of Object.entries(size.facts) as [SlotKey, FactValue][]) {
         if (facts[key] !== undefined) continue;
@@ -215,7 +281,8 @@ export function readText(text: string, dictionary: Dictionary, productType?: str
 
   const read: ReadFact[] = SLOTS.filter((slot) => facts[slot.key] !== undefined).map(({ key }) => {
     const ruling = rulings.get(key) ?? null;
-    const spans = ruling === null ? matches.filter((match) => match.key === key) : used.slice(-1);
+    const from = key === 'productType' && productTypeFrom !== undefined ? productTypeFrom : key;
+    const spans = ruling === null ? matches.filter((match) => match.key === from) : sizeSpan === undefined ? [] : [sizeSpan];
     return { key, words: wordsOf(text, spans), ruling };
   });
 
@@ -225,7 +292,111 @@ export function readText(text: string, dictionary: Dictionary, productType?: str
     .map((token) => token[0].replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
     .filter((word) => word.length > 0);
 
-  return { facts: facts as Partial<SpecIdFactsInput>, read, ignored, conflicts };
+  return {
+    facts: facts as Partial<SpecIdFactsInput>,
+    read,
+    ignored,
+    conflicts,
+    ...(productTypeFrom === undefined ? {} : { productTypeFrom }),
+    ...(addOn === undefined ? {} : { addOn }),
+  };
+}
+
+/** S2 0.1.0's letters for the product types and materials the passes below name. */
+const WHITE_KRAFT = 'BKW';
+const FOLDING_CARTON = 'FCB';
+const CONTAINER = 'CTN';
+const WRAP_OR_SHEET = 'WRP';
+/** The wrap a wrap's own words name: "paper wrap" is paper-wrapped. */
+const WRAPS: Readonly<Record<string, string>> = { paper: 'PW', plastic: 'FW', film: 'FW' };
+
+/**
+ * A folding carton is paperboard, so a box named only "box", of plastic,
+ * bagasse or foil, is a container.
+ */
+function boxIsContainer(
+  read: unknown,
+  material: string | undefined,
+  products: readonly ReadMatch[],
+  lower: string,
+  dictionary: Dictionary,
+): boolean {
+  const box = dictionary.liveOriginal('productType', FOLDING_CARTON);
+  if (box === undefined || read !== box || material === undefined || material.startsWith(PAPER_FAMILY)) return false;
+  return products.every((match) => /^box(?:es)?$/.test(lower.slice(match.start, match.end)));
+}
+
+/**
+ * "Straw with individual paper wrap", "fork (paper wrap)": beside a product
+ * that is wrapped, a wrap is how it is wrapped, not a second product.
+ */
+function wrapsAsFeature(matches: ReadMatch[], lower: string, dictionary: Dictionary, productType: string | undefined): ReadMatch[] {
+  const sheet = dictionary.liveOriginal('productType', WRAP_OR_SHEET);
+  if (sheet === undefined) return matches;
+  const wrapped = (code: string) => code !== sheet && dictionary.ruleFor(code, 'wrap') !== 'never';
+  const products = matches.filter((match) => match.key === 'productType');
+  const product = productType ?? products.find((match) => wrapped(match.value))?.value;
+  if (product === undefined || !wrapped(product)) return matches;
+  const wraps = products.filter((match) => match.value === sheet);
+  // "Paper" in "fork (paper wrap)" is the wrap's material, not the fork's.
+  const inside = (match: ReadMatch) => wraps.some((wrap) => wrap.start <= match.start && match.end <= wrap.end);
+  const kept = matches.filter((match) => !wraps.includes(match) && !(match.key === 'material' && inside(match)));
+  for (const wrap of wraps) {
+    const words = lower.slice(wrap.start, wrap.end);
+    const named = Object.keys(WRAPS).find((word) => new RegExp(`(?<![a-z])${word}(?![a-z])`).test(words));
+    const value = named === undefined ? null : liveValue('wrap', WRAPS[named] ?? '', dictionary);
+    const said = kept.some((match) => match.key === 'wrap' && match.start < wrap.end && wrap.start < match.end);
+    if (value !== null && !said) kept.push({ start: wrap.start, end: wrap.end, key: 'wrap', value, paperOnly: false });
+  }
+  return kept;
+}
+
+/** A vessel and a lid joined to it, as the dictionary names the two sold together now. */
+function soldWithLid(values: readonly string[], lower: string, dictionary: Dictionary): string | undefined {
+  const code = vesselWithLid(values, lower);
+  return code === undefined ? undefined : dictionary.liveOriginal('productType', code);
+}
+
+/** Cutlery, and what a cutlery kit holds besides, in S2 0.1.0's letters. */
+const CUTLERY = ['FRK', 'KNF', 'SPN'];
+const IN_A_KIT = [...CUTLERY, 'NPK', 'STW', 'STR', 'CKT'];
+const CUTLERY_KIT = 'CKT';
+
+/** "Knife + fork + napkin": two kinds of cutlery, and nothing a kit does not hold, are a cutlery kit. */
+function kitOf(values: readonly string[], dictionary: Dictionary): string | undefined {
+  const live = (codes: readonly string[]) => codes.map((code) => dictionary.liveOriginal('productType', code));
+  const kit = dictionary.liveOriginal('productType', CUTLERY_KIT);
+  const pieces = values.filter((value) => live(CUTLERY).includes(value));
+  return kit !== undefined && pieces.length >= 2 && values.every((value) => live(IN_A_KIT).includes(value)) ? kit : undefined;
+}
+
+/**
+ * Product types that are kinds of a more general one, in S2 0.1.0's letters:
+ * a stand-up pouch is a bag, a souffle a cup, a clamshell a box and a
+ * container, a bowl lid a lid, and a portion cup, a bowl or a tray a
+ * container. Named beside its general word, the kind is the product.
+ */
+const KINDS: Readonly<Record<string, readonly string[]>> = {
+  BAG: ['SUP', 'SCH'],
+  CUP: ['PCP'],
+  FCB: ['HCT', 'FRC', 'TKB', 'RSC'],
+  CTN: ['HCT', 'TKB', 'PAN', 'CWL', 'PCP', 'BWL', 'TRY'],
+  CLD: ['BLD', 'PCL', 'CTL'],
+};
+
+/**
+ * The one product type among `values` that every other names more generally
+ * ("corrugated box … small box" is a shipping box); undefined otherwise, so
+ * two kinds ("cup" and "bowl") are still left out.
+ */
+export function kindOverGeneric(values: readonly string[], dictionary: Dictionary): string | undefined {
+  const live = (code: string) => dictionary.liveOriginal('productType', code);
+  const kindsOf = (value: string) =>
+    Object.entries(KINDS)
+      .filter(([general]) => live(general) === value)
+      .flatMap(([, kinds]) => kinds.map(live));
+  const specific = values.filter((value) => values.every((other) => other === value || kindsOf(other).includes(value)));
+  return specific.length === 1 ? specific[0] : undefined;
 }
 
 /** Millilitres in one fluid ounce, US. */
@@ -252,23 +423,28 @@ function oneAmount(values: readonly string[], dictionary: Dictionary): string | 
 }
 
 /**
- * Paper and plastic of unknown grade, as S2 0.1.0 names them: a text that
- * names one beside one grade of the same family means that grade.
+ * Paper, plastic and kraft of unknown grade, as S2 0.1.0 names them, each with
+ * the letters its grades begin with: a text that names one beside one grade
+ * of it means that grade. Paper and plastic only (plan 0011); kraft is a paper.
  */
-const FAMILY_WORDS = ['B00', 'A00'] as const;
+const FAMILIES: Readonly<Record<string, string>> = { A00: 'A', B00: 'B', BKR: 'BK' };
 
 /**
- * The one specific material among `values` when the rest only name its family
- * ("Paper" beside "White Kraft", "Plastic" beside "PET"); undefined otherwise,
- * so two grades ("PET" and "PP") are still left out.
+ * The one material among `values` that every other only names the family of
+ * ("Paper" beside "White Kraft", "Plastic" beside "PET", "Kraft" beside
+ * "Recycled kraft"); undefined otherwise, so two grades ("PET" and "PP") are
+ * still left out.
  */
-function gradeOverFamily(values: readonly string[], dictionary: Dictionary): string | undefined {
-  const families = FAMILY_WORDS.map((code) => dictionary.liveOriginal('material', code)).filter(
-    (code): code is string => code !== undefined,
-  );
-  const grades = values.filter((value) => !families.includes(value));
-  const [grade] = grades;
-  if (grades.length !== 1 || grade === undefined || grades.length === values.length) return undefined;
-  const family = (code: string) => code.slice(0, 1);
-  return values.every((value) => value === grade || family(value) === family(grade)) ? grade : undefined;
+export function gradeOverFamily(values: readonly string[], dictionary: Dictionary): string | undefined {
+  const letters = new Map<string, string>();
+  for (const [code, prefix] of Object.entries(FAMILIES)) {
+    const live = dictionary.liveOriginal('material', code);
+    if (live !== undefined) letters.set(live, prefix);
+  }
+  const covers = (family: string, value: string) => {
+    const prefix = letters.get(family);
+    return prefix !== undefined && family !== value && value.startsWith(prefix);
+  };
+  const specific = values.filter((value) => values.every((other) => other === value || covers(other, value)));
+  return specific.length === 1 ? specific[0] : undefined;
 }
