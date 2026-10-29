@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { TextField } from '@/shared/ui/TextField';
 import { useCodeLookup } from '../../application/use-code-lookup';
-import { useExactMatch } from '../../application/use-exact-match';
+import { useSearchMatch } from '../../application/use-search-match';
 import { useReadText } from '../../application/use-read-text';
 import { useSpecIdLibrary } from '../../application/use-spec-id-library';
 import type { AtlasDictionary } from '../../domain/atlas';
@@ -77,8 +77,8 @@ export function AtlasLibrary({
     setPage(library.data.page);
   }
   const lookup = useCodeLookup(code);
-  // The saved Spec ID the reading's code is, shown above as a perfect match: the list leaves it out.
-  const perfectMatch = useExactMatch(reading.data?.decoded?.code);
+  // The saved Spec ID the reading answers, shown above as a match: the list leaves it out.
+  const match = useSearchMatch(reading.data?.decoded);
   const readRefused = reading.error?.code === 'VALIDATION_FAILED' ? reading.error.fields.text : undefined;
   const namesRefused = namesAsked && library.error?.code === 'VALIDATION_FAILED' ? library.error.fields.q : undefined;
 
@@ -115,7 +115,7 @@ export function AtlasLibrary({
           productTypeName={undefined}
           page={requestedPage}
           onPageChange={setPage}
-          shownAbove={code === null && asked.length >= READ_MIN_LENGTH ? perfectMatch.data?.id : undefined}
+          shownAbove={code === null && asked.length >= READ_MIN_LENGTH ? match?.saved.id : undefined}
           timeZone={timeZone}
         />
       ) : null}

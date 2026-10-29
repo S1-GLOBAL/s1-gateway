@@ -240,6 +240,43 @@ describe('AtlasLibrary, Search', () => {
     expect(screen.queryByRole('button', { name: /Save as a new Spec ID/ })).toBeNull();
   });
 
+  it('shows the only Spec ID that fits as a match that records more, instead of a Fits group', async () => {
+    const only = savedFor(BOWL, 'Bagasse bowl with its sizes', { id: '00000000-0000-4000-8000-0000000000d1' });
+    const might = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-0000000000d2' });
+    renderLibrary({
+      readText: async () => READ_BOWL,
+      findByCode: async () => Promise.reject(new AppError('SPEC_ID_NOT_FOUND', 'No saved Spec ID has this code.')),
+      findSimilar: async () => ({ fits: [only], mightFit: [might] }),
+    });
+    type(TEXT);
+
+    const match = await screen.findByRole('region', { name: 'Match' });
+    expect(within(match).getByText('We found a match!')).toBeTruthy();
+    expect(within(match).getByText('It has every fact you typed, and records more.')).toBeTruthy();
+    expect(within(match).getByText('Bagasse bowl with its sizes')).toBeTruthy();
+    expect(screen.queryByText('Does this code look right?')).toBeNull();
+    expect(screen.queryByRole('heading', { name: /Fits/ })).toBeNull();
+    expect(screen.getByRole('heading', { name: /Might fit/ })).toBeTruthy();
+    expect(screen.getAllByText('Bagasse bowl with its sizes')).toHaveLength(1);
+  });
+
+  it('highlights none of several Spec IDs that fit, and lists them', async () => {
+    const one = savedFor(BOWL, 'Bagasse bowl A', { id: '00000000-0000-4000-8000-0000000000e1' });
+    const two = savedFor(BOWL, 'Bagasse bowl B', { id: '00000000-0000-4000-8000-0000000000e2' });
+    renderLibrary({
+      readText: async () => READ_BOWL,
+      findByCode: async () => Promise.reject(new AppError('SPEC_ID_NOT_FOUND', 'No saved Spec ID has this code.')),
+      findSimilar: async () => ({ fits: [one, two], mightFit: [] }),
+    });
+    type(TEXT);
+
+    const fits = await screen.findByRole('region', { name: 'Fits — every fact you gave matches' });
+    expect(within(fits).getByText('Bagasse bowl A')).toBeTruthy();
+    expect(within(fits).getByText('Bagasse bowl B')).toBeTruthy();
+    expect(screen.getByText('Does this code look right?')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Match' })).toBeNull();
+  });
+
   it('leaves the perfect match out of the names below it, keeping the others', async () => {
     const match = lookupFor(BOWL, 'Bagasse bowl, 14 oz');
     const other = savedFor(ILLUSTRATIVE, 'Bagasse bowl lid');

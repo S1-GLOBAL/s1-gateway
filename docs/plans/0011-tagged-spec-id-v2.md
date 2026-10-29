@@ -335,7 +335,7 @@ Gloves and cup sleeves get product types. These are dictionary changes, made in 
 
 No field holds a glove's size, so a glove's small, medium, large and extra-large share one Spec ID.
 
-**Search shows what fits as it reads** (reyxdz, 2026-10-30). Plan 0007's **Yes, proceed** is gone: under the code, the saved Spec IDs that fit and those that might show as the text is typed, the last ones dimmed while the next are looked up, and **No, edit it** still opens New Spec ID. A saved Spec ID whose code is exactly the one read shows above as **We found a perfect match!**, and is left out of the groups below it, which still list the others; under a perfect match there is no "No saved Spec ID fits" and no save.
+**Search shows what fits as it reads** (reyxdz, 2026-10-30). Plan 0007's **Yes, proceed** is gone: under the code, the saved Spec IDs that fit and those that might show as the text is typed, the last ones dimmed while the next are looked up, and **No, edit it** still opens New Spec ID. A saved Spec ID whose code is exactly the one read shows above as **We found a perfect match!**; else the only saved Spec ID that fits every fact read shows there as **We found a match!**, "It has every fact you typed, and records more", as an imported Spec ID with the sizes its Dimension cell gave does. Several that fit are no single answer: none is highlighted and they stay under Fits. The one shown above is left out of the groups below it, which still list the others, and under it there is no "No saved Spec ID fits" and no save.
 
 ## Suggestions
 

@@ -7,9 +7,10 @@ import { useIconTrigger } from '@/shared/ui/motion';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SelectField } from '@/shared/ui/SelectField';
 import { SkeletonBlock, SkeletonRegion } from '@/shared/ui/Skeleton';
-import { useExactMatch } from '../../application/use-exact-match';
+import { useSearchMatch } from '../../application/use-search-match';
 import type { useReadText } from '../../application/use-read-text';
-import type { AtlasDictionary, DecodedSpecId, SavedSpecId, SlotRuleEntry, SpecIdTextReading } from '../../domain/atlas';
+import type { SearchMatch } from '../../application/use-search-match';
+import type { AtlasDictionary, DecodedSpecId, SlotRuleEntry, SpecIdTextReading } from '../../domain/atlas';
 import { dictionaryOptions } from '../dictionary-options';
 import { NewSpecIdLink } from './NewSpecIdLink';
 import { SpecIdCard } from './SpecIdCard';
@@ -75,9 +76,10 @@ export function TextSearch({ reading, text, dictionary, onChooseProductType, tim
 }
 
 /**
- * The saved Spec ID whose code the facts make, when there is one; else the
- * code to confirm. Until the lookup answers, the code shows, so the card never
- * blanks between keystrokes.
+ * The saved Spec ID the facts answer, when there is one: the one whose code
+ * they make, or the only one that fits them all. Else the code to confirm.
+ * Until the lookups answer, the code shows, so the card never blanks between
+ * keystrokes.
  */
 function CodeOrMatch(props: {
   reading: SpecIdTextReading;
@@ -87,12 +89,12 @@ function CodeOrMatch(props: {
   busy: boolean;
   timeZone?: string;
 }) {
-  const exact = useExactMatch(props.decoded.code);
-  if (exact.data) {
+  const match = useSearchMatch(props.decoded);
+  if (match) {
     return (
       <div className="flex flex-col gap-6">
-        <PerfectMatch saved={exact.data} decoded={props.decoded} timeZone={props.timeZone} />
-        <TextSearchResults decoded={props.decoded} text={props.text} rules={props.rules} matchedId={exact.data.id} timeZone={props.timeZone} />
+        <Match match={match} decoded={props.decoded} timeZone={props.timeZone} />
+        <TextSearchResults decoded={props.decoded} text={props.text} rules={props.rules} matchedId={match.saved.id} timeZone={props.timeZone} />
       </div>
     );
   }
@@ -100,22 +102,27 @@ function CodeOrMatch(props: {
 }
 
 /**
- * A saved Spec ID with exactly the facts read: nothing to confirm. Starting
- * another opens New Spec ID with those facts, where Save waits until one of
- * them changes, so the match is never saved twice.
+ * The saved Spec ID the facts answer: nothing to confirm. A perfect match has
+ * exactly the facts read; a match has them all and records more. Starting
+ * another opens New Spec ID with the facts read, where, for a perfect match,
+ * Save waits until one of them changes, so it is never saved twice.
  */
-function PerfectMatch({ saved, decoded, timeZone }: { saved: SavedSpecId; decoded: DecodedSpecId; timeZone?: string }) {
+function Match({ match, decoded, timeZone }: { match: SearchMatch; decoded: DecodedSpecId; timeZone?: string }) {
+  const { saved, exact } = match;
   // The arrow plays on hover only.
   const { trigger } = useIconTrigger();
   return (
     <section
-      aria-label="Perfect match"
+      aria-label={exact ? 'Perfect match' : 'Match'}
       className="flex flex-col gap-4 rounded-surface border border-accent bg-accent-soft p-5 shadow-sm"
     >
-      <p role="status" className="inline-flex items-center gap-2 text-md font-medium text-accent-ink">
-        <CircleCheck size={20} strokeWidth={1.75} aria-hidden="true" />
-        We found a perfect match!
-      </p>
+      <div className="flex flex-col gap-1">
+        <p role="status" className="inline-flex items-center gap-2 text-md font-medium text-accent-ink">
+          <CircleCheck size={20} strokeWidth={1.75} aria-hidden="true" />
+          {exact ? 'We found a perfect match!' : 'We found a match!'}
+        </p>
+        {!exact && <p className="text-sm text-ink-muted">It has every fact you typed, and records more.</p>}
+      </div>
       <SpecIdCard saved={saved} timeZone={timeZone} />
       <MotionLink
         to={`/atlas/new?code=${encodeURIComponent(decoded.code)}`}
