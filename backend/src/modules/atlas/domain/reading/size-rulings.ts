@@ -42,7 +42,8 @@ const NUMBER = `(\\d+[\\s-]+${FRACTION}|\\d*${GLYPH}|${FRACTION}|\\d+(?:\\.\\d+)
 const UNIT = '\\s*(mm|cm|inches|inch|in|")?';
 const TIMES = '\\s*[x×*]\\s*';
 const EDGE_BEFORE = '(?<![a-z0-9./])';
-const EDGE_AFTER = '(?![a-z0-9/])';
+/** No letter, digit or slash after a number, and no decimal point either: `1.9g` holds no size `1`. */
+const EDGE_AFTER = '(?![a-z0-9/]|\\.\\d)';
 
 const THREE = new RegExp(`${EDGE_BEFORE}${NUMBER}${UNIT}(\\s*dia)?${TIMES}${NUMBER}${UNIT}${TIMES}${NUMBER}${UNIT}${EDGE_AFTER}`, 'g');
 const DIA_BY = new RegExp(`${EDGE_BEFORE}${NUMBER}${UNIT}\\s*dia${TIMES}${NUMBER}${UNIT}${EDGE_AFTER}`, 'g');

@@ -33,6 +33,8 @@ describe('readSize, by #28 rulings', () => {
     ['a Dia by height on a bag, which R1b does not cover', 'bag 94 dia x 115', 'BAG'],
     ['R3 with the gusset not the smallest', 'pouch 80 x 210 x 140', 'SUP'],
     ['R5 with the gusset not the smallest', 'bag 120 x 250 x 300', 'BAG'],
+    ['a weight with decimals, whose whole part is no rim', 'portion cup 1.9g', 'PCP'],
+    ['a capacity with decimals', 'portion cup 3.25oz', 'PCP'],
   ])('reads nothing for %s', (_case, text, productType) => {
     expect(readSize(text, productType, dictionary)).toBeNull();
   });
