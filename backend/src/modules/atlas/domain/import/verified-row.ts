@@ -1,11 +1,10 @@
 import type { Dictionary } from '../dictionary.js';
+import { describeText, factsInWords, type TextDescription } from '../reading/describe-text.js';
 import { readText } from '../reading/read-text.js';
-import { readSize, type Ruling } from '../reading/size-rulings.js';
 import { NAME_MAX_LENGTH } from '../saved-spec-id.js';
-import { ROUND_SHAPE, type SlotKey } from '../slots.js';
-import type { MeasurementInput, SpecIdFactsInput } from '../spec-id.js';
+import type { SpecIdFactsInput } from '../spec-id.js';
 
-/** Columns O to U of the verified list, what one row quotes, and their names in the report (#56). */
+/** The verified list's quote columns, what one row quotes, and their names in the report (#56). */
 export const QUOTE_COLUMNS = {
   fobPerUnit: 'FOB per unit',
   fobPerCase: 'FOB per case',
@@ -18,7 +17,7 @@ export const QUOTE_COLUMNS = {
 export type QuoteColumn = keyof typeof QUOTE_COLUMNS;
 
 /**
- * One product row of the verified list: columns C to G as text, a number
+ * One product row of the verified list: columns C to I as text, a number
  * written as the cell shows it (#28), and its manufacturer and quote (#56).
  */
 export interface VerifiedRow {
@@ -26,27 +25,24 @@ export interface VerifiedRow {
   readonly row: number;
   readonly itemName: string;
   readonly category: string;
+  /** The material's family: "Plastic", "Paper". */
   readonly material: string;
-  /** Dimension (mm). */
+  /** The material itself: "HDPE", "White Kraft". */
+  readonly materialType: string;
+  /** Dimensions (mm). */
   readonly dimension: string;
   /** Product Weight (grams) / Thickness (gsm). */
   readonly weight: string;
+  /** Printing details. */
+  readonly printing: string;
   /** Column A, COMPANY, which heads its manufacturer's rows; empty outside every block. */
   readonly company: string;
   /** Column B, COUNTRY. */
   readonly country: string;
-  /** Columns O to U as Excel shows them; empty when the cell is empty. */
+  /** The quote's columns as Excel shows them; empty when the cell is empty, or the sheet has no such column. */
   readonly quote: Readonly<Record<QuoteColumn, string>>;
   /** Columns of `quote` whose formula has no value saved in the workbook, so they are read empty. */
   readonly unsavedFormulas: readonly QuoteColumn[];
-}
-
-/** A fact the report lists: read from the item name, or under one of #28's rulings. */
-export interface RowNote {
-  readonly key: SlotKey;
-  /** The words it was read from, as the row wrote them. */
-  readonly words: string;
-  readonly ruling: Ruling | null;
 }
 
 interface RowBase {
@@ -56,26 +52,24 @@ interface RowBase {
   /** True when the item name was longer than a name may be, and was cut. */
   readonly nameCut: boolean;
   /**
-   * Whether the item name reads the same product type and material as the
-   * Category and Material columns, on a row where both give one; else null.
+   * Whether the Category column alone names the product type the rest of the
+   * row reads as, on a row where both name one; else null.
    */
   readonly agreement: boolean | null;
+  /** The reader's notes: what it left out and why, and what a word could still mean (plan 0011). */
+  readonly notes: readonly string[];
 }
 
 export type RowReading =
   | (RowBase & {
       readonly kind: 'read';
       readonly facts: Partial<SpecIdFactsInput> & { readonly productType: string };
-      /** Facts read from the item name, which the columns did not give. */
-      readonly fromItemName: readonly RowNote[];
-      /** Facts read under a ruling, from the item name or the Dimension column. */
-      readonly underRuling: readonly RowNote[];
+      /** Each fact kept, as `Colour / clarity: Clear`, with the ruling and its words after one read under it. */
+      readonly readFromRow: readonly string[];
     })
   | (RowBase & { readonly kind: 'skipped'; readonly reason: string });
 
-export const NO_PRODUCT_TYPE = 'No product type in the Category, Material or item name.';
-
-type Facts = Record<string, unknown>;
+export const NO_PRODUCT_TYPE = 'No product type in the item name, the material, the sizes or the category.';
 
 /** Runs of whitespace, and characters a name may not hold, become one space. */
 // eslint-disable-next-line no-control-regex -- matching control characters is the point
@@ -89,89 +83,46 @@ function nameOf(itemName: string): { name: string; cut: boolean } {
   return { name: name.slice(0, space > 0 ? space : NAME_MAX_LENGTH).trimEnd(), cut: true };
 }
 
-/**
- * The Category and Material cells read together: whichever column names the
- * product type or the material, it counts, so swapped columns read the right
- * way round. Two different values for one slot leave it out.
- */
-function readColumns(row: VerifiedRow, dictionary: Dictionary): Facts {
-  const facts: Facts = {};
-  const disputed = new Set<string>();
-  for (const cell of [row.category, row.material]) {
-    for (const [key, value] of Object.entries(readText(tidy(cell), dictionary).facts)) {
-      if (disputed.has(key)) continue;
-      if (facts[key] === undefined) facts[key] = value;
-      else if (JSON.stringify(facts[key]) !== JSON.stringify(value)) {
-        delete facts[key];
-        disputed.add(key);
-      }
-    }
-  }
-  return facts;
-}
-
-/** Column G: a number with `g` is a unit weight, with `gsm` a basis weight; anything else is not read. */
-function readWeight(cell: string): Facts {
-  const text = tidy(cell).toLowerCase();
-  const grams = /^(\d+(?:\.\d+)?)\s*(?:g|grams?)$/.exec(text);
-  if (grams) return { unitWeight: { value: grams[1] ?? '', unit: 'g' } satisfies MeasurementInput };
-  const gsm = /^(\d+(?:\.\d+)?)\s*gsm$/.exec(text);
-  if (gsm) return { basisWeight: { value: gsm[1] ?? '', unit: 'gsm' } satisfies MeasurementInput };
-  return {};
-}
+/** The most text the reader reads, as Search does (#41). */
+const TEXT_MAX_LENGTH = 500;
 
 /**
- * Reads one verified-list row into facts (#28, plan 0006): the Category and
- * Material columns first, then the item name through Search's reader (ADR
- * 0026), the Dimension column through #28's rulings, and the weight column.
- * A column's value wins over the item name's.
+ * Reads one verified-list row into facts with the description reader
+ * (ADR 0026, ADR 0032): the item name, the material, the sizes, the weight
+ * and the printing, as one description. The material type is read over the
+ * material's family, since "Plastic" beside "HDPE" would read as two
+ * materials; the category only when nothing else names the product type, since
+ * its "Plastic …" does the same.
  */
 export function readVerifiedRow(row: VerifiedRow, dictionary: Dictionary): RowReading {
   const { name, cut } = nameOf(row.itemName);
-  const columns = { ...readColumns(row, dictionary), ...readWeight(row.weight) };
-  const columnType = typeof columns.productType === 'string' ? columns.productType : undefined;
+  const described = (category: string): TextDescription =>
+    describeText(
+      [row.itemName, category, tidy(row.materialType) || row.material, row.dimension, row.weight, row.printing]
+        .map(tidy)
+        .filter((part) => part !== '')
+        .join(', ')
+        .slice(0, TEXT_MAX_LENGTH),
+      dictionary,
+    );
+  const plain = described('');
+  const description = plain.specId === null ? described(row.category) : plain;
 
-  const plain = readText(tidy(row.itemName), dictionary);
-  const agreement = agreementOf(columns, plain.facts);
+  const categoryType = readText(tidy(row.category), dictionary).facts.productType;
+  const ownType = plain.facts.productType;
+  const agreement = typeof categoryType === 'string' && typeof ownType === 'string' ? categoryType === ownType : null;
+  const productType = description.facts.productType;
+  const base = { row: row.row, name, nameCut: cut, agreement, notes: description.notes };
+  if (description.specId === null || productType === undefined) return { ...base, kind: 'skipped', reason: NO_PRODUCT_TYPE };
 
-  const item = columnType === undefined ? plain : readText(tidy(row.itemName), dictionary, columnType);
-  const facts: Facts = { ...item.facts, ...columns };
-  const productType = typeof facts.productType === 'string' ? facts.productType : undefined;
-  if (productType === undefined) return { kind: 'skipped', row: row.row, name, nameCut: cut, agreement, reason: NO_PRODUCT_TYPE };
-
-  const fromItemName = item.read.filter((note) => note.key !== 'productType' && columns[note.key] === undefined);
-  const underRuling = fromItemName.filter((note) => note.ruling !== null);
-
-  // The Dimension column wins over a size the item name gave; a round ruling never overrides a shape that is not round.
-  const dimension = tidy(row.dimension);
-  const size = dimension === '' ? null : readSize(dimension.toLowerCase(), productType, dictionary);
-  const columnRulings: RowNote[] = [];
-  const round = dictionary.liveOriginal('shape', ROUND_SHAPE);
-  if (size && !(size.facts.shape === round && typeof facts.shape === 'string' && facts.shape !== round)) {
-    for (const [key, value] of Object.entries(size.facts)) {
-      facts[key] = value;
-      columnRulings.push({ key: key as SlotKey, words: dimension, ruling: size.ruling });
-    }
-  }
-  const overridden = new Set(columnRulings.map(({ key }) => key));
-
+  const read = new Map(description.reading.read.map((fact) => [fact.key, fact]));
   return {
+    ...base,
     kind: 'read',
-    row: row.row,
-    name,
-    nameCut: cut,
-    agreement,
-    facts: { ...facts, productType } as Partial<SpecIdFactsInput> & { productType: string },
-    fromItemName: fromItemName.filter((note) => !overridden.has(note.key)),
-    underRuling: [...underRuling.filter((note) => !overridden.has(note.key)), ...columnRulings],
+    facts: { ...description.facts, productType },
+    readFromRow: factsInWords(description, dictionary).map(({ key, name: slot, meaning }) => {
+      const fact = read.get(key);
+      return `${slot}: ${meaning}${fact?.ruling ? ` (${fact.ruling}, from "${fact.words}")` : ''}`;
+    }),
   };
-}
-
-/** Product type and material, where both the columns and the item name give one. */
-function agreementOf(columns: Facts, itemName: Partial<SpecIdFactsInput>): boolean | null {
-  const compared = (['productType', 'material'] as const).filter(
-    (key) => columns[key] !== undefined && itemName[key] !== undefined,
-  );
-  if (compared.length === 0) return null;
-  return compared.every((key) => columns[key] === itemName[key]);
 }

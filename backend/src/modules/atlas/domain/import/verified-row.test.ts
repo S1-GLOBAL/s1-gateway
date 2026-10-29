@@ -9,7 +9,21 @@ const NO_QUOTE = { fobPerUnit: '', fobPerCase: '', fobTotal: '', moldCost: '', m
 
 /** An invented row: never one of the verified list's own (constraints §6). */
 function row(overrides: Partial<VerifiedRow>): VerifiedRow {
-  return { row: 4, itemName: '', category: '', material: '', dimension: '', weight: '', company: '', country: '', quote: NO_QUOTE, unsavedFormulas: [], ...overrides };
+  return {
+    row: 4,
+    itemName: '',
+    category: '',
+    material: '',
+    materialType: '',
+    dimension: '',
+    weight: '',
+    printing: '',
+    company: '',
+    country: '',
+    quote: NO_QUOTE,
+    unsavedFormulas: [],
+    ...overrides,
+  };
 }
 
 function read(overrides: Partial<VerifiedRow>) {
@@ -18,48 +32,58 @@ function read(overrides: Partial<VerifiedRow>) {
   return reading;
 }
 
-describe('readVerifiedRow', () => {
-  it('reads the product type and the material whichever column holds them', () => {
-    const straight = read({ itemName: 'Invented cold drink', category: 'Cup', material: 'Plastic - PP' });
-    const swapped = read({ itemName: 'Invented cold drink', category: 'Plastic - PP', material: 'Cup' });
+describe('readVerifiedRow, with the description reader (ADR 0032)', () => {
+  it('reads the item name, material, sizes, weight and printing as one description', () => {
+    const reading = read({ itemName: '16oz Clear Cup', material: 'Plastic', materialType: 'PP', printing: '1c print' });
 
-    expect(straight.facts).toMatchObject({ productType: 'CUP', material: 'APP' });
-    expect(swapped.facts).toMatchObject({ productType: 'CUP', material: 'APP' });
+    expect(reading.facts).toMatchObject({
+      productType: 'CUP',
+      material: 'APP',
+      colourClarity: 'CL',
+      print: '01',
+      capacity: { unit: 'Z', value: '16' },
+    });
+    expect(reading.readFromRow).toContain('Material: Polymer, PP');
   });
 
-  it('lets a column win over the item name, and lists only what the item name added', () => {
-    const reading = read({ itemName: '16oz Clear PP Cup', category: 'Cup', material: 'Plastic - PET' });
+  it('reads the material type over the family beside it, and over a category that names one', () => {
+    expect(read({ itemName: 'Invented cup', category: 'Plastic Cup', material: 'Plastic', materialType: 'PP' }).facts.material).toBe('APP');
+  });
 
-    expect(reading.facts).toMatchObject({ productType: 'CUP', material: 'APT', colourClarity: 'CL', capacity: { unit: 'Z', value: '16' } });
-    expect(reading.fromItemName.map((note) => note.key)).toEqual(['colourClarity', 'capacity']);
+  it('reads the category only when nothing else names the product type', () => {
+    expect(read({ itemName: 'Invented 12oz drink', category: 'Cup' }).facts.productType).toBe('CUP');
+    expect(read({ itemName: 'PP Cup', category: 'Bowl' }).facts.productType).toBe('CUP');
   });
 
   it('reads a dimension cell written as a number, 90, as a 90 mm rim under ruling R1', () => {
-    const reading = read({ itemName: 'Invented lid', category: 'Lid', material: 'Plastic - PET', dimension: '90' });
+    const reading = read({ itemName: 'Invented lid', materialType: 'PET', dimension: '90' });
 
     expect(reading.facts).toMatchObject({ shape: 'RD', topDiameter: { value: '90', unit: 'mm' } });
-    expect(reading.underRuling).toContainEqual({ key: 'topDiameter', words: '90', ruling: 'R1' });
+    expect(reading.readFromRow).toContain('Top diameter: 90 mm (R1, from "90")');
   });
 
   it('reads 3.3g as a unit weight and 110 gsm as a basis weight', () => {
-    expect(read({ itemName: 'Invented lid', category: 'Lid', weight: '3.3g' }).facts).toMatchObject({
-      unitWeight: { value: '3.3', unit: 'g' },
-    });
-    expect(read({ itemName: 'Invented bag', category: 'Bag', material: 'Paper', weight: '110 gsm' }).facts).toMatchObject({
+    expect(read({ itemName: 'Invented lid', weight: '3.3g' }).facts).toMatchObject({ unitWeight: { value: '3.3', unit: 'g' } });
+    expect(read({ itemName: 'Invented paper bag', weight: '110 gsm' }).facts).toMatchObject({
       basisWeight: { value: '110', unit: 'gsm' },
     });
   });
 
-  it('reads neither a bare 25 nor a sum like 300+250+18 as a weight', () => {
-    for (const weight of ['25', '300+250+18']) {
-      const facts = read({ itemName: 'Invented bag', category: 'Bag', weight }).facts;
-      expect(facts.unitWeight).toBeUndefined();
-      expect(facts.basisWeight).toBeUndefined();
-    }
+  it('reads no weight or size from a sum like 300+250+18', () => {
+    const facts = read({ itemName: 'Invented bag', weight: '300+250+18' }).facts;
+    expect(facts.unitWeight).toBeUndefined();
+    expect(facts.basisWeight).toBeUndefined();
+    expect(facts.height).toBeUndefined();
+  });
+
+  it("keeps the reader's notes for the report", () => {
+    expect(read({ itemName: 'Invented paper bowl', printing: 'Printed' }).notes.some((note) => note.startsWith('Printed is mentioned'))).toBe(
+      true,
+    );
   });
 
   it('skips a row whose product type cannot be told, and says why', () => {
-    const reading = readVerifiedRow(row({ itemName: 'Invented sample order', material: 'Plastic - PP' }), dictionary);
+    const reading = readVerifiedRow(row({ itemName: 'Invented sample order', material: 'Plastic' }), dictionary);
 
     expect(reading).toMatchObject({ kind: 'skipped', row: 4, reason: NO_PRODUCT_TYPE });
   });
@@ -76,10 +100,11 @@ describe('readVerifiedRow', () => {
     expect(reading.nameCut).toBe(true);
   });
 
-  it('tells whether the item name agrees with the columns, where both give a product type or material', () => {
-    expect(read({ itemName: 'PP Cup', category: 'Cup', material: 'Plastic - PP' }).agreement).toBe(true);
-    expect(read({ itemName: 'PET Cup', category: 'Cup', material: 'Plastic - PP' }).agreement).toBe(false);
-    expect(read({ itemName: 'Invented drink', category: 'Cup' }).agreement).toBeNull();
+  it('tells whether the Category column names the product type the rest of the row reads as', () => {
+    expect(read({ itemName: 'PP Cup', category: 'Cup' }).agreement).toBe(true);
+    expect(read({ itemName: 'PP Cup', category: 'Bowl' }).agreement).toBe(false);
+    expect(read({ itemName: 'PP Cup', category: 'Invented range' }).agreement).toBeNull();
+    expect(read({ itemName: 'Invented 12oz drink', category: 'Cup' }).agreement).toBeNull();
   });
 });
 

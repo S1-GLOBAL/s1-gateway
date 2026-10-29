@@ -17,13 +17,13 @@ const AS = 'saver@sourceone.global';
 let folder: string;
 
 /**
- * An invented workbook shaped like the verified list: sheet "Main Table",
- * three header rows, products from row 4 in columns C to G. Never the
- * verified list's own rows (constraints §6).
+ * An invented workbook shaped like the verified list: sheet "Restructured
+ * Main Table", three header rows, products from row 4 in columns C to H.
+ * Never the verified list's own rows (constraints §6).
  */
 async function workbook(rows: (string | number)[][], merge?: string): Promise<string> {
   const book = new ExcelJS.Workbook();
-  const sheet = book.addWorksheet('Main Table');
+  const sheet = book.addWorksheet('Restructured Main Table');
   sheet.getCell('C1').value = 'PRODUCT DETAILS';
   sheet.getCell('C2').value = 'Item Name / Description';
   sheet.getCell('C3').value = '/';
@@ -59,10 +59,10 @@ afterEach(() => rm(folder, { recursive: true, force: true }));
 afterAll(() => connection.close());
 
 const ROWS: (string | number)[][] = [
-  ['Invented PP cup', 'Cup', 'Plastic - PP', 90, ''],
-  ['Invented PP cup', 'Cup', 'Plastic - PP', 90, ''],
-  ['Invented PET lid', 'Lid', 'Plastic - PET', '', '3.3g'],
-  ['Invented sample order', '', 'Plastic - PP', '', ''],
+  ['Invented PP cup', 'Cup', 'Plastic', 'PP', 90, ''],
+  ['Invented PP cup', 'Cup', 'Plastic', 'PP', 90, ''],
+  ['Invented PET lid', 'Lid', 'Plastic', 'PET', '', '3.3g'],
+  ['Invented sample order', '', 'Plastic', 'PP', '', ''],
 ];
 
 describe('atlas:import', () => {
@@ -102,7 +102,7 @@ describe('atlas:import', () => {
       'Rows skipped,1',
       'Manufacturers found,0',
       'Quotes recorded,0',
-      'Item name agreed with Category and Material,3 of 3',
+      'Category agreed with the rest of the row,3 of 3',
     ]);
     expect(report[9]).toBe('Row,Item name,Outcome,Code,Manufacturer,Quote,Reason skipped,Read from the row,Dropped,Flags');
     expect(report.slice(10, 14).map((line) => line.split(',').slice(0, 3).join(','))).toEqual([
@@ -154,9 +154,9 @@ describe('atlas:import', () => {
   it('gives every row an item name merged down three rows', async () => {
     const path = await workbook(
       [
-        ['Invented merged cup', 'Cup', 'Plastic - PP', 80, ''],
-        ['', 'Cup', 'Plastic - PP', 90, ''],
-        ['', 'Cup', 'Plastic - PP', 95, ''],
+        ['Invented merged cup', 'Cup', 'Plastic', 'PP', 80, ''],
+        ['', 'Cup', 'Plastic', 'PP', 90, ''],
+        ['', 'Cup', 'Plastic', 'PP', 95, ''],
       ],
       'C4:C6',
     );
@@ -175,18 +175,17 @@ describe('atlas:import', () => {
  */
 async function blocksWorkbook(): Promise<string> {
   const book = new ExcelJS.Workbook();
-  const sheet = book.addWorksheet('Main Table');
-  const products: [string, string, string, number | string][] = [
-    ['Invented PP cup', 'Cup', 'Plastic - PP', 90],
-    ['Invented PET lid', 'Lid', 'Plastic - PET', ''],
-    ['Invented PP bowl', 'Bowl', 'Plastic - PP', ''],
-    ['Invented PP cup', 'Cup', 'Plastic - PP', 90],
+  const sheet = book.addWorksheet('Restructured Main Table');
+  const products: [string, string, string, string, number | string][] = [
+    ['Invented PP cup', 'Cup', 'Plastic', 'PP', 90],
+    ['Invented PET lid', 'Lid', 'Plastic', 'PET', ''],
+    ['Invented PP bowl', 'Bowl', 'Plastic', 'PP', ''],
+    ['Invented PP cup', 'Cup', 'Plastic', 'PP', 90],
   ];
-  products.forEach(([itemName, category, material, dimension], index) => {
-    sheet.getCell(index + 4, 3).value = itemName;
-    sheet.getCell(index + 4, 4).value = category;
-    sheet.getCell(index + 4, 5).value = material;
-    sheet.getCell(index + 4, 6).value = dimension;
+  products.forEach((values, index) => {
+    values.forEach((value, column) => {
+      sheet.getCell(index + 4, column + 3).value = value;
+    });
   });
   sheet.getCell('A4').value = 'Acme Packaging';
   sheet.getCell('B4').value = 'Atlantis';
@@ -194,9 +193,9 @@ async function blocksWorkbook(): Promise<string> {
   sheet.mergeCells('B4:B5');
   sheet.getCell('A6').value = 'Borealis Boxes';
   sheet.getCell('B6').value = 'Lemuria';
-  sheet.getCell('O4').value = 0.0123;
-  sheet.getCell('O4').numFmt = '"$"#,##0.0000';
-  sheet.getCell('U4').value = '30 days';
+  sheet.getCell('U4').value = 0.0123;
+  sheet.getCell('U4').numFmt = '"$"#,##0.0000';
+  sheet.getCell('AA4').value = '30 days';
   const path = join(folder, 'blocks.xlsx');
   await book.xlsx.writeFile(path);
   return path;
