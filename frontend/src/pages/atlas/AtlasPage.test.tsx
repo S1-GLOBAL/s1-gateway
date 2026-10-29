@@ -112,7 +112,8 @@ describe('AtlasPage', () => {
       items: [savedFor(ILLUSTRATIVE, 'Bowl lid')],
       total: 1,
     }));
-    renderPage({ library });
+    // A name the reader finds no facts in, so its names show with nothing to confirm.
+    renderPage({ library, readText: async () => ({ read: [], ignored: [], conflicts: [], notes: [], decoded: null }) });
     expect(await screen.findByRole('heading', { level: 1, name: 'Atlas' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: 'Atlas' }).className).toContain('sr-only');
     expect(screen.getByRole('tab', { name: 'Search' }).getAttribute('aria-selected')).toBe('true');

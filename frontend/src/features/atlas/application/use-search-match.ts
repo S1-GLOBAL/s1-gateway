@@ -13,15 +13,16 @@ export interface SearchMatch {
 /**
  * The saved Spec ID a search's code answers: the one whose code it is, or
  * else the only one that fits every fact read. Several that fit are no single
- * answer, so none is. While the next lookup is answered, the last answer is
- * not used, so a match is never shown for text since changed.
+ * answer, so none is. Undefined until both lookups answer for this code, so
+ * a match is never shown for text since changed, nor moves once shown; null
+ * with no code.
  */
-export function useSearchMatch(decoded: DecodedSpecId | null | undefined): SearchMatch | null {
+export function useSearchMatch(decoded: DecodedSpecId | null | undefined): SearchMatch | null | undefined {
   const exact = useExactMatch(decoded?.code);
   const similar = useSimilarSpecIds(decoded ? knownCriteria(decoded) : {}, { keepPrevious: true, enabled: decoded != null });
   if (decoded == null) return null;
   if (exact.data) return { saved: exact.data, exact: true };
-  if (exact.isPending || !similar.data || similar.isPlaceholderData) return null;
+  if (exact.isPending || !similar.data || similar.isPlaceholderData) return undefined;
   const [only] = similar.data.fits;
   return similar.data.fits.length === 1 && only !== undefined ? { saved: only, exact: false } : null;
 }

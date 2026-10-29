@@ -47,6 +47,8 @@ export function AtlasLibrary({
   const [page, setPage] = useState(1);
   /** A product type chosen for text that names none, kept while the text is the one it was chosen for. */
   const [chosen, setChosen] = useState<{ text: string; productType: string } | null>(null);
+  /** The text and code Yes, proceed was pressed for: what was confirmed for one is not for the next. */
+  const [proceededFor, setProceededFor] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -77,8 +79,14 @@ export function AtlasLibrary({
     setPage(library.data.page);
   }
   const lookup = useCodeLookup(code);
-  // The saved Spec ID the reading answers, shown above as a match: the list leaves it out.
-  const match = useSearchMatch(reading.data?.decoded);
+  const reads = code === null && asked.length >= READ_MIN_LENGTH;
+  const decoded = reading.isPlaceholderData ? null : (reading.data?.decoded ?? null);
+  const confirming = decoded === null ? null : `${asked}|${productTypeChosen ?? ''}|${decoded.code}`;
+  const proceeded = confirming !== null && proceededFor === confirming;
+  // Nothing is looked up until Yes, proceed: then the saved Spec ID the code answers shows above, and the list leaves it out.
+  const match = useSearchMatch(proceeded ? decoded : null);
+  // While a code waits for Yes, proceed, no Spec ID shows, not even by name.
+  const waiting = reads && (reading.isPending || reading.isPlaceholderData || (decoded !== null && !proceeded));
   const readRefused = reading.error?.code === 'VALIDATION_FAILED' ? reading.error.fields.text : undefined;
   const namesRefused = namesAsked && library.error?.code === 'VALIDATION_FAILED' ? library.error.fields.q : undefined;
 
@@ -95,7 +103,7 @@ export function AtlasLibrary({
         spellCheck={false}
       />
 
-      {code === null && asked.length >= READ_MIN_LENGTH && (
+      {reads && (
         <TextSearch
           // What was confirmed for one text is not confirmed for the next.
           key={`${asked}|${productTypeChosen ?? ''}`}
@@ -103,19 +111,22 @@ export function AtlasLibrary({
           text={asked}
           dictionary={dictionary}
           onChooseProductType={(productType) => setChosen({ text: asked, productType })}
+          proceeded={proceeded}
+          onProceed={() => setProceededFor(confirming)}
+          match={match}
           timeZone={timeZone}
         />
       )}
       {code !== null ? (
         <PastedCodeResult code={code} result={lookup} timeZone={timeZone} />
-      ) : namesAsked && !idle ? (
+      ) : namesAsked && !idle && !waiting ? (
         <LibraryList
           library={library}
           q={asked}
           productTypeName={undefined}
           page={requestedPage}
           onPageChange={setPage}
-          shownAbove={code === null && asked.length >= READ_MIN_LENGTH ? match?.saved.id : undefined}
+          shownAbove={reads ? match?.saved.id : undefined}
           timeZone={timeZone}
         />
       ) : null}

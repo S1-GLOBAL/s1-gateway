@@ -31,12 +31,15 @@ function saved(index: number, overrides: Partial<SavedSpecId> = {}): SavedSpecId
   return { ...savedFor(ILLUSTRATIVE, `Lid ${index}`, { id }), slots: readCode(ILLUSTRATIVE).slots, ...overrides };
 }
 
+const NO_FACTS = { read: [], ignored: [], conflicts: [], notes: [], decoded: null };
+
 function renderLibrary(
   overrides: Partial<AtlasGateway> = {},
   dictionary: AtlasDictionary = s1Dictionary,
   untilAsked = false,
 ) {
-  const gateway = gatewayWith({ library: vi.fn(async () => EMPTY), ...overrides });
+  // A name the reader finds no facts in, so its names show with nothing to confirm.
+  const gateway = gatewayWith({ library: vi.fn(async () => EMPTY), readText: async () => NO_FACTS, ...overrides });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 60_000 } } });
   render(
     <QueryClientProvider client={queryClient}>

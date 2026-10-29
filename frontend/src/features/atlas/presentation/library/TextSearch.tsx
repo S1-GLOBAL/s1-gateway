@@ -1,16 +1,16 @@
 import { CircleCheck } from 'lucide-react';
 import * as m from 'motion/react-m';
 import { Link } from 'react-router-dom';
+import { Button } from '@/shared/ui/Button';
 import { cn } from '@/shared/ui/cn';
 import { ArrowRightIcon } from '@/shared/ui/icons';
 import { useIconTrigger } from '@/shared/ui/motion';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SelectField } from '@/shared/ui/SelectField';
 import { SkeletonBlock, SkeletonRegion } from '@/shared/ui/Skeleton';
-import { useSearchMatch } from '../../application/use-search-match';
 import type { useReadText } from '../../application/use-read-text';
 import type { SearchMatch } from '../../application/use-search-match';
-import type { AtlasDictionary, DecodedSpecId, SlotRuleEntry, SpecIdTextReading } from '../../domain/atlas';
+import type { AtlasDictionary, DecodedSpecId, SpecIdTextReading } from '../../domain/atlas';
 import { dictionaryOptions } from '../dictionary-options';
 import { NewSpecIdLink } from './NewSpecIdLink';
 import { SpecIdCard } from './SpecIdCard';
@@ -32,16 +32,22 @@ export interface TextSearchProps {
   dictionary: AtlasDictionary;
   /** Reads the text again as this product type. */
   onChooseProductType: (productType: string) => void;
+  /** Whether Yes, proceed was pressed for the code read: until it is, nothing is looked up. */
+  proceeded: boolean;
+  onProceed: () => void;
+  /** The saved Spec ID the code answers, once proceeded: shown above the groups. Undefined until known. */
+  match: SearchMatch | null | undefined;
   timeZone?: string;
 }
 
 /**
- * What the text reads as, while it is typed: the code, the way to correct it,
- * and the saved Spec IDs that fit or might; or a product type to choose; or
- * that it read nothing. The last reading stays, dimmed, while the next is
- * read. Nothing is saved until Save as a new Spec ID is pressed.
+ * What the text reads as, while it is typed: the code to confirm and the way
+ * to correct it; or a product type to choose; or that it read nothing. Only
+ * once Yes, proceed is pressed are the saved Spec IDs looked up and shown: the
+ * match, then those that fit or might. The last reading stays, dimmed, while
+ * the next is read. Nothing is saved until Save as a new Spec ID is pressed.
  */
-export function TextSearch({ reading, text, dictionary, onChooseProductType, timeZone }: TextSearchProps) {
+export function TextSearch({ reading, text, dictionary, onChooseProductType, proceeded, onProceed, match, timeZone }: TextSearchProps) {
   if (reading.isPending) {
     return (
       <SkeletonRegion label="Search">
@@ -61,44 +67,24 @@ export function TextSearch({ reading, text, dictionary, onChooseProductType, tim
   const busy = reading.isPlaceholderData;
   if (found.decoded) {
     return (
-      <CodeOrMatch
-        reading={found}
-        decoded={found.decoded}
-        text={text}
-        rules={dictionary.rules}
-        busy={busy}
-        timeZone={timeZone}
-      />
+      <div className="flex flex-col gap-6">
+        <CodeBuilt reading={found} decoded={found.decoded} busy={busy} proceeded={proceeded} onProceed={onProceed} />
+        {proceeded && match === undefined && (
+          <SkeletonRegion label="Spec IDs" className="flex flex-col gap-3">
+            {[0, 1, 2].map((card) => (
+              <SkeletonBlock key={card} className="h-32 w-full rounded-surface" order={card} />
+            ))}
+          </SkeletonRegion>
+        )}
+        {proceeded && match && <Match match={match} decoded={found.decoded} timeZone={timeZone} />}
+        {proceeded && match !== undefined && (
+          <TextSearchResults decoded={found.decoded} text={text} rules={dictionary.rules} matchedId={match?.saved.id} timeZone={timeZone} />
+        )}
+      </div>
     );
   }
   if (found.read.length === 0) return <NoFacts reading={found} busy={busy} />;
   return <NoProductType reading={found} dictionary={dictionary} busy={busy} onChoose={onChooseProductType} />;
-}
-
-/**
- * The saved Spec ID the facts answer, when there is one: the one whose code
- * they make, or the only one that fits them all. Else the code to confirm.
- * Until the lookups answer, the code shows, so the card never blanks between
- * keystrokes.
- */
-function CodeOrMatch(props: {
-  reading: SpecIdTextReading;
-  decoded: DecodedSpecId;
-  text: string;
-  rules: readonly SlotRuleEntry[];
-  busy: boolean;
-  timeZone?: string;
-}) {
-  const match = useSearchMatch(props.decoded);
-  if (match) {
-    return (
-      <div className="flex flex-col gap-6">
-        <Match match={match} decoded={props.decoded} timeZone={props.timeZone} />
-        <TextSearchResults decoded={props.decoded} text={props.text} rules={props.rules} matchedId={match.saved.id} timeZone={props.timeZone} />
-      </div>
-    );
-  }
-  return <CodeBuilt {...props} />;
 }
 
 /**
@@ -143,42 +129,39 @@ function cardFor(busy: boolean): string {
   return busy ? `${CARD} opacity-60 transition-opacity` : `${CARD} transition-opacity`;
 }
 
+/** The code read and what it was read from, to confirm before anything is looked up. */
 function CodeBuilt({
   reading,
   decoded,
-  text,
-  rules,
   busy,
-  timeZone,
+  proceeded,
+  onProceed,
 }: {
   reading: SpecIdTextReading;
   decoded: DecodedSpecId;
-  text: string;
-  rules: readonly SlotRuleEntry[];
   busy: boolean;
-  timeZone?: string;
+  proceeded: boolean;
+  onProceed: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-6">
-      <section aria-label="What Search read" aria-busy={busy} className={cardFor(busy)}>
-        <p role="status" className="text-md font-medium text-ink">
-          Does this code look right?
-        </p>
-        <p
-          aria-label="Spec ID"
-          className="self-start rounded-control bg-accent-soft px-3 py-1.5 font-mono text-lg font-semibold break-all text-accent-ink"
-        >
-          {decoded.code}
-        </p>
-        <WhatWasRead reading={reading} />
-        <div className="flex flex-wrap gap-3">
-          <Link to={`/atlas/new?code=${encodeURIComponent(decoded.code)}`} className={SECONDARY_LINK}>
-            No, edit it
-          </Link>
-        </div>
-      </section>
-      <TextSearchResults decoded={decoded} text={text} rules={rules} timeZone={timeZone} />
-    </div>
+    <section aria-label="What Search read" aria-busy={busy} className={cardFor(busy)}>
+      <p role="status" className="text-md font-medium text-ink">
+        Does this code look right?
+      </p>
+      <p
+        aria-label="Spec ID"
+        className="self-start rounded-control bg-accent-soft px-3 py-1.5 font-mono text-lg font-semibold break-all text-accent-ink"
+      >
+        {decoded.code}
+      </p>
+      <WhatWasRead reading={reading} />
+      <div className="flex flex-wrap gap-3">
+        {!proceeded && <Button onClick={onProceed}>Yes, proceed</Button>}
+        <Link to={`/atlas/new?code=${encodeURIComponent(decoded.code)}`} className={SECONDARY_LINK}>
+          No, edit it
+        </Link>
+      </div>
+    </section>
   );
 }
 
