@@ -187,10 +187,10 @@ describe('reading a product description (plan 0011)', () => {
 
   it('reads a vessel supplied with its lid as the combined product', () => {
     const cup = described('12oz PET Cups (2c Print) w/ Lids');
-    expect(cup.facts.map((fact) => fact.meaning)).toEqual(['Cup with Cup Lid', 'Polymer, PET', '12 oz']);
+    expect(cup.facts.map((fact) => fact.meaning)).toEqual(['Cup with Cup Lid', 'Polymer, PET', '12 oz', '2 colours']);
     expect(cup.notes.some((note) => note.startsWith('Product type:'))).toBe(false);
-    expect(cup.ignored).toEqual(['2c']);
-    expect(cup.code).toBe('A33B1-G112');
+    expect(cup.ignored).toEqual([]);
+    expect(cup.code).toBe('A33B1R3-G112');
 
     expect(meanings('Bowl with Bowl Lid')).toEqual(['Bowl with Bowl Lid']);
     expect(meanings('Portion cup with lid')).toContain('Portion cup with Portion cup lid');
@@ -227,6 +227,33 @@ describe('reading a product description (plan 0011)', () => {
     const cupLid = described('lid for 8 oz cup');
     expect(cupLid.code).toBe('A2');
     expect(meanings('Portion cup lid')).toEqual(['Portion cup lid']);
+  });
+
+  it('reads a size written twice as one, and no size twice in Left out', () => {
+    const lid = described('96MM LIDS - WHITE, PP, 96mm');
+    expect(lid.code).toBe('A2B3D3E1-H96');
+    expect(lid.ignored).toEqual([]);
+    expect(described('90mm PET Lid, PET, Top dia 90mm').code).toBe('A2B1E1-H90');
+    expect(described('Cup 90mm, 80mm').code).toBe('A5');
+    expect(described('96MM LIDS - KRAFT, Kraft, 96mm, 300+300+250').code).toBe('A2B12D4E1-H96');
+  });
+
+  it('reads supplier shorthand for print and wall: 1c print, SW, DW', () => {
+    expect(described('PET Plastic Cups 16 oz (1c print)').code).toBe('A5B1R2-G116');
+    expect(described('16oz PET CUP unprinted').code).toBe('A5B1R1-G116');
+    expect(described('8 oz Paper Cup SW').code).toBe('A5B24Q1-G18');
+    expect(described('12 oz Paper Cup DW').code).toBe('A5B24Q2-G112');
+  });
+
+  it('reads one capacity written in two units, and still leaves out two amounts', () => {
+    const cup = described('5 oz (150 ML) Cold Paper Cup');
+    expect(cup.code).toBe('A5B24-G15');
+    expect(cup.notes.some((note) => note.startsWith('Nominal capacity'))).toBe(false);
+    expect(described('16 oz / 500 ml paper cup').code).toBe('A5B24-G116');
+
+    const two = described('5 oz paper cup 500 ml');
+    expect(two.code).toBe('A5B24');
+    expect(two.notes.some((note) => note.startsWith('Nominal capacity was given as'))).toBe(true);
   });
 
   it('reads a grade over the family named beside it: Plastic and PET is PET, Paper and White Kraft is white kraft', () => {

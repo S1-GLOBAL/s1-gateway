@@ -10,6 +10,8 @@ export interface SizeReading {
   readonly ruling: Ruling;
   /** The text the size was read from, as it appears in the text given. */
   readonly words: string;
+  /** The same size written again elsewhere, each as it appears: `96MM LIDS, 96mm`. */
+  readonly repeats?: readonly string[];
 }
 
 /** Product types each ruling reads, as #28's table gives them, in S2 0.1.0's letters. */
@@ -41,9 +43,10 @@ const NUMBER = `(\\d+[\\s-]+${FRACTION}|\\d*${GLYPH}|${FRACTION}|\\d+(?:\\.\\d+)
 /** A unit a size may be written in; none written is millimetres (ADR 0019), or inches beside a fraction (#58). */
 const UNIT = '\\s*(mm|cm|inches|inch|in|")?';
 const TIMES = '\\s*[x×*]\\s*';
-const EDGE_BEFORE = '(?<![a-z0-9./])';
-/** No letter, digit or slash after a number, and no decimal point either: `1.9g` holds no size `1`. */
-const EDGE_AFTER = '(?![a-z0-9/]|\\.\\d)';
+/** A number joined to another by `+` is a layer of something, not a size: `300+300+250` gsm. */
+const EDGE_BEFORE = '(?<![a-z0-9./+])';
+/** No letter, digit, slash or `+` after a number, and no decimal point either: `1.9g` holds no size `1`. */
+const EDGE_AFTER = '(?![a-z0-9/+]|\\.\\d)';
 
 const THREE = new RegExp(`${EDGE_BEFORE}${NUMBER}${UNIT}(\\s*dia)?${TIMES}${NUMBER}${UNIT}${TIMES}${NUMBER}${UNIT}${EDGE_AFTER}`, 'g');
 const DIA_BY = new RegExp(`${EDGE_BEFORE}${NUMBER}${UNIT}\\s*dia${TIMES}${NUMBER}${UNIT}${EDGE_AFTER}`, 'g');
@@ -123,10 +126,11 @@ export function readSize(text: string, productType: string, dictionary: Dictiona
     return { facts: { shape: round, topDiameter: x, height: y }, ruling: 'R1b', words };
   }
   if (!is(R1_TYPES)) return null;
+  // One size, though it may be written more than once, as an item name and its Dimension column both do.
   const ones = [...text.matchAll(ONE)];
-  if (ones.length !== 1) return null;
-  const [match] = ones as [RegExpExecArray];
-  const [words, value, unit] = match;
-  const [rim] = measures([value], [unit]) as [MeasurementInput];
-  return { facts: { shape: round, topDiameter: rim }, ruling: 'R1', words: words.trim() };
+  const sizes = ones.map(([, value, unit]) => measures([value], [unit])[0] as MeasurementInput);
+  const [rim] = sizes;
+  if (rim === undefined || sizes.some((size) => size.value !== rim.value || size.unit !== rim.unit)) return null;
+  const [words, ...repeats] = ones.map(([written]) => written.trim()) as [string, ...string[]];
+  return { facts: { shape: round, topDiameter: rim }, ruling: 'R1', words, ...(repeats.length > 0 ? { repeats } : {}) };
 }

@@ -161,8 +161,10 @@ export function readText(text: string, dictionary: Dictionary, productType?: str
   const decide = (key: SlotKey, found: readonly ReadMatch[]) => {
     const values = [...new Set(found.map((match) => match.value))];
     const grade = key === 'material' ? gradeOverFamily(values, dictionary) : undefined;
+    const amount = key === 'capacity' ? oneAmount(values, dictionary) : undefined;
     if (values.length === 1) facts[key] = factOf(key, values[0] ?? '');
     else if (grade !== undefined) facts[key] = factOf(key, grade);
+    else if (amount !== undefined) facts[key] = factOf(key, amount);
     else {
       const first = (value: string) => found.find((match) => match.value === value) as ReadMatch;
       conflicts.push({ key, found: values.map((value) => first(value).words ?? wordsOf(text, [first(value)])) });
@@ -195,6 +197,14 @@ export function readText(text: string, dictionary: Dictionary, productType?: str
     if (size && !(round && facts.shape !== undefined && facts.shape !== roundShape)) {
       const start = masked.indexOf(size.words);
       used.push({ start, end: start + size.words.length });
+      // The same size written again is used too, so it is not left out.
+      let from = start + size.words.length;
+      for (const repeat of size.repeats ?? []) {
+        const at = masked.indexOf(repeat, from);
+        if (at === -1) continue;
+        used.push({ start: at, end: at + repeat.length });
+        from = at + repeat.length;
+      }
       for (const [key, value] of Object.entries(size.facts) as [SlotKey, FactValue][]) {
         if (facts[key] !== undefined) continue;
         facts[key] = value;
@@ -216,6 +226,29 @@ export function readText(text: string, dictionary: Dictionary, productType?: str
     .filter((word) => word.length > 0);
 
   return { facts: facts as Partial<SpecIdFactsInput>, read, ignored, conflicts };
+}
+
+/** Millilitres in one fluid ounce, US. */
+const ML_PER_OZ = 29.5735;
+
+/**
+ * The first of two capacities that are one amount in two units: `5 oz (150
+ * ML)` is 5 oz, since 5 oz is 148 mL. Within a tenth, as a trade size rounds;
+ * undefined otherwise, so `5 oz` and `500 ml` are still left out.
+ */
+function oneAmount(values: readonly string[], dictionary: Dictionary): string | undefined {
+  const [first, second] = values;
+  if (values.length !== 2 || first === undefined || second === undefined) return undefined;
+  const ounces = dictionary.liveOriginal('capacity', 'Z');
+  const millilitres = dictionary.liveOriginal('capacity', 'M');
+  const inMl = (value: string) => {
+    const amount = Number(value.slice(1));
+    if (millilitres !== undefined && value.startsWith(millilitres)) return amount;
+    return ounces !== undefined && value.startsWith(ounces) ? amount * ML_PER_OZ : Number.NaN;
+  };
+  const [a, b] = [inMl(first), inMl(second)];
+  if (Number.isNaN(a) || Number.isNaN(b) || first.slice(0, 1) === second.slice(0, 1)) return undefined;
+  return Math.abs(a - b) <= 0.1 * Math.max(a, b) ? first : undefined;
 }
 
 /**

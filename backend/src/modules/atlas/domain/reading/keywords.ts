@@ -62,10 +62,11 @@ export const KEYWORDS: readonly Keyword[] = [
   { pattern: word('half[\\s-]*dome'), slot: 'profile', value: 'HD' },
   { pattern: word('dome'), slot: 'profile', value: 'DM' },
   { pattern: word('flat[\\s-]*lid'), slot: 'profile', value: 'FL' },
-  { pattern: word('single[\\s-]*wall'), slot: 'wall', value: 'SW' },
-  { pattern: word('double[\\s-]*wall'), slot: 'wall', value: 'DW' },
+  // "SW" and "DW" are how suppliers shorten single and double wall.
+  { pattern: word('single[\\s-]*wall|sw'), slot: 'wall', value: 'SW' },
+  { pattern: word('double[\\s-]*wall|dw'), slot: 'wall', value: 'DW' },
   { pattern: word('ripple(?:[\\s-]*wall)?'), slot: 'wall', value: 'RW' },
-  { pattern: word('no[\\s-]*print'), slot: 'print', value: 'NP' },
+  { pattern: word('no[\\s-]*print|unprinted'), slot: 'print', value: 'NP' },
   // "2-3 color" is a range, so neither end is stored. It must be longer than the single count below.
   {
     pattern: word('(\\d+)\\s*(?:-|–|/)\\s*(\\d+)[\\s-]*colou?rs?(?:[\\s-]*print(?:ed|ing)?)?'),
@@ -78,6 +79,8 @@ export const KEYWORDS: readonly Keyword[] = [
   },
   // "3-color" alone is a print colour count, as "3-color print" is (#58).
   { pattern: word('(\\d+)[\\s-]*colou?rs?(?:[\\s-]*print(?:ed|ing)?)?'), slot: 'print', value: (match) => number(match).padStart(2, '0') },
+  // "1c" to "8c", as suppliers write a colour count: "(1c print)", "2c".
+  { pattern: word('([1-8])c(?:[\\s-]*print(?:ed|ing)?)?'), slot: 'print', value: (match) => number(match).padStart(2, '0') },
   { pattern: word('full[\\s-]*colou?r(?:[\\s-]*print(?:ed|ing)?)?'), slot: 'print', value: 'FC' },
   { pattern: word('(\\d+)[\\s-]*compartments?'), slot: 'compartments', value: number },
   { pattern: word('(\\d+)[\\s-]*comp'), slot: 'compartments', value: number },
