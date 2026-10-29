@@ -295,6 +295,12 @@ A description goes through the existing Atlas reader, then these extra passes, a
 
 **A size written beside its name** is that measurement: height, width, gusset, thickness, plies, servings, grams, gsm. A loose gram amount is unit weight when that slot is open, and capacity in grams when unit weight is already taken.
 
+**Supplier shorthand**, added on 2026-10-29 after a dry run of the verified list read 1,442 rows. A rim written twice, as an item name and its Dimension column both do (`96MM LIDS, 96mm`), is one rim; `diameter` is read as `dia` is. Numbers joined by `+` (`300+300+250`) and a number's whole part before its decimals (`1.9g`) are never a size. `1c` to `8c` is a print colour count, `unprinted` is no print, and `SW` and `DW` are single and double wall. One capacity in two units, within a tenth (`5 oz (150 ML)`, `16 oz / 500 ml`), is the first written; two amounts are still left out.
+
+**A lid named by its vessel in any order** is the lid: `Cup Lids`, `Bowl PET Lids`, `Lid 32 oz Paper Bowl`, `Lid fit for 6oz Deli Cup`. A lid joined to its vessel by with, and, &, w/, c/w or + is still sold with it.
+
+**A number with no unit is never stored** as a capacity. When the product has a capacity and none was read, a bare number of 2 to 4 digits gets a note: "500 has no unit. If it is the capacity, write 500 ml or 500 oz." #28's ruling R1 still reads a lone bare number on a cup, bowl or lid as its rim.
+
 ## Suggestions
 
 Anything the reader could not store is either a warning or a leftover word.
