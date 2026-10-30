@@ -1,6 +1,6 @@
 # 0031. The dictionary is edited in the app, by suggestion and approval
 
-- **Status:** Accepted
+- **Status:** Accepted; superseded in part by [0033](./0033-dictionary-options-are-known-by-number.md): options are known by number, so a suggestion no longer gives or changes letters, and a material says its family
 - **Date:** 2026-10-27
 - **Related:** [Issue #95](https://github.com/S1-GLOBAL/s1-gateway/issues/95) ·
   [Plan 0010](../plans/0010-dictionary-suggestions.md) ·

@@ -150,7 +150,9 @@ variant. Letters may be typed in any order and either case; codes are answered
 in the standard order. A Spec ID still has 25 slots, each holding a stored
 value in the layout of [ADR 0024](../decisions/0024-spec-ids-move-to-the-s2-format.md)
 and [ADR 0025](../decisions/0025-spec-ids-are-written-short.md): `Y` not known,
-`X` doesn't apply, a known value at its width (`0045`, `Z0012`, `Z0003.25`).
+`X` doesn't apply, a size at its width (`0045`), an option's number (`17`),
+or a capacity, its unit's number then the amount (`10012`, `10003.25`)
+([ADR 0033](../decisions/0033-dictionary-options-are-known-by-number.md)).
 Slots are named by key, in code order:
 `productType`, `material`, `coating`, `colourClarity`,
 `shape`, `profile`, `capacity`, `topDiameter`, `bottomDiameter`, `height`,
@@ -162,19 +164,21 @@ Every route that takes a code also takes a code given out before: a dotted
 short code (25 parts), an S1 code (74 characters, 18 slots) or a long S2 code
 (starting `S2.`, 97 characters, each marker as wide as its slot), and reads it
 as the tagged code it converts to. A marker written wide in a dotted code
-(`0000`, `XX`) is read as its letter. A dotted code written before an approved
-dictionary change renamed one of its options is read in the option's live
-letters, and a capacity keeps its unit's label
-([ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md)).
-A rename keeps an option's number, so it changes no tagged code. No route
-issues anything but tagged codes.
+(`0000`, `XX`) is read as its letter. Each option's letters in a dotted code
+are read as the option that had them, through any rename made before options
+were known by number, and a deleted option's as its retired number
+([ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md),
+[ADR 0033](../decisions/0033-dictionary-options-are-known-by-number.md)). No
+route issues anything but tagged codes.
 
 `AtlasDictionary` is `{ release, approvedOn, slots, rules, change }`. `slots` holds the
 thirteen dictionary slots in code order (`productType` to `profile`, then
-`capacity` for its unit letters, then `wall`, `print`, `lidOpening`, `handle`,
-`wrap` and `window`), each `{ key, name, values: { code, meaning, number, searchWords }[] }`;
-`number` is written after the slot's letter in a code (material 17 is `B17`),
-and `searchWords` are the words approved suggestions gave the option, in
+`capacity` for its units, then `wall`, `print`, `lidOpening`, `handle`,
+`wrap` and `window`), each `{ key, name, values: { code, meaning, number, broader, searchWords }[] }`;
+`code` is the option's key, its number as text (`"17"`), `number` is written
+after the slot's letter in a code (material 17 is `B17`), `broader` is, for a
+material, the key of the material it is a grade of, else null, and
+`searchWords` are the words approved suggestions gave the option, in
 order, and never the word list in the code
 ([ADR 0031](../decisions/0031-the-dictionary-is-edited-by-suggestion-and-approval.md)).
 `rules` holds one `{ productType, slot, rule }` per product type and ruled
@@ -190,7 +194,7 @@ order:
 | `number` | number | 1–25 |
 | `key` | string | The slot key |
 | `name` | string | As people read it, e.g. `Colour / clarity` |
-| `raw` | string | The slot's stored value: `BCS`, `Z0012`, `0090`, `Y` or `X` |
+| `raw` | string | The slot's stored value: `17`, `10012`, `0090`, `Y` or `X` |
 | `part` | string | How the code writes it: `B17`, `G112`, `H90`; empty when the code leaves it out |
 | `state` | string | `value`, `not-known` (`Y`) or `does-not-apply` (`X`) |
 | `meaning` | string | `Bowl lid`, `90 mm`, `3.3 g`, `6 oz`, `3 compartments`, `Not known`, `Doesn't apply` |
@@ -200,9 +204,10 @@ order:
 required; every other slot may be left out or `null`, meaning no value: the
 code leaves it out, and its slot holds `X` where it doesn't apply and `Y`
 everywhere else.
-Dictionary slots take a code (`"APS"`). `compartments` (1–12) and `plies`
-(1–4) take a whole number as a string (`"3"`). `capacity` is `{ unit, value }`: a
-unit letter and an amount, more than 0 and at most 9999, with at most 6 decimal
+Dictionary slots take an option's key, its number as text (`"4"`).
+`compartments` (1–12) and `plies` (1–4) take a whole number as a string
+(`"3"`). `capacity` is `{ unit, value }`: a unit's key (`"1"` for ounces) and an
+amount, more than 0 and at most 9999, with at most 6 decimal
 places (`"3.25"`). Measured slots are `{ value, unit }`, where
 `value` is a decimal string with at most 6 decimal places, never a JSON
 number:
@@ -269,7 +274,7 @@ nothing. Nothing is saved on any 4xx.
 
 `GET /atlas/spec-ids?<slot>=<value>…` takes any subset of slot keys from
 `productType` to `window`, each with a raw slot value (`topDiameter=0090`,
-`capacity=Z0006`, `compartments=03`). It answers `{ fits, mightFit }`:
+`capacity=10006`, `compartments=03`). It answers `{ fits, mightFit }`:
 
 - **fits:** every chosen slot equals the requested value. Those with the
   fewest slots not known (`Y`) come first;
@@ -351,23 +356,25 @@ until an admin who did not make the suggestion approves it (#95,
 Approving and rejecting are admins', behind the admin gate.
 
 `POST /atlas/dictionary/suggestions` takes `{ slot, code, proposal }`: one of
-the thirteen dictionary lists, the option it is about (the new code for an
-add, the product type for a rules change), and a `proposal` by `kind`:
+the thirteen dictionary lists, the key of the option it is about (the product
+type for a rules change; empty for an add, which is numbered with the next
+number in its list when it is approved), and a `proposal` by `kind`:
 
 | `kind` | `proposal` |
 |---|---|
-| `add` | `{ meaning, searchWords, rules }` — `rules` holds every ruled field's rule for a new product type, and is null for any other list |
-| `edit` | `{ newCode, meaning, searchWords }` — each null leaves it; at least one is not null; `searchWords` replaces the whole list |
-| `delete` | `{ replacement }` — what saved Spec IDs holding the option become: another code, `Y`, or null when none holds it |
+| `add` | `{ meaning, searchWords, rules, broader }` — `rules` holds every ruled field's rule for a new product type, and is null for any other list; `broader`, for a material only, is the key of the material it is a grade of, or null |
+| `edit` | `{ newCode, meaning, searchWords }` — `newCode` is always null: an option's number never changes; each other null leaves it; at least one is not null; `searchWords` replaces the whole list |
+| `delete` | `{ replacement }` — what saved Spec IDs holding the option become: another option's key, `Y`, or null when none holds it |
 | `rules` | `{ rules }` — a product type's fields whose rule changes, `{ coating: "never" }` |
 
-Codes are compared in capitals and wording trimmed. Every broken rule is
-answered at once, 400 `VALIDATION_FAILED` with `details.fields` keyed by
-`code`, `newCode`, `meaning`, `searchWords`, `replacement` or `rules`, in
-#95's words where #95 gives them: a code of the wrong width or characters, a
-marker, a code holding an `X` (a Spec ID reads it as "doesn't apply"), a code
-the list already has, an option the list does not have, an
-empty wording or one over 120 characters, `RD`'s letters or deletion, a missing
+Keys and wording are trimmed. Every broken rule is answered at once, 400
+`VALIDATION_FAILED` with `details.fields` keyed by `code`, `newCode`,
+`meaning`, `searchWords`, `broader`, `replacement` or `rules`, in #95's words
+where #95 gives them: a key given for an add, or a new code for an edit (an
+option is known by its number, given on approval), a tenth capacity unit, a
+`broader` that is not a material or is given for another list, an option the
+list does not have, an empty wording or one over 120 characters, deleting
+Round, a missing
 replacement, a product type that would become not known, a missing or unchanged
 rule, or a search word in the wrong form (2–40 lower-case letters, digits, spaces or hyphens; at most 20)
 or one that already finds another option of that list.
@@ -397,8 +404,7 @@ in one transaction with every saved Spec ID it rewrites:
 
 | Kind | What changes in saved Spec IDs holding the option |
 |---|---|
-| `edit` with `newCode` | The code is replaced by the new letters; a capacity keeps its number |
-| `delete` | The code is replaced by `replacement`; `Y` leaves a capacity `Y` |
+| `delete` | The option is replaced by `replacement`; `Y` leaves a capacity `Y`. A deleted material's grades become grades of what it was a grade of |
 | `rules` | Nothing is replaced |
 
 Then every ruled field of each is refitted to the new rules: `X` where it no

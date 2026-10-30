@@ -38,7 +38,7 @@ export interface DescribedSlot {
   readonly number: number;
   readonly key: SlotKey;
   readonly name: string;
-  /** The slot's value as it is stored: `BCS`, `Z0012`, `0090`, or the marker `Y` or `X` (ADR 0025). */
+  /** The slot's value as it is stored: an option's number `17`, a capacity `10012`, a size `0090`, or the marker `Y` or `X` (ADR 0025, ADR 0033). */
   readonly raw: string;
   /** How the code writes it: `B17`, `G112`, `H90`; empty when it is left out (ADR 0032). */
   readonly part: string;
@@ -103,7 +103,8 @@ export class SpecId {
    * either case; its messages are about the whole code. A dotted code given
    * out before is read slot by slot, with at most one message per slot: S1,
    * long (`S2.`) or short, a marker written wide (`0000`, `XX`) as its one
-   * letter (ADR 0025), and an option in the letters it has now (ADR 0031).
+   * letter (ADR 0025), and each option's letters as the option it is now
+   * (ADR 0031, ADR 0033).
    */
   static parse(input: string, dictionary: Dictionary): Result<SpecId, InvalidSpecIdError> {
     const trimmed = input.trim();
@@ -116,7 +117,7 @@ export class SpecId {
       return err(new InvalidSpecIdError({ code: [messages.wrongPartCount(parts.length)] }));
     }
     const written = Object.fromEntries(SLOTS.map((slot, index) => [slot.key, parts[index] ?? ''])) as SlotValues;
-    return SpecId.fromSlots(live(written, dictionary), dictionary);
+    return SpecId.fromSlots(fromLetters(written, dictionary), dictionary, written);
   }
 
   /** A code written today: its facts, built. Every message is about the whole code. */
@@ -131,13 +132,15 @@ export class SpecId {
 
   /**
    * A Spec ID from each slot's value, checked as a code is: each value on its
-   * own, then against what its product type, shape and material allow.
+   * own, then against what its product type, shape and material allow. A
+   * message quotes each slot as `written`: a dotted code's letters, not the
+   * numbers they were read as.
    */
-  static fromSlots(values: SlotValues, dictionary: Dictionary): Result<SpecId, InvalidSpecIdError> {
+  static fromSlots(values: SlotValues, dictionary: Dictionary, written: SlotValues = values): Result<SpecId, InvalidSpecIdError> {
     const issues: SpecIdIssues = {};
     const passed = new Set<SlotKey>();
     for (const { key } of SLOTS) {
-      const problem = checkSlotValue(key, values[key], dictionary);
+      const problem = checkSlotValue(key, values[key], dictionary, written[key]);
       if (problem) issues[key] = [problem];
       else passed.add(key);
     }
@@ -244,20 +247,12 @@ export class SpecId {
     return this.writtenCode;
   }
 
-  /**
-   * The slots as the dotted code an API before ADR 0032 wrote them, to find
-   * a row an older API saves during a deploy. A decimal capacity has none.
-   */
-  get dottedCode(): string {
-    return SLOTS.map((slot) => this.values[slot.key]).join('.');
-  }
-
-  /** A slot's value as it is stored: `BCS`, `Z0012`, `0090`, `Y`, `X`. */
+  /** A slot's value as it is stored: an option's number `17`, a capacity `10012`, a size `0090`, or `Y` or `X`. */
   slot(key: SlotKey): string {
     return this.values[key];
   }
 
-  /** Whether every slot holds the same value as `other`'s: one code, the same letters and markers. */
+  /** Whether every slot holds the same value as `other`'s: the same options, sizes and markers. */
   sameSlotsAs(other: SpecId): boolean {
     return SLOTS.every(({ key }) => this.values[key] === other.slot(key));
   }
@@ -279,36 +274,38 @@ export class SpecId {
  * stray `X`, then what its kind allows — and returns the first problem, or
  * undefined. Applicability, which needs the other slots, is not checked here.
  */
-export function checkSlotValue(key: SlotKey, raw: string, dictionary: Dictionary): string | undefined {
+export function checkSlotValue(key: SlotKey, raw: string, dictionary: Dictionary, written = raw): string | undefined {
   const { name, width, kind } = slotDefinition(key);
   if (isNotKnown(raw) || isDoesNotApply(raw)) return markerProblem(key, raw);
-  // A capacity with decimals is longer than its width: `Z0003.25` (ADR 0032).
-  if (raw.length !== width && !(kind === 'capacity' && raw.includes('.'))) return messages.wrongWidth(name, raw, width);
-  if (raw.includes(DOES_NOT_APPLY)) return messages.mixedMarker(name, raw);
+  // An option is its number, of any width (ADR 0033); a capacity with decimals is longer than its width: `10003.25` (ADR 0032).
+  if (kind !== 'dictionary' && raw.length !== width && !(kind === 'capacity' && raw.includes('.'))) {
+    return messages.wrongWidth(name, written, width);
+  }
+  if (raw.includes(DOES_NOT_APPLY)) return messages.mixedMarker(name, written);
 
   switch (kind) {
     case 'dictionary':
       return dictionary.meaningOf(key as DictionarySlotKey, raw) === undefined
-        ? messages.notInDictionary(name, raw)
+        ? messages.notInDictionary(name, written)
         : undefined;
     case 'capacity': {
-      const letter = raw.slice(0, 1);
+      const unit = raw.slice(0, 1);
       const digits = raw.slice(1);
-      if (dictionary.meaningOf('capacity', letter) === undefined) return messages.notInDictionary(name, raw);
-      if (!CAPACITY_DIGITS.test(digits)) return messages.notANumber(name, raw);
-      if (/^0+(?:\.0+)?$/.test(digits)) return messages.outOfRange(name, raw, capacityRange(letter, dictionary));
+      if (dictionary.meaningOf('capacity', unit) === undefined) return messages.notInDictionary(name, written);
+      if (!CAPACITY_DIGITS.test(digits)) return messages.notANumber(name, written);
+      if (/^0+(?:\.0+)?$/.test(digits)) return messages.outOfRange(name, written, capacityRange(unit, dictionary));
       return undefined;
     }
     case 'measure':
-      return DIGITS.test(raw) ? undefined : messages.notANumber(name, raw);
+      return DIGITS.test(raw) ? undefined : messages.notANumber(name, written);
     case 'count': {
-      if (!DIGITS.test(raw)) return messages.notANumber(name, raw);
+      if (!DIGITS.test(raw)) return messages.notANumber(name, written);
       const { max } = COUNTS[key as CountSlotKey];
       const count = Number.parseInt(raw, 10);
       return count > max ? messages.outOfRange(name, String(count), `1–${max}`) : undefined;
     }
     case 'variant':
-      return messages.notInDictionary(name, raw);
+      return messages.notInDictionary(name, written);
   }
 }
 
@@ -382,7 +379,7 @@ function readProductType(value: string, dictionary: Dictionary): Reading {
   return readCode('productType', value, dictionary);
 }
 
-/** A dictionary code as given. A marker is not a value, so `"Y"` is refused like any unknown code. */
+/** An option's key as given. A marker is not a value, so `"Y"` is refused like any unknown option. */
 function readCode(key: DictionarySlotKey, value: string, dictionary: Dictionary): Reading {
   if (dictionary.meaningOf(key, value) === undefined) {
     return { problem: messages.notInDictionary(slotDefinition(key).name, value) };
@@ -467,28 +464,27 @@ function checkS1(code: string): InvalidSpecIdError | undefined {
 }
 
 /**
- * How a capacity's unit is written after a number. The labels name S2
- * 0.1.0's units, so a unit an approved change renamed keeps its label, and a
- * unit given the letters of one renamed away has none (ADR 0031).
+ * How a capacity's unit is written after a number: `oz` for S2 0.1.0's
+ * ounces; a unit added since, by its wording.
  */
-function capacityLabel(letter: string, dictionary: Dictionary): string {
-  const capacity = dictionary.renames().filter((rename) => rename.slot === 'capacity');
-  const startedAs = capacity.find((rename) => rename.newCode === letter && CAPACITY_UNIT_LABELS[rename.oldCode] !== undefined);
-  if (startedAs) return CAPACITY_UNIT_LABELS[startedAs.oldCode] ?? letter;
-  const movedAway = capacity.some((rename) => rename.oldCode === letter);
-  return (movedAway ? undefined : CAPACITY_UNIT_LABELS[letter]) ?? letter;
+function capacityLabel(unit: string, dictionary: Dictionary): string {
+  return CAPACITY_UNIT_LABELS[unit] ?? dictionary.meaningOf('capacity', unit)?.toLowerCase() ?? unit;
 }
 
-function capacityRange(letter: string, dictionary: Dictionary): string {
-  return `1–${CAPACITY_MAX} ${capacityLabel(letter, dictionary)}`;
+function capacityRange(unit: string, dictionary: Dictionary): string {
+  return `1–${CAPACITY_MAX} ${capacityLabel(unit, dictionary)}`;
 }
 
-/** A code's slots as `dictionary` reads them now: one written before an approved change, in its live letters (ADR 0031). */
-function live(values: SlotValues, dictionary: Dictionary): SlotValues {
+/**
+ * A dotted code's slots as `dictionary` holds them: each option's letters,
+ * through any rename then, as the option's number (ADR 0031, ADR 0033).
+ * Letters no option had stay, for the check to refuse.
+ */
+function fromLetters(values: SlotValues, dictionary: Dictionary): SlotValues {
   const now: Record<SlotKey, string> = { ...values };
   for (const key of DICTIONARY_SLOTS) {
     const written = values[key];
-    now[key] = (key === 'capacity' ? dictionary.liveCapacity(written) : dictionary.live(key, written)) ?? written;
+    now[key] = (key === 'capacity' ? dictionary.capacityFromLetters(written) : dictionary.fromLetters(key, written)) ?? written;
   }
   return now;
 }

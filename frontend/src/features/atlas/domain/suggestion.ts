@@ -1,4 +1,5 @@
 import { RULE_LABELS, SLOT_NAMES, type AtlasDictionary, type SlotKey, type SlotRule, type Staff } from './atlas';
+import { optionCode } from './code-letters';
 
 /*
  * Suggested changes to the Atlas dictionary (#95, ADR 0031): what one asks
@@ -11,7 +12,15 @@ export type SuggestionState = 'waiting' | 'approved' | 'rejected' | 'withdrawn';
 
 /** What a suggestion asks for, by kind. */
 export type Proposal =
-  | { kind: 'add'; meaning: string; searchWords: readonly string[]; rules: Readonly<Partial<Record<SlotKey, SlotRule>>> | null }
+  | {
+      kind: 'add';
+      meaning: string;
+      searchWords: readonly string[];
+      rules: Readonly<Partial<Record<SlotKey, SlotRule>>> | null;
+      /** For a new material, the key of the material it is a grade of (ADR 0033). */
+      broader?: string | null;
+    }
+  /** `newCode` is always null now an option's number never changes (ADR 0033); one made before may hold letters. */
   | { kind: 'edit'; newCode: string | null; meaning: string | null; searchWords: readonly string[] | null }
   | { kind: 'delete'; replacement: string | null }
   | { kind: 'rules'; rules: Readonly<Partial<Record<SlotKey, SlotRule>>> };
@@ -21,7 +30,10 @@ export interface Suggestion {
   kind: SuggestionKind;
   /** The dictionary list it is about. */
   slot: SlotKey;
-  /** The option it is about: the new code for an add, the product type for a rules change. */
+  /**
+   * The option it is about, by key, the product type for a rules change;
+   * empty for an add until it is approved and numbered (ADR 0033).
+   */
   code: string;
   proposal: Proposal;
   state: SuggestionState;
@@ -74,7 +86,10 @@ export interface SuggestionDetail extends Suggestion {
 /** What is sent to suggest a change, or to edit a waiting suggestion: its list, its option and what it asks for. */
 export interface SuggestionInput {
   slot: SlotKey;
-  /** The option it is about: the new code for an add, the product type for a rules change. */
+  /**
+   * The option it is about, by key, the product type for a rules change;
+   * empty for an add until it is approved and numbered (ADR 0033).
+   */
   code: string;
   proposal: Proposal;
 }
@@ -112,9 +127,9 @@ export function approvedLine(approved: ApprovedChange): string {
   return `Change #${approved.changeNumber} is live. ${savedSpecIds(approved.specIdsRewritten)} ${updated}.`;
 }
 
-/** Whether approving can rewrite saved Spec IDs: a new code, a deletion, or a product type's rules. */
+/** Whether approving can rewrite saved Spec IDs: a deletion, or a product type's rules. */
 export function rewritesSpecIds(proposal: Proposal): boolean {
-  return (proposal.kind === 'edit' && proposal.newCode !== null) || proposal.kind === 'delete' || proposal.kind === 'rules';
+  return proposal.kind === 'delete' || proposal.kind === 'rules';
 }
 
 /**
@@ -166,6 +181,7 @@ export function describeSuggestion(suggestion: Suggestion, dictionary: AtlasDict
   const listName = list?.name ?? fieldName(suggestion.slot);
   const waiting = suggestion.state === 'waiting';
   const meaningOf = (option: string) => list?.values.find((value) => value.code === option)?.meaning;
+  const named = optionCode(suggestion.slot, code);
   const now = (value: string | undefined): string | null => (waiting && value !== undefined ? value : null);
   const words = (all: readonly string[]) => (all.length === 0 ? 'None' : all.join(', '));
 
@@ -179,14 +195,19 @@ export function describeSuggestion(suggestion: Suggestion, dictionary: AtlasDict
           .map(([slot, rule]) => (rule === 'applies' ? fieldName(slot) : `${fieldName(slot)} (${RULE_LABELS[rule].toLowerCase()})`));
         rows.push({ label: 'Fields that apply', before: null, after: words(applies) });
       }
-      return { title: `Add ${code} to ${listName}`, rows };
+      if (proposal.broader) {
+        const broader = proposal.broader;
+        const material = dictionary.slots.find((slot) => slot.key === 'material')?.values.find((value) => value.code === broader);
+        rows.push({ label: 'A grade of', before: null, after: `${optionCode('material', broader)}${material ? ` (${material.meaning})` : ''}` });
+      }
+      return { title: code === '' ? `Add an option to ${listName}` : `Add ${named} to ${listName}`, rows };
     }
     case 'edit': {
       const rows: ChangeRow[] = [];
-      if (proposal.newCode !== null) rows.push({ label: 'Code', before: code, after: proposal.newCode });
+      if (proposal.newCode !== null) rows.push({ label: 'Code', before: named, after: proposal.newCode });
       if (proposal.meaning !== null) rows.push({ label: 'Wording', before: now(meaningOf(code)), after: proposal.meaning });
       if (proposal.searchWords !== null) rows.push({ label: 'Search words', before: null, after: words(proposal.searchWords) });
-      return { title: `Change ${code} in ${listName}`, rows };
+      return { title: `Change ${named} in ${listName}`, rows };
     }
     case 'delete': {
       const replacing = proposal.replacement;
@@ -196,10 +217,10 @@ export function describeSuggestion(suggestion: Suggestion, dictionary: AtlasDict
           : replacing === 'Y'
             ? 'Not known'
             : meaningOf(replacing) === undefined
-              ? replacing
-              : `${replacing} (${meaningOf(replacing)})`;
+              ? optionCode(suggestion.slot, replacing)
+              : `${optionCode(suggestion.slot, replacing)} (${meaningOf(replacing)})`;
       return {
-        title: `Delete ${code} from ${listName}`,
+        title: `Delete ${named} from ${listName}`,
         rows: [
           { label: 'Wording', before: now(meaningOf(code)), after: 'Deleted' },
           { label: 'Saved Spec IDs become', before: null, after: becomes },
@@ -213,7 +234,7 @@ export function describeSuggestion(suggestion: Suggestion, dictionary: AtlasDict
         const before = ruleNow(slot);
         return { label: fieldName(slot), before: now(before === undefined ? undefined : RULE_LABELS[before]), after: RULE_LABELS[rule] };
       });
-      return { title: `Change which fields apply to ${code}`, rows };
+      return { title: `Change which fields apply to ${named}`, rows };
     }
   }
 }
@@ -222,6 +243,7 @@ const PROPOSAL_FIELDS: readonly { key: string; label: string }[] = [
   { key: 'newCode', label: 'Code' },
   { key: 'meaning', label: 'Wording' },
   { key: 'searchWords', label: 'Search words' },
+  { key: 'broader', label: 'A grade of material' },
   { key: 'replacement', label: 'Saved Spec IDs become' },
   { key: 'rules', label: 'Field rules' },
 ];
@@ -240,7 +262,12 @@ function proposalValue(value: unknown): string {
 export function editedFields(before: Proposal, after: Proposal): ChangeRow[] {
   const was = before as unknown as Record<string, unknown>;
   const now = after as unknown as Record<string, unknown>;
+  // A broader material is a key, written as a code writes it (`B11`); none is None.
+  const shown = (key: string, value: unknown) => {
+    if (key !== 'broader') return proposalValue(value);
+    return typeof value === 'string' ? optionCode('material', value) : 'None';
+  };
   return PROPOSAL_FIELDS.filter(({ key }) => key in now && JSON.stringify(was[key]) !== JSON.stringify(now[key])).map(
-    ({ key, label }) => ({ label, before: proposalValue(was[key]), after: proposalValue(now[key]) }),
+    ({ key, label }) => ({ label, before: shown(key, was[key]), after: shown(key, now[key]) }),
   );
 }

@@ -21,6 +21,7 @@ import { DrizzleDictionaryRepository } from './drizzle-dictionary-repository.js'
 import { DrizzleSourcingRepository } from './drizzle-sourcing-repository.js';
 import { DrizzleSpecIdRepository } from './drizzle-spec-id-repository.js';
 import { DrizzleSuggestionRepository } from './drizzle-suggestion-repository.js';
+import { MATERIAL, PRODUCT_TYPE, PROFILE, SHAPE } from '../domain/options.js';
 
 const connection = connectTestDatabase();
 const dictionaries = new DrizzleDictionaryRepository(connection.db);
@@ -51,17 +52,18 @@ beforeEach(async () => {
 });
 afterAll(() => connection.close());
 
-async function lidAndRename() {
+/** A saved lid of PS, and a suggestion to delete PS for PP: an approval that rewrites a saved Spec ID. */
+async function lidAndDelete() {
   const sourcing = new DrizzleSourcingRepository(connection.db);
   const saved = await new SaveSpecId(dictionaries, specIds, sourcing, clock, ids).execute({
     name: 'Lid 90',
-    facts: { productType: 'BLD', material: 'APS', shape: 'RD', profile: 'DM' },
+    facts: { productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.ps, shape: SHAPE.round, profile: PROFILE.dome },
     savedBy: ADA,
   });
   if (!saved.ok) throw saved.error;
   const suggestion = await new SuggestDictionaryChange(dictionaries, specIds, suggestions, clock, ids).execute({
-    target: { slot: 'material', code: 'APS' },
-    proposal: { kind: 'edit', newCode: 'APZ', meaning: null, searchWords: null },
+    target: { slot: 'material', code: MATERIAL.ps },
+    proposal: { kind: 'delete', replacement: MATERIAL.pp },
     by: ADA,
   });
   if (!suggestion.ok) throw suggestion.error;
@@ -108,10 +110,10 @@ function straddling(db: Database, meanwhile: () => Promise<unknown>): Database {
 
 describe('DrizzleDictionaryChangeStore', () => {
   it('rolls back everything, the dictionary included, when a Spec ID moved on mid-approval', async () => {
-    const { saved, suggestion, update } = await lidAndRename();
+    const { saved, suggestion, update } = await lidAndDelete();
     const racing = {
       apply: async (plan: Parameters<typeof store.apply>[0]) => {
-        await update.execute({ id: saved.id, name: 'Lid 90, renamed', facts: { productType: 'BLD', material: 'APS', shape: 'RD', profile: 'DM' }, version: 1, updatedBy: ADA });
+        await update.execute({ id: saved.id, name: 'Lid 90, renamed', facts: { productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.ps, shape: SHAPE.round, profile: PROFILE.dome }, version: 1, updatedBy: ADA });
         return store.apply(plan);
       },
     };
@@ -124,16 +126,16 @@ describe('DrizzleDictionaryChangeStore', () => {
 
     expect(!result.ok && result.error).toBeInstanceOf(SpecIdMovedOnError);
     const dictionary = await dictionaries.get(CURRENT_RELEASE);
-    expect(dictionary?.meaningOf('material', 'APS')).toBe('Polymer, PS (polystyrene)');
-    expect(dictionary?.renames()).toEqual([]);
+    expect(dictionary?.meaningOf('material', MATERIAL.ps)).toBe('Polymer, PS (polystyrene)');
+    expect(dictionary?.retired()).toEqual([]);
     expect(await changeCount()).toBe(0);
     expect((await suggestions.findById(suggestion.id))?.suggestion.state).toBe('waiting');
   });
 
   it('refuses a plan made before another approval landed', async () => {
-    const { suggestion } = await lidAndRename();
+    const { suggestion } = await lidAndDelete();
     const other = await new SuggestDictionaryChange(dictionaries, specIds, suggestions, clock, ids).execute({
-      target: { slot: 'material', code: 'AZZ' },
+      target: { slot: 'material', code: '' },
       proposal: { kind: 'add', meaning: 'Polymer, invented', searchWords: [], rules: null },
       by: ADA,
     });
@@ -157,16 +159,16 @@ describe('DrizzleDictionaryChangeStore', () => {
   });
 
   it('never writes a dictionary read before another approval landed as if it came after', async () => {
-    const { suggestion } = await lidAndRename();
+    const { suggestion } = await lidAndDelete();
     const other = await new SuggestDictionaryChange(dictionaries, specIds, suggestions, clock, ids).execute({
-      target: { slot: 'material', code: 'AZZ' },
+      target: { slot: 'material', code: '' },
       proposal: { kind: 'add', meaning: 'Polymer, invented', searchWords: [], rules: null },
       by: ADA,
     });
     if (!other.ok) throw other.error;
-    const rename = () =>
+    const deletion = () =>
       new ApproveDictionarySuggestion(dictionaries, specIds, suggestions, store, clock, ids).execute({ id: suggestion.id, version: 1, by: BEN });
-    const reading = new DrizzleDictionaryRepository(straddling(connection.db, rename));
+    const reading = new DrizzleDictionaryRepository(straddling(connection.db, deletion));
 
     const result = await new ApproveDictionarySuggestion(reading, specIds, suggestions, store, clock, ids).execute({
       id: other.value.id,
@@ -174,18 +176,18 @@ describe('DrizzleDictionaryChangeStore', () => {
       by: BEN,
     });
 
-    // Either refused as out of date, or made from the dictionary the rename left: never the rename undone.
+    // Either refused as out of date, or made from the dictionary the deletion left: never the deletion undone.
     const dictionary = await dictionaries.get(CURRENT_RELEASE);
-    expect(dictionary?.meaningOf('material', 'APZ')).toBe('Polymer, PS (polystyrene)');
-    expect(dictionary?.live('material', 'APS')).toBe('APZ');
-    if (result.ok) expect(dictionary?.meaningOf('material', 'AZZ')).toBe('Polymer, invented');
+    expect(dictionary?.live('material', MATERIAL.ps)).toBeUndefined();
+    expect(dictionary?.retired().map(({ number }) => number)).toEqual([4]);
+    if (result.ok) expect(dictionary?.meaningOf('material', '39')).toBe('Polymer, invented');
     else expect(result.error).toBeInstanceOf(DictionaryMovedOnError);
   });
 
-  it('writes the renames and search words an approval gives, read back with the dictionary', async () => {
-    const { suggestion } = await lidAndRename();
+  it('writes the retired number and search words an approval gives, read back with the dictionary', async () => {
+    const { suggestion } = await lidAndDelete();
     const words = await new SuggestDictionaryChange(dictionaries, specIds, suggestions, clock, ids).execute({
-      target: { slot: 'material', code: 'APP' },
+      target: { slot: 'material', code: MATERIAL.pp },
       proposal: { kind: 'edit', newCode: null, meaning: null, searchWords: ['polypropylene', 'pp plastic'] },
       by: ADA,
     });
@@ -195,18 +197,22 @@ describe('DrizzleDictionaryChangeStore', () => {
     await approve.execute({ id: words.value.id, version: 1, by: BEN });
 
     const dictionary = await dictionaries.get(CURRENT_RELEASE);
-    expect(dictionary?.live('material', 'APS')).toBe('APZ');
-    expect(dictionary?.searchWordsOf('material', 'APP')).toEqual(['polypropylene', 'pp plastic']);
+    // A deleted option keeps its old letters, so a dotted code written with them still reads (ADR 0033).
+    expect(dictionary?.retired()).toEqual([
+      { slot: 'material', number: 4, code: MATERIAL.ps, meaning: 'Polymer, PS (polystyrene)', changeNumber: 1, legacyCode: 'APS' },
+    ]);
+    expect(dictionary?.fromLetters('material', 'APS')).toBe(MATERIAL.ps);
+    expect(dictionary?.searchWordsOf('material', MATERIAL.pp)).toEqual(['polypropylene', 'pp plastic']);
     expect(dictionary?.change?.number).toBe(2);
   });
 });
 
 describe('Spec IDs written while an approval runs', () => {
   const lid = (material: string): SpecIdFactsInput => ({
-    productType: 'BLD',
+    productType: PRODUCT_TYPE.bowlLid,
     material,
-    shape: 'RD',
-    profile: 'DM',
+    shape: SHAPE.round,
+    profile: PROFILE.dome,
     topDiameter: { value: '95', unit: 'mm' },
   });
   const sourcing = new DrizzleSourcingRepository(connection.db);
@@ -227,10 +233,10 @@ describe('Spec IDs written while an approval runs', () => {
   }
 
   it('refuses an approval when a Spec ID came to hold the option meanwhile, writing nothing', async () => {
-    const { suggestion } = await lidAndRename();
+    const { suggestion } = await lidAndDelete();
     const racing = {
       apply: async (plan: Parameters<typeof store.apply>[0]) => {
-        await new SaveSpecId(dictionaries, specIds, sourcing, clock, ids).execute({ name: 'Lid 95', facts: lid('APS'), savedBy: ADA });
+        await new SaveSpecId(dictionaries, specIds, sourcing, clock, ids).execute({ name: 'Lid 95', facts: lid(MATERIAL.ps), savedBy: ADA });
         return store.apply(plan);
       },
     };
@@ -242,35 +248,35 @@ describe('Spec IDs written while an approval runs', () => {
     });
 
     expect(!result.ok && result.error).toBeInstanceOf(SpecIdMovedOnError);
-    expect((await dictionaries.get(CURRENT_RELEASE))?.meaningOf('material', 'APS')).toBe('Polymer, PS (polystyrene)');
+    expect((await dictionaries.get(CURRENT_RELEASE))?.meaningOf('material', MATERIAL.ps)).toBe('Polymer, PS (polystyrene)');
     expect(await changeCount()).toBe(0);
   });
 
   it('checks a save again against the dictionary an approval left while it was being made', async () => {
-    const { suggestion } = await lidAndRename();
+    const { suggestion } = await lidAndDelete();
     const approve = () => new ApproveDictionarySuggestion(dictionaries, specIds, suggestions, store, clock, ids).execute({ id: suggestion.id, version: 1, by: BEN });
 
-    const result = await new SaveSpecId(readBefore(approve), specIds, sourcing, clock, ids).execute({ name: 'Lid 95', facts: lid('APS'), savedBy: ADA });
+    const result = await new SaveSpecId(readBefore(approve), specIds, sourcing, clock, ids).execute({ name: 'Lid 95', facts: lid(MATERIAL.ps), savedBy: ADA });
 
     expect(!result.ok && result.error.code).toBe('INVALID_SPEC_ID');
-    expect(await specIds.usageOf('material', 'APS')).toBe(0);
+    expect(await specIds.usageOf('material', MATERIAL.ps)).toBe(0);
   });
 
   it('checks a change again against the dictionary an approval left while it was being made', async () => {
-    const { suggestion } = await lidAndRename();
-    const pp = await new SaveSpecId(dictionaries, specIds, sourcing, clock, ids).execute({ name: 'PP lid', facts: lid('APP'), savedBy: ADA });
+    const { suggestion } = await lidAndDelete();
+    const pp = await new SaveSpecId(dictionaries, specIds, sourcing, clock, ids).execute({ name: 'PP lid', facts: lid(MATERIAL.pp), savedBy: ADA });
     if (!pp.ok) throw pp.error;
     const approve = () => new ApproveDictionarySuggestion(dictionaries, specIds, suggestions, store, clock, ids).execute({ id: suggestion.id, version: 1, by: BEN });
 
     const result = await new UpdateSpecId(readBefore(approve), specIds, sourcing, clock, ids).execute({
       id: pp.value.id,
       name: 'PP lid',
-      facts: lid('APS'),
+      facts: lid(MATERIAL.ps),
       version: 1,
       updatedBy: ADA,
     });
 
     expect(!result.ok && result.error.code).toBe('INVALID_SPEC_ID');
-    expect(await specIds.usageOf('material', 'APS')).toBe(0);
+    expect(await specIds.usageOf('material', MATERIAL.ps)).toBe(0);
   });
 });

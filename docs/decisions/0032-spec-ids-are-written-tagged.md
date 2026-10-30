@@ -1,6 +1,6 @@
 # 0032. Spec IDs are written tagged: a letter and a number for each known fact
 
-- **Status:** Accepted
+- **Status:** Accepted; superseded in part by [0033](./0033-dictionary-options-are-known-by-number.md): slot columns hold each option's number, and no approval renames an option
 - **Date:** 2026-10-29
 - **Related:** [Plan 0011](../plans/0011-tagged-spec-id-v2.md) ·
   [ADR 0024](./0024-spec-ids-move-to-the-s2-format.md) ·

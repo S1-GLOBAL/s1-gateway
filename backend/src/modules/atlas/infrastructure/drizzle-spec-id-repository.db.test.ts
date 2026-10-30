@@ -12,22 +12,23 @@ import { s2Dictionary } from '../domain/testing/s2-dictionary.js';
 import { atlasSpecIdChanges } from './atlas-spec-id-changes.table.js';
 import { atlasSpecIds } from './atlas-spec-ids.table.js';
 import { DrizzleSpecIdRepository } from './drizzle-spec-id-repository.js';
+import { CAPACITY_UNIT, COLOUR_CLARITY, MATERIAL, PRODUCT_TYPE, PROFILE, SHAPE } from '../domain/options.js';
 
 const connection = connectTestDatabase();
 const repository = new DrizzleSpecIdRepository(connection.db);
 
 const SAVER_ID = '00000000-0000-4000-8000-0000000000aa';
 const LID: SpecIdFactsInput = {
-  productType: 'BLD',
-  material: 'APS',
-  colourClarity: 'CL',
-  shape: 'RD',
-  profile: 'DM',
+  productType: PRODUCT_TYPE.bowlLid,
+  material: MATERIAL.ps,
+  colourClarity: COLOUR_CLARITY.clear,
+  shape: SHAPE.round,
+  profile: PROFILE.dome,
   unitWeight: { value: '3.3', unit: 'g' },
 };
 
 /** A lid whose rim is `rim` mm, or not stated; `profile` tells two lids with the same rim apart. */
-function lid(id: string, name: string, savedAt: string, rim?: string, profile = 'DM'): SavedSpecId {
+function lid(id: string, name: string, savedAt: string, rim?: string, profile: string = PROFILE.dome): SavedSpecId {
   const facts: SpecIdFactsInput = { ...LID, profile, ...(rim ? { topDiameter: { value: rim, unit: 'mm' } } : {}) };
   const built = SpecId.build(facts, s2Dictionary());
   if (!built.ok) throw new Error(`setup failed: ${JSON.stringify(built.error.issues)}`);
@@ -142,9 +143,9 @@ describe('DrizzleSpecIdRepository', () => {
 
   it('answers every saved Spec ID, newest first then by code, when nothing is chosen', async () => {
     const at = '2026-10-16T08:00:00.000Z';
-    await add(lid('00000000-0000-4000-8000-000000000001', 'Older', '2026-10-14T08:00:00.000Z', '90', 'HD'));
-    await add(lid('00000000-0000-4000-8000-000000000002', 'Tie, profile FL', at, '90', 'FL'));
-    await add(lid('00000000-0000-4000-8000-000000000003', 'Tie, profile DM', at, '90', 'DM'));
+    await add(lid('00000000-0000-4000-8000-000000000001', 'Older', '2026-10-14T08:00:00.000Z', '90', PROFILE.halfDome));
+    await add(lid('00000000-0000-4000-8000-000000000002', 'Tie, profile FL', at, '90', PROFILE.flat));
+    await add(lid('00000000-0000-4000-8000-000000000003', 'Tie, profile DM', at, '90', PROFILE.dome));
 
     const found = await repository.findCandidates({});
 
@@ -314,21 +315,21 @@ describe('DrizzleSpecIdRepository, the library', () => {
 
   it('filters by product type', async () => {
     await saveLids(2);
-    expect(await repository.list({ productType: 'BLD', limit: 20 })).toHaveLength(2);
-    expect(await repository.list({ productType: 'BWL', limit: 20 })).toEqual([]);
+    expect(await repository.list({ productType: PRODUCT_TYPE.bowlLid, limit: 20 })).toHaveLength(2);
+    expect(await repository.list({ productType: PRODUCT_TYPE.bowl, limit: 20 })).toEqual([]);
   });
 });
 
 describe('DrizzleSpecIdRepository.usageOf', () => {
   it('counts the saved Spec IDs holding a dictionary option, and a capacity by its unit', async () => {
     await add(lid('11111111-1111-4111-8111-111111111111', 'Lid one', '2026-10-14T08:00:00.000Z', '90'));
-    await add(lid('22222222-2222-4222-8222-222222222222', 'Lid two', '2026-10-14T09:00:00.000Z', '95', 'FL'));
-    expect(await repository.usageOf('material', 'APS')).toBe(2);
-    expect(await repository.usageOf('profile', 'FL')).toBe(1);
-    expect(await repository.usageOf('material', 'APP')).toBe(0);
+    await add(lid('22222222-2222-4222-8222-222222222222', 'Lid two', '2026-10-14T09:00:00.000Z', '95', PROFILE.flat));
+    expect(await repository.usageOf('material', MATERIAL.ps)).toBe(2);
+    expect(await repository.usageOf('profile', PROFILE.flat)).toBe(1);
+    expect(await repository.usageOf('material', MATERIAL.pp)).toBe(0);
     expect(await repository.usageOf('capacity', 'Z')).toBe(0);
 
-    const cup = SpecId.build({ productType: 'CUP', material: 'APP', shape: 'RD', capacity: { unit: 'Z', value: '16' } }, s2Dictionary());
+    const cup = SpecId.build({ productType: PRODUCT_TYPE.cup, material: MATERIAL.pp, shape: SHAPE.round, capacity: { unit: CAPACITY_UNIT.ounces, value: '16' } }, s2Dictionary());
     if (!cup.ok) throw new Error(`setup failed: ${JSON.stringify(cup.error.issues)}`);
     await add(
       SavedSpecId.restore({
@@ -340,6 +341,6 @@ describe('DrizzleSpecIdRepository.usageOf', () => {
         savedAt: new Date('2026-10-14T10:00:00.000Z'),
       }),
     );
-    expect(await repository.usageOf('capacity', 'Z')).toBe(1);
+    expect(await repository.usageOf('capacity', CAPACITY_UNIT.ounces)).toBe(1);
   });
 });

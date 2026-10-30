@@ -3,7 +3,6 @@ import { expectedFill } from '../applicability.js';
 import {
   Dictionary,
   type DictionaryChangeStamp,
-  type DictionaryRename,
   type DictionaryRetiredNumber,
   type DictionarySearchWord,
   type DictionaryValue,
@@ -20,12 +19,16 @@ import type { Proposal, SuggestionTarget } from './proposal.js';
  * proposal `checkProposal` has just passed against `dictionary`.
  */
 
-/** Whether a slot's raw value holds an option: a capacity by its unit letter, any other slot by its code. */
+/** Whether a slot's raw value holds an option: a capacity by its unit's number, any other slot by the option's. */
 export function holdsOption(value: string, slot: DictionarySlotKey, code: string): boolean {
   return slot === 'capacity' ? value.startsWith(code) : value === code;
 }
 
-/** The dictionary once `proposal` for `target` is applied, as change `stamp`. */
+/**
+ * The dictionary once `proposal` for `target` is applied, as change `stamp`.
+ * A new option takes the next number in its list, as its key (ADR 0032, ADR
+ * 0033); `target.code` names it only for the other kinds.
+ */
 export function applyProposal(
   dictionary: Dictionary,
   target: SuggestionTarget,
@@ -36,50 +39,49 @@ export function applyProposal(
   let values: DictionaryValue[] = dictionary.values();
   let rules: SlotRuleEntry[] = dictionary.slotRules();
   let words: DictionarySearchWord[] = dictionary.searchWords();
-  let renames: DictionaryRename[] = dictionary.renames();
   let retired: DictionaryRetiredNumber[] = dictionary.retired();
   const wordsFor = (optionCode: string, list: readonly string[]): DictionarySearchWord[] =>
     list.map((word) => ({ slot, word, code: optionCode, changeNumber: stamp.number }));
 
   switch (proposal.kind) {
     case 'add': {
-      // A new option takes the next number in its list (ADR 0032).
-      values = [...values, { slot, code, meaning: proposal.meaning, number: dictionary.nextNumber(slot) }];
+      const number = dictionary.nextNumber(slot);
+      const added = String(number);
+      const broader = slot === 'material' && proposal.broader != null ? { broader: proposal.broader } : {};
+      values = [...values, { slot, code: added, meaning: proposal.meaning, number, ...broader }];
       if (slot === 'productType' && proposal.rules !== null) {
-        rules = [...rules, ...RULED_SLOTS.map((ruled) => ({ productType: code, slot: ruled, rule: proposal.rules![ruled] }))];
+        rules = [...rules, ...RULED_SLOTS.map((ruled) => ({ productType: added, slot: ruled, rule: proposal.rules![ruled] }))];
       }
-      words = [...words, ...wordsFor(code, proposal.searchWords)];
+      words = [...words, ...wordsFor(added, proposal.searchWords)];
       break;
     }
     case 'edit': {
-      const newCode = proposal.newCode ?? code;
+      // An option's number never changes (ADR 0033): only its wording and search words do.
       values = values.map((value) =>
-        value.slot === slot && value.code === code
-          ? { ...value, code: newCode, meaning: proposal.meaning ?? value.meaning }
-          : value,
+        value.slot === slot && value.code === code ? { ...value, meaning: proposal.meaning ?? value.meaning } : value,
       );
-      if (newCode !== code) {
-        if (slot === 'productType') {
-          rules = rules.map((entry) => (entry.productType === code ? { ...entry, productType: newCode } : entry));
-        }
-        words = words.map((word) => (word.slot === slot && word.code === code ? { ...word, code: newCode } : word));
-        renames = moveRenames(renames, slot, code, newCode, stamp.number);
-      }
       if (proposal.searchWords !== null) {
-        words = [...words.filter((word) => !(word.slot === slot && word.code === newCode)), ...wordsFor(newCode, proposal.searchWords)];
+        words = [...words.filter((word) => !(word.slot === slot && word.code === code)), ...wordsFor(code, proposal.searchWords)];
       }
       break;
     }
     case 'delete': {
-      // Its number is never given again, and a code written with it still reads (ADR 0032).
+      // Its number is never given again, and a code written with it, or with its old letters, still reads (ADR 0032, ADR 0033).
       const deleted = values.find((value) => value.slot === slot && value.code === code);
       if (deleted?.number !== undefined) {
-        retired = [...retired, { slot, number: deleted.number, code, meaning: deleted.meaning, changeNumber: stamp.number }];
+        const legacy = deleted.legacyCode === undefined ? {} : { legacyCode: deleted.legacyCode };
+        retired = [...retired, { slot, number: deleted.number, code, meaning: deleted.meaning, changeNumber: stamp.number, ...legacy }];
       }
-      values = values.filter((value) => !(value.slot === slot && value.code === code));
+      // Its grades become grades of what it was a grade of.
+      values = values
+        .filter((value) => !(value.slot === slot && value.code === code))
+        .map((value) => {
+          if (value.slot !== slot || value.broader !== code) return value;
+          const { broader: _deleted, ...rest } = value;
+          return deleted?.broader === undefined ? rest : { ...rest, broader: deleted.broader };
+        });
       if (slot === 'productType') rules = rules.filter((entry) => entry.productType !== code);
       words = words.filter((word) => !(word.slot === slot && word.code === code));
-      renames = moveRenames(renames, slot, code, null, stamp.number);
       break;
     }
     case 'rules': {
@@ -92,7 +94,7 @@ export function applyProposal(
   }
 
   return new Dictionary(dictionary.release, dictionary.approvedOn, values, rules, {
-    renames,
+    renames: dictionary.renames(),
     searchWords: words,
     retired,
     change: stamp,
@@ -100,37 +102,17 @@ export function applyProposal(
 }
 
 /**
- * Points every rename that reached `from` at `to` (null when deleted), and
- * records `from` itself, so one step always reaches the live letters. When an
- * earlier option left `from`, its record stays: S2 0.1.0's tables read those
- * letters as that option (`liveOriginal`), never as the one that took them.
- */
-function moveRenames(
-  renames: readonly DictionaryRename[],
-  slot: DictionarySlotKey,
-  from: string,
-  to: string | null,
-  changeNumber: number,
-): DictionaryRename[] {
-  const moved = renames.map((rename) =>
-    rename.slot === slot && rename.newCode === from ? { ...rename, newCode: to, changeNumber } : rename,
-  );
-  const earlier = moved.some((rename) => rename.slot === slot && rename.oldCode === from);
-  return earlier ? moved : [...moved, { slot, oldCode: from, newCode: to, changeNumber }];
-}
-
-/**
  * Whether approving `proposal` can rewrite a Spec ID holding `target`'s
- * option: a new code, a deletion, or a product type's rules. A new option or
- * a new wording rewrites nothing.
+ * option: a deletion, or a product type's rules. A new option, a new wording
+ * or new search words rewrite nothing.
  */
 export function rewritesSpecIds(proposal: Proposal): boolean {
-  return (proposal.kind === 'edit' && proposal.newCode !== null) || proposal.kind === 'delete' || proposal.kind === 'rules';
+  return proposal.kind === 'delete' || proposal.kind === 'rules';
 }
 
 /**
- * A saved Spec ID's code once `proposal` is approved: the option's code
- * replaced (renamed, or deleted for its replacement), then every ruled field
+ * A saved Spec ID's code once `proposal` is approved: a deleted option
+ * replaced by its replacement, then every ruled field
  * refitted to `next`'s rules — `X` where it no longer applies, `Y` where it now
  * applies but was `X`, `Y` where it waits on a shape or material not known.
  * The result is read again with `next`, so a rewrite never saves a code `next`
@@ -146,9 +128,6 @@ export function rewriteSpecId(
   const { slot, code } = target;
   const held = holdsOption(values[slot], slot, code);
 
-  if (held && proposal.kind === 'edit' && proposal.newCode !== null) {
-    values[slot] = replaced(values[slot], slot, proposal.newCode);
-  }
   if (held && proposal.kind === 'delete' && proposal.replacement !== null) {
     values[slot] = replaced(values[slot], slot, proposal.replacement);
   }

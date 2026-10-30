@@ -27,6 +27,14 @@ export const atlasDictionaryValues = pgTable(
      * through a rename, never given again once deleted. Null only in S1 0.1.0.
      */
     number: integer('number'),
+    /**
+     * The letters the option had before options were known by number (ADR
+     * 0033), read only for a dotted code given out before. Null for an option
+     * added since, and in S1 0.1.0, whose `code` is still its letters.
+     */
+    legacyCode: varchar('legacy_code', { length: 5 }),
+    /** For a material, the number of the broader material it is a grade of: kraft for recycled kraft (ADR 0033). */
+    broaderNumber: integer('broader_number'),
   },
   (table) => [
     primaryKey({ columns: [table.release, table.slot, table.code] }),
@@ -103,6 +111,8 @@ export const atlasDictionaryRetiredNumbers = pgTable(
     code: varchar('code', { length: 5 }).notNull(),
     meaning: varchar('meaning', { length: 120 }).notNull(),
     changeNumber: integer('change_number'),
+    /** Its letters, for one deleted before options were known by number (ADR 0033). */
+    legacyCode: varchar('legacy_code', { length: 5 }),
   },
   (table) => [
     primaryKey({ name: 'atlas_dictionary_retired_numbers_pk', columns: [table.slot, table.number] }),

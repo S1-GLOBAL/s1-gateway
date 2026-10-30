@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { s2Dictionary } from '../testing/s2-dictionary.js';
 import { describeText, factsInWords } from './describe-text.js';
 import { readText } from './read-text.js';
+import { COLOUR_CLARITY, HANDLE, MATERIAL, PRODUCT_TYPE, PROFILE, SHAPE, WRAP } from '../options.js';
 
 const dictionary = s2Dictionary();
 const mm = (value: string) => ({ value, unit: 'mm' });
@@ -14,41 +15,41 @@ function described(text: string, productType?: string) {
 
 describe('reading a product type as a supplier list writes it (plan 0011)', () => {
   it.each([
-    ['one or many', '2 ply napkins', 'NPK'],
-    ['the kind over its general word', 'stand-up pouch bag', 'SUP'],
-    ['the kind over its general word', 'corrugated box small box', 'RSC'],
-    ['the kind over its general word', 'hinged burger box', 'HCT'],
-    ['the kind over its general word', 'cup souffle 2oz', 'PCP'],
-    ['the kind over its general word', 'invented meal tray container', 'TRY'],
-    ['a hinge lid on a carton', 'carton, burger hinge lid', 'HCT'],
-    ['a box that is not paperboard', 'PP 5 compartment bento box', 'CTN'],
-    ['two kinds of cutlery', 'knife + fork + napkin', 'CKT'],
-    ['the last noun of two that overlap', 'paper cup carrier', 'CCR'],
-    ['a fry carton', 'carton small fry', 'FRC'],
-    ['a wrap beside a product that is wrapped', 'PLA straw with individual paper wrap', 'STW'],
-    ['a vessel with a lid joined to it by a few words', 'cold paper cup SW with dome lid', 'CWC'],
-    ['a vessel with a lid joined to it by a few words', 'PP container black base with clear lid combo', 'CWL'],
-    ['a vessel and a lid joined anywhere', 'invented pack 500 + lid, container: 160 & lid: 162', 'CWL'],
-    ['a lid for a tray', 'bagasse lid for 100 oz tray', 'CTL'],
-    ['a lid for a box', 'invented bento box lid', 'CTL'],
-    ['a lid for a souffle, the words reversed', 'lid souffle 2oz', 'PCL'],
-    ['a soup cup as the bowl it is filed as', '12 oz white paper soup cup', 'BWL'],
-    ['a lid for a soup cup as a bowl lid', 'flat PP lid for paper soup cup', 'BLD'],
-    ['a soup cup with its lid', 'soup cup with lid', 'BWB'],
+    ['one or many', '2 ply napkins', PRODUCT_TYPE.napkin],
+    ['the kind over its general word', 'stand-up pouch bag', PRODUCT_TYPE.standUpPouch],
+    ['the kind over its general word', 'corrugated box small box', PRODUCT_TYPE.shippingBox],
+    ['the kind over its general word', 'hinged burger box', PRODUCT_TYPE.hingedContainer],
+    ['the kind over its general word', 'cup souffle 2oz', PRODUCT_TYPE.portionCup],
+    ['the kind over its general word', 'invented meal tray container', PRODUCT_TYPE.tray],
+    ['a hinge lid on a carton', 'carton, burger hinge lid', PRODUCT_TYPE.hingedContainer],
+    ['a box that is not paperboard', 'PP 5 compartment bento box', PRODUCT_TYPE.container],
+    ['two kinds of cutlery', 'knife + fork + napkin', PRODUCT_TYPE.cutleryKit],
+    ['the last noun of two that overlap', 'paper cup carrier', PRODUCT_TYPE.cupCarrier],
+    ['a fry carton', 'carton small fry', PRODUCT_TYPE.fryCarton],
+    ['a wrap beside a product that is wrapped', 'PLA straw with individual paper wrap', PRODUCT_TYPE.straw],
+    ['a vessel with a lid joined to it by a few words', 'cold paper cup SW with dome lid', PRODUCT_TYPE.cupWithLid],
+    ['a vessel with a lid joined to it by a few words', 'PP container black base with clear lid combo', PRODUCT_TYPE.containerWithLid],
+    ['a vessel and a lid joined anywhere', 'invented pack 500 + lid, container: 160 & lid: 162', PRODUCT_TYPE.containerWithLid],
+    ['a lid for a tray', 'bagasse lid for 100 oz tray', PRODUCT_TYPE.containerLid],
+    ['a lid for a box', 'invented bento box lid', PRODUCT_TYPE.containerLid],
+    ['a lid for a souffle, the words reversed', 'lid souffle 2oz', PRODUCT_TYPE.portionCupLid],
+    ['a soup cup as the bowl it is filed as', '12 oz white paper soup cup', PRODUCT_TYPE.bowl],
+    ['a lid for a soup cup as a bowl lid', 'flat PP lid for paper soup cup', PRODUCT_TYPE.bowlLid],
+    ['a soup cup with its lid', 'soup cup with lid', PRODUCT_TYPE.bowlWithLid],
   ])('reads %s: "%s" is %s', (_case, text, productType) => {
     expect(described(text).facts.productType).toBe(productType);
   });
 
   it('reads no plate in a printing plate fee', () => {
-    expect(described('8 oz printed double wall paper cup, printing plate fee').facts.productType).toBe('CUP');
+    expect(described('8 oz printed double wall paper cup, printing plate fee').facts.productType).toBe(PRODUCT_TYPE.cup);
     expect(described('printing plate').facts.productType).toBeUndefined();
   });
 
   it('reads the product a handle or plies belong to, and says so', () => {
     const bag = described('10 x 7 x 12 in twisted handle');
-    expect(bag.facts).toMatchObject({ productType: 'BAG', handle: 'TW' });
+    expect(bag.facts).toMatchObject({ productType: PRODUCT_TYPE.bag, handle: HANDLE.twisted });
     expect(bag.notes).toContain('Only Bag (A16) has a handle, so that is the product.');
-    expect(described('2 ply').facts.productType).toBe('NPK');
+    expect(described('2 ply').facts.productType).toBe(PRODUCT_TYPE.napkin);
   });
 
   it('reads no product from one named only as what comes with it, and says so', () => {
@@ -58,32 +59,32 @@ describe('reading a product type as a supplier list writes it (plan 0011)', () =
   });
 
   it('writes no note about a material given, which is final', () => {
-    const description = describeText('brown virgin kraft paper bag', dictionary, 'BAG', 'BKB');
-    expect(description.facts.material).toBe('BKB');
+    const description = describeText('brown virgin kraft paper bag', dictionary, PRODUCT_TYPE.bag, MATERIAL.brownKraft);
+    expect(description.facts.material).toBe(MATERIAL.brownKraft);
     expect(description.notes.some((note) => note.startsWith('Material'))).toBe(false);
   });
 
   it('keeps a product type given, whatever the passes would read', () => {
-    expect(described('12oz cup with lid', 'CUP').facts.productType).toBe('CUP');
-    expect(described('cup lid for a bowl', 'CUP').facts.productType).toBe('CUP');
+    expect(described('12oz cup with lid', PRODUCT_TYPE.cup).facts.productType).toBe(PRODUCT_TYPE.cup);
+    expect(described('cup lid for a bowl', PRODUCT_TYPE.cup).facts.productType).toBe(PRODUCT_TYPE.cup);
   });
 });
 
 describe('reading other facts as a supplier list writes them (plan 0011)', () => {
   it('reads a wrap as how a straw or fork is wrapped, and its paper as no material', () => {
-    expect(described('PLA straw with individual paper wrap').facts).toMatchObject({ material: 'APL', wrap: 'PW' });
-    expect(described('6.5 inches PLA fork (paper wrap)').facts).toMatchObject({ productType: 'FRK', material: 'APL', wrap: 'PW' });
-    expect(described('seaweed straw (no wrap)').facts).toMatchObject({ wrap: 'NW' });
+    expect(described('PLA straw with individual paper wrap').facts).toMatchObject({ material: MATERIAL.pla, wrap: WRAP.paperWrapped });
+    expect(described('6.5 inches PLA fork (paper wrap)').facts).toMatchObject({ productType: PRODUCT_TYPE.fork, material: MATERIAL.pla, wrap: WRAP.paperWrapped });
+    expect(described('seaweed straw (no wrap)').facts).toMatchObject({ wrap: WRAP.notWrapped });
   });
 
   it('reads kraft as a family of paper, and kraft as brown only off white kraft', () => {
-    expect(readText('kraft, recycled kraft', dictionary).facts.material).toBe('BKC');
-    expect(described('kraft paper bag, white kraft').facts).toMatchObject({ material: 'BKW', colourClarity: 'WH' });
+    expect(readText('kraft, recycled kraft', dictionary).facts.material).toBe(MATERIAL.recycledKraft);
+    expect(described('kraft paper bag, white kraft').facts).toMatchObject({ material: MATERIAL.whiteKraft, colourClarity: COLOUR_CLARITY.white });
   });
 
   it('reads no material named as absent', () => {
-    expect(described('plastic free paper cup').facts.material).toBe('B00');
-    expect(described('PP free bagasse bowl').facts.material).toBe('CBG');
+    expect(described('plastic free paper cup').facts.material).toBe(MATERIAL.paper);
+    expect(described('PP free bagasse bowl').facts.material).toBe(MATERIAL.bagasse);
   });
 
   it('leaves a list of capacities out, and reads none of it again by its own name', () => {
@@ -92,8 +93,8 @@ describe('reading other facts as a supplier list writes them (plan 0011)', () =>
   });
 
   it('reads flat beside a lid as its profile', () => {
-    expect(described('12oz Flat PP Lids').facts.profile).toBe('FL');
-    expect(described('90mm PET paper cup lid - Flat').facts.profile).toBe('FL');
+    expect(described('12oz Flat PP Lids').facts.profile).toBe(PROFILE.flat);
+    expect(described('90mm PET paper cup lid - Flat').facts.profile).toBe(PROFILE.flat);
   });
 
   it('leaves out a colour given twice, though one colour is named on its own', () => {
@@ -110,13 +111,13 @@ describe('reading other facts as a supplier list writes them (plan 0011)', () =>
 describe('reading sizes as a supplier list writes them (plan 0011)', () => {
   it.each([
     ['named, over a ruling that took one of their numbers', 'bowl, top diameter 180 x bottom diameter 150 X height 70 mm', { topDiameter: mm('180'), bottomDiameter: mm('150'), height: mm('70') }],
-    ['named with colons', 'cup, rim: 80 mm height: 95 mm bottom: 56mm', { shape: 'RD', topDiameter: mm('80'), bottomDiameter: mm('56'), height: mm('95') }],
+    ['named with colons', 'cup, rim: 80 mm height: 95 mm bottom: 56mm', { shape: SHAPE.round, topDiameter: mm('80'), bottomDiameter: mm('56'), height: mm('95') }],
     ['named by one letter', 'cup, t:88mm*h:96mm*b:58mm', { topDiameter: mm('88'), bottomDiameter: mm('58'), height: mm('96') }],
     ['named with a diameter sign', 'cup, topφ: 81.4 bottom φ: 57.5 height: 93.5', { topDiameter: mm('81.4'), bottomDiameter: mm('57.5'), height: mm('93.5') }],
     ['named top and base', 'cup, top dia 92mm, base dia 72mm, height 60mm', { topDiameter: mm('92'), bottomDiameter: mm('72'), height: mm('60') }],
-    ['named on a clamshell, rectangular as R6 names it', 'hinged burger box, L115 x W120 x H72 mm', { shape: 'RC', length: mm('115'), width: mm('120'), height: mm('72') }],
+    ['named on a clamshell, rectangular as R6 names it', 'hinged burger box, L115 x W120 x H72 mm', { shape: SHAPE.rectangular, length: mm('115'), width: mm('120'), height: mm('72') }],
     ['named on a bag, with its side gusset', 'paper bag, W350 x H410 x SG250 mm', { width: mm('350'), height: mm('410'), gusset: mm('250') }],
-    ['a plate diameter', 'round bagasse plate, 230 Dia × 22 H mm', { shape: 'RD', topDiameter: mm('230'), height: mm('22') }],
+    ['a plate diameter', 'round bagasse plate, 230 Dia × 22 H mm', { shape: SHAPE.round, topDiameter: mm('230'), height: mm('22') }],
     ['a rim marked "diameter", with words after it', '14oz PET cup with 98mm diameter plain', { topDiameter: mm('98') }],
     ['a rim marked "dia" over a stray number', '16oz PP cup, 96 Dia, 7.5 grams (+/- 0.5)', { topDiameter: mm('96') }],
     ['named in a list after its numbers', 'fry carton 350.5 x 170.2 mm (Top Length x Width)', { length: mm('350.5'), width: mm('170.2') }],

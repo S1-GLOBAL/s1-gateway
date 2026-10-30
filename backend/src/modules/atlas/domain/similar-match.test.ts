@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SearchableSlotKey } from './similar-match.js';
 import { classifyMatch, isSearchableSlot, notKnownCount, recordedCount } from './similar-match.js';
+import { MATERIAL, PRODUCT_TYPE, SHAPE } from './options.js';
 
 /** A saved Spec ID reduced to the slots a lookup can ask about. */
 const slotsOf = (values: Partial<Record<SearchableSlotKey, string>>) => (key: SearchableSlotKey) =>
@@ -32,13 +33,13 @@ describe('classifyMatch', () => {
   });
 
   it('excludes when any chosen slot differs, even if another is not known', () => {
-    const slotOf = slotsOf({ topDiameter: 'Y', shape: 'SQ' });
-    expect(classifyMatch(slotOf, { topDiameter: '0090', shape: 'RD' })).toBe('excluded');
+    const slotOf = slotsOf({ topDiameter: 'Y', shape: SHAPE.square });
+    expect(classifyMatch(slotOf, { topDiameter: '0090', shape: SHAPE.round })).toBe('excluded');
   });
 
   it('might fit when one slot equals and another is not known', () => {
-    const slotOf = slotsOf({ topDiameter: 'Y', shape: 'RD' });
-    expect(classifyMatch(slotOf, { topDiameter: '0090', shape: 'RD' })).toBe('might-fit');
+    const slotOf = slotsOf({ topDiameter: 'Y', shape: SHAPE.round });
+    expect(classifyMatch(slotOf, { topDiameter: '0090', shape: SHAPE.round })).toBe('might-fit');
   });
 });
 
@@ -53,16 +54,16 @@ describe('isSearchableSlot', () => {
 });
 
 describe('recordedCount', () => {
-  const criteria = { productType: 'BWL', material: 'CBG', capacity: 'Z0014' };
+  const criteria = { productType: PRODUCT_TYPE.bowl, material: MATERIAL.bagasse, capacity: '10014' };
 
   it('counts the chosen slots a Spec ID holds the asked-for value in', () => {
-    expect(recordedCount(slotsOf({ productType: 'BWL', material: 'CBG', capacity: 'Z0014' }), criteria)).toBe(3);
-    expect(recordedCount(slotsOf({ productType: 'BWL', material: 'CBG' }), criteria)).toBe(2);
-    expect(recordedCount(slotsOf({ productType: 'BWL' }), criteria)).toBe(1);
+    expect(recordedCount(slotsOf({ productType: PRODUCT_TYPE.bowl, material: MATERIAL.bagasse, capacity: '10014' }), criteria)).toBe(3);
+    expect(recordedCount(slotsOf({ productType: PRODUCT_TYPE.bowl, material: MATERIAL.bagasse }), criteria)).toBe(2);
+    expect(recordedCount(slotsOf({ productType: PRODUCT_TYPE.bowl }), criteria)).toBe(1);
   });
 
   it('does not count a slot that is not known, or one that was not asked about', () => {
-    expect(recordedCount(slotsOf({ productType: 'BWL', shape: 'RD' }), criteria)).toBe(1);
+    expect(recordedCount(slotsOf({ productType: PRODUCT_TYPE.bowl, shape: SHAPE.round }), criteria)).toBe(1);
   });
 });
 
@@ -70,6 +71,6 @@ describe('notKnownCount', () => {
   it('counts the slots that are Y, and not those that never apply', () => {
     const allY = slotsOf({});
     expect(notKnownCount(allY)).toBe(24);
-    expect(notKnownCount(slotsOf({ productType: 'BWL', material: 'CBG', coating: 'X' }))).toBe(21);
+    expect(notKnownCount(slotsOf({ productType: PRODUCT_TYPE.bowl, material: MATERIAL.bagasse, coating: 'X' }))).toBe(21);
   });
 });

@@ -3,6 +3,7 @@ import { Button } from '@/shared/ui/Button';
 import { Sheet } from '@/shared/ui/Sheet';
 import { TextField } from '@/shared/ui/TextField';
 import { useRejectSuggestion } from '../../application/use-decide-suggestion';
+import { optionCode } from '../../domain/code-letters';
 import type { Suggestion } from '../../domain/suggestion';
 
 export interface RejectFormProps {
@@ -39,7 +40,7 @@ export function RejectForm({ suggestion, open, onClose, onRejected }: RejectForm
     <Sheet
       open={open}
       onClose={onClose}
-      title={`Reject ${suggestion.code}`}
+      title={`Reject ${optionCode(suggestion.slot, suggestion.code)}`}
       description={`${suggestion.suggestedBy.fullName} sees your reason.`}
     >
       <form noValidate onSubmit={submit} className="flex flex-col gap-5">

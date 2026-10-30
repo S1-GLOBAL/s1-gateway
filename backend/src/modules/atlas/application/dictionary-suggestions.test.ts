@@ -21,6 +21,7 @@ import { InMemorySourcingRepository } from './testing/in-memory-sourcing-reposit
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { InMemorySuggestionRepository } from './testing/in-memory-suggestion-repository.js';
 import { WithdrawDictionarySuggestion } from './withdraw-dictionary-suggestion.js';
+import { MATERIAL, PRODUCT_TYPE, SHAPE } from '../domain/options.js';
 
 const ADA = { id: '00000000-0000-4000-8000-0000000000aa', fullName: 'Ada Invented', isAdmin: false };
 const BEN = { id: '00000000-0000-4000-8000-0000000000bb', fullName: 'Ben Invented', isAdmin: true };
@@ -51,8 +52,11 @@ function setup() {
   };
 }
 
-async function suggested(context: ReturnType<typeof setup>, by = ADA, code = 'azz') {
-  const result = await context.suggest.execute({ target: { slot: 'material', code }, proposal: NEW_MATERIAL, by });
+/** A new option names no number: it is numbered when it is approved (ADR 0033). */
+const NEW = { slot: 'material' as const, code: '' };
+
+async function suggested(context: ReturnType<typeof setup>, by = ADA, proposal: Proposal = NEW_MATERIAL) {
+  const result = await context.suggest.execute({ target: NEW, proposal, by });
   if (!result.ok) throw result.error;
   return result.value;
 }
@@ -67,7 +71,7 @@ describe('SuggestDictionaryChange', () => {
     expect(suggestion).toMatchObject({
       kind: 'add',
       slot: 'material',
-      code: 'AZZ',
+      code: '',
       state: 'waiting',
       version: 1,
       suggestedBy: { id: ADA.id, fullName: 'Ada Invented' },
@@ -80,7 +84,7 @@ describe('SuggestDictionaryChange', () => {
 
   it('refuses a proposal that breaks a rule, keeping nothing', async () => {
     const context = setup();
-    const result = await context.suggest.execute({ target: { slot: 'material', code: 'APS' }, proposal: NEW_MATERIAL, by: ADA });
+    const result = await context.suggest.execute({ target: { slot: 'material', code: '39' }, proposal: NEW_MATERIAL, by: ADA });
     expect(!result.ok && result.error).toBeInstanceOf(InvalidSuggestionError);
     expect(await context.list.execute({ state: 'waiting' })).toEqual([]);
   });
@@ -89,18 +93,18 @@ describe('SuggestDictionaryChange', () => {
     const context = setup();
     const saved = await context.save.execute({
       name: 'Invented lid',
-      facts: { productType: 'BLD', material: 'APS', shape: 'RD' },
+      facts: { productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.ps, shape: SHAPE.round },
       savedBy: ADA,
     });
     if (!saved.ok) throw saved.error;
 
     const result = await context.suggest.execute({
-      target: { slot: 'material', code: 'APS' },
+      target: { slot: 'material', code: MATERIAL.ps },
       proposal: { kind: 'delete', replacement: null },
       by: ADA,
     });
     expect(!result.ok && (result.error as InvalidSuggestionError).issues.replacement).toEqual(['Pick what those Spec IDs become.']);
-    expect(await context.usage.execute({ slot: 'material', code: 'aps' })).toEqual({ ok: true, value: 1 });
+    expect(await context.usage.execute({ slot: 'material', code: ` ${MATERIAL.ps} ` })).toEqual({ ok: true, value: 1 });
   });
 });
 
@@ -111,7 +115,7 @@ describe('EditDictionarySuggestion', () => {
 
     const result = await context.edit.execute({
       id,
-      target: { slot: 'material', code: 'AZZ' },
+      target: NEW,
       proposal: { ...NEW_MATERIAL, meaning: 'Polymer, invented again' },
       version: 1,
       by: ADA,
@@ -132,7 +136,7 @@ describe('EditDictionarySuggestion', () => {
     const { id } = await suggested(context);
     const result = await context.edit.execute({
       id,
-      target: { slot: 'material', code: 'AZZ' },
+      target: NEW,
       proposal: { ...NEW_MATERIAL, meaning: '' },
       version: 1,
       by: BEN,
@@ -143,18 +147,18 @@ describe('EditDictionarySuggestion', () => {
   it('refuses changing its kind, list or code, an edit from an old version, and an unknown suggestion', async () => {
     const context = setup();
     const { id } = await suggested(context);
-    const moved = await context.edit.execute({ id, target: { slot: 'material', code: 'AZY' }, proposal: NEW_MATERIAL, version: 1, by: ADA });
+    const moved = await context.edit.execute({ id, target: { slot: 'coating', code: '' }, proposal: NEW_MATERIAL, version: 1, by: ADA });
     expect(!moved.ok && (moved.error as InvalidSuggestionError).issues.kind).toEqual([
       "A suggestion's kind, list and code can't change. Withdraw it and suggest again.",
     ]);
 
-    await context.edit.execute({ id, target: { slot: 'material', code: 'AZZ' }, proposal: NEW_MATERIAL, version: 1, by: ADA });
-    const stale = await context.edit.execute({ id, target: { slot: 'material', code: 'AZZ' }, proposal: NEW_MATERIAL, version: 1, by: ADA });
+    await context.edit.execute({ id, target: NEW, proposal: NEW_MATERIAL, version: 1, by: ADA });
+    const stale = await context.edit.execute({ id, target: NEW, proposal: NEW_MATERIAL, version: 1, by: ADA });
     expect(!stale.ok && stale.error).toBeInstanceOf(SuggestionChangedError);
 
     const unknown = await context.edit.execute({
       id: '00000000-0000-4000-8000-0000000000ff',
-      target: { slot: 'material', code: 'AZZ' },
+      target: NEW,
       proposal: NEW_MATERIAL,
       version: 1,
       by: ADA,
@@ -188,8 +192,8 @@ describe('WithdrawDictionarySuggestion', () => {
 describe('CountWaitingSuggestions', () => {
   it('counts nothing for staff, and for an admin every waiting suggestion but their own', async () => {
     const context = setup();
-    await suggested(context, ADA, 'AZA');
-    await suggested(context, BEN, 'AZB');
+    await suggested(context, ADA);
+    await suggested(context, BEN, { ...NEW_MATERIAL, meaning: 'Polymer, invented again', searchWords: [] });
     expect(await context.count.execute({ by: ADA })).toBe(0);
     expect(await context.count.execute({ by: BEN })).toBe(1);
     expect(await context.count.execute({ by: { ...ADA, isAdmin: true } })).toBe(1);
@@ -197,11 +201,13 @@ describe('CountWaitingSuggestions', () => {
 });
 
 describe('GetDictionaryUsage', () => {
-  it('refuses a list that is not in the dictionary, and counts 0 for a code of the wrong width', async () => {
+  it("refuses a list that is not in the dictionary, and counts 0 for what can't be an option's number", async () => {
     const context = setup();
-    const refused = await context.usage.execute({ slot: 'height', code: 'AB' });
+    const refused = await context.usage.execute({ slot: 'height', code: '1' });
     expect(!refused.ok && refused.error).toBeInstanceOf(InvalidSuggestionError);
-    expect(await context.usage.execute({ slot: 'material', code: 'A' })).toEqual({ ok: true, value: 0 });
+    for (const code of ['', '0', 'APS']) {
+      expect(await context.usage.execute({ slot: 'material', code })).toEqual({ ok: true, value: 0 });
+    }
   });
 
   it('counts 0 for a marker or a wildcard, which no option can be', async () => {
@@ -209,7 +215,7 @@ describe('GetDictionaryUsage', () => {
     // A lid has no capacity: it holds the marker X there.
     const saved = await context.save.execute({
       name: 'Invented lid',
-      facts: { productType: 'BLD', material: 'APS', shape: 'RD' },
+      facts: { productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.ps, shape: SHAPE.round },
       savedBy: ADA,
     });
     if (!saved.ok) throw saved.error;

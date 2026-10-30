@@ -1,0 +1,2391 @@
+{
+  "id": "6aeacccf-445d-45d2-bc02-d9dadde08003",
+  "prevId": "c4a4745f-e33b-4501-add0-9aa1c0faf8fa",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.account_invites": {
+      "name": "account_invites",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invited_by": {
+          "name": "invited_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "account_invites_token_hash_unique": {
+          "name": "account_invites_token_hash_unique",
+          "columns": [
+            {
+              "expression": "token_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "account_invites_email_idx": {
+          "name": "account_invites_email_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "account_invites_invited_by_accounts_id_fk": {
+          "name": "account_invites_invited_by_accounts_id_fk",
+          "tableFrom": "account_invites",
+          "columnsFrom": [
+            "invited_by"
+          ],
+          "tableTo": "accounts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.accounts": {
+      "name": "accounts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "full_name": {
+          "name": "full_name",
+          "type": "varchar(81)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_name": {
+          "name": "first_name",
+          "type": "varchar(40)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "last_name": {
+          "name": "last_name",
+          "type": "varchar(40)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "must_change_password": {
+          "name": "must_change_password",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'staff'"
+        },
+        "failed_sign_in_count": {
+          "name": "failed_sign_in_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "locked_until": {
+          "name": "locked_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approved_by": {
+          "name": "approved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "accounts_email_unique": {
+          "name": "accounts_email_unique",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "accounts_approved_by_accounts_id_fk": {
+          "name": "accounts_approved_by_accounts_id_fk",
+          "tableFrom": "accounts",
+          "columnsFrom": [
+            "approved_by"
+          ],
+          "tableTo": "accounts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "accounts_status_check": {
+          "name": "accounts_status_check",
+          "value": "\"accounts\".\"status\" in ('pending', 'approved', 'disabled')"
+        },
+        "accounts_role_check": {
+          "name": "accounts_role_check",
+          "value": "\"accounts\".\"role\" in ('staff', 'admin', 'system-admin')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.atlas_dictionary_changes": {
+      "name": "atlas_dictionary_changes",
+      "schema": "",
+      "columns": {
+        "number": {
+          "name": "number",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "suggestion_id": {
+          "name": "suggestion_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approved_by": {
+          "name": "approved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "spec_ids_rewritten": {
+          "name": "spec_ids_rewritten",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "atlas_dictionary_changes_suggestion_id_unique": {
+          "name": "atlas_dictionary_changes_suggestion_id_unique",
+          "columns": [
+            {
+              "expression": "suggestion_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "atlas_dictionary_changes_suggestion_id_fk": {
+          "name": "atlas_dictionary_changes_suggestion_id_fk",
+          "tableFrom": "atlas_dictionary_changes",
+          "columnsFrom": [
+            "suggestion_id"
+          ],
+          "tableTo": "atlas_dictionary_suggestions",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "atlas_dictionary_changes_approved_by_fk": {
+          "name": "atlas_dictionary_changes_approved_by_fk",
+          "tableFrom": "atlas_dictionary_changes",
+          "columnsFrom": [
+            "approved_by"
+          ],
+          "tableTo": "accounts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.atlas_dictionary_releases": {
+      "name": "atlas_dictionary_releases",
+      "schema": "",
+      "columns": {
+        "release": {
+          "name": "release",
+          "type": "varchar(16)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "approved_on": {
+          "name": "approved_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.atlas_dictionary_renames": {
+      "name": "atlas_dictionary_renames",
+      "schema": "",
+      "columns": {
+        "slot": {
+          "name": "slot",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "old_code": {
+          "name": "old_code",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "new_code": {
+          "name": "new_code",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "change_number": {
+          "name": "change_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "atlas_dictionary_renames_change_number_fk": {
+          "name": "atlas_dictionary_renames_change_number_fk",
+          "tableFrom": "atlas_dictionary_renames",
+          "columnsFrom": [
+            "change_number"
+          ],
+          "tableTo": "atlas_dictionary_changes",
+          "columnsTo": [
+            "number"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "atlas_dictionary_renames_pk": {
+          "name": "atlas_dictionary_renames_pk",
+          "columns": [
+            "slot",
+            "old_code"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.atlas_dictionary_retired_numbers": {
+      "name": "atlas_dictionary_retired_numbers",
+      "schema": "",
+      "columns": {
+        "slot": {
+          "name": "slot",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "number": {
+          "name": "number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "meaning": {
+          "name": "meaning",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "change_number": {
+          "name": "change_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "legacy_code": {
+          "name": "legacy_code",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "atlas_dictionary_retired_numbers_change_number_fk": {
+          "name": "atlas_dictionary_retired_numbers_change_number_fk",
+          "tableFrom": "atlas_dictionary_retired_numbers",
+          "columnsFrom": [
+            "change_number"
+          ],
+          "tableTo": "atlas_dictionary_changes",
+          "columnsTo": [
+            "number"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "atlas_dictionary_retired_numbers_pk": {
+          "name": "atlas_dictionary_retired_numbers_pk",
+          "columns": [
+            "slot",
+            "number"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.atlas_dictionary_search_words": {
+      "name": "atlas_dictionary_search_words",
+      "schema": "",
+      "columns": {
+        "slot": {
+          "name": "slot",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "word": {
+          "name": "word",
+          "type": "varchar(40)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "change_number": {
+          "name": "change_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "atlas_dictionary_search_words_option_idx": {
+          "name": "atlas_dictionary_search_words_option_idx",
+          "columns": [
+            {
+              "expression": "slot",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "atlas_dictionary_search_words_change_number_fk": {
+          "name": "atlas_dictionary_search_words_change_number_fk",
+          "tableFrom": "atlas_dictionary_search_words",
+          "columnsFrom": [
+            "change_number"
+          ],
+          "tableTo": "atlas_dictionary_changes",
+          "columnsTo": [
+            "number"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "atlas_dictionary_search_words_pk": {
+          "name": "atlas_dictionary_search_words_pk",
+          "columns": [
+            "slot",
+            "word"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.atlas_dictionary_suggestion_events": {
+      "name": "atlas_dictionary_suggestion_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "suggestion_id": {
+          "name": "suggestion_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "by": {
+          "name": "by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "at": {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proposal_before": {
+          "name": "proposal_before",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposal_after": {
+          "name": "proposal_after",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "atlas_dictionary_suggestion_events_suggestion_idx": {
+          "name": "atlas_dictionary_suggestion_events_suggestion_idx",
+          "columns": [
+            {
+              "expression": "suggestion_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "atlas_dictionary_suggestion_events_suggestion_id_fk": {
+          "name": "atlas_dictionary_suggestion_events_suggestion_id_fk",
+          "tableFrom": "atlas_dictionary_suggestion_events",
+          "columnsFrom": [
+            "suggestion_id"
+          ],
+          "tableTo": "atlas_dictionary_suggestions",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "atlas_dictionary_suggestion_events_by_fk": {
+          "name": "atlas_dictionary_suggestion_events_by_fk",
+          "tableFrom": "atlas_dictionary_suggestion_events",
+          "columnsFrom": [
+            "by"
+          ],
+          "tableTo": "accounts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "atlas_dictionary_suggestion_events_kind_check": {
+          "name": "atlas_dictionary_suggestion_events_kind_check",
+          "value": "\"atlas_dictionary_suggestion_events\".\"kind\" in ('suggested', 'edited', 'withdrawn', 'approved', 'rejected')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.atlas_dictionary_suggestions": {
+      "name": "atlas_dictionary_suggestions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slot": {
+          "name": "slot",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proposal": {
+          "name": "proposal",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "suggested_by": {
+          "name": "suggested_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "suggested_at": {
+          "name": "suggested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "decided_by": {
+          "name": "decided_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "change_number": {
+          "name": "change_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "atlas_dictionary_suggestions_state_idx": {
+          "name": "atlas_dictionary_suggestions_state_idx",
+          "columns": [
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "suggested_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "atlas_dictionary_suggestions_suggested_by_fk": {
+          "name": "atlas_dictionary_suggestions_suggested_by_fk",
+          "tableFrom": "atlas_dictionary_suggestions",
+          "columnsFrom": [
+            "suggested_by"
+          ],
+          "tableTo": "accounts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "atlas_dictionary_suggestions_decided_by_fk": {
+          "name": "atlas_dictionary_suggestions_decided_by_fk",
+          "tableFrom": "atlas_dictionary_suggestions",
+          "columnsFrom": [
+            "decided_by"
+          ],
+          "tableTo": "accounts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "atlas_dictionary_suggestions_kind_check": {
+          "name": "atlas_dictionary_suggestions_kind_check",
+          "value": "\"atlas_dictionary_suggestions\".\"kind\" in ('add', 'edit', 'delete', 'rules')"
+        },
+        "atlas_dictionary_suggestions_state_check": {
+          "name": "atlas_dictionary_suggestions_state_check",
+          "value": "\"atlas_dictionary_suggestions\".\"state\" in ('waiting', 'approved', 'rejected', 'withdrawn')"
+        },
+        "atlas_dictionary_suggestions_decision_check": {
+          "name": "atlas_dictionary_suggestions_decision_check",
+          "value": "(\"atlas_dictionary_suggestions\".\"state\" = 'waiting' and \"atlas_dictionary_suggestions\".\"decided_by\" is null and \"atlas_dictionary_suggestions\".\"decided_at\" is null and \"atlas_dictionary_suggestions\".\"reason\" is null)\n        or (\"atlas_dictionary_suggestions\".\"state\" = 'withdrawn' and \"atlas_dictionary_suggestions\".\"decided_by\" is null and \"atlas_dictionary_suggestions\".\"decided_at\" is not null and \"atlas_dictionary_suggestions\".\"reason\" is null)\n        or (\"atlas_dictionary_suggestions\".\"state\" = 'approved' and \"atlas_dictionary_suggestions\".\"decided_by\" is not null and \"atlas_dictionary_suggestions\".\"decided_at\" is not null and \"atlas_dictionary_suggestions\".\"reason\" is null)\n        or (\"atlas_dictionary_suggestions\".\"state\" = 'rejected' and \"atlas_dictionary_suggestions\".\"decided_by\" is not null and \"atlas_dictionary_suggestions\".\"decided_at\" is not null and \"atlas_dictionary_suggestions\".\"reason\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.atlas_dictionary_values": {
+      "name": "atlas_dictionary_values",
+      "schema": "",
+      "columns": {
+        "release": {
+          "name": "release",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slot": {
+          "name": "slot",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "meaning": {
+          "name": "meaning",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "number": {
+          "name": "number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "legacy_code": {
+          "name": "legacy_code",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "broader_number": {
+          "name": "broader_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "atlas_dictionary_values_number_unique": {
+          "name": "atlas_dictionary_values_number_unique",
+          "columns": [
+            {
+              "expression": "release",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "slot",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "atlas_dictionary_values_release_fk": {
+          "name": "atlas_dictionary_values_release_fk",
+          "tableFrom": "atlas_dictionary_values",
+          "columnsFrom": [
+            "release"
+          ],
+          "tableTo": "atlas_dictionary_releases",
+          "columnsTo": [
+            "release"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "atlas_dictionary_values_release_slot_code_pk": {
+          "name": "atlas_dictionary_values_release_slot_code_pk",
+          "columns": [
+            "release",
+            "slot",
+            "code"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "atlas_dictionary_values_code_not_marker": {
+          "name": "atlas_dictionary_values_code_not_marker",
+          "value": "\"atlas_dictionary_values\".\"code\" !~ '^(0+|X+)$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.atlas_manufacturer_stage_changes": {
+      "name": "atlas_manufacturer_stage_changes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "spec_id": {
+          "name": "spec_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "manufacturer_id": {
+          "name": "manufacturer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stage_before": {
+          "name": "stage_before",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stage_after": {
+          "name": "stage_after",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "changed_by": {
+          "name": "changed_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "changed_at": {
+          "name": "changed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "atlas_stage_changes_spec_manufacturer_idx": {
+          "name": "atlas_stage_changes_spec_manufacturer_idx",
+          "columns": [
+            {
+              "expression": "spec_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "manufacturer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "changed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "atlas_manufacturer_stage_changes_spec_id_fk": {
+          "name": "atlas_manufacturer_stage_changes_spec_id_fk",
+          "tableFrom": "atlas_manufacturer_stage_changes",
+          "columnsFrom": [
+            "spec_id"
+          ],
+          "tableTo": "atlas_spec_ids",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "atlas_manufacturer_stage_changes_manufacturer_id_fk": {
+          "name": "atlas_manufacturer_stage_changes_manufacturer_id_fk",
+          "tableFrom": "atlas_manufacturer_stage_changes",
+          "columnsFrom": [
+            "manufacturer_id"
+          ],
+          "tableTo": "atlas_manufacturers",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "atlas_manufacturer_stage_changes_changed_by_fk": {
+          "name": "atlas_manufacturer_stage_changes_changed_by_fk",
+          "tableFrom": "atlas_manufacturer_stage_changes",
+          "columnsFrom": [
+            "changed_by"
+          ],
+          "tableTo": "accounts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "atlas_manufacturer_stage_changes_stage_check": {
+          "name": "atlas_manufacturer_stage_changes_stage_check",
+          "value": "(\"atlas_manufacturer_stage_changes\".\"stage_before\" is null or \"atlas_manufacturer_stage_changes\".\"stage_before\" in ('sampling', 'in-production')) and (\"atlas_manufacturer_stage_changes\".\"stage_after\" is null or \"atlas_manufacturer_stage_changes\".\"stage_after\" in ('sampling', 'in-production'))"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.atlas_manufacturers": {
+      "name": "atlas_manufacturers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_key": {
+          "name": "name_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "country": {
+          "name": "country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "atlas_manufacturers_name_key_unique": {
+          "name": "atlas_manufacturers_name_key_unique",
+          "columns": [
+            {
+              "expression": "name_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.atlas_quotes": {
+      "name": "atlas_quotes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "spec_id": {
+          "name": "spec_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "manufacturer_id": {
+          "name": "manufacturer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_name": {
+          "name": "item_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fob_per_unit": {
+          "name": "fob_per_unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fob_per_case": {
+          "name": "fob_per_case",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fob_total": {
+          "name": "fob_total",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mold_cost": {
+          "name": "mold_cost",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mold_lead_time": {
+          "name": "mold_lead_time",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sample_lead_time": {
+          "name": "sample_lead_time",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "production_lead_time": {
+          "name": "production_lead_time",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "imported_at": {
+          "name": "imported_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "atlas_quotes_spec_id_idx": {
+          "name": "atlas_quotes_spec_id_idx",
+          "columns": [
+            {
+              "expression": "spec_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_quotes_manufacturer_id_idx": {
+          "name": "atlas_quotes_manufacturer_id_idx",
+          "columns": [
+            {
+              "expression": "manufacturer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "atlas_quotes_spec_id_fk": {
+          "name": "atlas_quotes_spec_id_fk",
+          "tableFrom": "atlas_quotes",
+          "columnsFrom": [
+            "spec_id"
+          ],
+          "tableTo": "atlas_spec_ids",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "atlas_quotes_manufacturer_id_fk": {
+          "name": "atlas_quotes_manufacturer_id_fk",
+          "tableFrom": "atlas_quotes",
+          "columnsFrom": [
+            "manufacturer_id"
+          ],
+          "tableTo": "atlas_manufacturers",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.atlas_slot_rules": {
+      "name": "atlas_slot_rules",
+      "schema": "",
+      "columns": {
+        "release": {
+          "name": "release",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "product_type": {
+          "name": "product_type",
+          "type": "varchar(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slot": {
+          "name": "slot",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rule": {
+          "name": "rule",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "atlas_slot_rules_release_fk": {
+          "name": "atlas_slot_rules_release_fk",
+          "tableFrom": "atlas_slot_rules",
+          "columnsFrom": [
+            "release"
+          ],
+          "tableTo": "atlas_dictionary_releases",
+          "columnsTo": [
+            "release"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "atlas_slot_rules_release_product_type_slot_pk": {
+          "name": "atlas_slot_rules_release_product_type_slot_pk",
+          "columns": [
+            "release",
+            "product_type",
+            "slot"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "atlas_slot_rules_rule_check": {
+          "name": "atlas_slot_rules_rule_check",
+          "value": "\"atlas_slot_rules\".\"rule\" in ('applies', 'never', 'round_only', 'non_round_only', 'paper_only')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.atlas_spec_id_changes": {
+      "name": "atlas_spec_id_changes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "spec_id": {
+          "name": "spec_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "changed_by": {
+          "name": "changed_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "changed_at": {
+          "name": "changed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code_before": {
+          "name": "code_before",
+          "type": "varchar(97)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "code_after": {
+          "name": "code_after",
+          "type": "varchar(97)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_before": {
+          "name": "name_before",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name_after": {
+          "name": "name_after",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dictionary_change_number": {
+          "name": "dictionary_change_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "atlas_spec_id_changes_spec_id_changed_at_idx": {
+          "name": "atlas_spec_id_changes_spec_id_changed_at_idx",
+          "columns": [
+            {
+              "expression": "spec_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "changed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_id_changes_code_before_idx": {
+          "name": "atlas_spec_id_changes_code_before_idx",
+          "columns": [
+            {
+              "expression": "code_before",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "atlas_spec_id_changes_spec_id_fk": {
+          "name": "atlas_spec_id_changes_spec_id_fk",
+          "tableFrom": "atlas_spec_id_changes",
+          "columnsFrom": [
+            "spec_id"
+          ],
+          "tableTo": "atlas_spec_ids",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "atlas_spec_id_changes_changed_by_fk": {
+          "name": "atlas_spec_id_changes_changed_by_fk",
+          "tableFrom": "atlas_spec_id_changes",
+          "columnsFrom": [
+            "changed_by"
+          ],
+          "tableTo": "accounts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "atlas_spec_id_changes_dictionary_change_fk": {
+          "name": "atlas_spec_id_changes_dictionary_change_fk",
+          "tableFrom": "atlas_spec_id_changes",
+          "columnsFrom": [
+            "dictionary_change_number"
+          ],
+          "tableTo": "atlas_dictionary_changes",
+          "columnsTo": [
+            "number"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "atlas_spec_id_changes_kind_check": {
+          "name": "atlas_spec_id_changes_kind_check",
+          "value": "\"atlas_spec_id_changes\".\"kind\" in ('created', 'updated')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.atlas_spec_ids": {
+      "name": "atlas_spec_ids",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(97)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "product_type": {
+          "name": "product_type",
+          "type": "varchar(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "material": {
+          "name": "material",
+          "type": "varchar(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "coating": {
+          "name": "coating",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "colour_clarity": {
+          "name": "colour_clarity",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shape": {
+          "name": "shape",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "profile": {
+          "name": "profile",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "capacity": {
+          "name": "capacity",
+          "type": "varchar(12)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "top_diameter": {
+          "name": "top_diameter",
+          "type": "varchar(4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bottom_diameter": {
+          "name": "bottom_diameter",
+          "type": "varchar(4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "height": {
+          "name": "height",
+          "type": "varchar(4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "length": {
+          "name": "length",
+          "type": "varchar(4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "width": {
+          "name": "width",
+          "type": "varchar(4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gusset": {
+          "name": "gusset",
+          "type": "varchar(4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit_weight": {
+          "name": "unit_weight",
+          "type": "varchar(4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "basis_weight": {
+          "name": "basis_weight",
+          "type": "varchar(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "thickness": {
+          "name": "thickness",
+          "type": "varchar(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wall": {
+          "name": "wall",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "print": {
+          "name": "print",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "compartments": {
+          "name": "compartments",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plies": {
+          "name": "plies",
+          "type": "varchar(1)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lid_opening": {
+          "name": "lid_opening",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "handle": {
+          "name": "handle",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wrap": {
+          "name": "wrap",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "window": {
+          "name": "window",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "variant": {
+          "name": "variant",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dictionary_release": {
+          "name": "dictionary_release",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "saved_by": {
+          "name": "saved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "saved_at": {
+          "name": "saved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "atlas_spec_ids_code_unique": {
+          "name": "atlas_spec_ids_code_unique",
+          "columns": [
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_saved_at_idx": {
+          "name": "atlas_spec_ids_saved_at_idx",
+          "columns": [
+            {
+              "expression": "saved_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_product_type_idx": {
+          "name": "atlas_spec_ids_product_type_idx",
+          "columns": [
+            {
+              "expression": "product_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_material_idx": {
+          "name": "atlas_spec_ids_material_idx",
+          "columns": [
+            {
+              "expression": "material",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_coating_idx": {
+          "name": "atlas_spec_ids_coating_idx",
+          "columns": [
+            {
+              "expression": "coating",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_colour_clarity_idx": {
+          "name": "atlas_spec_ids_colour_clarity_idx",
+          "columns": [
+            {
+              "expression": "colour_clarity",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_shape_idx": {
+          "name": "atlas_spec_ids_shape_idx",
+          "columns": [
+            {
+              "expression": "shape",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_profile_idx": {
+          "name": "atlas_spec_ids_profile_idx",
+          "columns": [
+            {
+              "expression": "profile",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_capacity_idx": {
+          "name": "atlas_spec_ids_capacity_idx",
+          "columns": [
+            {
+              "expression": "capacity",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_top_diameter_idx": {
+          "name": "atlas_spec_ids_top_diameter_idx",
+          "columns": [
+            {
+              "expression": "top_diameter",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_bottom_diameter_idx": {
+          "name": "atlas_spec_ids_bottom_diameter_idx",
+          "columns": [
+            {
+              "expression": "bottom_diameter",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_height_idx": {
+          "name": "atlas_spec_ids_height_idx",
+          "columns": [
+            {
+              "expression": "height",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_length_idx": {
+          "name": "atlas_spec_ids_length_idx",
+          "columns": [
+            {
+              "expression": "length",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_width_idx": {
+          "name": "atlas_spec_ids_width_idx",
+          "columns": [
+            {
+              "expression": "width",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_gusset_idx": {
+          "name": "atlas_spec_ids_gusset_idx",
+          "columns": [
+            {
+              "expression": "gusset",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_unit_weight_idx": {
+          "name": "atlas_spec_ids_unit_weight_idx",
+          "columns": [
+            {
+              "expression": "unit_weight",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_basis_weight_idx": {
+          "name": "atlas_spec_ids_basis_weight_idx",
+          "columns": [
+            {
+              "expression": "basis_weight",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_thickness_idx": {
+          "name": "atlas_spec_ids_thickness_idx",
+          "columns": [
+            {
+              "expression": "thickness",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_wall_idx": {
+          "name": "atlas_spec_ids_wall_idx",
+          "columns": [
+            {
+              "expression": "wall",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_print_idx": {
+          "name": "atlas_spec_ids_print_idx",
+          "columns": [
+            {
+              "expression": "print",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_compartments_idx": {
+          "name": "atlas_spec_ids_compartments_idx",
+          "columns": [
+            {
+              "expression": "compartments",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_plies_idx": {
+          "name": "atlas_spec_ids_plies_idx",
+          "columns": [
+            {
+              "expression": "plies",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_lid_opening_idx": {
+          "name": "atlas_spec_ids_lid_opening_idx",
+          "columns": [
+            {
+              "expression": "lid_opening",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_handle_idx": {
+          "name": "atlas_spec_ids_handle_idx",
+          "columns": [
+            {
+              "expression": "handle",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_wrap_idx": {
+          "name": "atlas_spec_ids_wrap_idx",
+          "columns": [
+            {
+              "expression": "wrap",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "atlas_spec_ids_window_idx": {
+          "name": "atlas_spec_ids_window_idx",
+          "columns": [
+            {
+              "expression": "window",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "atlas_spec_ids_release_fk": {
+          "name": "atlas_spec_ids_release_fk",
+          "tableFrom": "atlas_spec_ids",
+          "columnsFrom": [
+            "dictionary_release"
+          ],
+          "tableTo": "atlas_dictionary_releases",
+          "columnsTo": [
+            "release"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "atlas_spec_ids_saved_by_fk": {
+          "name": "atlas_spec_ids_saved_by_fk",
+          "tableFrom": "atlas_spec_ids",
+          "columnsFrom": [
+            "saved_by"
+          ],
+          "tableTo": "accounts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "atlas_spec_ids_updated_by_fk": {
+          "name": "atlas_spec_ids_updated_by_fk",
+          "tableFrom": "atlas_spec_ids",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "tableTo": "accounts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.password_reset_tokens": {
+      "name": "password_reset_tokens",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "password_reset_tokens_token_hash_unique": {
+          "name": "password_reset_tokens_token_hash_unique",
+          "columns": [
+            {
+              "expression": "token_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "password_reset_tokens_account_id_accounts_id_fk": {
+          "name": "password_reset_tokens_account_id_accounts_id_fk",
+          "tableFrom": "password_reset_tokens",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "accounts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sessions": {
+      "name": "sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "sessions_token_hash_unique": {
+          "name": "sessions_token_hash_unique",
+          "columns": [
+            {
+              "expression": "token_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "sessions_account_id_accounts_id_fk": {
+          "name": "sessions_account_id_accounts_id_fk",
+          "tableFrom": "sessions",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "accounts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tools": {
+      "name": "tools",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
+          "type": "varchar(2048)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "varchar(280)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(40)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "tools_name_lower_unique": {
+          "name": "tools_name_lower_unique",
+          "columns": [
+            {
+              "expression": "lower(\"name\")",
+              "isExpression": true,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "views": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

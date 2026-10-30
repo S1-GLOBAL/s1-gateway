@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyProposal } from '../suggestions/apply-proposal.js';
 import { s2Dictionary } from '../testing/s2-dictionary.js';
 import { NO_PRODUCT_TYPE, readVerifiedRow, type VerifiedRow } from './verified-row.js';
+import { CAPACITY_UNIT, COLOUR_CLARITY, MATERIAL, PRINT, PRODUCT_TYPE, SHAPE, WALL } from '../options.js';
 
 const dictionary = s2Dictionary();
 
@@ -37,28 +38,28 @@ describe('readVerifiedRow, with the description reader (ADR 0032)', () => {
     const reading = read({ itemName: '16oz Clear Cup', material: 'Plastic', materialType: 'PP', printing: '1c print' });
 
     expect(reading.facts).toMatchObject({
-      productType: 'CUP',
-      material: 'APP',
-      colourClarity: 'CL',
-      print: '01',
-      capacity: { unit: 'Z', value: '16' },
+      productType: PRODUCT_TYPE.cup,
+      material: MATERIAL.pp,
+      colourClarity: COLOUR_CLARITY.clear,
+      print: PRINT.oneColour,
+      capacity: { unit: CAPACITY_UNIT.ounces, value: '16' },
     });
     expect(reading.readFromRow).toContain('Material: Polymer, PP');
   });
 
   it('reads the material type over the family beside it, and over a category that names one', () => {
-    expect(read({ itemName: 'Invented cup', category: 'Plastic Cup', material: 'Plastic', materialType: 'PP' }).facts.material).toBe('APP');
+    expect(read({ itemName: 'Invented cup', category: 'Plastic Cup', material: 'Plastic', materialType: 'PP' }).facts.material).toBe(MATERIAL.pp);
   });
 
   it('reads the category only when nothing else names the product type', () => {
-    expect(read({ itemName: 'Invented 12oz drink', category: 'Cup' }).facts.productType).toBe('CUP');
-    expect(read({ itemName: 'PP Cup', category: 'Bowl' }).facts.productType).toBe('CUP');
+    expect(read({ itemName: 'Invented 12oz drink', category: 'Cup' }).facts.productType).toBe(PRODUCT_TYPE.cup);
+    expect(read({ itemName: 'PP Cup', category: 'Bowl' }).facts.productType).toBe(PRODUCT_TYPE.cup);
   });
 
   it('reads a dimension cell written as a number, 90, as a 90 mm rim under ruling R1', () => {
     const reading = read({ itemName: 'Invented lid', materialType: 'PET', dimension: '90' });
 
-    expect(reading.facts).toMatchObject({ shape: 'RD', topDiameter: { value: '90', unit: 'mm' } });
+    expect(reading.facts).toMatchObject({ shape: SHAPE.round, topDiameter: { value: '90', unit: 'mm' } });
     expect(reading.readFromRow).toContain('Top diameter: 90 mm (R1, from "90")');
   });
 
@@ -118,7 +119,7 @@ describe('readVerifiedRow, each column for what it says (plan 0011)', () => {
       dimension: 'Top Length: 280, Width: 205, Height: 64',
       weight: '50 g (Tray) / 40 g (Lid)',
     });
-    expect(reading.facts).toMatchObject({ productType: 'CWL', height: { value: '64', unit: 'mm' } });
+    expect(reading.facts).toMatchObject({ productType: PRODUCT_TYPE.containerWithLid, height: { value: '64', unit: 'mm' } });
   });
 
   it('reads the product type from the sizes as a last resort: a vessel and its lid', () => {
@@ -128,26 +129,26 @@ describe('readVerifiedRow, each column for what it says (plan 0011)', () => {
       ...PLASTIC,
       dimension: 'Container: length 160 & Lid: length 162',
     });
-    expect(reading.facts.productType).toBe('CWL');
+    expect(reading.facts.productType).toBe(PRODUCT_TYPE.containerWithLid);
   });
 
   it('lets the Category column settle two product types the item name gives', () => {
     const reading = read({ itemName: 'Invented Bowls - Twisted Paper Bag', category: 'Paper Bag With Handle', material: 'Paper' });
-    expect(reading.facts.productType).toBe('BAG');
+    expect(reading.facts.productType).toBe(PRODUCT_TYPE.bag);
     expect(reading.agreement).toBeNull();
   });
 
   it('reads no product type from a material cell, but a kind of the one the item name gives', () => {
-    expect(read({ itemName: 'Invented traymat', material: 'Paper', materialType: 'Paper Tray' }).facts.productType).toBe('WRP');
+    expect(read({ itemName: 'Invented traymat', material: 'Paper', materialType: 'Paper Tray' }).facts.productType).toBe(PRODUCT_TYPE.wrapOrSheet);
     const lids = read({ itemName: 'Invented dome lids for 7 inch', material: 'Container Lid' });
-    expect(lids.facts.productType).toBe('CTL');
+    expect(lids.facts.productType).toBe(PRODUCT_TYPE.containerLid);
     expect(lids.notes).toContain('Container Lid names the kind of Cup lid (A2), so the product is Container lid (A9).');
   });
 
   it("reads the material cells' material over a vessel's a lid's name mentions, and a grade in the item name over their family", () => {
-    expect(read({ itemName: 'Invented lid for 16/20 round bagasse bowl', material: 'Plastic', materialType: 'PET' }).facts.material).toBe('APT');
-    expect(read({ itemName: 'Invented PLA fork', material: 'Plastic' }).facts.material).toBe('APL');
-    expect(read({ itemName: 'Invented wrap', material: 'Paper', materialType: 'Greaseproof' }).facts.material).toBe('BGP');
+    expect(read({ itemName: 'Invented lid for 16/20 round bagasse bowl', material: 'Plastic', materialType: 'PET' }).facts.material).toBe(MATERIAL.pet);
+    expect(read({ itemName: 'Invented PLA fork', material: 'Plastic' }).facts.material).toBe(MATERIAL.pla);
+    expect(read({ itemName: 'Invented wrap', material: 'Paper', materialType: 'Greaseproof' }).facts.material).toBe(MATERIAL.greaseproof);
   });
 
   it('reads the Dimension cell before the item name, and the Category column only for what the rest leaves unsaid', () => {
@@ -156,13 +157,13 @@ describe('readVerifiedRow, each column for what it says (plan 0011)', () => {
       gusset: { value: '120', unit: 'mm' },
       height: { value: '280', unit: 'mm' },
     });
-    expect(read({ itemName: 'Invented ripple wall paper cup', category: 'Paper Cup - Double Wall' }).facts.wall).toBe('RW');
-    expect(read({ itemName: 'Invented cup', category: 'Paper Cup - Double Wall' }).facts.wall).toBe('DW');
+    expect(read({ itemName: 'Invented ripple wall paper cup', category: 'Paper Cup - Double Wall' }).facts.wall).toBe(WALL.rippleWall);
+    expect(read({ itemName: 'Invented cup', category: 'Paper Cup - Double Wall' }).facts.wall).toBe(WALL.doubleWall);
   });
 
   it('keeps a length waiting on the shape once the Category column gives it', () => {
     const reading = read({ itemName: 'Invented bento box', category: 'Plastic Container - Square', ...PLASTIC, dimension: '260 x 200 x 50 mm' });
-    expect(reading.facts).toMatchObject({ productType: 'CTN', shape: 'SQ', length: { value: '260', unit: 'mm' } });
+    expect(reading.facts).toMatchObject({ productType: PRODUCT_TYPE.container, shape: SHAPE.square, length: { value: '260', unit: 'mm' } });
   });
 
   it('reads a weight with no unit as grams where the product has no basis weight, and not at all where it has both', () => {
@@ -190,11 +191,11 @@ describe('readVerifiedRow, each column for what it says (plan 0011)', () => {
 
 describe('readVerifiedRow after an approved change (ADR 0031)', () => {
   it('reads an approved search word in the item name as its option', () => {
-    const withWord = applyProposal(dictionary, { slot: 'material', code: 'CBG' }, { kind: 'edit', newCode: null, meaning: null, searchWords: ['sugarcane fibre'] }, {
+    const withWord = applyProposal(dictionary, { slot: 'material', code: MATERIAL.bagasse }, { kind: 'edit', newCode: null, meaning: null, searchWords: ['sugarcane fibre'] }, {
       number: 1,
       at: new Date('2026-10-27T10:00:00.000Z'),
     });
     const reading = readVerifiedRow(row({ itemName: '12oz sugarcane fibre bowl' }), withWord);
-    expect(reading.kind === 'read' && reading.facts.material).toBe('CBG');
+    expect(reading.kind === 'read' && reading.facts.material).toBe(MATERIAL.bagasse);
   });
 });

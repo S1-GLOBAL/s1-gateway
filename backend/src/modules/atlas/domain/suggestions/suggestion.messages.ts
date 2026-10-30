@@ -4,19 +4,15 @@
  */
 export const suggestionMessages = {
   notAList: (): string => 'That is not a dictionary list.',
-  codeCharacters: (): string => 'Use capital letters and digits only.',
-  codeWidth: (width: number): string =>
-    width === 1 ? 'A capacity unit is one capital letter.' : `The code must be ${width} characters.`,
-  codeIsMarker: (code: string): string => `${code} can't be a code: it reads as "not known" or "doesn't apply".`,
-  codeHoldsX: (code: string): string => `${code} can't be a code: an X in it reads as "doesn't apply".`,
-  codeTaken: (code: string, meaning: string): string => `${code} is already ${meaning}.`,
+  codeIsNumbered: (): string => 'An option is known by its number, given when it is approved. It never changes.',
+  capacityUnitsFull: (max: number): string => `Nominal capacity has its ${max} units: a code writes a unit as one digit.`,
+  broaderOnlyForMaterial: (): string => 'Only a material is a grade of another.',
   noSuchOption: (list: string, code: string): string => `${list} has no option ${code}.`,
-  sameCode: (): string => 'That is the code it has now.',
   meaningEmpty: (): string => 'Write what it means.',
   meaningTooLong: (max: number): string => `Keep it to ${max} characters.`,
-  nothingChanged: (): string => 'Change the code, the wording or the search words.',
+  nothingChanged: (): string => 'Change the wording or the search words.',
   roundLocked: (): string =>
-    "RD is how Atlas knows a shape is round, so its letters can't change and it can't be deleted.",
+    "Round is how Atlas knows a shape is round, so it can't be deleted.",
   replacementRequired: (): string => 'Pick what those Spec IDs become.',
   productTypeNotKnown: (): string => "Pick the product type they become. Product type can't be not known.",
   replacementIsItself: (): string => 'Pick a different option, or Not known.',

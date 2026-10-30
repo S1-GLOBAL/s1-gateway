@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
+import { Dictionary, type DictionaryHistory } from '../domain/dictionary.js';
 import type { DictionarySlotKey } from '../domain/slots.js';
 import { InvalidSpecIdError } from '../domain/spec-id.errors.js';
-import { applyProposal } from '../domain/suggestions/apply-proposal.js';
-import { s2Dictionary } from '../domain/testing/s2-dictionary.js';
+import { S2_0_1_0_RULES, S2_0_1_0_VALUES } from '../domain/testing/s2-dictionary.js';
 import { DecodeSpecId } from './decode-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
+import { CAPACITY_UNIT, PRODUCT_TYPE } from '../domain/options.js';
 
 const ILLUSTRATIVE = 'A1B4D1E1F1-H90N33';
 const ILLUSTRATIVE_DOTTED = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
+/** The same slots as they are held: each option by its number (ADR 0033). */
+const ILLUSTRATIVE_SLOTS = '1.4.Y.1.1.1.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
 
 describe('DecodeSpecId', () => {
   const decode = new DecodeSpecId(new InMemoryDictionaryRepository());
@@ -23,7 +26,7 @@ describe('DecodeSpecId', () => {
       number: 1,
       key: 'productType',
       name: 'Product type',
-      raw: 'BLD',
+      raw: PRODUCT_TYPE.bowlLid,
       part: 'A1',
       state: 'value',
       meaning: 'Bowl lid',
@@ -35,7 +38,7 @@ describe('DecodeSpecId', () => {
     if (!result.ok) throw result.error;
 
     expect(result.value.code).toBe(ILLUSTRATIVE);
-    expect(result.value.slots.map((slot) => slot.raw).join('.')).toBe(ILLUSTRATIVE_DOTTED);
+    expect(result.value.slots.map((slot) => slot.raw).join('.')).toBe(ILLUSTRATIVE_SLOTS);
   });
 
   it('reports every problem with a dotted code', async () => {
@@ -67,38 +70,71 @@ describe('DecodeSpecId', () => {
   });
 });
 
-describe('DecodeSpecId after approved changes (ADR 0031)', () => {
-  const STAMP = { number: 1, at: new Date('2026-10-27T10:00:00.000Z') };
-  const renamed = (slot: DictionarySlotKey, code: string, newCode: string) =>
-    applyProposal(s2Dictionary(), { slot, code }, { kind: 'edit', newCode, meaning: null, searchWords: null }, STAMP);
-  const decoding = (dictionary: ReturnType<typeof s2Dictionary>) => {
+describe('DecodeSpecId after approved changes (ADR 0031, ADR 0033)', () => {
+  /**
+   * S2 0.1.0 as migration 0021 leaves it after letters were changed before
+   * options were known by number: each option keeps its last letters, and
+   * the letters before are a rename.
+   */
+  const lettered = (slot: DictionarySlotKey, key: string, letters: string, history: DictionaryHistory) =>
+    new Dictionary(
+      'S2 0.1.0',
+      '2026-10-19',
+      S2_0_1_0_VALUES.map((value) => (value.slot === slot && value.code === key ? { ...value, legacyCode: letters } : value)),
+      S2_0_1_0_RULES,
+      history,
+    );
+  const decoding = (dictionary: Dictionary) => {
     const dictionaries = new InMemoryDictionaryRepository();
     dictionaries.replace(dictionary);
     return new DecodeSpecId(dictionaries);
   };
 
-  it('decodes an S1 code whose product type was renamed, in the live letters', async () => {
-    const result = await decoding(renamed('productType', 'CLD', 'CLQ')).execute({
+  it('decodes an S1 code in letters its product type had before a rename, as that product type', async () => {
+    const dictionary = lettered('productType', PRODUCT_TYPE.cupLid, 'CLQ', {
+      renames: [{ slot: 'productType', oldCode: 'CLD', newCode: 'CLQ', changeNumber: 1 }],
+    });
+    const result = await decoding(dictionary).execute({
       code: 'S1.CLD.APT.00.CL.RD.FL.XXXXX.0090.XXXX.0000.XXXX.XXXX.XXXX.0021.XXX.000.XX',
     });
     if (!result.ok) throw result.error;
     expect(result.value.code).toBe('A2B1D1E1F3-H90N21');
-    expect(result.value.slots[0]).toMatchObject({ raw: 'CLQ', part: 'A2', meaning: 'Cup lid' });
+    expect(result.value.slots[0]).toMatchObject({ raw: PRODUCT_TYPE.cupLid, part: 'A2', meaning: 'Cup lid' });
   });
 
-  it("decodes a code written before its unit was renamed, and labels the capacity as the unit's own", async () => {
-    const result = await decoding(renamed('capacity', 'Z', 'O')).execute({ code: 'BWL.CBG.Y.Y.Y.X.Z0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X' });
-    if (!result.ok) throw result.error;
-    expect(result.value.code).toBe('A3B25-G114');
-    expect(result.value.slots.find((slot) => slot.key === 'capacity')).toMatchObject({ raw: 'O0014', part: 'G114', meaning: '14 oz' });
+  it("decodes a code written in a unit's letters before a rename, and labels the capacity as the unit's own", async () => {
+    const dictionary = lettered('capacity', CAPACITY_UNIT.ounces, 'O', {
+      renames: [{ slot: 'capacity', oldCode: 'Z', newCode: 'O', changeNumber: 1 }],
+    });
+    for (const letters of ['Z', 'O']) {
+      const result = await decoding(dictionary).execute({ code: `BWL.CBG.Y.Y.Y.X.${letters}0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X` });
+      if (!result.ok) throw result.error;
+      expect(result.value.code).toBe('A3B25-G114');
+      expect(result.value.slots.find((slot) => slot.key === 'capacity')).toMatchObject({ raw: '10014', part: 'G114', meaning: '14 oz' });
+    }
   });
 
-  it("labels a unit as its own after it took another unit's letters and was renamed again", async () => {
-    const withoutMl = applyProposal(s2Dictionary(), { slot: 'capacity', code: 'M' }, { kind: 'delete', replacement: null }, STAMP);
-    const ozAsM = applyProposal(withoutMl, { slot: 'capacity', code: 'Z' }, { kind: 'edit', newCode: 'M', meaning: null, searchWords: null }, { ...STAMP, number: 2 });
-    const ozAsQ = applyProposal(ozAsM, { slot: 'capacity', code: 'M' }, { kind: 'edit', newCode: 'Q', meaning: null, searchWords: null }, { ...STAMP, number: 3 });
-    const result = await decoding(ozAsQ).execute({ code: 'BWL.CBG.Y.Y.Y.X.Q0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X' });
-    if (!result.ok) throw result.error;
-    expect(result.value.slots.find((slot) => slot.key === 'capacity')?.meaning).toBe('14 oz');
+  it("never reads a deleted unit's letters as the unit that took them later", async () => {
+    // Millilitres deleted, then ounces moved to its letters M, then on to Q.
+    const dictionary = lettered('capacity', CAPACITY_UNIT.ounces, 'Q', {
+      renames: [
+        { slot: 'capacity', oldCode: 'M', newCode: null, changeNumber: 1 },
+        { slot: 'capacity', oldCode: 'Z', newCode: 'Q', changeNumber: 3 },
+      ],
+      retired: [{ slot: 'capacity', number: 2, code: CAPACITY_UNIT.millilitres, legacyCode: 'M', meaning: 'Millilitres', changeNumber: 1 }],
+    });
+    const decode = decoding(new Dictionary(
+      dictionary.release,
+      dictionary.approvedOn,
+      dictionary.values().filter((value) => !(value.slot === 'capacity' && value.code === CAPACITY_UNIT.millilitres)),
+      dictionary.slotRules(),
+      { renames: dictionary.renames(), retired: dictionary.retired() },
+    ));
+
+    const ounces = await decode.execute({ code: 'BWL.CBG.Y.Y.Y.X.Q0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X' });
+    if (!ounces.ok) throw ounces.error;
+    expect(ounces.value.slots.find((slot) => slot.key === 'capacity')?.meaning).toBe('14 oz');
+    const millilitres = await decode.execute({ code: 'BWL.CBG.Y.Y.Y.X.M0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X' });
+    expect(millilitres.ok).toBe(false);
   });
 });

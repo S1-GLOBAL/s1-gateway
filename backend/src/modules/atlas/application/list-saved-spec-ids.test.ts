@@ -7,6 +7,7 @@ import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-rep
 import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { UpdateSpecId } from './update-spec-id.js';
+import { MATERIAL, PRODUCT_TYPE } from '../domain/options.js';
 
 const SAVER = { id: '00000000-0000-4000-8000-0000000000aa', fullName: 'Ada Invented' };
 
@@ -32,7 +33,7 @@ async function setup(count: number) {
   for (let n = 1; n <= count; n += 1) {
     const saved = await save.execute({
       name: `Lid ${n}`,
-      facts: { productType: 'BLD', material: 'APS', height: { value: String(n), unit: 'mm' } },
+      facts: { productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.ps, height: { value: String(n), unit: 'mm' } },
       savedBy: SAVER,
     });
     if (!saved.ok) throw saved.error;
@@ -91,7 +92,7 @@ describe('ListSavedSpecIds', () => {
     await update.execute({
       id: savedIds[0] ?? '',
       name: 'Lid 1, renamed',
-      facts: { productType: 'BLD', material: 'APS', height: { value: '1', unit: 'mm' } },
+      facts: { productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.ps, height: { value: '1', unit: 'mm' } },
       version: 1,
       updatedBy: SAVER,
     });
@@ -111,9 +112,9 @@ describe('ListSavedSpecIds', () => {
 
   it('filters by product type, and treats an empty filter as none', async () => {
     const { list, save } = await setup(2);
-    await save.execute({ name: 'Bowl', facts: { productType: 'BWL', material: 'BKR' }, savedBy: SAVER });
+    await save.execute({ name: 'Bowl', facts: { productType: PRODUCT_TYPE.bowl, material: MATERIAL.kraft }, savedBy: SAVER });
 
-    const bowls = await list.execute({ productType: 'BWL' });
+    const bowls = await list.execute({ productType: PRODUCT_TYPE.bowl });
     const all = await list.execute({ productType: '', q: '' });
 
     expect(bowls.ok && bowls.value.items.map((item) => item.name)).toEqual(['Bowl']);

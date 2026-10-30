@@ -8,6 +8,7 @@ import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
+import { MATERIAL, PRODUCT_TYPE, SHAPE } from '../domain/options.js';
 
 const ADMIN = { id: '00000000-0000-4000-8000-0000000000ad', fullName: 'Ada Admin' };
 const NOW = new Date('2026-10-24T08:00:00.000Z');
@@ -38,7 +39,7 @@ async function setup() {
   for (let rim = 90; rim <= 110; rim++) {
     const result = await save.execute({
       name: `Invented cup ${rim}`,
-      facts: { productType: 'CUP', material: 'APP', shape: 'RD', topDiameter: { value: String(rim), unit: 'mm' } },
+      facts: { productType: PRODUCT_TYPE.cup, material: MATERIAL.pp, shape: SHAPE.round, topDiameter: { value: String(rim), unit: 'mm' } },
       savedBy: ADMIN,
     });
     if (!result.ok) throw new Error('setup failed');
@@ -80,7 +81,7 @@ describe('manufacturerStages on every SavedSpecId (#73)', () => {
   it("reads Search's fits and might fit together in one go", async () => {
     const { dictionaries, specIds, sourcing, first } = await setup();
 
-    const result = await new FindSimilarSpecIds(dictionaries, specIds, sourcing).execute({ productType: 'CUP' });
+    const result = await new FindSimilarSpecIds(dictionaries, specIds, sourcing).execute({ productType: PRODUCT_TYPE.cup });
 
     if (!result.ok) throw new Error('expected results');
     expect(sourcing.stageReads).toHaveLength(1);
@@ -103,13 +104,13 @@ describe('manufacturerStages on every SavedSpecId (#73)', () => {
   it('answers zeros for a Spec ID just saved, without a read, and the existing counts in SPEC_ID_EXISTS', async () => {
     const { save, sourcing } = await setup();
 
-    const fresh = await save.execute({ name: 'Invented lid', facts: { productType: 'CLD', material: 'APT' }, savedBy: ADMIN });
+    const fresh = await save.execute({ name: 'Invented lid', facts: { productType: PRODUCT_TYPE.cupLid, material: MATERIAL.pet }, savedBy: ADMIN });
     expect(fresh.ok && fresh.value.manufacturerStages).toEqual(ZERO);
     expect(sourcing.stageReads).toHaveLength(0);
 
     const again = await save.execute({
       name: 'Invented cup, again',
-      facts: { productType: 'CUP', material: 'APP', shape: 'RD', topDiameter: { value: '110', unit: 'mm' } },
+      facts: { productType: PRODUCT_TYPE.cup, material: MATERIAL.pp, shape: SHAPE.round, topDiameter: { value: '110', unit: 'mm' } },
       savedBy: ADMIN,
     });
     expect(!again.ok && again.error.code).toBe('SPEC_ID_EXISTS');

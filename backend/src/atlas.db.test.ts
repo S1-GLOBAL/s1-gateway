@@ -5,6 +5,7 @@ import { composeApp } from './compose.js';
 import { createAdmin } from './scripts/create-admin.js';
 import { FixedClock, SequentialIdGenerator, silentLogger } from './shared/application/testing/fakes.js';
 import { connectTestDatabase, resetTables } from './test/database.js';
+import { COLOUR_CLARITY, MATERIAL, PRODUCT_TYPE, PROFILE, SHAPE } from './modules/atlas/domain/options.js';
 
 const ADMIN = 'admin@sourceone.global';
 const PASSWORD = 'correct-horse-battery';
@@ -12,11 +13,11 @@ const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X
 /** The same Spec ID's code as Atlas writes it (ADR 0032). */
 const CODE = 'A1B4D1E1F1-H90N33';
 const FACTS = {
-  productType: 'BLD',
-  material: 'APS',
-  colourClarity: 'CL',
-  shape: 'RD',
-  profile: 'DM',
+  productType: PRODUCT_TYPE.bowlLid,
+  material: MATERIAL.ps,
+  colourClarity: COLOUR_CLARITY.clear,
+  shape: SHAPE.round,
+  profile: PROFILE.dome,
   topDiameter: { value: '90', unit: 'mm' },
   unitWeight: { value: '3.3', unit: 'g' },
 };
@@ -70,8 +71,8 @@ describe('Atlas, composed over Postgres', () => {
     expect(response.status).toBe(200);
     expect(response.body.data.release).toBe('S2 0.1.0');
     const values = response.body.data.slots.flatMap((slot: { values: unknown[] }) => slot.values);
-    expect(values).toHaveLength(121);
-    expect(response.body.data.rules).toHaveLength(748);
+    expect(values).toHaveLength(129);
+    expect(response.body.data.rules).toHaveLength(792);
   });
 
   it('decodes the illustrative code when signed in', async () => {
@@ -164,9 +165,9 @@ describe('Atlas, composed over Postgres', () => {
     // Three different products: the profile tells them apart.
     const rim = (name: string, profile: string, topDiameter: object | null) =>
       agent.post(SPEC_IDS).send({ name, facts: { ...FACTS, profile, topDiameter } });
-    expect((await rim('Unstated rim', 'DM', null)).status).toBe(201);
-    expect((await rim('Rim 90', 'HD', { value: '90', unit: 'mm' })).status).toBe(201);
-    expect((await rim('Rim 91', 'FL', { value: '91', unit: 'mm' })).status).toBe(201);
+    expect((await rim('Unstated rim', PROFILE.dome, null)).status).toBe(201);
+    expect((await rim('Rim 90', PROFILE.halfDome, { value: '90', unit: 'mm' })).status).toBe(201);
+    expect((await rim('Rim 91', PROFILE.flat, { value: '91', unit: 'mm' })).status).toBe(201);
 
     const response = await agent.get(`${SPEC_IDS}?topDiameter=0090`);
 

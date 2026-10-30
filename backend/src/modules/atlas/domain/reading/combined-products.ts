@@ -1,8 +1,10 @@
+import { PRODUCT_TYPE as P } from '../options.js';
+
 /*
- * A vessel sold with its own lid is one product: bowl with bowl lid (`BWB`),
- * cup with cup lid (`CWC`), portion cup with portion cup lid (`PWC`), and
- * container with lid (`CWL`). Migration 0018 added the first three (ADR 0032).
- * A lid named by what it fits is the lid alone.
+ * A vessel sold with its own lid is one product: bowl with bowl lid, cup with
+ * cup lid, portion cup with portion cup lid, and container with lid. Migration
+ * 0019 added the first three (ADR 0032). A lid named by what it fits is the
+ * lid alone.
  */
 
 export interface LidFit {
@@ -53,10 +55,10 @@ interface Pair {
 }
 
 const PAIRS: readonly Pair[] = [
-  { base: 'PCP', other: 'PCL', combined: 'PWC', pattern: paired('portion\\s+cups?', 'portion\\s+cup'), qualifier: 'portion\\s+cup' },
-  { base: 'CUP', other: 'CLD', combined: 'CWC', pattern: paired('(?<!portion\\s)cups?', 'cup'), qualifier: 'cup' },
-  { base: 'BWL', other: 'BLD', combined: 'BWB', pattern: paired('bowls?', 'bowl'), qualifier: 'bowl' },
-  { base: 'CTN', other: 'CTL', combined: 'CWL', pattern: paired('containers?', 'container'), qualifier: 'container' },
+  { base: P.portionCup, other: P.portionCupLid, combined: P.portionCupWithLid, pattern: paired('portion\\s+cups?', 'portion\\s+cup'), qualifier: 'portion\\s+cup' },
+  { base: P.cup, other: P.cupLid, combined: P.cupWithLid, pattern: paired('(?<!portion\\s)cups?', 'cup'), qualifier: 'cup' },
+  { base: P.bowl, other: P.bowlLid, combined: P.bowlWithLid, pattern: paired('bowls?', 'bowl'), qualifier: 'bowl' },
+  { base: P.container, other: P.containerLid, combined: P.containerWithLid, pattern: paired('containers?', 'container'), qualifier: 'container' },
 ];
 
 const DIRECTED = new RegExp(`${LID}[^a-z0-9]+(for|fits?(?:\\s+for)?|to\\s+fit)[^a-z0-9]+([\\s\\S]{0,48}?)(?<![a-z0-9])${VESSEL}(?![a-z0-9])`, 'i');
@@ -88,10 +90,10 @@ export function lidFits(text: string): LidFit | undefined {
 
 function fit(vessel: string, gap: string, joiner: readonly string[]): LidFit | undefined {
   const kind = vessel.toLowerCase();
-  const code = kind.startsWith('souffl') || kind.startsWith('portion') ? 'PCL'
-    : kind.startsWith('bowl') || kind.startsWith('soup') ? 'BLD'
-    : kind.startsWith('container') || kind.startsWith('tray') || kind.startsWith('box') ? 'CTL'
-    : kind.startsWith('cup') ? 'CLD'
+  const code = kind.startsWith('souffl') || kind.startsWith('portion') ? P.portionCupLid
+    : kind.startsWith('bowl') || kind.startsWith('soup') ? P.bowlLid
+    : kind.startsWith('container') || kind.startsWith('tray') || kind.startsWith('box') ? P.containerLid
+    : kind.startsWith('cup') ? P.cupLid
     : undefined;
   if (code === undefined) return undefined;
   // The vessel's size, the last one written near it: "2oz Cup", "32 oz Paper Bowl".
@@ -130,7 +132,7 @@ export function combinationFor(text: string, base: string | undefined): string |
  */
 export function vesselWithLid(values: readonly string[], text: string): string | undefined {
   if (values.length !== 2 || joinedLids(text).length === 0) return undefined;
-  const lids = new Set(['CLD', ...PAIRS.map((pair) => pair.other)]);
+  const lids = new Set<string>([P.cupLid, ...PAIRS.map((pair) => pair.other)]);
   const vessel = PAIRS.find((pair) => values.includes(pair.base));
   return vessel !== undefined && values.some((value) => lids.has(value)) ? vessel.combined : undefined;
 }

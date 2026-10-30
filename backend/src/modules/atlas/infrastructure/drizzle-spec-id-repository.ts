@@ -1,10 +1,9 @@
-import { and, asc, count, desc, eq, ilike, inArray, like, ne, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, like, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { err, ok, type Result } from '../../../shared/domain/result.js';
 import type { Database } from '../../../shared/infrastructure/database/connection.js';
 import { isUniqueViolation } from '../../../shared/infrastructure/database/postgres-errors.js';
 import { accountsTable } from '../../accounts/index.js';
-import { storedForms } from '../domain/old-codes.js';
 import type { SavedSpecId } from '../domain/saved-spec-id.js';
 import type { SimilarCriteria } from '../domain/similar-match.js';
 import { SEARCHABLE_SLOTS } from '../domain/similar-match.js';
@@ -38,13 +37,8 @@ const lastChangedAt = sql`coalesce(${atlasSpecIds.updatedAt}, ${atlasSpecIds.sav
 /** Thrown inside a transaction to roll it back when the version moved on. */
 class VersionMovedOn extends Error {}
 
-/** Thrown inside a transaction to roll it back when another Spec ID holds the code in a form an older API wrote. */
-class HeldInOldForm extends Error {}
-
 /** Thrown inside a transaction to roll it back when the code was built from a dictionary an approval has since changed. */
 class DictionaryMovedOn extends Error {}
-
-type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 /**
  * Inserts, updates and selects saved Spec IDs, writing each one's history
@@ -63,14 +57,13 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
     try {
       await this.db.transaction(async (tx) => {
         if ((await lockDictionaryShared(tx)) !== dictionaryChange) throw new DictionaryMovedOn();
-        if (await this.heldInOldForm(tx, saved)) throw new HeldInOldForm();
         await tx.insert(atlasSpecIds).values(toRow(saved));
         await tx.insert(atlasSpecIdChanges).values(toChangeRow(created));
       });
       return ok(undefined);
     } catch (error) {
       if (error instanceof DictionaryMovedOn) return err(new DictionaryMovedOnError());
-      if (error instanceof HeldInOldForm || isUniqueViolation(error)) return err(new SpecIdExistsError());
+      if (isUniqueViolation(error)) return err(new SpecIdExistsError());
       throw error;
     }
   }
@@ -94,14 +87,13 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
           .where(and(eq(atlasSpecIds.id, id), eq(atlasSpecIds.version, expectedVersion)))
           .returning({ id: atlasSpecIds.id });
         if (updated.length === 0) throw new VersionMovedOn();
-        if (await this.heldInOldForm(tx, saved)) throw new HeldInOldForm();
         await tx.insert(atlasSpecIdChanges).values(toChangeRow(change));
       });
       return ok(undefined);
     } catch (error) {
       if (error instanceof DictionaryMovedOn) return err(new DictionaryMovedOnError());
       if (error instanceof VersionMovedOn) return err(new SpecIdChangedError());
-      if (error instanceof HeldInOldForm || isUniqueViolation(error)) return err(new SpecIdExistsError());
+      if (isUniqueViolation(error)) return err(new SpecIdExistsError());
       throw error;
     }
   }
@@ -212,19 +204,6 @@ export class DrizzleSpecIdRepository implements SpecIdRepository {
     return former;
   }
 
-  /**
-   * Whether another Spec ID holds these facts under a dotted code, short or
-   * long, saved by an older API during a deploy (ADR 0025, ADR 0032): the
-   * unique index cannot see the two spellings as one.
-   */
-  private async heldInOldForm(tx: Transaction, saved: SavedSpecId): Promise<boolean> {
-    const rows = await tx
-      .select({ id: atlasSpecIds.id })
-      .from(atlasSpecIds)
-      .where(and(inArray(atlasSpecIds.code, storedForms(saved.specId.dottedCode)), ne(atlasSpecIds.id, saved.id)));
-    return rows.length > 0;
-  }
-
   private selectWithNames() {
     return this.db
       .select({ spec: atlasSpecIds, savedByName: accountsTable.fullName, updatedByName: updater.fullName })
@@ -248,9 +227,8 @@ function escapeLike(text: string): string {
 }
 
 /**
- * A slot holding a dictionary option. A code is the same in the short and the
- * long form (ADR 0025): only markers differ. A capacity holds its unit as its
- * first letter, and no unit is a marker or a wildcard (`isOptionCode`).
+ * A slot holding a dictionary option, by its number. A capacity holds its
+ * unit's number as its first digit, and no unit is a wildcard (`isOptionCode`).
  */
 export function holdsOption(slot: DictionarySlotKey, code: string): SQL {
   const column = atlasSpecIds[slot];

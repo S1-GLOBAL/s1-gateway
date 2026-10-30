@@ -29,10 +29,13 @@ export type SlotKey =
 export type SlotRule = 'applies' | 'never' | 'round_only' | 'non_round_only' | 'paper_only';
 
 export interface DictionaryValue {
+  /** The option's key, as a Spec ID's slot holds it: its number, as text (ADR 0033). */
   code: string;
   meaning: string;
   /** Its number in its list, written after the list's letter in a code: material 17 is `B17` (ADR 0032). */
   number: number;
+  /** For a material, the key of the broader material it is a grade of: kraft for recycled kraft; else null (ADR 0033). */
+  broader: string | null;
   /** Words an approved suggestion gave it, read in pasted text as it (ADR 0031); the word list in the code is not among them. */
   searchWords: string[];
 }
@@ -67,7 +70,7 @@ export interface DecodedSlot {
   number: number;
   key: SlotKey;
   name: string;
-  /** The slot's value as it is stored: `BCS`, `Z0012`, `0090`, or `Y` (not known) or `X` (doesn't apply). */
+  /** The slot's value as it is stored: an option's number `17`, a capacity `10012`, a size `0090`, or `Y` (not known) or `X` (doesn't apply). */
   raw: string;
   /** How the code writes it: `B17`, `G112`, `H90`; empty when the code leaves it out (ADR 0032). */
   part: string;
@@ -375,10 +378,12 @@ export type DictionaryProposal =
       searchWords: readonly string[];
       /** Every ruled field's rule, for a new product type; null for any other list. */
       rules: Readonly<Partial<Record<SlotKey, SlotRule>>> | null;
+      /** For a new material, the key of the material it is a grade of; null or left out for none (ADR 0033). */
+      broader?: string | null;
     }
   | {
       kind: 'edit';
-      /** Null leaves each as it is; at least one is not null. */
+      /** Null leaves each as it is; at least one is not null. `newCode` is always null: an option's number never changes (ADR 0033). */
       newCode: string | null;
       meaning: string | null;
       /** The whole new list, replacing today's. */
@@ -386,12 +391,15 @@ export type DictionaryProposal =
     }
   | {
       kind: 'delete';
-      /** What saved Spec IDs holding the option become: another code, `Y`, or null when none holds it. */
+      /** What saved Spec IDs holding the option become: another option's key, `Y`, or null when none holds it. */
       replacement: string | null;
     }
   | { kind: 'rules'; rules: Readonly<Partial<Record<SlotKey, SlotRule>>> };
 
-/** `POST /atlas/dictionary/suggestions`. `code` is the option it is about: the new code for an add. */
+/**
+ * `POST /atlas/dictionary/suggestions`. `code` is the key of the option it is
+ * about; empty for an add, which is numbered when it is approved (ADR 0033).
+ */
 export interface SuggestDictionaryChangeRequest {
   slot: DictionarySlotKey;
   code: string;

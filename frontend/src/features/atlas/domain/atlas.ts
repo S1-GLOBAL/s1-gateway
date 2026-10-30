@@ -39,10 +39,13 @@ export const RULE_LABELS: Readonly<Record<SlotRule, string>> = {
 };
 
 export interface DictionaryValue {
+  /** Its key: its number, as text (ADR 0033). */
   code: string;
   meaning: string;
   /** Its number in its list, written after the list's letter in a code: material 17 is `B17`. */
   number: number;
+  /** For a material, the key of the material it is a grade of: kraft for recycled kraft; else null (ADR 0033). */
+  broader: string | null;
   /** Words an approved suggestion gave it, read in pasted text as it (ADR 0031). */
   searchWords: string[];
 }

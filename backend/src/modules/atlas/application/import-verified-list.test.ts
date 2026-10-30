@@ -7,6 +7,7 @@ import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
+import { MATERIAL, PRODUCT_TYPE } from '../domain/options.js';
 
 const SAVER = { id: '00000000-0000-4000-8000-0000000000aa', fullName: 'Ada Invented' };
 
@@ -192,7 +193,7 @@ describe('ImportVerifiedList, manufacturers and quotes (#56)', () => {
 
   it('records the quote of a row whose code is already saved against that Spec ID, and saves no new one', async () => {
     const { run, specIds, sourcing, save, report } = setup(rows({ itemName: 'Invented cup', ...PP_CUP, ...ACME }));
-    const seeded = await save.execute({ name: 'Invented seeded cup', facts: { productType: 'CUP', material: 'APP' }, savedBy: SAVER });
+    const seeded = await save.execute({ name: 'Invented seeded cup', facts: { productType: PRODUCT_TYPE.cup, material: MATERIAL.pp }, savedBy: SAVER });
     if (!seeded.ok) throw new Error('setup failed');
 
     await run(true);

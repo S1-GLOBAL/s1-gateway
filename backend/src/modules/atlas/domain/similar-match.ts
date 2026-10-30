@@ -40,22 +40,16 @@ export function isSearchableSlot(key: string): key is SearchableSlotKey {
 }
 
 /**
- * Materials that name a family, in S2 0.1.0's letters, each with the letters
- * its grades begin with: plastic, paper, molded fibre and metal of unknown
- * grade, and kraft, a family of paper grades.
+ * Whether one material is a grade of another: recycled kraft of kraft, and of
+ * paper of unknown grade (ADR 0033). A material is no grade of itself.
  */
-const MATERIAL_FAMILIES: Readonly<Record<string, string>> = { A00: 'A', B00: 'B', C00: 'C', D00: 'D', BKR: 'BK' };
+export type MaterialFamilies = (grade: string, family: string) => boolean;
 
-/** Each family material as `dictionary` writes it now, with the letters its grades begin with. */
-export type MaterialFamilies = ReadonlyMap<string, string>;
+const NO_FAMILIES: MaterialFamilies = () => false;
 
+/** The grades `dictionary` says each material has, through every broader material. */
 export function materialFamiliesIn(dictionary: Dictionary): MaterialFamilies {
-  const families = new Map<string, string>();
-  for (const [code, prefix] of Object.entries(MATERIAL_FAMILIES)) {
-    const live = dictionary.liveOriginal('material', code);
-    if (live !== undefined) families.set(live, prefix);
-  }
-  return families;
+  return (grade, family) => grade !== family && dictionary.isGradeOf(grade, family);
 }
 
 /**
@@ -65,11 +59,8 @@ export function materialFamiliesIn(dictionary: Dictionary): MaterialFamilies {
  * for ("recycled kraft" asked, "paper" saved); else `other`.
  */
 function materialStanding(wanted: string, actual: string, families: MaterialFamilies): 'equal' | 'family' | 'other' {
-  if (actual === wanted) return 'equal';
-  const asked = families.get(wanted);
-  if (asked !== undefined && actual.startsWith(asked)) return 'equal';
-  const recorded = families.get(actual);
-  if (recorded !== undefined && wanted.startsWith(recorded)) return 'family';
+  if (actual === wanted || families(actual, wanted)) return 'equal';
+  if (families(wanted, actual)) return 'family';
   return 'other';
 }
 
@@ -84,7 +75,7 @@ function materialStanding(wanted: string, actual: string, families: MaterialFami
 export function classifyMatch(
   slotOf: (key: SearchableSlotKey) => string,
   criteria: SimilarCriteria,
-  families: MaterialFamilies = new Map(),
+  families: MaterialFamilies = NO_FAMILIES,
 ): 'fits' | 'might-fit' | 'excluded' {
   let unknown = false;
   for (const key of SEARCHABLE_SLOTS) {
@@ -110,7 +101,7 @@ export function classifyMatch(
 export function recordedCount(
   slotOf: (key: SearchableSlotKey) => string,
   criteria: SimilarCriteria,
-  families: MaterialFamilies = new Map(),
+  families: MaterialFamilies = NO_FAMILIES,
 ): number {
   return SEARCHABLE_SLOTS.filter((key) => {
     const wanted = criteria[key];

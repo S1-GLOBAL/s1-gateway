@@ -90,7 +90,8 @@ describe('S1_ADDED_SLOTS', () => {
     const added = RULED_SLOTS.slice(-8);
     for (const [productType, slots] of Object.entries(S1_ADDED_SLOTS)) {
       const expected = added.map((slot) => {
-        const rule = dictionary.ruleFor(productType, slot);
+        // S1 named product types by letters: each is read as the product type that had them (ADR 0033).
+        const rule = dictionary.ruleFor(dictionary.fromLetters('productType', productType) ?? productType, slot);
         const width = slot === 'plies' ? 1 : 2;
         return (rule === 'never' ? 'X' : '0').repeat(width);
       });

@@ -2,6 +2,7 @@ import { expectedFill, type ExpectedFill } from '../applicability.js';
 import type { Dictionary, DictionaryValue } from '../dictionary.js';
 import { isIncluded, joinerBefore } from './combined-products.js';
 import type { TextReading } from './read-text.js';
+import { CAPACITY_UNIT } from '../options.js';
 import { WORD_LIST } from './word-list.js';
 import type { FactDraft, SpecIdFactsInput } from '../spec-id-facts.js';
 import {
@@ -121,10 +122,10 @@ const NAMED_COUNTS: readonly { readonly slot: CountSlotKey; readonly name: strin
 ];
 
 const NAMED_CAPACITIES: readonly { readonly unit: string; readonly name: string }[] = [
-  { unit: 'Z', name: 'ounces?|oz' },
-  { unit: 'M', name: 'millilitres?|milliliters?|ml' },
-  { unit: 'S', name: 'servings?' },
-  { unit: 'N', name: 'counts?' },
+  { unit: CAPACITY_UNIT.ounces, name: 'ounces?|oz' },
+  { unit: CAPACITY_UNIT.millilitres, name: 'millilitres?|milliliters?|ml' },
+  { unit: CAPACITY_UNIT.servings, name: 'servings?' },
+  { unit: CAPACITY_UNIT.count, name: 'counts?' },
 ];
 
 const MEASURE_WORDS: Readonly<Record<string, MeasureSlotKey>> = {
@@ -147,16 +148,16 @@ const MEASURE_WORDS: Readonly<Record<string, MeasureSlotKey>> = {
 
 const CAPACITY_WORDS: Readonly<Record<string, string | 'all'>> = {
   capacity: 'all',
-  ounce: 'Z',
-  ounces: 'Z',
-  oz: 'Z',
-  millilitre: 'M',
-  millilitres: 'M',
-  milliliter: 'M',
-  milliliters: 'M',
-  ml: 'M',
-  serving: 'S',
-  servings: 'S',
+  ounce: CAPACITY_UNIT.ounces,
+  ounces: CAPACITY_UNIT.ounces,
+  oz: CAPACITY_UNIT.ounces,
+  millilitre: CAPACITY_UNIT.millilitres,
+  millilitres: CAPACITY_UNIT.millilitres,
+  milliliter: CAPACITY_UNIT.millilitres,
+  milliliters: CAPACITY_UNIT.millilitres,
+  ml: CAPACITY_UNIT.millilitres,
+  serving: CAPACITY_UNIT.servings,
+  servings: CAPACITY_UNIT.servings,
 };
 
 const SAMPLE_MM = '40';
@@ -597,7 +598,7 @@ function weightLine(
   if (includeCapacity && !already('capacity', kept)) {
     const blocked = block('capacity', 'Capacity in grams', kept, dictionary);
     const value = amount ?? SAMPLE_OZ;
-    parts.push(blocked ?? `Capacity in grams: ${capacityExample('G', value, dictionary)}.`);
+    parts.push(blocked ?? `Capacity in grams: ${capacityExample(CAPACITY_UNIT.grams, value, dictionary)}.`);
   }
   if (parts.length === 0) return undefined;
   return `${word} is mentioned, but not which weight. ${parts.join(' ')}`;
@@ -613,7 +614,7 @@ function capacityLine(
   if (already('capacity', kept)) return undefined;
   const blocked = block('capacity', word, kept, dictionary);
   if (blocked !== undefined) return blocked;
-  const units = unit === 'all' ? ['Z', 'M', 'S', 'N', 'G'] : [unit];
+  const units = unit === 'all' ? Object.values(CAPACITY_UNIT) : [unit];
   const value = amount ?? SAMPLE_OZ;
   const examples = units.map((entry) => capacityExample(entry, value, dictionary)).join('. ');
   const asking = amount === undefined ? 'no amount' : `an amount of ${amount}, but not stored as a capacity`;
@@ -774,10 +775,10 @@ function sampleOf(slot: MeasureSlotKey): string {
   return SAMPLE_MM;
 }
 
-/** `12 oz is G112`: the unit's number is the digit after G (ADR 0032). `unit` names an S2 0.1.0 unit. */
+/** `12 oz is G112`: the unit's number is the digit after G (ADR 0032). */
 function capacityExample(unit: string, amount: string, dictionary: Dictionary): string {
   const label = CAPACITY_UNIT_LABELS[unit] ?? unit;
-  const digit = dictionary.numberOf('capacity', dictionary.liveOriginal('capacity', unit) ?? unit) ?? '';
+  const digit = dictionary.numberOf('capacity', unit) ?? '';
   return `${amount} ${label} is G${digit}${amount}`;
 }
 
@@ -1120,7 +1121,7 @@ function adoptLooseGrams(
     const capacityOpen = !decimal && openSlot('capacity', reading, facts, dictionary);
     if (weightOpen === capacityOpen) continue;
     if (weightOpen) loose.push({ kind: 'measure', slot: 'unitWeight', value, unit: 'g', start: match.index, end, span: match[0] });
-    else loose.push({ kind: 'capacity', unit: 'G', value, start: match.index, end, span: match[0] });
+    else loose.push({ kind: 'capacity', unit: CAPACITY_UNIT.grams, value, start: match.index, end, span: match[0] });
   }
   const weight = loose.filter((hit) => hit.kind === 'measure');
   const capacity = loose.filter((hit) => hit.kind === 'capacity');

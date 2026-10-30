@@ -8,6 +8,7 @@ import { applyProposal } from './suggestions/apply-proposal.js';
 import { s2Dictionary } from './testing/s2-dictionary.js';
 import { ILLUSTRATIVE, ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1 } from './testing/spec-id-codes.js';
 import { watchCode } from './watch-code.js';
+import { CAPACITY_UNIT, COLOUR_CLARITY, MATERIAL, PRODUCT_TYPE, WALL, WINDOW } from './options.js';
 
 const dictionary = s2Dictionary();
 const AT = { number: 1, at: new Date('2026-10-29T00:00:00Z') };
@@ -73,42 +74,42 @@ describe('the code (ADR 0032)', () => {
 
   it('keeps each slot’s stored value, and how the code writes it', () => {
     const slots = new Map(read(CUP).describe(dictionary).map((slot) => [slot.key, slot]));
-    expect(slots.get('material')).toMatchObject({ raw: 'BCS', part: 'B17' });
-    expect(slots.get('capacity')).toMatchObject({ raw: 'Z0012', part: 'G112', meaning: '12 oz' });
+    expect(slots.get('material')).toMatchObject({ raw: MATERIAL.cupStock, part: 'B17' });
+    expect(slots.get('capacity')).toMatchObject({ raw: '10012', part: 'G112', meaning: '12 oz' });
     expect(slots.get('coating')).toMatchObject({ raw: 'Y', part: '', state: 'not-known' });
     expect(slots.get('profile')).toMatchObject({ raw: 'X', part: '', state: 'does-not-apply' });
     expect(slots.get('variant')?.part).toBe('');
   });
 
   it('leaves out a fact that was not given', () => {
-    const cup = build({ productType: 'CUP', material: 'BCS', capacity: { unit: 'Z', value: '12' } });
+    const cup = build({ productType: PRODUCT_TYPE.cup, material: MATERIAL.cupStock, capacity: { unit: CAPACITY_UNIT.ounces, value: '12' } });
     expect(cup.code).toBe('A5B17-G112');
     expect(read(cup.code).code).toBe(cup.code);
   });
 
   it('writes the capacity unit as the digit after G', () => {
-    expect(build({ productType: 'CUP', capacity: { unit: 'M', value: '500' } }).code).toBe('A5-G2500');
-    expect(build({ productType: 'CUP', capacity: { unit: 'G', value: '12' } }).code).toBe('A5-G512');
+    expect(build({ productType: PRODUCT_TYPE.cup, capacity: { unit: CAPACITY_UNIT.millilitres, value: '500' } }).code).toBe('A5-G2500');
+    expect(build({ productType: PRODUCT_TYPE.cup, capacity: { unit: CAPACITY_UNIT.grams, value: '12' } }).code).toBe('A5-G512');
     expect(summary(read('A5-G2500'))).toBe('Cup, 500 mL');
     expect(problemsOf('A5-G9500')).toEqual(['Nominal capacity: write a unit digit then the amount, for example G112 for 12 oz.']);
   });
 
   it('stores a decimal capacity with its point', () => {
-    const cup = build({ productType: 'PCP', capacity: { unit: 'Z', value: '3.25' } });
+    const cup = build({ productType: PRODUCT_TYPE.portionCup, capacity: { unit: CAPACITY_UNIT.ounces, value: '3.25' } });
     expect(cup.code).toBe('A6-G13.25');
-    expect(cup.slot('capacity')).toBe('Z0003.25');
+    expect(cup.slot('capacity')).toBe('10003.25');
     expect(summary(cup)).toBe('Portion cup, 3.25 oz');
     expect(read('A6-G13.25').code).toBe('A6-G13.25');
     expect(summary(read('A6-G1325'))).toBe('Portion cup, 325 oz');
-    expect(build({ productType: 'PCP', capacity: { unit: 'Z', value: '6.0' } }).code).toBe('A6-G16');
-    expect(build({ productType: 'PCP', capacity: { unit: 'Z', value: '03.250' } }).code).toBe('A6-G13.25');
-    expect(build({ productType: 'PCP', capacity: { unit: 'Z', value: '0.5' } }).code).toBe('A6-G10.5');
+    expect(build({ productType: PRODUCT_TYPE.portionCup, capacity: { unit: CAPACITY_UNIT.ounces, value: '6.0' } }).code).toBe('A6-G16');
+    expect(build({ productType: PRODUCT_TYPE.portionCup, capacity: { unit: CAPACITY_UNIT.ounces, value: '03.250' } }).code).toBe('A6-G13.25');
+    expect(build({ productType: PRODUCT_TYPE.portionCup, capacity: { unit: CAPACITY_UNIT.ounces, value: '0.5' } }).code).toBe('A6-G10.5');
     expect(isDottedCode('A6-G13.25')).toBe(false);
   });
 
   it('refuses a capacity of 0, over 9999, or with more than 6 decimal places', () => {
     for (const value of ['0', '10000', '1.1234567']) {
-      expect(SpecId.build({ productType: 'PCP', capacity: { unit: 'Z', value } }, dictionary).ok, value).toBe(false);
+      expect(SpecId.build({ productType: PRODUCT_TYPE.portionCup, capacity: { unit: CAPACITY_UNIT.ounces, value } }, dictionary).ok, value).toBe(false);
     }
   });
 
@@ -164,38 +165,39 @@ describe('the code (ADR 0032)', () => {
 
 describe('the dictionary’s numbers (ADR 0032)', () => {
   it('numbers every list in the order it was issued', () => {
-    expect(dictionary.numberOf('productType', 'BLD')).toBe(1);
-    expect(dictionary.numberOf('productType', 'CUP')).toBe(5);
-    expect(dictionary.numberOf('productType', 'LBL')).toBe(31);
-    expect(['BWB', 'CWC', 'PWC'].map((code) => dictionary.numberOf('productType', code))).toEqual([32, 33, 34]);
-    expect(dictionary.numberOf('material', 'BCS')).toBe(17);
-    expect(dictionary.numberOf('colourClarity', 'WH')).toBe(3);
-    expect(['Z', 'M', 'S', 'N', 'G'].map((unit) => dictionary.numberOf('capacity', unit))).toEqual([1, 2, 3, 4, 5]);
-    expect(dictionary.valueNumbered('material', 17)?.code).toBe('BCS');
+    expect(dictionary.numberOf('productType', PRODUCT_TYPE.bowlLid)).toBe(1);
+    expect(dictionary.numberOf('productType', PRODUCT_TYPE.cup)).toBe(5);
+    expect(dictionary.numberOf('productType', PRODUCT_TYPE.label)).toBe(31);
+    expect([PRODUCT_TYPE.bowlWithLid, PRODUCT_TYPE.cupWithLid, PRODUCT_TYPE.portionCupWithLid].map((code) => dictionary.numberOf('productType', code))).toEqual([32, 33, 34]);
+    expect(dictionary.numberOf('material', MATERIAL.cupStock)).toBe(17);
+    expect(dictionary.numberOf('colourClarity', COLOUR_CLARITY.white)).toBe(3);
+    // Each unit, by the letters it had before options were known by number (ADR 0033).
+    expect(['Z', 'M', 'S', 'N', 'G'].map((letters) => dictionary.numberOf('capacity', dictionary.fromLetters('capacity', letters) ?? letters))).toEqual([1, 2, 3, 4, 5]);
+    expect(dictionary.valueNumbered('material', 17)?.code).toBe(MATERIAL.cupStock);
   });
 
-  it('keeps a renamed option’s number, so its codes do not change', () => {
-    const renamed = applyProposal(
+  it('keeps an option’s number when its wording changes, so its codes do not change', () => {
+    const reworded = applyProposal(
       dictionary,
-      { slot: 'material', code: 'BCS' },
-      { kind: 'edit', newCode: 'BCX', meaning: null, searchWords: null },
+      { slot: 'material', code: MATERIAL.cupStock },
+      { kind: 'edit', newCode: null, meaning: 'Paper and paperboard, cupstock', searchWords: null },
       AT,
     );
-    expect(renamed.numberOf('material', 'BCX')).toBe(17);
-    expect(read(CUP, renamed).slot('material')).toBe('BCX');
-    expect(codeInToday(CUP_DOTTED, renamed)).toBe(CUP);
+    expect(reworded.numberOf('material', MATERIAL.cupStock)).toBe(17);
+    expect(read(CUP, reworded).slot('material')).toBe(MATERIAL.cupStock);
+    expect(codeInToday(CUP_DOTTED, reworded)).toBe(CUP);
   });
 
   it('gives a new option the next number, and never a deleted one’s again', () => {
-    const deleted = applyProposal(dictionary, { slot: 'window', code: 'WN' }, { kind: 'delete', replacement: null }, AT);
-    expect(deleted.retiredNumbered('window', 2)).toMatchObject({ code: 'WN', meaning: 'With window', changeNumber: 1 });
+    const deleted = applyProposal(dictionary, { slot: 'window', code: WINDOW.withWindow }, { kind: 'delete', replacement: null }, AT);
+    expect(deleted.retiredNumbered('window', 2)).toMatchObject({ code: WINDOW.withWindow, meaning: 'With window', changeNumber: 1 });
     const added = applyProposal(
       deleted,
-      { slot: 'window', code: 'WF' },
+      { slot: 'window', code: '' },
       { kind: 'add', meaning: 'Full window', searchWords: [], rules: null },
       { ...AT, number: 2 },
     );
-    expect(added.numberOf('window', 'WF')).toBe(3);
+    expect(added.valueNumbered('window', 3)).toMatchObject({ code: '3', meaning: 'Full window' });
   });
 
   it('numbers values given without numbers after those given with them', () => {
@@ -203,12 +205,12 @@ describe('the dictionary’s numbers (ADR 0032)', () => {
       'S2 0.1.0',
       '2026-10-19',
       [
-        { slot: 'wall', code: 'SW', meaning: 'Single wall', number: 4 },
-        { slot: 'wall', code: 'DW', meaning: 'Double wall' },
+        { slot: 'wall', code: WALL.singleWall, meaning: 'Single wall', number: 4 },
+        { slot: 'wall', code: WALL.doubleWall, meaning: 'Double wall' },
       ],
       [],
     );
-    expect(numbered.numberOf('wall', 'DW')).toBe(5);
+    expect(numbered.numberOf('wall', WALL.doubleWall)).toBe(5);
   });
 });
 
@@ -219,8 +221,8 @@ describe('a code written before (ADR 0032)', () => {
     expect(codeInToday('d3e1q2r3a5b17-j110h90g112', dictionary)).toBe(CUP);
     expect(codeInToday('not a code', dictionary)).toBeNull();
 
-    const deleted = applyProposal(dictionary, { slot: 'wall', code: 'DW' }, { kind: 'delete', replacement: null }, AT);
-    expect(writtenSlots(CUP, deleted)?.wall).toBe('DW');
+    const deleted = applyProposal(dictionary, { slot: 'wall', code: WALL.doubleWall }, { kind: 'delete', replacement: null }, AT);
+    expect(writtenSlots(CUP, deleted)?.wall).toBe(WALL.doubleWall);
     expect(codeInToday(CUP_DOTTED, deleted)).toBe(CUP);
   });
 

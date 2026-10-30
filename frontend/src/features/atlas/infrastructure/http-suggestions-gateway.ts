@@ -127,7 +127,13 @@ function toRequest(input: SuggestionInput): SuggestDictionaryChangeRequest {
 function fromProposal(proposal: Proposal): DictionaryProposal {
   switch (proposal.kind) {
     case 'add':
-      return { kind: 'add', meaning: proposal.meaning, searchWords: [...proposal.searchWords], rules: proposal.rules ? { ...proposal.rules } : null };
+      return {
+        kind: 'add',
+        meaning: proposal.meaning,
+        searchWords: [...proposal.searchWords],
+        rules: proposal.rules ? { ...proposal.rules } : null,
+        ...(proposal.broader === undefined ? {} : { broader: proposal.broader }),
+      };
     case 'edit':
       return {
         kind: 'edit',
@@ -145,7 +151,13 @@ function fromProposal(proposal: Proposal): DictionaryProposal {
 function toProposal(contract: DictionaryProposal): Proposal {
   switch (contract.kind) {
     case 'add':
-      return { kind: 'add', meaning: contract.meaning, searchWords: [...contract.searchWords], rules: contract.rules ? { ...contract.rules } : null };
+      return {
+        kind: 'add',
+        meaning: contract.meaning,
+        searchWords: [...contract.searchWords],
+        rules: contract.rules ? { ...contract.rules } : null,
+        ...(contract.broader == null ? {} : { broader: contract.broader }),
+      };
     case 'edit':
       return {
         kind: 'edit',

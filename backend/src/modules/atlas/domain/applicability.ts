@@ -43,14 +43,14 @@ export function expectedFill(
     case 'non_round_only': {
       if (shape === undefined || isDoesNotApply(shape)) return null;
       if (isNotKnown(shape)) return { fill: 'not-known', dependsOn: 'shape' };
-      // RD can't be renamed (#95), but is read like every code the rules name.
-      const round = shape === dictionary.liveOriginal('shape', ROUND_SHAPE);
+      // Round can't be deleted (#95), but is read like every option the rules name.
+      const round = shape === dictionary.live('shape', ROUND_SHAPE);
       return { fill: round === (rule === 'round_only') ? 'any' : 'does-not-apply' };
     }
     case 'paper_only': {
       if (material === undefined || isDoesNotApply(material)) return null;
       if (isNotKnown(material)) return { fill: 'not-known', dependsOn: 'material' };
-      return { fill: material.startsWith(PAPER_FAMILY) ? 'any' : 'does-not-apply' };
+      return { fill: dictionary.isGradeOf(material, PAPER_FAMILY) ? 'any' : 'does-not-apply' };
     }
   }
 }

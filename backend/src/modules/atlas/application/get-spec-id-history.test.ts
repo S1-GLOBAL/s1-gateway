@@ -7,8 +7,9 @@ import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-rep
 import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { UpdateSpecId } from './update-spec-id.js';
+import { MATERIAL, PRODUCT_TYPE, SHAPE } from '../domain/options.js';
 
-const BOWL = { productType: 'BWL', material: 'BKR', shape: 'RD', unitWeight: { value: '12', unit: 'g' } };
+const BOWL = { productType: PRODUCT_TYPE.bowl, material: MATERIAL.kraft, shape: SHAPE.round, unitWeight: { value: '12', unit: 'g' } };
 const SAVER = { id: '00000000-0000-4000-8000-0000000000aa', fullName: 'Ada Invented' };
 const EDITOR = { id: '00000000-0000-4000-8000-0000000000bb', fullName: 'Ben Invented' };
 

@@ -2,15 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { InvalidSpecIdError } from '../domain/spec-id.errors.js';
 import { EncodeSpecId } from './encode-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
+import { COLOUR_CLARITY, MATERIAL, PRODUCT_TYPE, PROFILE, SHAPE } from '../domain/options.js';
 
 const ILLUSTRATIVE = 'A1B4D1E1F1-H90N33';
-const ILLUSTRATIVE_SLOTS = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
+/** Its slots as they are held: each option by its number (ADR 0033). */
+const ILLUSTRATIVE_SLOTS = '1.4.Y.1.1.1.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
 const FACTS = {
-  productType: 'BLD',
-  material: 'APS',
-  colourClarity: 'CL',
-  shape: 'RD',
-  profile: 'DM',
+  productType: PRODUCT_TYPE.bowlLid,
+  material: MATERIAL.ps,
+  colourClarity: COLOUR_CLARITY.clear,
+  shape: SHAPE.round,
+  profile: PROFILE.dome,
   topDiameter: { value: '90', unit: 'mm' },
   unitWeight: { value: '3.3', unit: 'g' },
 };

@@ -41,6 +41,12 @@ Atlas stores and shows only this spelling. A dotted code that Atlas already issu
 
 ## The letters
 
+> Since [plan 0012](./0012-options-by-number.md) ([ADR 0033](../decisions/0033-dictionary-options-are-known-by-number.md)),
+> an option is known only by its number. The three-letter codes in the tables
+> below are its old name, kept only to read a dotted code given out before.
+> Glove (`A35`) and cup sleeve (`A36`), with their materials and coatings, are
+> added by migration 0021, not by suggestion.
+
 | Letter | Fact | What the number is |
 |---|---|---|
 | A | Product type | Issuance number |
@@ -322,7 +328,7 @@ A description goes through the existing Atlas reader, then these extra passes, a
 
 **Decided by reyxdz on 2026-10-30.** A soup cup is a bowl, as the verified list files most of them, and a lid for one is a bowl lid. A material named as absent (`latex free`, `PFAS free`) is not that material. A fact a pass left out as two values stays out: no later pass reads it again by its own name (`16/20oz` is no 20 oz). A product type or material given stays as given through every pass, and no note is written about it.
 
-Gloves and cup sleeves get product types. These are dictionary changes, made in the app by suggestion and approval (ADR 0031), not by a migration, so they land in the live dictionary before the list is imported:
+Gloves and cup sleeves get product types. They were first planned as dictionary changes made in the app by suggestion and approval (ADR 0031); since the reader names them by number, they are added by migration 0021 instead, as A35 and A36 (plan 0012):
 
 | List | Code | Meaning | Search words | Fields that apply |
 |---|---|---|---|---|
