@@ -80,4 +80,4 @@ before ADR 0032.
 - [x] Glove is `A35` and Cup sleeve `A36` in every environment
 - [x] Each constant in `options.ts` matches the dictionary's wording, in a test
 - [x] The restructured list's rehearsal import gives the same 1,161 Spec IDs as plan 0011's: every code and name identical, on a fresh database
-- [x] `npm run typecheck`, `lint`, `design:check`, `test:unit`, `docs:check`, `npm test` and `build` pass, and the backend's `arch:check`; the frontend's `arch:check` runs in CI, since a worktree's linked `node_modules` resolves outside it
+- [x] `npm run typecheck`, `lint`, `arch:check`, `design:check`, `test:unit`, `docs:check`, `npm test` and `build` pass
