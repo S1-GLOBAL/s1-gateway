@@ -14,6 +14,7 @@ import { atlasManufacturers } from './atlas-manufacturers.table.js';
 import { atlasQuotes } from './atlas-quotes.table.js';
 import { DrizzleSourcingRepository } from './drizzle-sourcing-repository.js';
 import { DrizzleSpecIdRepository } from './drizzle-spec-id-repository.js';
+import { MATERIAL, PRODUCT_TYPE } from '../domain/options.js';
 
 const connection = connectTestDatabase();
 const repository = new DrizzleSourcingRepository(connection.db);
@@ -57,7 +58,7 @@ beforeEach(async () => {
     status: 'approved',
     createdAt: new Date('2026-10-14T08:00:00.000Z'),
   });
-  const built = SpecId.build({ productType: 'CUP', material: 'APP' }, s2Dictionary());
+  const built = SpecId.build({ productType: PRODUCT_TYPE.cup, material: MATERIAL.pp }, s2Dictionary());
   if (!built.ok) throw new Error('setup failed');
   const cup = SavedSpecId.restore({
     id: CUP_ID,
@@ -224,8 +225,8 @@ describe('DrizzleSourcingRepository, stagesOf (#73)', () => {
   const on = (specId: string, row: QuoteToRecord): QuoteToRecord => ({ ...row, specId });
 
   it("answers each manufacturer's stage under its Spec ID, in one read", async () => {
-    await saved(LID_ID, 'CLD', 'APT');
-    await saved(PLATE_ID, 'PLT', 'CBG');
+    await saved(LID_ID, PRODUCT_TYPE.cupLid, MATERIAL.pet);
+    await saved(PLATE_ID, PRODUCT_TYPE.plate, MATERIAL.bagasse);
     await repository.replaceQuotes([
       quote('Acme Packaging', 'Atlantis'),
       quote('Acme Packaging', 'Atlantis', { fobPerUnit: 'N/A', fobPerCase: null }),

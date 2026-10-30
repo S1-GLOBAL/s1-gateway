@@ -96,7 +96,13 @@ const rulesSchema = z.partialRecord(z.enum(RULED_SLOTS), z.enum(SLOT_RULES));
 
 /** A suggestion's proposal, by kind (#95). Whether it may be made is the domain's call. */
 const proposalSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('add'), meaning: z.string(), searchWords: z.array(z.string()), rules: rulesSchema.nullable() }),
+  z.object({
+    kind: z.literal('add'),
+    meaning: z.string(),
+    searchWords: z.array(z.string()),
+    rules: rulesSchema.nullable(),
+    broader: z.string().nullable().optional(),
+  }),
   z.object({
     kind: z.literal('edit'),
     newCode: z.string().nullable(),

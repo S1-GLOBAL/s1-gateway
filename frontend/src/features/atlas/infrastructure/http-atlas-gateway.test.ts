@@ -10,7 +10,7 @@ const ILLUSTRATIVE = 'A1B4D1E1F1-H90N33';
 const wireDictionary = {
   release: 'S2 0.1.0',
   approvedOn: '2026-10-16',
-  slots: [{ key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid', number: 1, searchWords: ['bowl cover'] }] }],
+  slots: [{ key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid', number: 1, broader: null, searchWords: ['bowl cover'] }] }],
   rules: [{ productType: 'BLD', slot: 'capacity', rule: 'never' }],
   change: null,
 };
@@ -58,14 +58,14 @@ describe('HttpAtlasGateway', () => {
     expect(dictionary.change).toEqual({ number: 3, at: new Date('2026-10-27T09:30:00.000Z') });
   });
 
-  it('reads search words an older API omits as none, during a release', async () => {
+  it('reads search words and a broader material an older API omits as none, during a release', async () => {
     const dictionary = await gatewayAnswering(200, {
       data: {
         ...wireDictionary,
         slots: [{ key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid' }] }],
       },
     }).dictionary();
-    expect(dictionary.slots[0]?.values).toEqual([{ code: 'BLD', meaning: 'Bowl lid', searchWords: [] }]);
+    expect(dictionary.slots[0]?.values).toEqual([{ code: 'BLD', meaning: 'Bowl lid', broader: null, searchWords: [] }]);
   });
 
   it('sends the code to decode and returns its slots', async () => {

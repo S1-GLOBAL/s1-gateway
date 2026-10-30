@@ -1,4 +1,5 @@
 import type { Dictionary } from '../dictionary.js';
+import { PRODUCT_TYPE as P, SHAPE } from '../options.js';
 import { ROUND_SHAPE } from '../slots.js';
 import type { MeasurementInput, SpecIdFactsInput } from '../spec-id.js';
 
@@ -14,22 +15,22 @@ export interface SizeReading {
   readonly repeats?: readonly string[];
 }
 
-/** Product types each ruling reads, as #28's table gives them, in S2 0.1.0's letters. */
-const R1_TYPES = new Set(['CUP', 'CLD', 'BWL', 'BLD', 'PCP', 'PCL']);
-const R1B_TYPES = new Set(['CUP', 'BWL', 'PCP']);
-const R2_TYPES = new Set(['CUP', 'BWL', 'CTN', 'PCP']);
+/** Product types each ruling reads, as #28's table gives them. */
+const R1_TYPES = new Set<string>([P.cup, P.cupLid, P.bowl, P.bowlLid, P.portionCup, P.portionCupLid]);
+const R1B_TYPES = new Set<string>([P.cup, P.bowl, P.portionCup]);
+const R2_TYPES = new Set<string>([P.cup, P.bowl, P.container, P.portionCup]);
 /**
  * #28's R6, and what plan 0011 adds of the products with a length, width and
  * height: fry cartons, containers, pans, plates, container lids and cup
  * carriers, read as a box's are.
  */
-const R6_TYPES = new Set(['TKB', 'FCB', 'RSC', 'TRY', 'HCT', 'FRC', 'CTN', 'CWL', 'PAN', 'PLT', 'CTL', 'CCR']);
-const SUP = new Set(['SUP']);
-const BAG = new Set(['BAG']);
+const R6_TYPES = new Set<string>([P.takeoutBox, P.foldingCarton, P.shippingBox, P.tray, P.hingedContainer, P.fryCarton, P.container, P.containerWithLid, P.pan, P.plate, P.containerLid, P.cupCarrier]);
+const SUP = new Set<string>([P.standUpPouch]);
+const BAG = new Set<string>([P.bag]);
 /** Of those, the ones whose shape slot applies. Length and width need a shape that is not round. */
-const R6_WITH_SHAPE = new Set(['TRY', 'HCT']);
-/** The shape R6 names for those, in S2 0.1.0's letters. */
-const RECTANGULAR = 'RC';
+const R6_WITH_SHAPE = new Set<string>([P.tray, P.hingedContainer]);
+/** The shape R6 names for those. */
+const RECTANGULAR = SHAPE.rectangular;
 
 /**
  * A fraction as an inch ruler marks it, halves to sixty-fourths, in lowest
@@ -135,8 +136,8 @@ function measures(values: readonly (string | undefined)[], units: readonly (stri
  * tray's or a hinged container's is rectangular. Undefined for any other.
  */
 export function shapeOfLengthAndWidth(productType: string, dictionary: Dictionary): string | undefined {
-  const named = [...R6_WITH_SHAPE].some((type) => dictionary.liveOriginal('productType', type) === productType);
-  return named ? dictionary.liveOriginal('shape', RECTANGULAR) : undefined;
+  const named = [...R6_WITH_SHAPE].some((type) => dictionary.live('productType', type) === productType);
+  return named ? dictionary.live('shape', RECTANGULAR) : undefined;
 }
 
 /**
@@ -146,9 +147,9 @@ export function shapeOfLengthAndWidth(productType: string, dictionary: Dictionar
  * 0.1.0's letters, and read them in `dictionary`'s (ADR 0031).
  */
 export function readSize(text: string, productType: string, dictionary: Dictionary): SizeReading | null {
-  const is = (types: ReadonlySet<string>) => [...types].some((type) => dictionary.liveOriginal('productType', type) === productType);
-  const round = dictionary.liveOriginal('shape', ROUND_SHAPE) ?? ROUND_SHAPE;
-  const rectangular = dictionary.liveOriginal('shape', RECTANGULAR);
+  const is = (types: ReadonlySet<string>) => [...types].some((type) => dictionary.live('productType', type) === productType);
+  const round = dictionary.live('shape', ROUND_SHAPE) ?? ROUND_SHAPE;
+  const rectangular = dictionary.live('shape', RECTANGULAR);
   const threes = threeSizes(text);
   // The size written again, "304.8 x 152.4 x 508 mm (12 x 6 x 20 in)", is that size, so none of it is left over.
   const again = (chosen: RegExpExecArray) => {

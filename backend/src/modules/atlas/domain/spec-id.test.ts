@@ -5,14 +5,18 @@ import { checkSlotValue, SpecId, type SpecIdFactsInput } from './spec-id.js';
 import type { DictionarySlotKey, SlotKey } from './slots.js';
 import { s2Dictionary } from './testing/s2-dictionary.js';
 import { ILLUSTRATIVE, ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1, withSlot } from './testing/spec-id-codes.js';
+import { CAPACITY_UNIT, COATING, COLOUR_CLARITY, HANDLE, LID_OPENING, MATERIAL, PRINT, PRODUCT_TYPE, PROFILE, SHAPE, WALL, WINDOW, WRAP } from './options.js';
+import { slotsOf } from './testing/slots-of.js';
 
 const dictionary = s2Dictionary();
+/** The illustrative bowl lid's 25 slots as they are held: each option by its number (ADR 0033). */
+const ILLUSTRATIVE_SLOTS = '1.4.Y.1.1.1.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
 const ILLUSTRATIVE_FACTS: SpecIdFactsInput = {
-  productType: 'BLD',
-  material: 'APS',
-  colourClarity: 'CL',
-  shape: 'RD',
-  profile: 'DM',
+  productType: PRODUCT_TYPE.bowlLid,
+  material: MATERIAL.ps,
+  colourClarity: COLOUR_CLARITY.clear,
+  shape: SHAPE.round,
+  profile: PROFILE.dome,
   topDiameter: { value: '90', unit: 'mm' },
   unitWeight: { value: '3.3', unit: 'g' },
 };
@@ -57,7 +61,7 @@ describe('the illustrative code', () => {
     const specId = parsed(ILLUSTRATIVE);
     const slots = specId.describe(dictionary);
 
-    expect(specId.dottedCode).toBe(ILLUSTRATIVE);
+    expect(slotsOf(specId)).toBe(ILLUSTRATIVE_SLOTS);
     expect(specId.code).toBe('A1B4D1E1F1-H90N33');
     expect(slots).toHaveLength(25);
     expect(slots.map((slot) => slot.number)).toEqual(Array.from({ length: 25 }, (_, index) => index + 1));
@@ -65,7 +69,7 @@ describe('the illustrative code', () => {
       number: 1,
       key: 'productType',
       name: 'Product type',
-      raw: 'BLD',
+      raw: PRODUCT_TYPE.bowlLid,
       part: 'A1',
       state: 'value',
       meaning: 'Bowl lid',
@@ -82,13 +86,13 @@ describe('the illustrative code', () => {
 
   it('is built from its facts, and parses back to the same code', () => {
     const specId = built(ILLUSTRATIVE_FACTS);
-    expect(specId.dottedCode).toBe(ILLUSTRATIVE);
-    expect(parsed(specId.code).dottedCode).toBe(ILLUSTRATIVE);
+    expect(slotsOf(specId)).toBe(ILLUSTRATIVE_SLOTS);
+    expect(slotsOf(parsed(specId.code))).toBe(ILLUSTRATIVE_SLOTS);
   });
 
   it('gives each slot by its key', () => {
     const specId = parsed(ILLUSTRATIVE);
-    expect(specId.slot('material')).toBe('APS');
+    expect(specId.slot('material')).toBe(MATERIAL.ps);
     expect(specId.slot('capacity')).toBe('X');
     expect(specId.slot('height')).toBe('Y');
     expect(specId.slot('variant')).toBe('X');
@@ -97,7 +101,7 @@ describe('the illustrative code', () => {
 
 describe('SpecId.parse', () => {
   it('trims surrounding spaces and folds no case', () => {
-    expect(parsed(`  ${ILLUSTRATIVE}\n`).dottedCode).toBe(ILLUSTRATIVE);
+    expect(slotsOf(parsed(`  ${ILLUSTRATIVE}\n`))).toBe(ILLUSTRATIVE_SLOTS);
     expect(parseIssues(withSlot(ILLUSTRATIVE, 'productType', 'bld'))).toEqual({
       productType: ['Product type: bld is not in the dictionary.'],
     });
@@ -160,8 +164,8 @@ describe('SpecId.parse', () => {
 
 describe('SpecId.build', () => {
   it('writes Y in every slot that applies and X in every slot that never does', () => {
-    const specId = built({ productType: 'BLD' });
-    expect(specId.dottedCode).toBe('BLD.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.X.Y.Y.Y.X.Y.X.X.X.X.X.X.X');
+    const specId = built({ productType: PRODUCT_TYPE.bowlLid });
+    expect(slotsOf(specId)).toBe('1.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.X.Y.Y.Y.X.Y.X.X.X.X.X.X.X');
     expect(specId.code).toBe('A1');
 
     const back = parsed(specId.code);
@@ -196,8 +200,8 @@ describe('SpecId.build', () => {
   });
 
   it('treats a slot given as null as left out', () => {
-    expect(built({ productType: 'BLD', material: null, capacity: null, height: null }).code).toBe(
-      built({ productType: 'BLD' }).code,
+    expect(built({ productType: PRODUCT_TYPE.bowlLid, material: null, capacity: null, height: null }).code).toBe(
+      built({ productType: PRODUCT_TYPE.bowlLid }).code,
     );
   });
 
@@ -209,10 +213,16 @@ describe('SpecId.build', () => {
     }
   });
 
-  it('round-trips every capacity letter on a bowl', () => {
-    const labels: Record<string, string> = { Z: 'oz', M: 'mL', S: 'servings', N: 'count', G: 'g' };
+  it('round-trips every capacity unit on a bowl', () => {
+    const labels: Record<string, string> = {
+      [CAPACITY_UNIT.ounces]: 'oz',
+      [CAPACITY_UNIT.millilitres]: 'mL',
+      [CAPACITY_UNIT.servings]: 'servings',
+      [CAPACITY_UNIT.count]: 'count',
+      [CAPACITY_UNIT.grams]: 'g',
+    };
     for (const { code } of dictionary.valuesOf('capacity')) {
-      const specId = built({ productType: 'BWL', capacity: { unit: code, value: '6' } });
+      const specId = built({ productType: PRODUCT_TYPE.bowl, capacity: { unit: code, value: '6' } });
       expect(specId.slot('capacity')).toBe(`${code}0006`);
       expect(parsed(specId.code).code).toBe(specId.code);
       expect(meanings(specId).capacity).toBe(`6 ${labels[code]}`);
@@ -223,7 +233,7 @@ describe('SpecId.build', () => {
     'round-trips every %s on a bowl lid',
     (slot) => {
       for (const { code, meaning } of dictionary.valuesOf(slot)) {
-        const specId = built({ productType: 'BLD', [slot]: code });
+        const specId = built({ productType: PRODUCT_TYPE.bowlLid, [slot]: code });
         expect(specId.slot(slot)).toBe(code);
         expect(parsed(specId.code).code).toBe(specId.code);
         expect(meanings(specId)[slot]).toBe(meaning);
@@ -232,22 +242,22 @@ describe('SpecId.build', () => {
   );
 
   it('reads a capacity written with zero decimals as the whole number it is', () => {
-    expect(built({ productType: 'BWL', capacity: { unit: 'Z', value: '6.0' } }).slot('capacity')).toBe('Z0006');
-    expect(built({ productType: 'BWL', capacity: { unit: 'M', value: '500.000' } }).slot('capacity')).toBe('M0500');
+    expect(built({ productType: PRODUCT_TYPE.bowl, capacity: { unit: CAPACITY_UNIT.ounces, value: '6.0' } }).slot('capacity')).toBe('10006');
+    expect(built({ productType: PRODUCT_TYPE.bowl, capacity: { unit: CAPACITY_UNIT.millilitres, value: '500.000' } }).slot('capacity')).toBe('20500');
   });
 
   it('makes basis weight not known on paper and X on anything else', () => {
-    expect(built({ productType: 'BLD', material: 'B00' }).slot('basisWeight')).toBe('Y');
-    expect(built({ productType: 'BLD', material: 'BKR' }).slot('basisWeight')).toBe('Y');
-    expect(built({ productType: 'BLD', material: 'APS' }).slot('basisWeight')).toBe('X');
-    expect(built({ productType: 'BLD', material: 'APT' }).slot('basisWeight')).toBe('X');
+    expect(built({ productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.paper }).slot('basisWeight')).toBe('Y');
+    expect(built({ productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.kraft }).slot('basisWeight')).toBe('Y');
+    expect(built({ productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.ps }).slot('basisWeight')).toBe('X');
+    expect(built({ productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.pet }).slot('basisWeight')).toBe('X');
   });
 
   it('makes the diameter apply to a round shape, and length and width to any other', () => {
-    const round = built({ productType: 'BLD', shape: 'RD' });
+    const round = built({ productType: PRODUCT_TYPE.bowlLid, shape: SHAPE.round });
     expect([round.slot('topDiameter'), round.slot('length'), round.slot('width')]).toEqual(['Y', 'X', 'X']);
-    for (const shape of ['SQ', 'RC', 'OV']) {
-      const other = built({ productType: 'BLD', shape });
+    for (const shape of [SHAPE.square, SHAPE.rectangular, SHAPE.oval]) {
+      const other = built({ productType: PRODUCT_TYPE.bowlLid, shape });
       expect([other.slot('topDiameter'), other.slot('length'), other.slot('width')]).toEqual(['X', 'Y', 'Y']);
     }
   });
@@ -259,15 +269,15 @@ describe('SpecId.build', () => {
     ['unitWeight', { value: '3.3', unit: 'g' }, '0033'],
     ['unitWeight', { value: '4', unit: 'g' }, '0040'],
   ] as const)('rounds %s %j half up to %s', (slot, fact, raw) => {
-    expect(built({ productType: 'BLD', [slot]: fact }).slot(slot)).toBe(raw);
+    expect(built({ productType: PRODUCT_TYPE.bowlLid, [slot]: fact }).slot(slot)).toBe(raw);
   });
 
   it('reports every problem at once', () => {
     expect(
       buildIssues({
-        productType: 'BLD',
+        productType: PRODUCT_TYPE.bowlLid,
         material: 'QQQ',
-        capacity: { unit: 'Z', value: '6' },
+        capacity: { unit: CAPACITY_UNIT.ounces, value: '6' },
         height: { value: '9O', unit: 'mm' },
         unitWeight: { value: '3.3', unit: 'kg' },
       }),
@@ -392,33 +402,33 @@ describe('every message the domain produces', () => {
       ],
       [
         'a product type not in the dictionary',
-        { productType: 'ZZZ', capacity: { unit: 'Z', value: '6' } },
+        { productType: 'ZZZ', capacity: { unit: CAPACITY_UNIT.ounces, value: '6' } },
         { productType: ['Product type: ZZZ is not in the dictionary.'] },
       ],
-      ['a marker given as a value', { productType: 'BLD', coating: 'Y' }, { coating: ['Coating: Y is not in the dictionary.'] }],
+      ['a marker given as a value', { productType: PRODUCT_TYPE.bowlLid, coating: 'Y' }, { coating: ['Coating: Y is not in the dictionary.'] }],
       [
         'a capacity letter not in the dictionary',
-        { productType: 'BWL', capacity: { unit: 'Q', value: '6' } },
+        { productType: PRODUCT_TYPE.bowl, capacity: { unit: 'Q', value: '6' } },
         { capacity: ['Nominal capacity: Q is not in the dictionary.'] },
       ],
       [
         'a capacity with more than 6 decimal places',
-        { productType: 'BWL', capacity: { unit: 'Z', value: '6.1234567' } },
+        { productType: PRODUCT_TYPE.bowl, capacity: { unit: CAPACITY_UNIT.ounces, value: '6.1234567' } },
         { capacity: ['Nominal capacity: 6.1234567 oz has more than 6 decimal places.'] },
       ],
       [
         'a capacity that is not a number',
-        { productType: 'BWL', capacity: { unit: 'Z', value: 'six' } },
+        { productType: PRODUCT_TYPE.bowl, capacity: { unit: CAPACITY_UNIT.ounces, value: 'six' } },
         { capacity: ['Nominal capacity: six is not a number.'] },
       ],
       [
         'a capacity unit with no amount',
-        { productType: 'BWL', capacity: { unit: 'Z', value: '' } },
+        { productType: PRODUCT_TYPE.bowl, capacity: { unit: CAPACITY_UNIT.ounces, value: '' } },
         { capacity: ['Nominal capacity: type a number.'] },
       ],
       [
         'a capacity of nothing',
-        { productType: 'BWL', capacity: { unit: 'M', value: '0' } },
+        { productType: PRODUCT_TYPE.bowl, capacity: { unit: CAPACITY_UNIT.millilitres, value: '0' } },
         { capacity: ['Nominal capacity: 0 mL is outside 1–9999 mL.'] },
       ],
       [
@@ -458,18 +468,18 @@ describe('every message the domain produces', () => {
       ],
       [
         'a value in a slot that never applies',
-        { productType: 'BWL', shape: 'RD', profile: 'DM' },
+        { productType: PRODUCT_TYPE.bowl, shape: SHAPE.round, profile: PROFILE.dome },
         { profile: ['Profile must be X for a bowl.'] },
       ],
       [
         'a value in a slot that never applies, on a stand-up pouch',
-        { productType: 'SUP', shape: 'RD' },
+        { productType: PRODUCT_TYPE.standUpPouch, shape: SHAPE.round },
         { shape: ['Shape must be X for a stand-up pouch.'] },
       ],
       [
         'a shape not known, reporting every slot that depends on it',
         {
-          productType: 'BLD',
+          productType: PRODUCT_TYPE.bowlLid,
           topDiameter: { value: '90', unit: 'mm' },
           length: { value: '100', unit: 'mm' },
           width: { value: '80', unit: 'mm' },
@@ -482,7 +492,7 @@ describe('every message the domain produces', () => {
       ],
       [
         'a material not known',
-        { productType: 'BLD', basisWeight: { value: '300', unit: 'gsm' } },
+        { productType: PRODUCT_TYPE.bowlLid, basisWeight: { value: '300', unit: 'gsm' } },
         { basisWeight: ['Basis weight must be Y while the material is not known.'] },
       ],
     ])('%s', (_case, facts, expected) => {
@@ -507,7 +517,7 @@ describe('the limits', () => {
 
   it('builds a 25-part code for every product type, with Y or X in every empty slot', () => {
     for (const { code } of dictionary.valuesOf('productType')) {
-      const parts = built({ productType: code }).dottedCode.split('.');
+      const parts = slotsOf(built({ productType: code })).split('.');
       expect(parts).toHaveLength(25);
       expect(parts[0]).toBe(code);
       expect(parts.slice(1).every((part) => part === 'Y' || part === 'X'), code).toBe(true);
@@ -515,19 +525,19 @@ describe('the limits', () => {
   });
 
   it.each<[string, SpecIdFactsInput, SlotKey, string]>([
-    ['9999 mm', { productType: 'BLD', height: { value: '9999', unit: 'mm' } }, 'height', '9999'],
-    ['0.5 mm', { productType: 'BLD', height: { value: '0.5', unit: 'mm' } }, 'height', '0001'],
-    ['999.9 g', { productType: 'BLD', unitWeight: { value: '999.9', unit: 'g' } }, 'unitWeight', '9999'],
-    ['0.05 g', { productType: 'BLD', unitWeight: { value: '0.05', unit: 'g' } }, 'unitWeight', '0001'],
+    ['9999 mm', { productType: PRODUCT_TYPE.bowlLid, height: { value: '9999', unit: 'mm' } }, 'height', '9999'],
+    ['0.5 mm', { productType: PRODUCT_TYPE.bowlLid, height: { value: '0.5', unit: 'mm' } }, 'height', '0001'],
+    ['999.9 g', { productType: PRODUCT_TYPE.bowlLid, unitWeight: { value: '999.9', unit: 'g' } }, 'unitWeight', '9999'],
+    ['0.05 g', { productType: PRODUCT_TYPE.bowlLid, unitWeight: { value: '0.05', unit: 'g' } }, 'unitWeight', '0001'],
     [
       '999 gsm',
-      { productType: 'BLD', material: 'BKR', basisWeight: { value: '999', unit: 'gsm' } },
+      { productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.kraft, basisWeight: { value: '999', unit: 'gsm' } },
       'basisWeight',
       '999',
     ],
-    ['999 µm', { productType: 'BLD', thickness: { value: '999', unit: 'um' } }, 'thickness', '999'],
-    ['9999 oz', { productType: 'BWL', capacity: { unit: 'Z', value: '9999' } }, 'capacity', 'Z9999'],
-    ['6 decimal places', { productType: 'BLD', height: { value: '1.123456', unit: 'in' } }, 'height', '0029'],
+    ['999 µm', { productType: PRODUCT_TYPE.bowlLid, thickness: { value: '999', unit: 'um' } }, 'thickness', '999'],
+    ['9999 oz', { productType: PRODUCT_TYPE.bowl, capacity: { unit: CAPACITY_UNIT.ounces, value: '9999' } }, 'capacity', '19999'],
+    ['6 decimal places', { productType: PRODUCT_TYPE.bowlLid, height: { value: '1.123456', unit: 'in' } }, 'height', '0029'],
   ])('builds %s at the limit', (_case, facts, slot, raw) => {
     const specId = built(facts);
     expect(specId.slot(slot)).toBe(raw);
@@ -536,35 +546,35 @@ describe('the limits', () => {
 
   it.each<[SpecIdFactsInput, Partial<Record<SlotKey, string[]>>]>([
     [
-      { productType: 'BLD', height: { value: '9999.5', unit: 'mm' } },
+      { productType: PRODUCT_TYPE.bowlLid, height: { value: '9999.5', unit: 'mm' } },
       { height: ['Height: 9999.5 mm is outside 1–9999 mm.'] },
     ],
     [
-      { productType: 'BLD', height: { value: '0.4999', unit: 'mm' } },
+      { productType: PRODUCT_TYPE.bowlLid, height: { value: '0.4999', unit: 'mm' } },
       { height: ['Height: 0.4999 mm is outside 1–9999 mm.'] },
     ],
     [
-      { productType: 'BLD', unitWeight: { value: '999.95', unit: 'g' } },
+      { productType: PRODUCT_TYPE.bowlLid, unitWeight: { value: '999.95', unit: 'g' } },
       { unitWeight: ['Unit weight: 999.95 g is outside 0.1–999.9 g.'] },
     ],
     [
-      { productType: 'BLD', unitWeight: { value: '0.04', unit: 'g' } },
+      { productType: PRODUCT_TYPE.bowlLid, unitWeight: { value: '0.04', unit: 'g' } },
       { unitWeight: ['Unit weight: 0.04 g is outside 0.1–999.9 g.'] },
     ],
     [
-      { productType: 'BLD', material: 'BKR', basisWeight: { value: '1000', unit: 'gsm' } },
+      { productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.kraft, basisWeight: { value: '1000', unit: 'gsm' } },
       { basisWeight: ['Basis weight: 1000 gsm is outside 1–999 gsm.'] },
     ],
     [
-      { productType: 'BLD', thickness: { value: '1000', unit: 'um' } },
+      { productType: PRODUCT_TYPE.bowlLid, thickness: { value: '1000', unit: 'um' } },
       { thickness: ['Thickness: 1000 µm is outside 1–999 µm.'] },
     ],
     [
-      { productType: 'BWL', capacity: { unit: 'Z', value: '10000' } },
+      { productType: PRODUCT_TYPE.bowl, capacity: { unit: CAPACITY_UNIT.ounces, value: '10000' } },
       { capacity: ['Nominal capacity: 10000 oz is outside 1–9999 oz.'] },
     ],
     [
-      { productType: 'BLD', height: { value: '1.1234567', unit: 'in' } },
+      { productType: PRODUCT_TYPE.bowlLid, height: { value: '1.1234567', unit: 'in' } },
       { height: ['Height: 1.1234567 in has more than 6 decimal places.'] },
     ],
   ])('refuses one over the limit: %j', (facts, expected) => {
@@ -578,28 +588,28 @@ describe('checkSlotValue', () => {
     expect(checkSlotValue('topDiameter', 'Y', dictionary)).toBeUndefined();
     expect(checkSlotValue('topDiameter', 'X', dictionary)).toBeUndefined();
     expect(checkSlotValue('topDiameter', '0X9', dictionary)).toBe('Top diameter: 0X9 must be 4 characters.');
-    expect(checkSlotValue('shape', 'RD', dictionary)).toBeUndefined();
+    expect(checkSlotValue('shape', SHAPE.round, dictionary)).toBeUndefined();
     expect(checkSlotValue('shape', 'ZZ', dictionary)).toBe('Shape: ZZ is not in the dictionary.');
     expect(checkSlotValue('productType', 'Y', dictionary)).toBe(
       'Product type can\'t be "not known": it decides which slots apply.',
     );
-    expect(checkSlotValue('capacity', 'M0500', dictionary)).toBeUndefined();
+    expect(checkSlotValue('capacity', '20500', dictionary)).toBeUndefined();
   });
 });
 
 describe('codes given out before', () => {
   it('reads an S1 code as the short code it converts to', () => {
-    expect(parsed(ILLUSTRATIVE_S1).dottedCode).toBe(ILLUSTRATIVE);
-    expect(parsed(`  ${ILLUSTRATIVE_S1} `).dottedCode).toBe(ILLUSTRATIVE);
+    expect(slotsOf(parsed(ILLUSTRATIVE_S1))).toBe(ILLUSTRATIVE_SLOTS);
+    expect(slotsOf(parsed(`  ${ILLUSTRATIVE_S1} `))).toBe(ILLUSTRATIVE_SLOTS);
   });
 
   it('reads a long S2 code as the short code it converts to', () => {
-    expect(parsed(ILLUSTRATIVE_LONG).dottedCode).toBe(ILLUSTRATIVE);
+    expect(slotsOf(parsed(ILLUSTRATIVE_LONG))).toBe(ILLUSTRATIVE_SLOTS);
   });
 
   it('reads a marker written as wide as its slot as its one letter', () => {
-    expect(parsed(withSlot(ILLUSTRATIVE, 'height', '0000')).dottedCode).toBe(ILLUSTRATIVE);
-    expect(parsed(withSlot(ILLUSTRATIVE, 'capacity', 'XXXXX')).dottedCode).toBe(ILLUSTRATIVE);
+    expect(slotsOf(parsed(withSlot(ILLUSTRATIVE, 'height', '0000')))).toBe(ILLUSTRATIVE_SLOTS);
+    expect(slotsOf(parsed(withSlot(ILLUSTRATIVE, 'capacity', 'XXXXX')))).toBe(ILLUSTRATIVE_SLOTS);
   });
 
   it('says what an S1 code must be when it cannot be converted', () => {
@@ -615,14 +625,14 @@ describe('codes given out before', () => {
 describe('the slots S2 added', () => {
   /** A product type each added slot applies to, and a value it can hold. */
   const CASES: readonly [keyof SpecIdFactsInput, string, string][] = [
-    ['wall', 'CUP', 'DW'],
-    ['print', 'CUP', '02'],
-    ['compartments', 'CTN', '3'],
-    ['plies', 'NPK', '2'],
-    ['lidOpening', 'CLD', 'SP'],
-    ['handle', 'BAG', 'TW'],
-    ['wrap', 'STW', 'PW'],
-    ['window', 'BAG', 'WN'],
+    ['wall', PRODUCT_TYPE.cup, WALL.doubleWall],
+    ['print', PRODUCT_TYPE.cup, PRINT.twoColours],
+    ['compartments', PRODUCT_TYPE.container, '3'],
+    ['plies', PRODUCT_TYPE.napkin, '2'],
+    ['lidOpening', PRODUCT_TYPE.cupLid, LID_OPENING.sipThrough],
+    ['handle', PRODUCT_TYPE.bag, HANDLE.twisted],
+    ['wrap', PRODUCT_TYPE.straw, WRAP.paperWrapped],
+    ['window', PRODUCT_TYPE.bag, WINDOW.withWindow],
   ];
 
   it.each(CASES)('makes %s part of the code: one different fact, one different code', (slot, productType, value) => {
@@ -633,28 +643,28 @@ describe('the slots S2 added', () => {
   });
 
   it('pads a count to its slot and reads it in words', () => {
-    const tray = built({ productType: 'CTN', compartments: '3' });
+    const tray = built({ productType: PRODUCT_TYPE.container, compartments: '3' });
     expect(tray.slot('compartments')).toBe('03');
     expect(meanings(tray).compartments).toBe('3 compartments');
-    expect(meanings(built({ productType: 'CTN', compartments: '1' })).compartments).toBe('1 compartment');
-    const napkin = built({ productType: 'NPK', plies: '2' });
+    expect(meanings(built({ productType: PRODUCT_TYPE.container, compartments: '1' })).compartments).toBe('1 compartment');
+    const napkin = built({ productType: PRODUCT_TYPE.napkin, plies: '2' });
     expect(napkin.slot('plies')).toBe('2');
     expect(meanings(napkin).plies).toBe('2 plies');
-    expect(meanings(built({ productType: 'NPK', plies: '1' })).plies).toBe('1 ply');
+    expect(meanings(built({ productType: PRODUCT_TYPE.napkin, plies: '1' })).plies).toBe('1 ply');
   });
 
   it.each([
-    [{ productType: 'CTN', compartments: '13' }, { compartments: ['Compartments: 13 is outside 1–12.'] }],
-    [{ productType: 'CTN', compartments: '0' }, { compartments: ['Compartments: 0 is outside 1–12.'] }],
-    [{ productType: 'CTN', compartments: 'two' }, { compartments: ['Compartments: two is not a number.'] }],
-    [{ productType: 'NPK', plies: '5' }, { plies: ['Plies: 5 is outside 1–4.'] }],
+    [{ productType: PRODUCT_TYPE.container, compartments: '13' }, { compartments: ['Compartments: 13 is outside 1–12.'] }],
+    [{ productType: PRODUCT_TYPE.container, compartments: '0' }, { compartments: ['Compartments: 0 is outside 1–12.'] }],
+    [{ productType: PRODUCT_TYPE.container, compartments: 'two' }, { compartments: ['Compartments: two is not a number.'] }],
+    [{ productType: PRODUCT_TYPE.napkin, plies: '5' }, { plies: ['Plies: 5 is outside 1–4.'] }],
   ] as const)('refuses the count %j', (facts, expected) => {
     expect(buildIssues(facts)).toEqual(expected);
   });
 
   it('reads a coating of WC and a material of BWP, and refuses WX as a broken marker', () => {
-    expect(built({ productType: 'CUP', coating: 'WC', material: 'BWP' }).slot('coating')).toBe('WC');
-    const waxed = built({ productType: 'CUP', coating: 'WC' }).dottedCode;
+    expect(built({ productType: PRODUCT_TYPE.cup, coating: COATING.waxCoated, material: MATERIAL.waxPaper }).slot('coating')).toBe(COATING.waxCoated);
+    const waxed = slotsOf(built({ productType: PRODUCT_TYPE.cup, coating: COATING.waxCoated }));
     expect(parseIssues(withSlot(waxed, 'coating', 'WX'))).toEqual({
       coating: ['Coating: WX mixes a marker with other characters.'],
     });
@@ -676,7 +686,7 @@ describe('the slots S2 added', () => {
 function valueFor(slot: SlotKey): SpecIdFactsInput[keyof SpecIdFactsInput] {
   switch (slot) {
     case 'capacity':
-      return { unit: 'Z', value: '6' };
+      return { unit: CAPACITY_UNIT.ounces, value: '6' };
     case 'compartments':
     case 'plies':
       return '2';

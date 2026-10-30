@@ -21,16 +21,17 @@ import { InMemorySourcingRepository } from './testing/in-memory-sourcing-reposit
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { InMemorySuggestionRepository } from './testing/in-memory-suggestion-repository.js';
 import { UpdateSpecId } from './update-spec-id.js';
+import { CAPACITY_UNIT, MATERIAL, PRODUCT_TYPE, PROFILE, SHAPE, WALL } from '../domain/options.js';
 
 const ADA = { id: '00000000-0000-4000-8000-0000000000aa', fullName: 'Ada Invented', isAdmin: false };
 const BEN = { id: '00000000-0000-4000-8000-0000000000bb', fullName: 'Ben Invented', isAdmin: true };
 const NOW = new Date('2026-10-27T08:00:00.000Z');
 
-const lid = (topDiameter: string, material = 'APS'): SpecIdFactsInput => ({
-  productType: 'BLD',
+const lid = (topDiameter: string, material: string = MATERIAL.ps): SpecIdFactsInput => ({
+  productType: PRODUCT_TYPE.bowlLid,
   material,
-  shape: 'RD',
-  profile: 'DM',
+  shape: SHAPE.round,
+  profile: PROFILE.dome,
   topDiameter: { value: topDiameter, unit: 'mm' },
 });
 
@@ -73,14 +74,16 @@ async function suggested(context: ReturnType<typeof setup>, slot: 'material' | '
   return result.value;
 }
 
-const RENAME_APS: Proposal = { kind: 'edit', newCode: 'APZ', meaning: null, searchWords: null };
+/** Saved Spec IDs holding polystyrene become not known: a change that rewrites them. */
+const DELETE_PS: Proposal = { kind: 'delete', replacement: 'Y' };
+/** A new option names no number: it is numbered when it is approved (ADR 0033). */
+const add = (meaning: string): Proposal => ({ kind: 'add', meaning, searchWords: [], rules: null });
 
 describe('ApproveDictionarySuggestion', () => {
-  it('renames a material used by 3 saved Spec IDs, relettering each without changing its code, version or history', async () => {
+  it('rewords a material used by 3 saved Spec IDs, changing none of their codes, versions or histories', async () => {
     const context = setup();
     const lids = [await saved(context, 'Lid 90', lid('90')), await saved(context, 'Lid 95', lid('95')), await saved(context, 'Lid 100', lid('100'))];
-    const pp = await saved(context, 'PP lid', lid('90', 'APP'));
-    const { id } = await suggested(context, 'material', 'APS', RENAME_APS);
+    const { id } = await suggested(context, 'material', MATERIAL.ps, { kind: 'edit', newCode: null, meaning: 'Polymer, polystyrene', searchWords: null });
 
     const preview = await context.get.execute({ id });
     expect(preview.ok && preview.value.rewrites).toEqual([]);
@@ -92,34 +95,48 @@ describe('ApproveDictionarySuggestion', () => {
     for (const one of lids) {
       const record = await context.specIds.findById(one.id);
       expect(record?.savedSpecId.specId.code).toBe(one.code);
-      expect(record?.savedSpecId.specId.slot('material')).toBe('APZ');
+      expect(record?.savedSpecId.specId.slot('material')).toBe(MATERIAL.ps);
       expect(record?.savedSpecId.version).toBe(1);
       expect(record?.savedSpecId.updatedBy).toBeNull();
       const history = await context.specIds.history(one.id);
       expect(history.map(({ change }) => change.kind)).toEqual(['created']);
     }
-    expect((await context.specIds.findById(pp.id))?.savedSpecId.specId.slot('material')).toBe('APP');
-    expect(await context.specIds.usageOf('material', 'APS')).toBe(0);
     const history = await new GetSpecIdHistory(context.dictionaries, context.specIds).execute({ id: lids[0]!.id });
     expect(history.ok && history.value.map((entry) => entry.dictionaryChange)).toEqual([null]);
     const dictionary = await new GetDictionary(context.dictionaries).execute();
     expect(dictionary.change).toEqual({ number: 1, at: NOW.toISOString() });
     const materials = dictionary.slots.find((slot) => slot.key === 'material')?.values ?? [];
-    expect(materials.some((value) => value.code === 'APS')).toBe(false);
-    expect(materials.find((value) => value.code === 'APZ')?.number).toBe(4);
+    expect(materials.find((value) => value.code === MATERIAL.ps)).toMatchObject({ number: 4, meaning: 'Polymer, polystyrene' });
+  });
+
+  it('numbers a new option when it is approved, the next in its list, in the order approved', async () => {
+    const context = setup();
+    const first = await suggested(context, 'material', '', add('Polymer, invented'));
+    const second = await suggested(context, 'material', '', add('Polymer, another'));
+    expect(first.code).toBe('');
+
+    await context.approve.execute({ id: second.id, version: 1, by: BEN });
+    await context.approve.execute({ id: first.id, version: 1, by: BEN });
+
+    const dictionary = await new GetDictionary(context.dictionaries).execute();
+    const materials = dictionary.slots.find((slot) => slot.key === 'material')?.values ?? [];
+    expect(materials.slice(-2).map(({ code, number, meaning }) => ({ code, number, meaning }))).toEqual([
+      { code: '39', number: 39, meaning: 'Polymer, another' },
+      { code: '40', number: 40, meaning: 'Polymer, invented' },
+    ]);
   });
 
   it('turns a field a rules change rules out to X on every Spec ID of that product type, with a history entry naming the change', async () => {
     const context = setup();
     const cup = (value: string): SpecIdFactsInput => ({
-      productType: 'CUP',
-      material: 'BCS',
-      shape: 'RD',
-      wall: 'DW',
-      capacity: { unit: 'Z', value },
+      productType: PRODUCT_TYPE.cup,
+      material: MATERIAL.cupStock,
+      shape: SHAPE.round,
+      wall: WALL.doubleWall,
+      capacity: { unit: CAPACITY_UNIT.ounces, value },
     });
     const cups = [await saved(context, 'Cup 12', cup('12')), await saved(context, 'Cup 16', cup('16'))];
-    const { id } = await suggested(context, 'productType', 'CUP', { kind: 'rules', rules: { wall: 'never' } });
+    const { id } = await suggested(context, 'productType', PRODUCT_TYPE.cup, { kind: 'rules', rules: { wall: 'never' } });
 
     const result = await context.approve.execute({ id, version: 1, by: BEN });
 
@@ -152,8 +169,8 @@ describe('ApproveDictionarySuggestion', () => {
   it('refuses a deletion whose replacement would make two Spec IDs one, naming both, and changes nothing', async () => {
     const context = setup();
     const ps = await saved(context, 'PS lid', lid('90'));
-    const pp = await saved(context, 'PP lid', lid('90', 'APP'));
-    const { id } = await suggested(context, 'material', 'APS', { kind: 'delete', replacement: 'APP' });
+    const pp = await saved(context, 'PP lid', lid('90', MATERIAL.pp));
+    const { id } = await suggested(context, 'material', MATERIAL.ps, { kind: 'delete', replacement: MATERIAL.pp });
 
     const result = await context.approve.execute({ id, version: 1, by: BEN });
 
@@ -167,7 +184,7 @@ describe('ApproveDictionarySuggestion', () => {
   it('refuses when a Spec ID it rewrites changed while it was being approved, and writes nothing', async () => {
     const context = setup();
     const one = await saved(context, 'Lid 90', lid('90'));
-    const { id } = await suggested(context, 'material', 'APS', RENAME_APS);
+    const { id } = await suggested(context, 'material', MATERIAL.ps, DELETE_PS);
     // Someone edits the Spec ID between the plan and the store: the store sees a newer version.
     const store = context.store;
     const original = store.apply.bind(store);
@@ -184,8 +201,8 @@ describe('ApproveDictionarySuggestion', () => {
 
   it('refuses when another approval landed in between', async () => {
     const context = setup();
-    const { id } = await suggested(context, 'material', 'AZZ', { kind: 'add', meaning: 'Polymer, invented', searchWords: [], rules: null });
-    const other = await suggested(context, 'material', 'AZY', { kind: 'add', meaning: 'Polymer, another', searchWords: [], rules: null });
+    const { id } = await suggested(context, 'material', '', add('Polymer, invented'));
+    const other = await suggested(context, 'material', '', add('Polymer, another'));
     const store = context.store;
     const original = store.apply.bind(store);
     let first = true;
@@ -203,7 +220,7 @@ describe('ApproveDictionarySuggestion', () => {
 
   it('checks the suggestion again on approval', async () => {
     const context = setup();
-    const { id } = await suggested(context, 'material', 'APS', { kind: 'delete', replacement: null });
+    const { id } = await suggested(context, 'material', MATERIAL.ps, { kind: 'delete', replacement: null });
     await saved(context, 'Lid 90', lid('90'));
 
     const result = await context.approve.execute({ id, version: 1, by: BEN });
@@ -216,8 +233,8 @@ describe('ApproveDictionarySuggestion', () => {
 
   it('numbers changes in the order approved', async () => {
     const context = setup();
-    const first = await suggested(context, 'material', 'AZZ', { kind: 'add', meaning: 'Polymer, invented', searchWords: [], rules: null });
-    const second = await suggested(context, 'material', 'AZY', { kind: 'add', meaning: 'Polymer, another', searchWords: [], rules: null });
+    const first = await suggested(context, 'material', '', add('Polymer, invented'));
+    const second = await suggested(context, 'material', '', add('Polymer, another'));
     const one = await context.approve.execute({ id: second.id, version: 1, by: BEN });
     const two = await context.approve.execute({ id: first.id, version: 1, by: BEN });
     expect([one.ok && one.value.changeNumber, two.ok && two.value.changeNumber]).toEqual([1, 2]);
@@ -241,7 +258,7 @@ describe('ApproveDictionarySuggestion', () => {
   it('refuses when a Spec ID came to hold the option while it was being approved, and writes nothing', async () => {
     const context = setup();
     await saved(context, 'Lid 90', lid('90'));
-    const { id } = await suggested(context, 'material', 'APS', RENAME_APS);
+    const { id } = await suggested(context, 'material', MATERIAL.ps, DELETE_PS);
     const store = context.store;
     const original = store.apply.bind(store);
     store.apply = async (plan) => {
@@ -257,26 +274,26 @@ describe('ApproveDictionarySuggestion', () => {
 
   it('checks a save again against the dictionary an approval left while it was being made', async () => {
     const context = setup();
-    const { id } = await suggested(context, 'material', 'APS', RENAME_APS);
+    const { id } = await suggested(context, 'material', MATERIAL.ps, { kind: 'delete', replacement: null });
     const approve = () => context.approve.execute({ id, version: 1, by: BEN });
     const save = new SaveSpecId(readBefore(context, approve), context.specIds, context.sourcing, context.clock, context.ids);
 
     const result = await save.execute({ name: 'Lid 90', facts: lid('90'), savedBy: ADA });
 
     expect(!result.ok && result.error.code).toBe('INVALID_SPEC_ID');
-    expect(await context.specIds.usageOf('material', 'APS')).toBe(0);
+    expect(await context.specIds.usageOf('material', MATERIAL.ps)).toBe(0);
   });
 
   it('checks a change again against the dictionary an approval left while it was being made', async () => {
     const context = setup();
-    const pp = await saved(context, 'PP lid', lid('90', 'APP'));
-    const { id } = await suggested(context, 'material', 'APS', RENAME_APS);
+    const pp = await saved(context, 'PP lid', lid('90', MATERIAL.pp));
+    const { id } = await suggested(context, 'material', MATERIAL.ps, { kind: 'delete', replacement: null });
     const approve = () => context.approve.execute({ id, version: 1, by: BEN });
     const update = new UpdateSpecId(readBefore(context, approve), context.specIds, context.sourcing, context.clock, context.ids);
 
     const result = await update.execute({ id: pp.id, name: 'PP lid', facts: lid('90'), version: 1, updatedBy: ADA });
 
     expect(!result.ok && result.error.code).toBe('INVALID_SPEC_ID');
-    expect(await context.specIds.usageOf('material', 'APS')).toBe(0);
+    expect(await context.specIds.usageOf('material', MATERIAL.ps)).toBe(0);
   });
 });

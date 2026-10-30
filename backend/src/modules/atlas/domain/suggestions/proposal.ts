@@ -1,10 +1,10 @@
 import { err, ok, type Result } from '../../../../shared/domain/result.js';
+import { letterOf } from '../code.js';
 import type { Dictionary } from '../dictionary.js';
 import { KEYWORDS } from '../reading/keywords.js';
 import { WORD_LIST } from '../reading/word-list.js';
 import {
   DICTIONARY_SLOTS,
-  DOES_NOT_APPLY,
   NOT_KNOWN,
   ROUND_SHAPE,
   RULED_SLOTS,
@@ -25,7 +25,11 @@ import { suggestionMessages as messages } from './suggestion.messages.js';
 
 export type SuggestionKind = 'add' | 'edit' | 'delete' | 'rules';
 
-/** The option a suggestion is about: the new code for `add`, the product type for `rules`. */
+/**
+ * The option a suggestion is about, by its key (its number, as text), the
+ * product type for `rules`. Empty for `add`: a new option is numbered when it
+ * is approved (ADR 0033).
+ */
 export interface SuggestionTarget {
   readonly slot: DictionarySlotKey;
   readonly code: string;
@@ -39,11 +43,17 @@ export interface AddProposal {
   readonly searchWords: readonly string[];
   /** Every ruled field's rule, for a new product type; null for any other list. */
   readonly rules: Readonly<Record<RuledSlotKey, SlotRule>> | null;
+  /** For a new material, the material it is a grade of; null or left out for none (ADR 0033). */
+  readonly broader?: string | null;
 }
 
 export interface EditProposal {
   readonly kind: 'edit';
-  /** Null leaves each as it is; at least one is not null. */
+  /**
+   * Null leaves each as it is; at least one is not null. A new code is
+   * refused since options are known by number (ADR 0033), and is kept only
+   * as suggestions made before wrote it.
+   */
   readonly newCode: string | null;
   readonly meaning: string | null;
   /** The whole new list, replacing today's. */
@@ -52,7 +62,7 @@ export interface EditProposal {
 
 export interface DeleteProposal {
   readonly kind: 'delete';
-  /** What saved Spec IDs using the option become: another code, `Y`, or null when none uses it. */
+  /** What saved Spec IDs using the option become: another option's key, `Y`, or null when none uses it. */
   readonly replacement: string | null;
 }
 
@@ -86,28 +96,21 @@ const LIST_NAMES = Object.fromEntries(DICTIONARY_SLOTS.map((slot) => [slot, slot
   string
 >;
 
-/** A list's code width: the slot's, but one letter for capacity, whose code is only its unit. */
-export function codeWidth(slot: DictionarySlotKey): number {
-  return slot === 'capacity' ? 1 : slotDefinition(slot).width;
-}
-
 export function isDictionarySlot(value: string): value is DictionarySlotKey {
   return (DICTIONARY_SLOTS as readonly string[]).includes(value);
 }
 
-/** Whether `code` could be an option of `slot`: its characters and width, and not a marker (ADR 0025). */
+/**
+ * Whether `code` could be an option's key: a whole number from 1, as text;
+ * a capacity unit's one digit, as a code writes it after `G` (ADR 0032, ADR 0033).
+ */
 export function isOptionCode(slot: DictionarySlotKey, code: string): boolean {
-  const characters = slot === 'capacity' ? /^[A-Z]$/ : /^[A-Z0-9]+$/;
-  return characters.test(code) && code.length === codeWidth(slot) && !isMarker(code);
+  return (slot === 'capacity' ? /^[1-9]$/ : /^[1-9]\d*$/).test(code);
 }
 
-function isMarker(code: string): boolean {
-  return code === NOT_KNOWN || /^0+$/.test(code) || /^X+$/.test(code);
-}
-
-/** A code as people type it: trimmed and in capitals. */
+/** An option's key as given: trimmed. */
 export function normaliseCode(code: string): string {
-  return code.trim().toUpperCase();
+  return code.trim();
 }
 
 /** A search word as the reader compares text: trimmed, lower case, one space between words. */
@@ -116,8 +119,7 @@ export function normaliseWord(word: string): string {
 }
 
 /**
- * Checks `proposal` for `target` and answers it tidied (codes in capitals,
- * wording trimmed, search words normalised and without repeats), or every
+ * Checks `proposal` for `target` and answers it tidied (keys and wording trimmed, search words normalised and without repeats), or every
  * problem at once, by field, so a form can show them all.
  */
 export function checkProposal(
@@ -143,8 +145,10 @@ export function checkProposal(
 
   switch (tidied.kind) {
     case 'add': {
-      for (const problem of codeProblems(slot, code, dictionary)) add('code', problem);
+      if (code !== '') add('code', messages.codeIsNumbered());
+      if (slot === 'capacity' && dictionary.nextNumber(slot) > CAPACITY_UNITS_MAX) add('code', messages.capacityUnitsFull(CAPACITY_UNITS_MAX));
       for (const problem of meaningProblems(tidied.meaning)) add('meaning', problem);
+      for (const problem of broaderProblems(slot, tidied.broader ?? null, dictionary)) add('broader', problem);
       for (const problem of wordProblems(slot, code, tidied.searchWords, context)) add('searchWords', problem);
       if (slot === 'productType') {
         for (const problem of fullRulesProblems(tidied.rules)) add('rules', problem);
@@ -158,14 +162,8 @@ export function checkProposal(
         add('code', messages.noSuchOption(LIST_NAMES[slot], code));
         break;
       }
-      if (tidied.newCode === null && tidied.meaning === null && tidied.searchWords === null) {
-        add('code', messages.nothingChanged());
-      }
-      if (tidied.newCode !== null) {
-        if (isRound(slot, code)) add('newCode', messages.roundLocked());
-        else if (tidied.newCode === code) add('newCode', messages.sameCode());
-        else for (const problem of codeProblems(slot, tidied.newCode, dictionary)) add('newCode', problem);
-      }
+      if (tidied.newCode !== null) add('newCode', messages.codeIsNumbered());
+      else if (tidied.meaning === null && tidied.searchWords === null) add('code', messages.nothingChanged());
       if (tidied.meaning !== null) for (const problem of meaningProblems(tidied.meaning)) add('meaning', problem);
       if (tidied.searchWords !== null) {
         for (const problem of wordProblems(slot, code, tidied.searchWords, context)) add('searchWords', problem);
@@ -205,7 +203,12 @@ export function checkProposal(
 function tidy(proposal: Proposal): Proposal {
   switch (proposal.kind) {
     case 'add':
-      return { ...proposal, meaning: proposal.meaning.trim(), searchWords: uniqueWords(proposal.searchWords) };
+      return {
+        ...proposal,
+        meaning: proposal.meaning.trim(),
+        searchWords: uniqueWords(proposal.searchWords),
+        broader: proposal.broader == null ? null : normaliseCode(proposal.broader),
+      };
     case 'edit':
       return {
         ...proposal,
@@ -228,17 +231,14 @@ function isRound(slot: DictionarySlotKey, code: string): boolean {
   return slot === 'shape' && code === ROUND_SHAPE;
 }
 
-/** A new code's problems: its characters and width, a marker, or a code the list already has. */
-function codeProblems(slot: DictionarySlotKey, code: string, dictionary: Dictionary): string[] {
-  const width = codeWidth(slot);
-  const characters = slot === 'capacity' ? /^[A-Z]$/ : /^[A-Z0-9]+$/;
-  if (!characters.test(code)) return [slot === 'capacity' ? messages.codeWidth(1) : messages.codeCharacters()];
-  if (code.length !== width) return [messages.codeWidth(width)];
-  if (isMarker(code)) return [messages.codeIsMarker(code)];
-  // A Spec ID refuses an X inside a value (ADR 0025): an option holding one could never be used.
-  if (code.includes(DOES_NOT_APPLY)) return [messages.codeHoldsX(code)];
-  const meaning = dictionary.meaningOf(slot, code);
-  return meaning === undefined ? [] : [messages.codeTaken(code, meaning)];
+/** A capacity unit's number is one digit after `G` in a code (ADR 0032). */
+const CAPACITY_UNITS_MAX = 9;
+
+/** A new option's broader material: a material the dictionary has, for a material only. */
+function broaderProblems(slot: DictionarySlotKey, broader: string | null, dictionary: Dictionary): string[] {
+  if (broader === null) return [];
+  if (slot !== 'material') return [messages.broaderOnlyForMaterial()];
+  return dictionary.meaningOf('material', broader) === undefined ? [messages.noSuchOption(LIST_NAMES.material, broader)] : [];
 }
 
 function meaningProblems(meaning: string): string[] {
@@ -262,7 +262,7 @@ function wordProblems(
     }
     const finds = whoFinds(slot, word, context);
     if (finds !== undefined && finds !== code) {
-      problems.push(messages.wordTaken(word, finds, context.dictionary.meaningOf(slot, finds) ?? finds));
+      problems.push(messages.wordTaken(word, `${letterOf(slot)}${finds}`, context.dictionary.meaningOf(slot, finds) ?? finds));
     }
   }
   return problems;
@@ -275,9 +275,9 @@ function wordProblems(
  * slot not known, so a word another option has is refused.
  */
 export function whoFinds(slot: DictionarySlotKey, word: string, context: ProposalContext): string | undefined {
-  // The word list and the keywords name S2 0.1.0's letters: each is read as the dictionary has it now (ADR 0031).
-  // A deleted option's word finds nothing, so an approved word may still have it.
-  const live = (code: string) => context.dictionary.liveOriginal(slot, code);
+  // The word list and the keywords name options by number (`options.ts`): a deleted option's word finds
+  // nothing, so an approved word may still have it (ADR 0031).
+  const live = (code: string) => context.dictionary.live(slot, code);
   const listed = WORD_LIST[word];
   if (listed !== undefined) {
     const entry = 'productType' in listed ? { slot: 'productType', code: listed.productType } : { slot: 'material', code: listed.material };

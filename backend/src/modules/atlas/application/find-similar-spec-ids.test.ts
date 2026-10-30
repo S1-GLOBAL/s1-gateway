@@ -6,9 +6,10 @@ import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
+import { COLOUR_CLARITY, MATERIAL, PRODUCT_TYPE, SHAPE } from '../domain/options.js';
 
 const SAVER = { id: '00000000-0000-4000-8000-0000000000aa', fullName: 'Ada Invented' };
-const LID = { productType: 'BLD', material: 'APS', shape: 'RD' };
+const LID = { productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.ps, shape: SHAPE.round };
 
 /** A clock the test moves, so each save has its own time. */
 class SteppingClock implements Clock {
@@ -62,7 +63,7 @@ describe('FindSimilarSpecIds', () => {
 
   it('keeps Spec IDs that tie newest first', async () => {
     const { find, saveLid } = await setup();
-    await saveLid('Clear unstated rim', '2026-10-17T08:00:00.000Z', { colourClarity: 'CL' });
+    await saveLid('Clear unstated rim', '2026-10-17T08:00:00.000Z', { colourClarity: COLOUR_CLARITY.clear });
     const result = await find.execute({ topDiameter: '0090' });
     if (!result.ok) throw result.error;
 
@@ -71,7 +72,7 @@ describe('FindSimilarSpecIds', () => {
 
   it('names an unknown key, a repeated key and a bad value, each under its own key', async () => {
     const { find } = await setup();
-    const result = await find.execute({ colour: 'CL', topDiameter: ['0090', '0091'], shape: 'QQ' });
+    const result = await find.execute({ colour: COLOUR_CLARITY.clear, topDiameter: ['0090', '0091'], shape: 'QQ' });
 
     expect(!result.ok && result.error.message).toBe('The lookup is not valid.');
     expect(!result.ok && result.error.details).toEqual({
@@ -98,7 +99,7 @@ describe('FindSimilarSpecIds, closest first (#50)', () => {
     // Newer than every rim, so newest first would list them first.
     await saveLid('Type and material', '2026-10-19T08:00:00.000Z', { shape: null });
     await saveLid('Type only', '2026-10-20T08:00:00.000Z', { material: null, shape: null });
-    const result = await find.execute({ productType: 'BLD', material: 'APS', shape: 'RD', colourClarity: 'CL' });
+    const result = await find.execute({ productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.ps, shape: SHAPE.round, colourClarity: COLOUR_CLARITY.clear });
     if (!result.ok) throw result.error;
 
     // The rims record three of the four (colour is not known), and tie, so stay newest first.
@@ -115,10 +116,10 @@ describe('FindSimilarSpecIds, closest first (#50)', () => {
   it('lists those that fit by how few slots they leave not known, fewest first, whatever their age', async () => {
     const { find, saveLid } = await setup();
     await saveLid('Rim 92, clear', '2026-10-01T08:00:00.000Z', {
-      colourClarity: 'CL',
+      colourClarity: COLOUR_CLARITY.clear,
       topDiameter: { value: '92', unit: 'mm' },
     });
-    const result = await find.execute({ shape: 'RD' });
+    const result = await find.execute({ shape: SHAPE.round });
     if (!result.ok) throw result.error;
 
     expect(result.value.fits.map((saved) => saved.name)).toEqual(['Rim 92, clear', 'Rim 91', 'Rim 90', 'Unstated rim']);
@@ -135,15 +136,15 @@ describe('FindSimilarSpecIds, a material family (plan 0011)', () => {
     const clock = new SteppingClock(new Date('2026-10-14T08:00:00.000Z'));
     const save = new SaveSpecId(dictionaries, specIds, new InMemorySourcingRepository(), clock, new SequentialIdGenerator());
     const materials: [string, string][] = [
-      ['Recycled kraft bag', 'BKC'],
-      ['Kraft bag', 'BKR'],
-      ['Paper bag', 'B00'],
-      ['White kraft bag', 'BKW'],
-      ['Plastic bag', 'A00'],
+      ['Recycled kraft bag', MATERIAL.recycledKraft],
+      ['Kraft bag', MATERIAL.kraft],
+      ['Paper bag', MATERIAL.paper],
+      ['White kraft bag', MATERIAL.whiteKraft],
+      ['Plastic bag', MATERIAL.polymer],
     ];
     for (const [index, [name, material]] of materials.entries()) {
       clock.set(`2026-10-1${index}T08:00:00.000Z`);
-      const result = await save.execute({ name, facts: { productType: 'BAG', material }, savedBy: SAVER });
+      const result = await save.execute({ name, facts: { productType: PRODUCT_TYPE.bag, material }, savedBy: SAVER });
       if (!result.ok) throw result.error;
     }
     return new FindSimilarSpecIds(dictionaries, specIds, new InMemorySourcingRepository());
@@ -151,12 +152,12 @@ describe('FindSimilarSpecIds, a material family (plan 0011)', () => {
 
   it('fits every grade of the family asked for: paper of unknown grade fits any paper, kraft any kraft', async () => {
     const find = await bags();
-    const paper = await find.execute({ productType: 'BAG', material: 'B00' });
+    const paper = await find.execute({ productType: PRODUCT_TYPE.bag, material: MATERIAL.paper });
     if (!paper.ok) throw paper.error;
     expect(paper.value.fits.map((saved) => saved.name).sort()).toEqual(['Kraft bag', 'Paper bag', 'Recycled kraft bag', 'White kraft bag']);
     expect(paper.value.mightFit).toEqual([]);
 
-    const kraft = await find.execute({ productType: 'BAG', material: 'BKR' });
+    const kraft = await find.execute({ productType: PRODUCT_TYPE.bag, material: MATERIAL.kraft });
     if (!kraft.ok) throw kraft.error;
     expect(kraft.value.fits.map((saved) => saved.name).sort()).toEqual(['Kraft bag', 'Recycled kraft bag', 'White kraft bag']);
     expect(kraft.value.mightFit.map((saved) => saved.name)).toEqual(['Paper bag']);
@@ -164,7 +165,7 @@ describe('FindSimilarSpecIds, a material family (plan 0011)', () => {
 
   it('might fit a grade to a Spec ID that records only its family, and leaves another grade out', async () => {
     const find = await bags();
-    const result = await find.execute({ productType: 'BAG', material: 'BKC' });
+    const result = await find.execute({ productType: PRODUCT_TYPE.bag, material: MATERIAL.recycledKraft });
     if (!result.ok) throw result.error;
     expect(result.value.fits.map((saved) => saved.name)).toEqual(['Recycled kraft bag']);
     expect(result.value.mightFit.map((saved) => saved.name).sort()).toEqual(['Kraft bag', 'Paper bag']);

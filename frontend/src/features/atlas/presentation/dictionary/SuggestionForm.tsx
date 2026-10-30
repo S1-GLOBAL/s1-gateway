@@ -11,7 +11,7 @@ import { useDictionaryUsage } from '../../application/use-suggestions';
 import { RULE_LABELS, type AtlasDictionary, type SlotKey, type SlotRule } from '../../domain/atlas';
 import { usageLine, type Suggestion } from '../../domain/suggestion';
 import {
-  codeHint,
+  broaderOptions,
   draftProposal,
   isRoundShape,
   replacementOptions,
@@ -47,8 +47,8 @@ const RULE_OPTIONS = (Object.keys(RULE_LABELS) as SlotRule[]).map((rule) => ({ v
 
 /** The problems each kind shows by its own field; any other is said above the buttons. */
 const FIELDS_SHOWN: Record<SuggestionTarget['kind'], readonly string[]> = {
-  add: ['code', 'meaning', 'searchWords', 'rules'],
-  edit: ['code', 'newCode', 'meaning', 'searchWords'],
+  add: ['meaning', 'searchWords', 'broader', 'rules'],
+  edit: ['meaning', 'searchWords'],
   delete: ['replacement'],
   rules: ['rules'],
 };
@@ -56,8 +56,9 @@ const FIELDS_SHOWN: Record<SuggestionTarget['kind'], readonly string[]> = {
 /**
  * Suggesting a change to the dictionary, or editing a waiting suggestion (#95):
  * one form whose fields follow the kind. Adding or editing an option has its
- * code, wording and search words, and a new product type its rules, copied
- * from another; deleting an option in use asks what its Spec IDs become; a
+ * wording and search words, a new material what it is a grade of, and a new
+ * product type its rules, copied from another. A new option is numbered when
+ * it is approved, and a number never changes (ADR 0033). Deleting an option in use asks what its Spec IDs become; a
  * rules change has a rule per field. The server checks everything, and each
  * problem shows by its field.
  */
@@ -147,7 +148,7 @@ function Fields({ request, context, onCancel, onSent }: FieldsProps) {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const input = { slot: target.slot, code: targetCode(target, draft), proposal };
+    const input = { slot: target.slot, code: targetCode(target), proposal };
     try {
       if (editing) await edit.mutateAsync({ id: editing.id, version: editing.version, input });
       else await suggest.mutateAsync(input);
@@ -161,18 +162,10 @@ function Fields({ request, context, onCancel, onSent }: FieldsProps) {
     <form noValidate onSubmit={submit} className="flex flex-col gap-5">
       {used && <p className="text-sm text-ink-muted">{used}</p>}
 
+      {target.kind === 'add' && <p className="text-sm text-ink-muted">{SUGGESTION_COPY.numbered}</p>}
+
       {(target.kind === 'add' || target.kind === 'edit') && (
         <>
-          <TextField
-            label="Code"
-            name="code"
-            autoComplete="off"
-            value={draft.code}
-            disabled={round || (target.kind === 'add' && target.code !== undefined)}
-            hint={round ? SUGGESTION_COPY.roundLocked : codeHint(target.slot)}
-            errors={[...(fields.code ?? []), ...(fields.newCode ?? [])]}
-            onChange={(event) => set({ code: event.target.value })}
-          />
           <TextField
             label="Wording"
             name="meaning"
@@ -189,6 +182,18 @@ function Fields({ request, context, onCancel, onSent }: FieldsProps) {
             onChange={(event) => set({ words: event.target.value })}
           />
         </>
+      )}
+
+      {target.kind === 'add' && target.slot === 'material' && (
+        <SelectField
+          label={SUGGESTION_COPY.broaderLabel}
+          name="broader"
+          value={draft.broader}
+          options={broaderOptions(dictionary)}
+          hint={SUGGESTION_COPY.broaderHint}
+          errors={fields.broader}
+          onChange={(event) => set({ broader: event.target.value })}
+        />
       )}
 
       {target.kind === 'delete' &&

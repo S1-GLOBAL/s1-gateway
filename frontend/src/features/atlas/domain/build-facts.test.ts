@@ -98,16 +98,17 @@ describe('toFacts', () => {
   });
 
   it('sends the new choices, and drops a count the product type never has', () => {
-    const initial = initialBuildForm('CUP');
+    // A cup (5), double wall (2), printed in 2 colours (3), keyed by number (ADR 0033).
+    const initial = initialBuildForm('5');
     const facts = toFacts(
       {
         ...initial,
-        codes: { ...initial.codes, wall: 'DW', print: '02' },
+        codes: { ...initial.codes, wall: '2', print: '3' },
         counts: { compartments: '3', plies: '' },
       },
       s2Dictionary.rules,
     );
-    expect(facts).toEqual({ productType: 'CUP', wall: 'DW', print: '02' });
+    expect(facts).toEqual({ productType: '5', wall: '2', print: '3' });
   });
 });
 

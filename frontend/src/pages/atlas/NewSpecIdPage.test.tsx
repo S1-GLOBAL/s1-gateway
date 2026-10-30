@@ -13,13 +13,13 @@ const dictionary: AtlasDictionary = {
   approvedOn: '2026-10-16',
   change: null,
   slots: [
-    { key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid', number: 1, searchWords: [] }] },
+    { key: 'productType', name: 'Product type', values: [{ code: 'BLD', meaning: 'Bowl lid', number: 1, broader: null, searchWords: [] }] },
     {
       key: 'material',
       name: 'Material',
       values: [
-        { code: 'APS', meaning: 'Polymer, PS (polystyrene)', number: 4, searchWords: [] },
-        { code: 'BKR', meaning: 'Paper and paperboard, kraft', number: 12, searchWords: [] },
+        { code: 'APS', meaning: 'Polymer, PS (polystyrene)', number: 4, broader: null, searchWords: [] },
+        { code: 'BKR', meaning: 'Paper and paperboard, kraft', number: 12, broader: null, searchWords: [] },
       ],
     },
   ],

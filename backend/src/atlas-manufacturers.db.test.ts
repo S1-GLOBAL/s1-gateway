@@ -7,6 +7,7 @@ import { DrizzleSourcingRepository } from './modules/atlas/infrastructure/drizzl
 import { createAdmin } from './scripts/create-admin.js';
 import { FixedClock, SequentialIdGenerator, silentLogger } from './shared/application/testing/fakes.js';
 import { connectTestDatabase, resetTables } from './test/database.js';
+import { MATERIAL, PRODUCT_TYPE } from './modules/atlas/domain/options.js';
 
 const ADMIN = 'admin@sourceone.global';
 const STAFF = 'staff@sourceone.global';
@@ -65,7 +66,7 @@ afterAll(() => connection.close());
 
 /** Saves an invented cup and records two invented manufacturers' quotes on it. Never Source One data (ADR 0027). */
 async function cupWithQuotes(): Promise<{ id: string; acme: string }> {
-  const saved = await admin.post('/api/v1/atlas/spec-ids').send({ name: 'Invented PP cup', facts: { productType: 'CUP', material: 'APP' } });
+  const saved = await admin.post('/api/v1/atlas/spec-ids').send({ name: 'Invented PP cup', facts: { productType: PRODUCT_TYPE.cup, material: MATERIAL.pp } });
   const id: string = saved.body.data.id;
   const values = (fobPerUnit: string | null) => ({
     itemName: 'Invented PP cup',

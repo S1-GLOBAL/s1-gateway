@@ -66,6 +66,15 @@ export function valueCode(key: SlotKey, number: number): string {
   return `${codeLetter(key) ?? ''}${number}`;
 }
 
+/**
+ * How a code writes the option keyed `code` in a list: material 16 is `B16`
+ * (ADR 0033). Letters a suggestion named before options were known by number
+ * are shown as they were.
+ */
+export function optionCode(key: SlotKey, code: string): string {
+  return /^[1-9]\d*$/.test(code) ? valueCode(key, Number(code)) : code;
+}
+
 /** Dictionary values in the order a code numbers them: `A1`, `A2`, … `A10`. */
 export function byNumber<T extends { readonly number: number }>(values: readonly T[]): T[] {
   return [...values].sort((a, b) => a.number - b.number);

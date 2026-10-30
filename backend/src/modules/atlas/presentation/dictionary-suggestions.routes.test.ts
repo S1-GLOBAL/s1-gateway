@@ -17,13 +17,15 @@ import { InMemorySuggestionRepository } from '../application/testing/in-memory-s
 import { WithdrawDictionarySuggestion } from '../application/withdraw-dictionary-suggestion.js';
 import { DictionarySuggestionsController } from './dictionary-suggestions.controller.js';
 import { createDictionarySuggestionsAdminRouter, createDictionarySuggestionsRouter } from './dictionary-suggestions.routes.js';
+import { MATERIAL } from '../domain/options.js';
 
 const ADA = { id: '00000000-0000-4000-8000-0000000000aa', fullName: 'Ada Invented', isAdmin: false };
 const BEN = { id: '00000000-0000-4000-8000-0000000000bb', fullName: 'Ben Invented', isAdmin: true };
 const BASE = '/api/v1/atlas/dictionary';
+/** A new option names no number: it is numbered when it is approved (ADR 0033). */
 const NEW_MATERIAL = {
   slot: 'material',
-  code: 'azz',
+  code: '',
   proposal: { kind: 'add', meaning: 'Polymer, invented', searchWords: ['invented polymer'], rules: null },
 };
 
@@ -68,13 +70,13 @@ function setup() {
 }
 
 describe('POST /api/v1/atlas/dictionary/suggestions', () => {
-  it('answers 201 with the waiting suggestion, its code in capitals', async () => {
+  it('answers 201 with the waiting suggestion, which names no number until it is approved', async () => {
     const response = await request(setup()).post(`${BASE}/suggestions`).send(NEW_MATERIAL);
     expect(response.status).toBe(201);
     expect(response.body.data).toMatchObject({
       kind: 'add',
       slot: 'material',
-      code: 'AZZ',
+      code: '',
       state: 'waiting',
       version: 1,
       suggestedBy: { fullName: 'Ada Invented' },
@@ -84,10 +86,12 @@ describe('POST /api/v1/atlas/dictionary/suggestions', () => {
   it("answers 400 VALIDATION_FAILED with the domain's message under its field", async () => {
     const response = await request(setup())
       .post(`${BASE}/suggestions`)
-      .send({ ...NEW_MATERIAL, code: 'APS' });
+      .send({ ...NEW_MATERIAL, code: '39', proposal: { ...NEW_MATERIAL.proposal, broader: MATERIAL.pet } });
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe('VALIDATION_FAILED');
-    expect(response.body.error.details.fields.code).toEqual(['APS is already Polymer, PS (polystyrene).']);
+    expect(response.body.error.details.fields).toEqual({
+      code: ['An option is known by its number, given when it is approved. It never changes.'],
+    });
   });
 
   it('answers 400 for a list that is not in the dictionary, or a proposal of no known kind', async () => {
@@ -174,8 +178,8 @@ describe('the suggestion routes', () => {
 describe('GET /api/v1/atlas/dictionary/usage/:slot/:code', () => {
   it('counts saved Spec IDs holding an option, and refuses a list that is not in the dictionary', async () => {
     const app = setup();
-    expect((await request(app).get(`${BASE}/usage/material/APS`)).body.data).toEqual({ count: 0 });
-    const refused = await request(app).get(`${BASE}/usage/height/AB`);
+    expect((await request(app).get(`${BASE}/usage/material/${MATERIAL.ps}`)).body.data).toEqual({ count: 0 });
+    const refused = await request(app).get(`${BASE}/usage/height/1`);
     expect(refused.status).toBe(400);
     expect(refused.body.error.details.fields.slot).toEqual(['That is not a dictionary list.']);
   });
@@ -201,6 +205,25 @@ describe('approving and rejecting', () => {
     const detail = await request(app).get(`${BASE}/suggestions/${id}`);
     expect(detail.body.data.events.map((event: { kind: string }) => event.kind)).toEqual(['suggested', 'approved']);
     expect(detail.body.data).toMatchObject({ rewrites: null, problem: null });
+  });
+
+  it('approves a material as a grade of another, numbering it the next in its list', async () => {
+    const app = setup();
+    const graded = { ...NEW_MATERIAL, proposal: { ...NEW_MATERIAL.proposal, broader: MATERIAL.polymer } };
+    const { id } = (await request(app).post(`${BASE}/suggestions`).send(graded)).body.data as { id: string };
+
+    const approved = await request(app).post(`${BASE}/suggestions/${id}/approve`).set('x-asker', 'ben').send({ version: 1 });
+
+    expect(approved.status).toBe(200);
+    expect(approved.body.data.suggestion).toMatchObject({ state: 'approved', proposal: { broader: MATERIAL.polymer } });
+  });
+
+  it('answers 400 under broader to a broader option for a list that is not material', async () => {
+    const response = await request(setup())
+      .post(`${BASE}/suggestions`)
+      .send({ slot: 'wall', code: '', proposal: { kind: 'add', meaning: 'Triple wall', searchWords: [], rules: null, broader: MATERIAL.polymer } });
+    expect(response.status).toBe(400);
+    expect(response.body.error.details.fields.broader).toEqual(['Only a material is a grade of another.']);
   });
 
   it("answers 403 NOT_ALLOWED to the suggester's own approval or rejection, in #95's words", async () => {
@@ -238,9 +261,9 @@ describe('approving and rejecting', () => {
     expect(blank.status).toBe(400);
     expect(blank.body.error.details.fields.reason).toEqual(['Say why, so Ada Invented knows what to change.']);
 
-    const rejected = await request(app).post(`${BASE}/suggestions/${id}/reject`).set('x-asker', 'ben').send({ reason: ' Already APP. ' });
+    const rejected = await request(app).post(`${BASE}/suggestions/${id}/reject`).set('x-asker', 'ben').send({ reason: ' Already PP. ' });
     expect(rejected.status).toBe(200);
-    expect(rejected.body.data).toMatchObject({ state: 'rejected', reason: 'Already APP.', decidedBy: { fullName: 'Ben Invented' } });
+    expect(rejected.body.data).toMatchObject({ state: 'rejected', reason: 'Already PP.', decidedBy: { fullName: 'Ben Invented' } });
   });
 
   it('answers 400 under reason to a reason of 501 characters, and rejects with one of 500', async () => {
@@ -264,7 +287,7 @@ describe('approving and rejecting', () => {
     expect(missing.body.error.details.fields.reason).toEqual(['Say why, so Ada Invented knows what to change.']);
   });
 
-  it('answers 409 SUGGESTION_OUT_OF_DATE when another approval took its code first', async () => {
+  it('answers 409 SUGGESTION_OUT_OF_DATE when another approval took its search word first', async () => {
     const app = setup();
     const first = await suggested(app);
     const second = await suggested(app);
@@ -275,7 +298,7 @@ describe('approving and rejecting', () => {
     expect(late.body.error).toMatchObject({
       code: 'SUGGESTION_OUT_OF_DATE',
       message:
-        'The dictionary changed since this was suggested: AZZ is already Polymer, invented. The suggester can edit it, or you can reject it.',
+        'The dictionary changed since this was suggested: “invented polymer” already finds B39 (Polymer, invented). The suggester can edit it, or you can reject it.',
     });
     expect((await request(app).get(`${BASE}/suggestions/${second.id}`)).body.data.problem).toBe(late.body.error.message);
   });

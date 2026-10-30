@@ -1,3 +1,4 @@
+import { CAPACITY_UNIT, MATERIAL, SHAPE } from './options.js';
 import { fraction, type Fraction } from './measurement.js';
 
 /** The 25 slots of a Spec ID, in the order they appear in the code (ADR 0019, ADR 0024, ADR 0025). */
@@ -76,14 +77,14 @@ export const NOT_KNOWN = 'Y';
 export const DOES_NOT_APPLY = 'X';
 /** Variants are out of scope: every code ends in `X`. */
 export const NO_VARIANT = DOES_NOT_APPLY;
-/** `round_only` slots apply when the shape is this code; `non_round_only` when it is any other. */
-export const ROUND_SHAPE = 'RD';
-/** `paper_only` slots apply when the material's first letter (its family) is this one. */
-export const PAPER_FAMILY = 'B';
+/** `round_only` slots apply when the shape is this one; `non_round_only` when it is any other. */
+export const ROUND_SHAPE = SHAPE.round;
+/** `paper_only` slots apply when the material is this one or a grade of it (ADR 0033). */
+export const PAPER_FAMILY = MATERIAL.paper;
 /** The dictionary release this build issues codes under. */
 export const CURRENT_RELEASE = 'S2 0.1.0';
 
-/** Slots whose values come from the dictionary. `capacity` holds its unit letter there. */
+/** Slots whose values come from the dictionary. `capacity` holds its unit's number there. */
 export type DictionarySlotKey =
   | 'productType'
   | 'material'
@@ -202,13 +203,13 @@ export const UNIT_LABELS: Readonly<Record<string, string>> = {
   um: 'µm',
 };
 
-/** How a capacity's unit letter is written after a number: `6 oz`, `500 mL`. */
+/** How a capacity's unit is written after a number: `6 oz`, `500 mL`. */
 export const CAPACITY_UNIT_LABELS: Readonly<Record<string, string>> = {
-  Z: 'oz',
-  M: 'mL',
-  S: 'servings',
-  N: 'count',
-  G: 'g',
+  [CAPACITY_UNIT.ounces]: 'oz',
+  [CAPACITY_UNIT.millilitres]: 'mL',
+  [CAPACITY_UNIT.servings]: 'servings',
+  [CAPACITY_UNIT.count]: 'count',
+  [CAPACITY_UNIT.grams]: 'g',
 };
 
 export const CAPACITY_MAX = 9999n;

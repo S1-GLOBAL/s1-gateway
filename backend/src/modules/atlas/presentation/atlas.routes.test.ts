@@ -21,14 +21,17 @@ import { InMemorySpecIdRepository } from '../application/testing/in-memory-spec-
 import { ILLUSTRATIVE as ILLUSTRATIVE_DOTTED, ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1, withSlot } from '../domain/testing/spec-id-codes.js';
 import { AtlasController } from './atlas.controller.js';
 import { createAtlasRouter } from './atlas.routes.js';
+import { CAPACITY_UNIT, COLOUR_CLARITY, HANDLE, LID_OPENING, MATERIAL, PRINT, PRODUCT_TYPE, PROFILE, SHAPE, WALL, WINDOW, WRAP } from '../domain/options.js';
 
 const ILLUSTRATIVE = 'A1B4D1E1F1-H90N33';
+/** Its slots as they are held: each option by its number (ADR 0033). */
+const ILLUSTRATIVE_SLOTS = '1.4.Y.1.1.1.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
 const FACTS = {
-  productType: 'BLD',
-  material: 'APS',
-  colourClarity: 'CL',
-  shape: 'RD',
-  profile: 'DM',
+  productType: PRODUCT_TYPE.bowlLid,
+  material: MATERIAL.ps,
+  colourClarity: COLOUR_CLARITY.clear,
+  shape: SHAPE.round,
+  profile: PROFILE.dome,
   topDiameter: { value: '90', unit: 'mm' },
   unitWeight: { value: '3.3', unit: 'g' },
 };
@@ -94,7 +97,7 @@ describe('GET /api/v1/atlas/dictionary', () => {
     expect(response.body.data.release).toBe('S2 0.1.0');
     expect(response.body.data.approvedOn).toBe('2026-10-19');
     expect(response.body.data.slots).toHaveLength(13);
-    expect(response.body.data.rules).toHaveLength(748);
+    expect(response.body.data.rules).toHaveLength(792);
   });
 });
 
@@ -109,7 +112,7 @@ describe('POST /api/v1/atlas/spec-ids/decode', () => {
       number: 1,
       key: 'productType',
       name: 'Product type',
-      raw: 'BLD',
+      raw: PRODUCT_TYPE.bowlLid,
       part: 'A1',
       state: 'value',
       meaning: 'Bowl lid',
@@ -189,7 +192,7 @@ describe('POST /api/v1/atlas/spec-ids/encode', () => {
   });
 
   it('answers 200 with a decimal capacity written with its point', async () => {
-    const response = await encode({ productType: 'BWL', capacity: { unit: 'Z', value: '3.25' } });
+    const response = await encode({ productType: PRODUCT_TYPE.bowl, capacity: { unit: CAPACITY_UNIT.ounces, value: '3.25' } });
     expect(response.status).toBe(200);
     expect(response.body.data.code).toBe('A3-G13.25');
   });
@@ -228,12 +231,12 @@ describe('POST /api/v1/atlas/spec-ids/encode', () => {
     ],
     [
       'a capacity with seven decimal places',
-      { productType: 'BWL', capacity: { unit: 'Z', value: '6.1234567' } },
+      { productType: PRODUCT_TYPE.bowl, capacity: { unit: CAPACITY_UNIT.ounces, value: '6.1234567' } },
       { capacity: ['Nominal capacity: 6.1234567 oz has more than 6 decimal places.'] },
     ],
     [
       'a profile on a bowl',
-      { productType: 'BWL', shape: 'RD', profile: 'DM' },
+      { productType: PRODUCT_TYPE.bowl, shape: SHAPE.round, profile: PROFILE.dome },
       { profile: ['Profile must be X for a bowl.'] },
     ],
     [
@@ -532,12 +535,12 @@ describe('GET /api/v1/atlas/spec-ids/:code, as a lookup', () => {
 
 describe('the slots S2 added, and codes given out before', () => {
   it.each([
-    ['wall and print', { productType: 'CUP', wall: 'DW', print: '02' }, { wall: 'DW', print: '02' }, 'A5Q2R3'],
-    ['compartments', { productType: 'CTN', compartments: '3' }, { compartments: '03' }, 'A8S3'],
-    ['plies', { productType: 'NPK', plies: '2' }, { plies: '2' }, 'A17T2'],
-    ['a lid opening', { productType: 'CLD', lidOpening: 'SP' }, { lidOpening: 'SP' }, 'A2U2'],
-    ['a handle and a window', { productType: 'BAG', handle: 'TW', window: 'WN' }, { handle: 'TW', window: 'WN' }, 'A16V2X2'],
-    ['an individual wrap', { productType: 'STW', wrap: 'PW' }, { wrap: 'PW' }, 'A24W2'],
+    ['wall and print', { productType: PRODUCT_TYPE.cup, wall: WALL.doubleWall, print: PRINT.twoColours }, { wall: WALL.doubleWall, print: PRINT.twoColours }, 'A5Q2R3'],
+    ['compartments', { productType: PRODUCT_TYPE.container, compartments: '3' }, { compartments: '03' }, 'A8S3'],
+    ['plies', { productType: PRODUCT_TYPE.napkin, plies: '2' }, { plies: '2' }, 'A17T2'],
+    ['a lid opening', { productType: PRODUCT_TYPE.cupLid, lidOpening: LID_OPENING.sipThrough }, { lidOpening: LID_OPENING.sipThrough }, 'A2U2'],
+    ['a handle and a window', { productType: PRODUCT_TYPE.bag, handle: HANDLE.twisted, window: WINDOW.withWindow }, { handle: HANDLE.twisted, window: WINDOW.withWindow }, 'A16V2X2'],
+    ['an individual wrap', { productType: PRODUCT_TYPE.straw, wrap: WRAP.paperWrapped }, { wrap: WRAP.paperWrapped }, 'A24W2'],
   ])('encodes %s into their slots', async (_case, facts, raws, code) => {
     const response = await encode(facts);
     expect(response.status).toBe(200);
@@ -547,7 +550,7 @@ describe('the slots S2 added, and codes given out before', () => {
   });
 
   it('answers 400 INVALID_SPEC_ID for 13 compartments, beside the slot', async () => {
-    const response = await encode({ productType: 'CTN', compartments: '13' });
+    const response = await encode({ productType: PRODUCT_TYPE.container, compartments: '13' });
     expect(response.status).toBe(400);
     expect(response.body.error.details.fields).toEqual({ compartments: ['Compartments: 13 is outside 1–12.'] });
   });
@@ -559,7 +562,7 @@ describe('the slots S2 added, and codes given out before', () => {
     const response = await decode(code);
     expect(response.status).toBe(200);
     expect(response.body.data.code).toBe(ILLUSTRATIVE);
-    expect(response.body.data.slots.map((slot: { raw: string }) => slot.raw).join('.')).toBe(ILLUSTRATIVE_DOTTED);
+    expect(response.body.data.slots.map((slot: { raw: string }) => slot.raw).join('.')).toBe(ILLUSTRATIVE_SLOTS);
   });
 
   it('finds a saved Spec ID by its long S2 code', async () => {

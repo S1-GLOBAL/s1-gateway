@@ -3,6 +3,7 @@ import { CURRENT_RELEASE } from '../domain/slots.js';
 import { applyProposal } from '../domain/suggestions/apply-proposal.js';
 import { ReadSpecIdText } from './read-spec-id-text.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
+import { MATERIAL, PRODUCT_TYPE } from '../domain/options.js';
 
 const readText = new ReadSpecIdText(new InMemoryDictionaryRepository());
 
@@ -66,7 +67,7 @@ describe('ReadSpecIdText', () => {
   });
 
   it('builds the code with a product type given for text that names none', async () => {
-    const result = await readText.execute({ text: 'clear PET 12oz', productType: 'CUP' });
+    const result = await readText.execute({ text: 'clear PET 12oz', productType: PRODUCT_TYPE.cup });
     if (!result.ok) throw result.error;
     expect(result.value.decoded?.code).toBe('A5B1D1-G112');
   });
@@ -104,7 +105,7 @@ describe('ReadSpecIdText after an approved change (ADR 0031)', () => {
     const live = await dictionaries.get(CURRENT_RELEASE);
     if (!live) throw new Error('No dictionary');
     dictionaries.replace(
-      applyProposal(live, { slot: 'material', code: 'CBG' }, { kind: 'edit', newCode: null, meaning: null, searchWords: ['sugarcane fibre'] }, {
+      applyProposal(live, { slot: 'material', code: MATERIAL.bagasse }, { kind: 'edit', newCode: null, meaning: null, searchWords: ['sugarcane fibre'] }, {
         number: 1,
         at: new Date('2026-10-27T10:00:00.000Z'),
       }),

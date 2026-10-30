@@ -26,10 +26,13 @@ export interface DictionarySlotDto {
 }
 
 export interface DictionaryValueDto {
+  /** Its key: its number, as text (ADR 0033). */
   code: string;
   meaning: string;
   /** Its number in its list, written after the list's letter in a code (ADR 0032). */
   number: number;
+  /** For a material, the key of the material it is a grade of; else null (ADR 0033). */
+  broader: string | null;
   /** Its approved search words, in order (ADR 0031). The word list in the code is not among them. */
   searchWords: string[];
 }
@@ -75,10 +78,11 @@ export function toDictionaryDto(dictionary: Dictionary): DictionaryDto {
     slots: DICTIONARY_SLOTS.map((key) => ({
       key,
       name: slotDefinition(key).name,
-      values: dictionary.valuesOf(key).map(({ code, meaning, number }) => ({
+      values: dictionary.valuesOf(key).map(({ code, meaning, number, broader }) => ({
         code,
         meaning,
         number,
+        broader: broader ?? null,
         searchWords: dictionary.searchWordsOf(key, code),
       })),
     })),

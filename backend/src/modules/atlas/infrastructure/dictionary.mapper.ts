@@ -42,6 +42,9 @@ export function toDomain(
       code: row.code,
       meaning: row.meaning,
       ...(row.number === null ? {} : { number: row.number }),
+      ...(row.legacyCode === null ? {} : { legacyCode: row.legacyCode }),
+      // An option's key is its number, as text (ADR 0033).
+      ...(row.broaderNumber === null ? {} : { broader: String(row.broaderNumber) }),
     })),
     rules.map((row) => ({ productType: row.productType, slot: row.slot as RuledSlotKey, rule: row.rule as SlotRule })),
     {
@@ -63,6 +66,7 @@ export function toDomain(
         code: row.code,
         meaning: row.meaning,
         changeNumber: row.changeNumber,
+        ...(row.legacyCode === null ? {} : { legacyCode: row.legacyCode }),
       })),
       change: history.latest,
     },
@@ -71,7 +75,15 @@ export function toDomain(
 
 /** A dictionary's values and rules as rows of its release, for the change store to write. */
 export function toValueRows(dictionary: Dictionary): NewValueRow[] {
-  return dictionary.values().map(({ slot, code, meaning, number }) => ({ release: dictionary.release, slot, code, meaning, number }));
+  return dictionary.values().map(({ slot, code, meaning, number, legacyCode, broader }) => ({
+    release: dictionary.release,
+    slot,
+    code,
+    meaning,
+    number,
+    legacyCode: legacyCode ?? null,
+    broaderNumber: broader === undefined ? null : Number(broader),
+  }));
 }
 
 export function toRuleRows(dictionary: Dictionary): NewRuleRow[] {

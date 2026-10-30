@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { checkName, SavedSpecId } from './saved-spec-id.js';
 import { SpecId } from './spec-id.js';
 import { s2Dictionary } from './testing/s2-dictionary.js';
+import { slotsOf } from './testing/slots-of.js';
 
 const ILLUSTRATIVE = 'BLD.APS.Y.CL.RD.DM.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
+/** Its slots as they are held: each option by its number (ADR 0033). */
+const ILLUSTRATIVE_SLOTS = '1.4.Y.1.1.1.X.0090.X.Y.X.X.X.0033.X.Y.X.Y.X.X.X.X.X.X.X';
 const specId = (() => {
   const parsed = SpecId.parse(ILLUSTRATIVE, s2Dictionary());
   if (!parsed.ok) throw parsed.error;
@@ -58,7 +61,7 @@ describe('SavedSpecId.create', () => {
   it('keeps the code, the release, who saved it and when', () => {
     const result = create('Illustrative lid');
     if (!result.ok) throw result.error;
-    expect(result.value.specId.dottedCode).toBe(ILLUSTRATIVE);
+    expect(slotsOf(result.value.specId)).toBe(ILLUSTRATIVE_SLOTS);
     expect(result.value.dictionaryRelease).toBe('S2 0.1.0');
     expect(result.value.savedBy).toBe('00000000-0000-4000-8000-0000000000aa');
     expect(result.value.savedAt.toISOString()).toBe('2026-10-16T08:00:00.000Z');

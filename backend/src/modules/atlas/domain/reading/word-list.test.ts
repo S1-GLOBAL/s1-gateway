@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { s2Dictionary } from '../testing/s2-dictionary.js';
 import { WORD_LIST } from './word-list.js';
+import { MATERIAL, PRODUCT_TYPE } from '../options.js';
 
 const dictionary = s2Dictionary();
 
@@ -20,9 +21,9 @@ describe('WORD_LIST', () => {
   });
 
   it('knows a bowl lid, a clamshell, bagasse and PP', () => {
-    expect(WORD_LIST['bowl lid']).toEqual({ productType: 'BLD' });
-    expect(WORD_LIST.clamshell).toEqual({ productType: 'HCT' });
-    expect(WORD_LIST.bagasse).toEqual({ material: 'CBG' });
-    expect(WORD_LIST.pp).toEqual({ material: 'APP' });
+    expect(WORD_LIST['bowl lid']).toEqual({ productType: PRODUCT_TYPE.bowlLid });
+    expect(WORD_LIST.clamshell).toEqual({ productType: PRODUCT_TYPE.hingedContainer });
+    expect(WORD_LIST.bagasse).toEqual({ material: MATERIAL.bagasse });
+    expect(WORD_LIST.pp).toEqual({ material: MATERIAL.pp });
   });
 });

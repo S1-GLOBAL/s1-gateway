@@ -6,15 +6,16 @@ import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-rep
 import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { UpdateSpecId } from './update-spec-id.js';
+import { CAPACITY_UNIT, COLOUR_CLARITY, MATERIAL, PRODUCT_TYPE, PROFILE, SHAPE } from '../domain/options.js';
 
 const ILLUSTRATIVE = 'A1B4D1E1F1-H90N33';
 const WITH_HEIGHT = 'A1B4D1E1F1-H90J12N33';
 const FACTS = {
-  productType: 'BLD',
-  material: 'APS',
-  colourClarity: 'CL',
-  shape: 'RD',
-  profile: 'DM',
+  productType: PRODUCT_TYPE.bowlLid,
+  material: MATERIAL.ps,
+  colourClarity: COLOUR_CLARITY.clear,
+  shape: SHAPE.round,
+  profile: PROFILE.dome,
   topDiameter: { value: '90', unit: 'mm' },
   unitWeight: { value: '3.3', unit: 'g' },
 };
@@ -145,14 +146,14 @@ describe('UpdateSpecId', () => {
     const result = await update.execute({
       id,
       name: 'Illustrative lid',
-      facts: { productType: 'BWL', material: 'APS', shape: 'RD', capacity: { unit: 'Z', value: '16' } },
+      facts: { productType: PRODUCT_TYPE.bowl, material: MATERIAL.ps, shape: SHAPE.round, capacity: { unit: CAPACITY_UNIT.ounces, value: '16' } },
       version: 1,
       updatedBy: EDITOR,
     });
 
     if (!result.ok) throw result.error;
     expect(result.value.code).toBe('A3B4E1-G116');
-    expect(result.value.slots.map((slot) => slot.raw).join('.')).toBe('BWL.APS.Y.Y.RD.X.Z0016.Y.Y.Y.X.X.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X');
+    expect(result.value.slots.map((slot) => slot.raw).join('.')).toBe('3.4.Y.Y.1.X.10016.Y.Y.Y.X.X.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X');
   });
 
   it('answers not found for an id nobody saved', async () => {

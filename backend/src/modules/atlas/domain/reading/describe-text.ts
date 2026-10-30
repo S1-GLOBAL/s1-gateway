@@ -177,7 +177,7 @@ export function describeText(text: string, dictionary: Dictionary, productType?:
 function withNamedSizes(text: string, dictionary: Dictionary, given: TextReading): TextReading {
   const lower = text.toLowerCase();
   const named = namedMeasureSpans(text);
-  const round = dictionary.liveOriginal('shape', ROUND_SHAPE);
+  const round = dictionary.live('shape', ROUND_SHAPE);
   const diameter = named.some((span) => span.slot === 'topDiameter' || span.slot === 'bottomDiameter');
   // "L115 x W120 x H72" on a clamshell: R6 would name it rectangular, so the named sizes do.
   const sides = named.some((span) => span.slot === 'length') && named.some((span) => span.slot === 'width');

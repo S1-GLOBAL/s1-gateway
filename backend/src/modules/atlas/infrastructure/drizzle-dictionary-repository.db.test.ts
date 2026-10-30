@@ -34,8 +34,8 @@ describe('DrizzleDictionaryRepository', () => {
 
     expect(dictionary?.release).toBe('S2 0.1.0');
     expect(dictionary?.approvedOn).toBe('2026-10-19');
-    expect(dictionary?.values()).toHaveLength(121);
-    expect(dictionary?.slotRules()).toHaveLength(748);
+    expect(dictionary?.values()).toHaveLength(129);
+    expect(dictionary?.slotRules()).toHaveLength(792);
     expect(valueKeys(dictionary?.values() ?? [])).toEqual(valueKeys(S2_0_1_0_VALUES));
     expect(ruleKeys(dictionary?.slotRules() ?? [])).toEqual(ruleKeys(S2_0_1_0_RULES));
   });

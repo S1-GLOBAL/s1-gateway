@@ -11,19 +11,19 @@ const dictionary: AtlasDictionary = {
       key: 'productType',
       name: 'Product type',
       values: [
-        { code: 'BLD', meaning: 'Bowl lid', number: 1, searchWords: [] },
-        { code: 'BWL', meaning: 'Bowl', number: 3, searchWords: [] },
+        { code: 'BLD', meaning: 'Bowl lid', number: 1, broader: null, searchWords: [] },
+        { code: 'BWL', meaning: 'Bowl', number: 3, broader: null, searchWords: [] },
       ],
     },
     {
       key: 'material',
       name: 'Material',
-      values: [{ code: 'APT', meaning: 'Polymer, PET', number: 1, searchWords: [] }],
+      values: [{ code: 'APT', meaning: 'Polymer, PET', number: 1, broader: null, searchWords: [] }],
     },
     {
       key: 'shape',
       name: 'Shape',
-      values: [{ code: 'RD', meaning: 'Round', number: 1, searchWords: [] }],
+      values: [{ code: 'RD', meaning: 'Round', number: 1, broader: null, searchWords: [] }],
     },
   ],
   rules: [],

@@ -6,6 +6,8 @@ import { initialBuildForm } from '../../domain/build-facts';
 import { FactGroups } from './FactGroups';
 
 const productTypes = s2Dictionary.slots.find((slot) => slot.key === 'productType')?.values ?? [];
+/** The product types these tests name, by key: their number (ADR 0033). */
+const P = { bowl: '3', standUpPouch: '4', cup: '5', shippingBox: '15', bag: '16', napkin: '17' } as const;
 const nameOf = (key: SlotKey) => SLOT_NAMES.find((slot) => slot.key === key)?.name ?? key;
 
 function renderGroups(productType: string) {
@@ -24,9 +26,9 @@ const optionLabels = (label: string) =>
   [...(screen.getByLabelText(label) as HTMLSelectElement).options].map((option) => option.textContent);
 
 describe('FactGroups, the slots S2 0.1.0 applies', () => {
-  it('has a rule for each of the 22 ruled slots of all 31 product types', () => {
-    expect(productTypes).toHaveLength(31);
-    expect(s2Dictionary.rules).toHaveLength(31 * 22);
+  it('has a rule for each of the 22 ruled slots of all 36 product types', () => {
+    expect(productTypes).toHaveLength(36);
+    expect(s2Dictionary.rules).toHaveLength(36 * 22);
   });
 
   it.each(productTypes.map(({ code, meaning }) => [meaning, code]))(
@@ -40,7 +42,7 @@ describe('FactGroups, the slots S2 0.1.0 applies', () => {
   );
 
   it('names the new slots a cup never has', () => {
-    renderGroups('CUP');
+    renderGroups(P.cup);
     expect(
       screen.getByText(
         "Not asked for a cup: profile, gusset, compartments, plies, lid opening, handle, individual wrap and window. They're left out of the code.",
@@ -49,41 +51,41 @@ describe('FactGroups, the slots S2 0.1.0 applies', () => {
   });
 
   it('hides the shape group of a stand-up pouch, which has no shape, profile, wall or lid opening', () => {
-    renderGroups('SUP');
+    renderGroups(P.standUpPouch);
     expect(screen.queryByRole('radiogroup', { name: 'Shape' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Shape' })).toBeNull();
   });
 
   it('keeps the capitals of a code in a product type name', () => {
-    renderGroups('RSC');
+    renderGroups(P.shippingBox);
     expect(screen.getByText(/^Not asked for a shipping box \(RSC\): shape, profile,/)).toBeTruthy();
   });
 });
 
 describe('FactGroups, the controls', () => {
-  it('lists all 31 product types in code order, each as a code writes it', () => {
-    renderGroups('BAG');
+  it('lists all 36 product types in code order, each as a code writes it', () => {
+    renderGroups(P.bag);
     const labels = optionLabels('Product type');
-    expect(labels).toHaveLength(31);
+    expect(labels).toHaveLength(36);
     expect(labels.slice(0, 3)).toEqual(['A1 — Bowl lid', 'A2 — Cup lid', 'A3 — Bowl']);
-    expect((screen.getByLabelText('Product type') as HTMLSelectElement).value).toBe('BAG');
+    expect((screen.getByLabelText('Product type') as HTMLSelectElement).value).toBe(P.bag);
   });
 
   it('gives Material the full width of its group, for its long names', () => {
-    renderGroups('CUP');
+    renderGroups(P.cup);
     expect(screen.getByLabelText('Material').parentElement?.className).toContain('sm:col-span-2');
     expect(screen.getByLabelText('Coating').parentElement?.className).not.toContain('sm:col-span-2');
   });
 
   it('offers each new choice with "Not known" first', () => {
-    renderGroups('CUP');
+    renderGroups(P.cup);
     expect(optionLabels('Wall')).toEqual(['Not known', 'Q1 — Single wall', 'Q2 — Double wall', 'Q3 — Ripple wall']);
     expect(optionLabels('Print')[0]).toBe('Not known');
     expect(optionLabels('Print')).toHaveLength(11);
   });
 
   it('asks for compartments and plies as numbers, "Not known" while empty', () => {
-    renderGroups('NPK');
+    renderGroups(P.napkin);
     const plies = screen.getByLabelText('Plies') as HTMLInputElement;
     expect(plies.placeholder).toBe('Not known');
     expect(plies.inputMode).toBe('numeric');
@@ -92,19 +94,19 @@ describe('FactGroups, the controls', () => {
   });
 
   it('asks for a capacity amount that may have decimals, such as 3.25', () => {
-    renderGroups('CUP');
+    renderGroups(P.cup);
     expect((screen.getByLabelText('Nominal capacity amount') as HTMLInputElement).inputMode).toBe('decimal');
   });
 
   it('puts print, handle and window under 06 Print and features', () => {
-    renderGroups('BAG');
+    renderGroups(P.bag);
     const features = screen.getByRole('region', { name: 'Print and features' });
     expect(within(features).getByRole('heading').textContent).toBe('06Print and features');
     for (const label of ['Print', 'Handle', 'Window']) expect(within(features).getByLabelText(label)).toBeTruthy();
   });
 
   it('puts compartments under Size', () => {
-    renderGroups('BWL');
+    renderGroups(P.bowl);
     expect(within(screen.getByRole('region', { name: 'Size' })).getByLabelText('Compartments')).toBeTruthy();
   });
 });

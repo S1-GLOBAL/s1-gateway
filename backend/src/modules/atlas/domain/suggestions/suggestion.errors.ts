@@ -3,7 +3,7 @@ import { suggestionMessages as messages } from './suggestion.messages.js';
 
 /** Messages by the field of the suggestion form they belong to. */
 export type SuggestionIssues = Partial<
-  Record<'kind' | 'slot' | 'code' | 'newCode' | 'meaning' | 'searchWords' | 'replacement' | 'rules' | 'reason', string[]>
+  Record<'kind' | 'slot' | 'code' | 'newCode' | 'meaning' | 'searchWords' | 'broader' | 'replacement' | 'rules' | 'reason', string[]>
 >;
 
 export class InvalidSuggestionError extends DomainError {

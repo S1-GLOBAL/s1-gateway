@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { FixedClock, SequentialIdGenerator } from '../../../shared/application/testing/fakes.js';
 import { SpecIdNotFoundError } from '../domain/spec-id.errors.js';
-import { applyProposal } from '../domain/suggestions/apply-proposal.js';
+import { Dictionary } from '../domain/dictionary.js';
+import { S2_0_1_0_RULES, S2_0_1_0_VALUES } from '../domain/testing/s2-dictionary.js';
 import { ILLUSTRATIVE as ILLUSTRATIVE_DOTTED, ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1, withSlot } from '../domain/testing/spec-id-codes.js';
 import { FindSpecIdByCode } from './find-spec-id-by-code.js';
 import { SaveSpecId } from './save-spec-id.js';
@@ -9,14 +10,15 @@ import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-rep
 import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
 import { UpdateSpecId } from './update-spec-id.js';
+import { CAPACITY_UNIT, COLOUR_CLARITY, MATERIAL, PRODUCT_TYPE, PROFILE, SHAPE } from '../domain/options.js';
 
 const ILLUSTRATIVE = 'A1B4D1E1F1-H90N33';
 const FACTS = {
-  productType: 'BLD',
-  material: 'APS',
-  colourClarity: 'CL',
-  shape: 'RD',
-  profile: 'DM',
+  productType: PRODUCT_TYPE.bowlLid,
+  material: MATERIAL.ps,
+  colourClarity: COLOUR_CLARITY.clear,
+  shape: SHAPE.round,
+  profile: PROFILE.dome,
   topDiameter: { value: '90', unit: 'mm' },
   unitWeight: { value: '3.3', unit: 'g' },
 };
@@ -142,32 +144,34 @@ describe('FindSpecIdByCode, after codes change', () => {
   });
 });
 
-describe('FindSpecIdByCode after an approved rename (ADR 0031)', () => {
-  it('finds a Spec ID by a dotted code typed in the old letters, as its code now, since a rename keeps the number', async () => {
+describe('FindSpecIdByCode after an approved rename (ADR 0031, ADR 0033)', () => {
+  it('finds a Spec ID by a dotted code typed in letters its material had before or after a rename, since a number never moves', async () => {
     const dictionaries = new InMemoryDictionaryRepository();
-    const before = await dictionaries.get('S2 0.1.0');
-    if (!before) throw new Error('No dictionary');
+    // Bagasse renamed CBG → CBQ before options were known by number, so migration 0021 kept CBQ as its letters.
     dictionaries.replace(
-      applyProposal(before, { slot: 'material', code: 'CBG' }, { kind: 'edit', newCode: 'CBQ', meaning: null, searchWords: null }, {
-        number: 1,
-        at: new Date('2026-10-27T10:00:00.000Z'),
-      }),
+      new Dictionary(
+        'S2 0.1.0',
+        '2026-10-19',
+        S2_0_1_0_VALUES.map((value) => (value.slot === 'material' && value.code === MATERIAL.bagasse ? { ...value, legacyCode: 'CBQ' } : value)),
+        S2_0_1_0_RULES,
+        { renames: [{ slot: 'material', oldCode: 'CBG', newCode: 'CBQ', changeNumber: 1 }], change: { number: 1, at: new Date('2026-10-27T10:00:00.000Z') } },
+      ),
     );
     const specIds = new InMemorySpecIdRepository();
     specIds.nameSaver(SAVER.id, SAVER.fullName);
     const saved = await new SaveSpecId(dictionaries, specIds, new InMemorySourcingRepository(), new FixedClock(new Date('2026-10-27T11:00:00.000Z')), new SequentialIdGenerator()).execute({
       name: 'Bagasse bowl',
-      facts: { productType: 'BWL', material: 'CBQ', capacity: { unit: 'Z', value: '14' } },
+      facts: { productType: PRODUCT_TYPE.bowl, material: MATERIAL.bagasse, capacity: { unit: CAPACITY_UNIT.ounces, value: '14' } },
       savedBy: SAVER,
     });
     if (!saved.ok) throw saved.error;
     expect(saved.value.code).toBe('A3B25-G114');
 
-    const result = await new FindSpecIdByCode(dictionaries, specIds, new InMemorySourcingRepository()).execute({
-      code: 'BWL.CBG.Y.Y.Y.X.Z0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X',
-    });
-
-    if (!result.ok) throw result.error;
-    expect(result.value).toMatchObject({ id: saved.value.id, code: 'A3B25-G114', replacedCode: null });
+    const find = new FindSpecIdByCode(dictionaries, specIds, new InMemorySourcingRepository());
+    for (const letters of ['CBG', 'CBQ']) {
+      const result = await find.execute({ code: `BWL.${letters}.Y.Y.Y.X.Z0014.Y.Y.Y.Y.Y.X.Y.X.Y.Y.Y.Y.X.X.X.X.X.X` });
+      if (!result.ok) throw result.error;
+      expect(result.value).toMatchObject({ id: saved.value.id, code: 'A3B25-G114', replacedCode: null });
+    }
   });
 });

@@ -116,11 +116,11 @@ export function partOf(key: SlotKey, raw: string, dictionary: Dictionary): strin
   const { kind } = slotDefinition(key);
   switch (kind) {
     case 'dictionary': {
-      const number = numberOfLetters(key as DictionarySlotKey, raw, dictionary);
+      const number = numberOfOption(key as DictionarySlotKey, raw, dictionary);
       return number === undefined ? undefined : `${letter}${number}`;
     }
     case 'capacity': {
-      const unit = numberOfLetters('capacity', raw.slice(0, 1), dictionary);
+      const unit = numberOfOption('capacity', raw.slice(0, 1), dictionary);
       return unit === undefined ? undefined : `${letter}${unit}${withoutLeadingZeros(raw.slice(1))}`;
     }
     case 'measure':
@@ -148,17 +148,9 @@ export function writeCode(valueOf: (key: SlotKey) => string, dictionary: Diction
   return sizes.length === 0 ? facts.join('') : `${facts.join('')}-${sizes.join('')}`;
 }
 
-/**
- * An option's number from the letters a slot holds: the live option's, the
- * option an approved change renamed them to, or the deleted option's that
- * had them (ADR 0031, ADR 0032).
- */
-function numberOfLetters(slot: DictionarySlotKey, letters: string, dictionary: Dictionary): number | undefined {
-  const live = dictionary.numberOf(slot, letters);
-  if (live !== undefined) return live;
-  const renamed = dictionary.live(slot, letters);
-  if (renamed !== undefined && renamed !== letters) return dictionary.numberOf(slot, renamed);
-  return dictionary.retired().find((retired) => retired.slot === slot && retired.code === letters)?.number;
+/** An option's number from the key a slot holds: the live option's, or a deleted one's (ADR 0032, ADR 0033). */
+function numberOfOption(slot: DictionarySlotKey, key: string, dictionary: Dictionary): number | undefined {
+  return dictionary.numberOf(slot, key) ?? dictionary.retired().find((retired) => retired.slot === slot && retired.code === key)?.number;
 }
 
 /** `0090` is `90`; `0003.25` is `3.25`; `0000.5` is `0.5`. */
@@ -262,8 +254,8 @@ export function readCodeFacts(input: string, dictionary: Dictionary): Result<Fac
 
 /**
  * Each slot's value in a code written at any time: today's spelling, or a
- * dotted code given out before (ADR 0024, ADR 0025), its options in today's
- * letters where an approved change renamed them. Nothing is checked against
+ * dotted code given out before (ADR 0024, ADR 0025), its options' letters read
+ * as the options they name (ADR 0031, ADR 0033). Nothing is checked against
  * today's rules, so a code that was valid when it was written still reads.
  * A slot a code leaves out is `X` where its product doesn't have it, and
  * `Y` otherwise. Null when the text is not a code.
@@ -277,7 +269,7 @@ export function writtenSlots(input: string, dictionary: Dictionary): Record<Slot
     const values = Object.fromEntries(SLOTS.map((slot, index) => [slot.key, parts[index] ?? ''])) as Record<SlotKey, string>;
     for (const key of DICTIONARY_SLOTS) {
       const written = values[key];
-      values[key] = (key === 'capacity' ? dictionary.liveCapacity(written) : dictionary.live(key, written)) ?? written;
+      values[key] = (key === 'capacity' ? dictionary.capacityFromLetters(written) : dictionary.fromLetters(key, written)) ?? written;
     }
     return values;
   }
@@ -302,19 +294,19 @@ export function writtenSlots(input: string, dictionary: Dictionary): Record<Slot
   return values;
 }
 
-/** One part's value as a slot holds it, a deleted option's by the letters it had; undefined when unreadable. */
+/** One part's value as a slot holds it, a deleted option's too; undefined when unreadable. */
 function writtenValue(slot: CodedSlotKey, digits: string, dictionary: Dictionary): string | undefined {
   const { kind, width } = slotDefinition(slot);
-  const lettersOf = (list: DictionarySlotKey, number: number): string | undefined =>
+  const keyOf = (list: DictionarySlotKey, number: number): string | undefined =>
     dictionary.valueNumbered(list, number)?.code ?? dictionary.retiredNumbered(list, number)?.code;
   if (kind === 'capacity') {
-    const unit = lettersOf('capacity', Number(digits.slice(0, 1)));
+    const unit = keyOf('capacity', Number(digits.slice(0, 1)));
     const amount = capacityAmount(digits.slice(1));
     return unit === undefined || amount === undefined ? undefined : capacityValue(unit, amount);
   }
   const number = positiveInteger(digits);
   if (number === undefined) return undefined;
-  if (kind === 'dictionary') return lettersOf(slot as DictionarySlotKey, number);
+  if (kind === 'dictionary') return keyOf(slot as DictionarySlotKey, number);
   return String(number).padStart(width, '0');
 }
 
@@ -341,7 +333,7 @@ export function capacityAmount(text: string): string | undefined {
   return `${whole}.${remainder.toString().padStart(places, '0').replace(/0+$/, '')}`;
 }
 
-/** A capacity as its slot holds it: the unit's letters, the whole part as four digits, then any decimals. `Z0003.25`. */
+/** A capacity as its slot holds it: the unit's number, the whole part as four digits, then any decimals. `10003.25`. */
 export function capacityValue(unit: string, amount: string): string {
   const [whole = '', decimals] = amount.split('.');
   return `${unit}${whole.padStart(4, '0')}${decimals === undefined ? '' : `.${decimals}`}`;

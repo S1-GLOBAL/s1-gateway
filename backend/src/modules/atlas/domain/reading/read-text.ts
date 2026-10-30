@@ -1,4 +1,5 @@
 import type { Dictionary } from '../dictionary.js';
+import { CAPACITY_UNIT, MATERIAL, PRODUCT_TYPE, WRAP } from '../options.js';
 import { DICTIONARY_SLOTS, PAPER_FAMILY, ROUND_SHAPE, RULED_SLOTS, SLOTS, type DictionarySlotKey, type SlotKey } from '../slots.js';
 import type { CapacityInput, MeasurementInput, SpecIdFactsInput } from '../spec-id.js';
 import { isIncluded, vesselWithLid } from './combined-products.js';
@@ -50,14 +51,11 @@ type ReadMatch = Match & { readonly value: string };
 
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
 
-/**
- * A slot value written in S2 0.1.0's letters, or before an approved change,
- * as `dictionary` reads it now: null once its option is deleted (ADR 0031).
- */
+/** A slot value an option names, as `dictionary` has it: null once its option is deleted (ADR 0031). */
 function liveValue(key: SlotKey, value: string, dictionary: Dictionary): string | null {
   if (!(DICTIONARY_SLOTS as readonly SlotKey[]).includes(key)) return value;
   const slot = key as DictionarySlotKey;
-  return (slot === 'capacity' ? dictionary.liveOriginalCapacity(value) : dictionary.liveOriginal(slot, value)) ?? null;
+  return (slot === 'capacity' ? dictionary.liveCapacity(value) : dictionary.live(slot, value)) ?? null;
 }
 
 interface Phrase {
@@ -229,12 +227,12 @@ export function readText(text: string, dictionary: Dictionary, productType?: str
   }
   const madeOf = typeof facts.material === 'string' ? facts.material : undefined;
   if (productType === undefined && boxIsContainer(facts.productType, madeOf, byKey.get('productType') ?? [], lower, dictionary)) {
-    facts.productType = dictionary.liveOriginal('productType', CONTAINER) ?? CONTAINER;
+    facts.productType = dictionary.live('productType', PRODUCT_TYPE.container) ?? PRODUCT_TYPE.container;
   }
 
   // Kraft is brown only on paper, and not on white kraft: a colour read from "kraft" waits for such a material.
-  const whiteKraft = dictionary.liveOriginal('material', WHITE_KRAFT);
-  matches = matches.filter((match) => !match.paperOnly || (madeOf?.startsWith(PAPER_FAMILY) === true && madeOf !== whiteKraft));
+  const onPaper = madeOf !== undefined && dictionary.isGradeOf(madeOf, PAPER_FAMILY) && madeOf !== MATERIAL.whiteKraft;
+  matches = matches.filter((match) => !match.paperOnly || onPaper);
   for (const [key, found] of byKey) {
     if (key === 'productType' || key === 'material') continue;
     const kept = found.filter((match) => matches.includes(match));
@@ -262,7 +260,7 @@ export function readText(text: string, dictionary: Dictionary, productType?: str
     let masked = lower;
     for (const { start, end } of used) masked = masked.slice(0, start) + ' '.repeat(end - start) + masked.slice(end);
     const size = readSize(masked, type, dictionary);
-    const roundShape = dictionary.liveOriginal('shape', ROUND_SHAPE);
+    const roundShape = dictionary.live('shape', ROUND_SHAPE);
     const round = size?.facts.shape === roundShape;
     if (size && !(round && facts.shape !== undefined && facts.shape !== roundShape)) {
       const start = masked.indexOf(size.words);
@@ -305,13 +303,8 @@ export function readText(text: string, dictionary: Dictionary, productType?: str
   };
 }
 
-/** S2 0.1.0's letters for the product types and materials the passes below name. */
-const WHITE_KRAFT = 'BKW';
-const FOLDING_CARTON = 'FCB';
-const CONTAINER = 'CTN';
-const WRAP_OR_SHEET = 'WRP';
 /** The wrap a wrap's own words name: "paper wrap" is paper-wrapped. */
-const WRAPS: Readonly<Record<string, string>> = { paper: 'PW', plastic: 'FW', film: 'FW' };
+const WRAPS: Readonly<Record<string, string>> = { paper: WRAP.paperWrapped, plastic: WRAP.filmWrapped, film: WRAP.filmWrapped };
 
 /**
  * A folding carton is paperboard, so a box named only "box", of plastic,
@@ -324,8 +317,8 @@ function boxIsContainer(
   lower: string,
   dictionary: Dictionary,
 ): boolean {
-  const box = dictionary.liveOriginal('productType', FOLDING_CARTON);
-  if (box === undefined || read !== box || material === undefined || material.startsWith(PAPER_FAMILY)) return false;
+  const box = dictionary.live('productType', PRODUCT_TYPE.foldingCarton);
+  if (box === undefined || read !== box || material === undefined || dictionary.isGradeOf(material, PAPER_FAMILY)) return false;
   return products.every((match) => /^box(?:es)?$/.test(lower.slice(match.start, match.end)));
 }
 
@@ -334,7 +327,7 @@ function boxIsContainer(
  * that is wrapped, a wrap is how it is wrapped, not a second product.
  */
 function wrapsAsFeature(matches: ReadMatch[], lower: string, dictionary: Dictionary, productType: string | undefined): ReadMatch[] {
-  const sheet = dictionary.liveOriginal('productType', WRAP_OR_SHEET);
+  const sheet = dictionary.live('productType', PRODUCT_TYPE.wrapOrSheet);
   if (sheet === undefined) return matches;
   const wrapped = (code: string) => code !== sheet && dictionary.ruleFor(code, 'wrap') !== 'never';
   const products = matches.filter((match) => match.key === 'productType');
@@ -357,34 +350,33 @@ function wrapsAsFeature(matches: ReadMatch[], lower: string, dictionary: Diction
 /** A vessel and a lid joined to it, as the dictionary names the two sold together now. */
 function soldWithLid(values: readonly string[], lower: string, dictionary: Dictionary): string | undefined {
   const code = vesselWithLid(values, lower);
-  return code === undefined ? undefined : dictionary.liveOriginal('productType', code);
+  return code === undefined ? undefined : dictionary.live('productType', code);
 }
 
-/** Cutlery, and what a cutlery kit holds besides, in S2 0.1.0's letters. */
-const CUTLERY = ['FRK', 'KNF', 'SPN'];
-const IN_A_KIT = [...CUTLERY, 'NPK', 'STW', 'STR', 'CKT'];
-const CUTLERY_KIT = 'CKT';
+/** Cutlery, and what a cutlery kit holds besides. */
+const CUTLERY = [PRODUCT_TYPE.fork, PRODUCT_TYPE.knife, PRODUCT_TYPE.spoon];
+const IN_A_KIT = [...CUTLERY, PRODUCT_TYPE.napkin, PRODUCT_TYPE.straw, PRODUCT_TYPE.stirrer, PRODUCT_TYPE.cutleryKit];
 
 /** "Knife + fork + napkin": two kinds of cutlery, and nothing a kit does not hold, are a cutlery kit. */
 function kitOf(values: readonly string[], dictionary: Dictionary): string | undefined {
-  const live = (codes: readonly string[]) => codes.map((code) => dictionary.liveOriginal('productType', code));
-  const kit = dictionary.liveOriginal('productType', CUTLERY_KIT);
+  const live = (codes: readonly string[]) => codes.map((code) => dictionary.live('productType', code));
+  const kit = dictionary.live('productType', PRODUCT_TYPE.cutleryKit);
   const pieces = values.filter((value) => live(CUTLERY).includes(value));
   return kit !== undefined && pieces.length >= 2 && values.every((value) => live(IN_A_KIT).includes(value)) ? kit : undefined;
 }
 
 /**
- * Product types that are kinds of a more general one, in S2 0.1.0's letters:
- * a stand-up pouch is a bag, a souffle a cup, a clamshell a box and a
+ * Product types that are kinds of a more general one: a stand-up pouch is a bag, a souffle a cup, a clamshell a box and a
  * container, a bowl lid a lid, and a portion cup, a bowl or a tray a
  * container. Named beside its general word, the kind is the product.
  */
+const P = PRODUCT_TYPE;
 const KINDS: Readonly<Record<string, readonly string[]>> = {
-  BAG: ['SUP', 'SCH'],
-  CUP: ['PCP'],
-  FCB: ['HCT', 'FRC', 'TKB', 'RSC'],
-  CTN: ['HCT', 'TKB', 'PAN', 'CWL', 'PCP', 'BWL', 'TRY'],
-  CLD: ['BLD', 'PCL', 'CTL'],
+  [P.bag]: [P.standUpPouch, P.sachet],
+  [P.cup]: [P.portionCup],
+  [P.foldingCarton]: [P.hingedContainer, P.fryCarton, P.takeoutBox, P.shippingBox],
+  [P.container]: [P.hingedContainer, P.takeoutBox, P.pan, P.containerWithLid, P.portionCup, P.bowl, P.tray],
+  [P.cupLid]: [P.bowlLid, P.portionCupLid, P.containerLid],
 };
 
 /**
@@ -393,7 +385,7 @@ const KINDS: Readonly<Record<string, readonly string[]>> = {
  * two kinds ("cup" and "bowl") are still left out.
  */
 export function kindOverGeneric(values: readonly string[], dictionary: Dictionary): string | undefined {
-  const live = (code: string) => dictionary.liveOriginal('productType', code);
+  const live = (code: string) => dictionary.live('productType', code);
   const kindsOf = (value: string) =>
     Object.entries(KINDS)
       .filter(([general]) => live(general) === value)
@@ -413,8 +405,8 @@ const ML_PER_OZ = 29.5735;
 function oneAmount(values: readonly string[], dictionary: Dictionary): string | undefined {
   const [first, second] = values;
   if (values.length !== 2 || first === undefined || second === undefined) return undefined;
-  const ounces = dictionary.liveOriginal('capacity', 'Z');
-  const millilitres = dictionary.liveOriginal('capacity', 'M');
+  const ounces = dictionary.live('capacity', CAPACITY_UNIT.ounces);
+  const millilitres = dictionary.live('capacity', CAPACITY_UNIT.millilitres);
   const inMl = (value: string) => {
     const amount = Number(value.slice(1));
     if (millilitres !== undefined && value.startsWith(millilitres)) return amount;
@@ -426,11 +418,11 @@ function oneAmount(values: readonly string[], dictionary: Dictionary): string | 
 }
 
 /**
- * Paper, plastic and kraft of unknown grade, as S2 0.1.0 names them, each with
- * the letters its grades begin with: a text that names one beside one grade
- * of it means that grade. Paper and plastic only (plan 0011); kraft is a paper.
+ * Paper, plastic and kraft of unknown grade: a text that names one beside one
+ * grade of it means that grade. Paper and plastic only (plan 0011); kraft is a
+ * paper.
  */
-const FAMILIES: Readonly<Record<string, string>> = { A00: 'A', B00: 'B', BKR: 'BK' };
+const FAMILIES: readonly string[] = [MATERIAL.polymer, MATERIAL.paper, MATERIAL.kraft];
 
 /**
  * The one material among `values` that every other only names the family of
@@ -439,15 +431,8 @@ const FAMILIES: Readonly<Record<string, string>> = { A00: 'A', B00: 'B', BKR: 'B
  * still left out.
  */
 export function gradeOverFamily(values: readonly string[], dictionary: Dictionary): string | undefined {
-  const letters = new Map<string, string>();
-  for (const [code, prefix] of Object.entries(FAMILIES)) {
-    const live = dictionary.liveOriginal('material', code);
-    if (live !== undefined) letters.set(live, prefix);
-  }
-  const covers = (family: string, value: string) => {
-    const prefix = letters.get(family);
-    return prefix !== undefined && family !== value && value.startsWith(prefix);
-  };
+  const covers = (family: string, value: string) =>
+    FAMILIES.includes(family) && family !== value && dictionary.live('material', family) !== undefined && dictionary.isGradeOf(value, family);
   const specific = values.filter((value) => values.every((other) => other === value || covers(other, value)));
   return specific.length === 1 ? specific[0] : undefined;
 }

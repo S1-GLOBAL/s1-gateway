@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { diffCodes } from './diff-codes.js';
 import { SpecId, type SpecIdFactsInput } from './spec-id.js';
 import { s2Dictionary } from './testing/s2-dictionary.js';
+import { CAPACITY_UNIT, MATERIAL, PRODUCT_TYPE, SHAPE } from './options.js';
 
 function built(facts: SpecIdFactsInput): SpecId {
   const result = SpecId.build(facts, s2Dictionary());
@@ -9,7 +10,7 @@ function built(facts: SpecIdFactsInput): SpecId {
   return result.value;
 }
 
-const KRAFT_BOWL = { productType: 'BWL', material: 'BKR', shape: 'RD' } as const;
+const KRAFT_BOWL = { productType: PRODUCT_TYPE.bowl, material: MATERIAL.kraft, shape: SHAPE.round } as const;
 
 describe('diffCodes', () => {
   it('gives no rows for identical codes', () => {
@@ -29,18 +30,18 @@ describe('diffCodes', () => {
   });
 
   it('marks a known value that stops applying as corrected, and a slot that was X as not', () => {
-    const bowl = built({ ...KRAFT_BOWL, capacity: { unit: 'Z', value: '16' } });
-    const lid = built({ productType: 'BLD', material: 'BKR', shape: 'RD' });
+    const bowl = built({ ...KRAFT_BOWL, capacity: { unit: CAPACITY_UNIT.ounces, value: '16' } });
+    const lid = built({ productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.kraft, shape: SHAPE.round });
     const rows = diffCodes(bowl, lid);
-    expect(rows).toContainEqual({ key: 'productType', before: 'BWL', after: 'BLD', corrected: true });
-    expect(rows).toContainEqual({ key: 'capacity', before: 'Z0016', after: 'X', corrected: true });
+    expect(rows).toContainEqual({ key: 'productType', before: PRODUCT_TYPE.bowl, after: PRODUCT_TYPE.bowlLid, corrected: true });
+    expect(rows).toContainEqual({ key: 'capacity', before: '10016', after: 'X', corrected: true });
     expect(rows).toContainEqual({ key: 'profile', before: 'X', after: 'Y', corrected: false });
     expect(rows).toContainEqual({ key: 'bottomDiameter', before: 'Y', after: 'X', corrected: false });
   });
 
   it('lists the rows in code order', () => {
-    const bowl = built({ ...KRAFT_BOWL, capacity: { unit: 'Z', value: '16' } });
-    const lid = built({ productType: 'BLD', material: 'BKR', shape: 'RD' });
+    const bowl = built({ ...KRAFT_BOWL, capacity: { unit: CAPACITY_UNIT.ounces, value: '16' } });
+    const lid = built({ productType: PRODUCT_TYPE.bowlLid, material: MATERIAL.kraft, shape: SHAPE.round });
     expect(diffCodes(bowl, lid).map((row) => row.key)).toEqual([
       'productType',
       'profile',

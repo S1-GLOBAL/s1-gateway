@@ -141,6 +141,20 @@
       "when": 1793209386365,
       "tag": "0019_write_atlas_codes_tagged",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793318679895,
+      "tag": "0020_key_atlas_options_by_number",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793318738093,
+      "tag": "0021_number_atlas_option_keys",
+      "breakpoints": true
     }
   ]
 }

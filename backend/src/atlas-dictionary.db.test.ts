@@ -5,22 +5,24 @@ import { composeApp } from './compose.js';
 import { createAdmin } from './scripts/create-admin.js';
 import { FixedClock, SequentialIdGenerator, silentLogger } from './shared/application/testing/fakes.js';
 import { connectTestDatabase, resetTables } from './test/database.js';
+import { MATERIAL, PRODUCT_TYPE, PROFILE, SHAPE } from './modules/atlas/domain/options.js';
 
 const ADMIN = 'admin@sourceone.global';
 const STAFF = 'staff@sourceone.global';
 const PASSWORD = 'correct-horse-battery';
 const DICTIONARY = '/api/v1/atlas/dictionary';
 const SUGGESTIONS = `${DICTIONARY}/suggestions`;
+/** A new option names no number: it is numbered when approved (ADR 0033). */
 const NEW_MATERIAL = {
   slot: 'material',
-  code: 'AZZ',
+  code: '',
   proposal: { kind: 'add', meaning: 'Polymer, invented', searchWords: ['invented polymer'], rules: null },
 };
-const lid = (rim: string, material = 'APS') => ({
-  productType: 'BLD',
+const lid = (rim: string, material: string = MATERIAL.ps) => ({
+  productType: PRODUCT_TYPE.bowlLid,
   material,
-  shape: 'RD',
-  profile: 'DM',
+  shape: SHAPE.round,
+  profile: PROFILE.dome,
   topDiameter: { value: rim, unit: 'mm' },
 });
 
@@ -115,17 +117,22 @@ describe('Dictionary suggestions, composed over Postgres', () => {
 
     const dictionary = (await staff.get(DICTIONARY)).body.data;
     expect(dictionary.change).toEqual({ number: 1, at: '2026-10-27T08:00:00.000Z' });
-    expect(await materials()).toContain('AZZ');
+    // Material 38 is the last one migrated, so the new one is 39.
+    expect(await materials()).toContain('39');
     expect((await admin.get(`${SUGGESTIONS}/waiting-count`)).body.data).toEqual({ count: 0 });
   });
 
-  it('renames a material in use, relettering each saved Spec ID: its code, version and History stay (ADR 0032)', async () => {
+  it('rewords a material in use, and refuses a new code for it: its Spec IDs keep their code, version and History (ADR 0033)', async () => {
     const saved = [
       (await staff.post('/api/v1/atlas/spec-ids').send({ name: 'Lid 90', facts: lid('90') })).body.data,
       (await staff.post('/api/v1/atlas/spec-ids').send({ name: 'Lid 95', facts: lid('95') })).body.data,
     ] as { id: string; code: string; version: number }[];
-    const proposal = { kind: 'edit', newCode: 'APZ', meaning: null, searchWords: null };
-    const { id } = (await staff.post(SUGGESTIONS).send({ slot: 'material', code: 'APS', proposal })).body.data;
+    const renamed = await staff
+      .post(SUGGESTIONS)
+      .send({ slot: 'material', code: MATERIAL.ps, proposal: { kind: 'edit', newCode: 'APZ', meaning: null, searchWords: null } });
+    expect(renamed.status).toBe(400);
+    const proposal = { kind: 'edit', newCode: null, meaning: 'Polymer, PS', searchWords: null };
+    const { id } = (await staff.post(SUGGESTIONS).send({ slot: 'material', code: MATERIAL.ps, proposal })).body.data;
 
     const preview = (await admin.get(`${SUGGESTIONS}/${id}`)).body.data;
     expect(preview.usage).toBe(2);
@@ -138,11 +145,11 @@ describe('Dictionary suggestions, composed over Postgres', () => {
       const now = (await staff.get(`/api/v1/atlas/saved/${one.id}`)).body.data;
       expect(now.code).toBe(one.code);
       expect(now.version).toBe(one.version);
-      expect(now.slots.find((slot: { key: string }) => slot.key === 'material')).toMatchObject({ raw: 'APZ', part: 'B4' });
+      expect(now.slots.find((slot: { key: string }) => slot.key === 'material')).toMatchObject({ raw: MATERIAL.ps, part: 'B4', meaning: 'Polymer, PS' });
       const history = (await staff.get(`/api/v1/atlas/saved/${one.id}/history`)).body.data;
       expect(history.map((entry: { kind: string }) => entry.kind)).toEqual(['created']);
     }
-    expect(await materials()).not.toContain('APS');
+    expect(await materials()).toContain(MATERIAL.ps);
   });
 
   it('deletes a material in use for another, rewriting each saved Spec ID with a history entry naming both people', async () => {
@@ -150,8 +157,8 @@ describe('Dictionary suggestions, composed over Postgres', () => {
       (await staff.post('/api/v1/atlas/spec-ids').send({ name: 'Lid 90', facts: lid('90') })).body.data,
       (await staff.post('/api/v1/atlas/spec-ids').send({ name: 'Lid 95', facts: lid('95') })).body.data,
     ] as { id: string; code: string }[];
-    const proposal = { kind: 'delete', replacement: 'APP' };
-    const { id } = (await staff.post(SUGGESTIONS).send({ slot: 'material', code: 'APS', proposal })).body.data;
+    const proposal = { kind: 'delete', replacement: MATERIAL.pp };
+    const { id } = (await staff.post(SUGGESTIONS).send({ slot: 'material', code: MATERIAL.ps, proposal })).body.data;
 
     const preview = (await admin.get(`${SUGGESTIONS}/${id}`)).body.data;
     expect(preview.rewrites.map((rewrite: { codeAfter: string }) => rewrite.codeAfter).sort()).toEqual(
@@ -171,25 +178,25 @@ describe('Dictionary suggestions, composed over Postgres', () => {
         dictionaryChange: { number: 1, suggestedBy: { fullName: 'Ben Invented' }, approvedBy: { fullName: 'Ada Invented' } },
       });
     }
-    expect(await materials()).not.toContain('APS');
+    expect(await materials()).not.toContain(MATERIAL.ps);
   });
 
   it('starts the next test from the seeded dictionary again', async () => {
-    expect(await materials()).toContain('APS');
+    expect(await materials()).toContain(MATERIAL.ps);
     expect((await staff.get(DICTIONARY)).body.data.change).toBeNull();
   });
 
   it('refuses a deletion that would make two Spec IDs one, writing nothing', async () => {
     await staff.post('/api/v1/atlas/spec-ids').send({ name: 'PS lid', facts: lid('90') });
-    await staff.post('/api/v1/atlas/spec-ids').send({ name: 'PP lid', facts: lid('90', 'APP') });
+    await staff.post('/api/v1/atlas/spec-ids').send({ name: 'PP lid', facts: lid('90', MATERIAL.pp) });
     const { id } = (
-      await staff.post(SUGGESTIONS).send({ slot: 'material', code: 'APS', proposal: { kind: 'delete', replacement: 'APP' } })
+      await staff.post(SUGGESTIONS).send({ slot: 'material', code: MATERIAL.ps, proposal: { kind: 'delete', replacement: MATERIAL.pp } })
     ).body.data;
 
     const refused = await admin.post(`${SUGGESTIONS}/${id}/approve`).send({ version: 1 });
     expect(refused.status).toBe(409);
     expect(refused.body.error.code).toBe('SPEC_IDS_WOULD_CLASH');
-    expect(await materials()).toContain('APS');
+    expect(await materials()).toContain(MATERIAL.ps);
     expect((await staff.get(`${SUGGESTIONS}/${id}`)).body.data.state).toBe('waiting');
   });
 
@@ -211,7 +218,7 @@ describe('Dictionary suggestions, composed over Postgres', () => {
     const { id } = (
       await staff.post(SUGGESTIONS).send({
         slot: 'material',
-        code: 'CBG',
+        code: MATERIAL.bagasse,
         proposal: { kind: 'edit', newCode: null, meaning: null, searchWords: ['sugarcane fibre'] },
       })
     ).body.data;

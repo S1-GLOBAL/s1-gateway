@@ -12,6 +12,14 @@ export interface DictionaryValue {
    * it already holds.
    */
   readonly number?: number;
+  /**
+   * The letters the option had before options were known by number (ADR
+   * 0033), kept only to read a dotted code given out before. An option added
+   * since has none.
+   */
+  readonly legacyCode?: string;
+  /** For a material, the broader material it is a grade of: kraft for recycled kraft (ADR 0033). */
+  readonly broader?: string;
 }
 
 export interface SlotRuleEntry {
@@ -21,8 +29,9 @@ export interface SlotRuleEntry {
 }
 
 /**
- * A code an approved change renamed or deleted, and its live letters now:
- * null once deleted. Flattened, so one step reaches the live letters (ADR 0031).
+ * Letters an approved change renamed or deleted before options were known by
+ * number, and the letters they had then: null once deleted. Flattened, so one
+ * step reaches the last letters (ADR 0031). Read only for a dotted code.
  */
 export interface DictionaryRename {
   readonly slot: DictionarySlotKey;
@@ -53,8 +62,10 @@ export type NumberedValue = DictionaryValue & { readonly number: number };
 export interface DictionaryRetiredNumber {
   readonly slot: DictionarySlotKey;
   readonly number: number;
-  /** The option's letters when it was deleted. */
+  /** The option's key when it was deleted: its number, as text. */
   readonly code: string;
+  /** Its letters, for one deleted before options were known by number (ADR 0033). */
+  readonly legacyCode?: string;
   readonly meaning: string;
   /** The change that deleted it; null for one deleted before numbers were stored. */
   readonly changeNumber: number | null;
@@ -75,9 +86,10 @@ export interface DictionaryHistory {
 }
 
 /**
- * One release of the Atlas dictionary: every code's meaning, and which slots
- * apply to each product type; for the live release, also what approved
- * changes renamed, the search words they gave, and the latest change.
+ * One release of the Atlas dictionary: every option's meaning, under its key,
+ * and which slots apply to each product type; for the live release, also the
+ * search words approved changes gave, what they renamed or deleted, and the
+ * latest change. In S2 an option's key is its number, as text (ADR 0033).
  */
 export class Dictionary {
   private readonly meanings = new Map<string, string>();
@@ -87,6 +99,7 @@ export class Dictionary {
   private readonly numbers = new Map<string, number>();
   private readonly numbered = new Map<string, NumberedValue>();
   private readonly highest = new Map<DictionarySlotKey, number>();
+  private readonly broader = new Map<string, string>();
 
   constructor(
     readonly release: string,
@@ -109,6 +122,7 @@ export class Dictionary {
       this.meanings.set(`${value.slot}:${value.code}`, value.meaning);
       this.numbers.set(`${value.slot}:${value.code}`, value.number);
       this.numbered.set(`${value.slot}:${value.number}`, value);
+      if (value.slot === 'material' && value.broader !== undefined) this.broader.set(value.code, value.broader);
     }
     for (const entry of allRules) this.rules.set(`${entry.productType}:${entry.slot}`, entry.rule);
     for (const rename of history.renames ?? []) this.liveLetters.set(`${rename.slot}:${rename.oldCode}`, rename.newCode);
@@ -149,39 +163,56 @@ export class Dictionary {
   }
 
   /**
-   * The letters `code` reads as now: the code itself while it exists, else a
-   * renamed code's new letters, undefined once deleted. A code the dictionary
-   * never had is itself too, for whatever reads it to refuse. A code written
-   * before a change reads through this (ADR 0031); code that names an S2
-   * 0.1.0 code uses `liveOriginal`.
+   * `code` while the dictionary has the option, undefined once it was deleted.
+   * Code that names an option (`options.ts`) reads it through this, so a
+   * deleted option is never read (ADR 0031).
    */
   live(slot: DictionarySlotKey, code: string): string | undefined {
-    const key = `${slot}:${code}`;
-    if (this.meanings.has(key) || !this.liveLetters.has(key)) return code;
-    return this.liveLetters.get(key) ?? undefined;
+    return this.meanings.has(`${slot}:${code}`) ? code : undefined;
   }
 
-  /** The letters a capacity value reads as now, its unit followed: `Z14` is `O14` once `Z` is renamed `O`. */
+  /** `live` for a capacity: the value while its unit is in the dictionary, `10012`; undefined once deleted. */
   liveCapacity(value: string): string | undefined {
-    const unit = this.live('capacity', value.slice(0, 1));
-    return unit === undefined ? undefined : `${unit}${value.slice(1)}`;
+    return this.live('capacity', value.slice(0, 1)) === undefined ? undefined : value;
   }
 
   /**
-   * The letters an S2 0.1.0 code has now, for code that names one (the word
-   * list, the keywords, the size rulings): its rename's letters, undefined
-   * once deleted, else itself. Unlike `live`, letters another option took
-   * after the code moved never read as that option (ADR 0031).
+   * The key of the option that had `letters` in a dotted code given out
+   * before options were known by number, through any rename then (ADR 0031,
+   * ADR 0033): the live option's, or a deleted one's. Undefined for letters no
+   * option ever had.
    */
-  liveOriginal(slot: DictionarySlotKey, code: string): string | undefined {
-    const key = `${slot}:${code}`;
-    return this.liveLetters.has(key) ? (this.liveLetters.get(key) ?? undefined) : code;
+  fromLetters(slot: DictionarySlotKey, letters: string): string | undefined {
+    const renamed = this.liveLetters.get(`${slot}:${letters}`);
+    const last = renamed === undefined ? letters : renamed;
+    const named = (candidate: { readonly slot: DictionarySlotKey; readonly legacyCode?: string | undefined }) =>
+      candidate.slot === slot && (candidate.legacyCode === last || candidate.legacyCode === letters);
+    if (last !== null) {
+      const value = this.allValues.find(named);
+      if (value !== undefined) return value.code;
+    }
+    return this.history.retired?.find(named)?.code;
   }
 
-  /** `liveOriginal` for a capacity value: its unit followed, its number kept. */
-  liveOriginalCapacity(value: string): string | undefined {
-    const unit = this.liveOriginal('capacity', value.slice(0, 1));
+  /** `fromLetters` for a capacity written in a dotted code: `Z0012` is `10012`, unit 1 then the amount. */
+  capacityFromLetters(value: string): string | undefined {
+    const unit = this.fromLetters('capacity', value.slice(0, 1));
     return unit === undefined ? undefined : `${unit}${value.slice(1)}`;
+  }
+
+  /** The material `material` is a grade of, or undefined: kraft for recycled kraft. */
+  broaderOf(material: string): string | undefined {
+    return this.broader.get(material);
+  }
+
+  /** Whether `material` is `family` or a grade of it, at any depth: recycled kraft is paper. */
+  isGradeOf(material: string, family: string): boolean {
+    const seen = new Set<string>();
+    for (let current: string | undefined = material; current !== undefined && !seen.has(current); current = this.broaderOf(current)) {
+      if (current === family) return true;
+      seen.add(current);
+    }
+    return false;
   }
 
   /** Every rename, by list then old code. */
@@ -206,21 +237,22 @@ export class Dictionary {
     return this.meanings.get(`${slot}:${code}`);
   }
 
-  /** A slot's values, ordered by code. */
+  /** A slot's values, by number. */
   valuesOf(slot: DictionarySlotKey): NumberedValue[] {
-    return this.allValues.filter((value) => value.slot === slot).sort((a, b) => compare(a.code, b.code));
+    return this.allValues.filter((value) => value.slot === slot).sort((a, b) => a.number - b.number);
   }
 
-  /** Every value, slot by slot in code order, each slot's values ordered by code. */
+  /** Every value, slot by slot in code order, each slot's values by number. */
   values(): NumberedValue[] {
     return DICTIONARY_SLOTS.flatMap((slot) => this.valuesOf(slot));
   }
 
-  /** Every rule, by product type code, then in slot order. */
+  /** Every rule, by product type's number, then in slot order. */
   slotRules(): SlotRuleEntry[] {
     const order = (slot: RuledSlotKey) => RULED_SLOTS.indexOf(slot);
+    const number = (productType: string) => this.numberOf('productType', productType) ?? 0;
     return [...this.allRules].sort(
-      (a, b) => compare(a.productType, b.productType) || order(a.slot) - order(b.slot),
+      (a, b) => number(a.productType) - number(b.productType) || compare(a.productType, b.productType) || order(a.slot) - order(b.slot),
     );
   }
 

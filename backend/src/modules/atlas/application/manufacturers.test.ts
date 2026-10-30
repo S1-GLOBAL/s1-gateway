@@ -7,6 +7,7 @@ import { SetManufacturerStage } from './set-manufacturer-stage.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
 import { InMemorySourcingRepository } from './testing/in-memory-sourcing-repository.js';
 import { InMemorySpecIdRepository } from './testing/in-memory-spec-id-repository.js';
+import { MATERIAL, PRODUCT_TYPE } from '../domain/options.js';
 
 const ADMIN = { id: '00000000-0000-4000-8000-0000000000ad', fullName: 'Ada Admin' };
 const ACME = '00000000-0000-4000-8000-00000000ac01';
@@ -35,12 +36,12 @@ async function setup() {
   const clock = new FixedClock(NOW);
   const save = new SaveSpecId(dictionaries, specIds, new InMemorySourcingRepository(), clock, ids);
   const saved = async (material: string) => {
-    const result = await save.execute({ name: 'Invented cup', facts: { productType: 'CUP', material }, savedBy: ADMIN });
+    const result = await save.execute({ name: 'Invented cup', facts: { productType: PRODUCT_TYPE.cup, material }, savedBy: ADMIN });
     if (!result.ok) throw new Error('setup failed');
     return result.value.id;
   };
-  const cup = await saved('APP');
-  const other = await saved('APT');
+  const cup = await saved(MATERIAL.pp);
+  const other = await saved(MATERIAL.pet);
   const quote = (specId: string, manufacturerId: string, name: string, overrides: Partial<QuoteValues> = {}) => ({
     id: ids.next(),
     specId,

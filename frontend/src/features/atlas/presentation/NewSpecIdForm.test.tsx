@@ -128,23 +128,24 @@ describe('NewSpecIdForm', () => {
 });
 
 describe('NewSpecIdForm, the S2 slots', () => {
-  it('starts on the first product type in the list, a bag', async () => {
+  it('starts on the first product type in the list, a bowl lid, A1', async () => {
     const encode = vi.fn<AtlasGateway['encode']>(async () => readCode(ILLUSTRATIVE));
     renderForm({ encode }, s2Dictionary);
 
-    expect((screen.getByLabelText('Product type') as HTMLSelectElement).value).toBe('BAG');
-    await waitFor(() => expect(encode).toHaveBeenLastCalledWith({ productType: 'BAG' }));
+    expect((screen.getByLabelText('Product type') as HTMLSelectElement).value).toBe('1');
+    await waitFor(() => expect(encode).toHaveBeenLastCalledWith({ productType: '1' }));
   });
 
+  // Each option by its key, its number (ADR 0033): a cup is 5, double wall 2, 2 colours 3.
   it.each([
-    ['Wall', 'CUP', 'DW', { wall: 'DW' }],
-    ['Print', 'CUP', '02', { print: '02' }],
-    ['Compartments', 'BWL', '03', { compartments: '3' }],
-    ['Plies', 'NPK', '2', { plies: '2' }],
-    ['Lid opening', 'CLD', 'SP', { lidOpening: 'SP' }],
-    ['Handle', 'BAG', 'TW', { handle: 'TW' }],
-    ['Individual wrap', 'STW', 'PW', { wrap: 'PW' }],
-    ['Window', 'TKB', 'WN', { window: 'WN' }],
+    ['Wall', '5', '2', { wall: '2' }],
+    ['Print', '5', '3', { print: '3' }],
+    ['Compartments', '3', '03', { compartments: '3' }],
+    ['Plies', '17', '2', { plies: '2' }],
+    ['Lid opening', '2', '2', { lidOpening: '2' }],
+    ['Handle', '16', '2', { handle: '2' }],
+    ['Individual wrap', '24', '2', { wrap: '2' }],
+    ['Window', '12', '2', { window: '2' }],
   ])('asks for a new code once %s is given', async (label, productType, value, fact) => {
     const encode = vi.fn<AtlasGateway['encode']>(async () => readCode(ILLUSTRATIVE));
     renderForm({ encode }, s2Dictionary);
