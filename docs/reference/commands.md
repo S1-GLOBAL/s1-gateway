@@ -39,7 +39,7 @@ Run from the repository root unless noted.
 
 | Command | Does |
 |---|---|
-| `npm run atlas:import -- --workbook "<path>" --report "<path>" --as <email> [--write]` | Imports the verified list into the Atlas library of the database in `DATABASE_URL` ([plan 0006](../plans/0006-s2-spec-ids-and-verified-list-import.md), [ADR 0027](../decisions/0027-manufacturers-and-quotes-live-in-atlas-behind-sign-in.md)). Without `--write` it is a dry run and saves nothing. See below |
+| `npm run atlas:import -- --workbook "<path>" --report "<path>" --as <email> [--review "<path>.xlsx"] [--write]` | Imports the verified list into the Atlas library of the database in `DATABASE_URL` ([plan 0006](../plans/0006-s2-spec-ids-and-verified-list-import.md), [ADR 0027](../decisions/0027-manufacturers-and-quotes-live-in-atlas-behind-sign-in.md)). Without `--write` it is a dry run and saves nothing. See below |
 
 ### `atlas:import`
 
@@ -47,6 +47,7 @@ Run from the repository root unless noted.
 |---|---|
 | `--workbook` | The verified list workbook. It reads sheet "Restructured Main Table" from row 4: columns A–B, COMPANY and COUNTRY; C–I, item name, Category, Material, Material Type, Dimension, Weight, Printing, which the description reader reads column by column, as [plan 0011](../plans/0011-tagged-spec-id-v2.md) says ([ADR 0032](../decisions/0032-spec-ids-are-written-tagged.md)); U–V, the FOB prices per unit and per case; and X–AA, the mold cost, and the mold, sample and production lead times. The sheet has no FOB total. A merged cell's value applies to every row it spans, so a COMPANY merged down a block of rows is each row's manufacturer |
 | `--report` | Where to write the report, a CSV file: the totals first, then one line per row with its outcome (`new`, `same as row <n>`, `already saved` or `skipped`), its code, `manufacturer` (`found` or `no manufacturer`), `quote` (`recorded` or `not recorded`), why it was skipped, what was read from it, any fact dropped and why, and any flag |
+| `--review` | Optional. Where to also write the review workbook, an `.xlsx` for the people who check the codes ([plan 0013](../plans/0013-import-review-workbook.md)). **How to read this**; **Rows**, one line per workbook row: its seven cells as written, the code and outcome, each fact read in its own column with a note saying which cell and words it came from, the words left out, the notes, and Correct? (Yes, No or Unsure), What's wrong, Reviewer and Date to fill in; **Spec IDs**, one line per code with the rows that share it; **Needs a look**, the rows most likely to be wrong first (skipped, a small size with no unit, a code shared by rows of other names, a Category that disagrees, a fact refused, then any note), each linked to its row; and **Dictionary**, what each number in a code means. A dry run writes it too |
 | `--as` | The email of an active staff account, recorded as the one who saved each Spec ID. Any other email is refused before the workbook is read |
 | `--write` | Saves the Spec IDs not already saved, and replaces every quote with one for each row imported that names its manufacturer ([ADR 0027](../decisions/0027-manufacturers-and-quotes-live-in-atlas-behind-sign-in.md)). Running it again saves no new Spec ID and leaves as many quotes. Manufacturers are found or added, never deleted |
 
@@ -57,14 +58,14 @@ a tool that does not calculate has none, and the report flags each such cell,
 for example `FOB per unit: a formula with no value saved in the workbook`.
 Opening the workbook in Excel and saving it stores the values.
 
-The workbook and the report hold Source One rows, names and prices: keep
-both outside the repository and never commit either
+The workbook, the report and the review workbook hold Source One rows, names
+and prices: keep them outside the repository and never commit any
 ([constraints](../explanation/constraints.md#6-the-repository-is-public)).
 Spellings come from `WORD_LIST` in
 `backend/src/modules/atlas/domain/reading/`.
 
 | When | It prints |
 |---|---|
-| A dry run | `Dry run: nothing was saved. {n} Spec IDs would be created from {r} rows; {s} rows skipped. Report: {path}` |
-| `--write` | `Saved {n} Spec IDs from {r} rows; {e} were already saved; {s} rows skipped. Report: {path}` |
+| A dry run | `Dry run: nothing was saved. {n} Spec IDs would be created from {r} rows; {s} rows skipped. Report: {path}`, then ` Review workbook: {path}` with `--review` |
+| `--write` | `Saved {n} Spec IDs from {r} rows; {e} were already saved; {s} rows skipped. Report: {path}`, then ` Review workbook: {path}` with `--review` |
 | `--as` is not an active staff account | `No active staff account is {email}. Nothing was imported.` |

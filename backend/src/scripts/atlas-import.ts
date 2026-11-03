@@ -1,12 +1,13 @@
 /**
- * `npm --prefix backend run atlas:import -- --workbook "<path>" --report "<path>" --as <email> [--write]`
+ * `npm --prefix backend run atlas:import -- --workbook "<path>" --report "<path>" --as <email> [--review "<path>.xlsx"] [--write]`
  *
  * Imports the verified list into Atlas (#28, #56, plan 0006, phases 3 and 4):
  * reads the workbook, builds a code for every product row, gathers each row's
- * manufacturer and quote, and writes a CSV report. It saves nothing unless
+ * manufacturer and quote, and writes a CSV report, and with `--review`, the
+ * review workbook a department checks the codes in (plan 0013). It saves nothing unless
  * `--write` is given, and then saves Spec IDs only through the module's own
  * `SaveSpecId`, as the workspace saves, and replaces the quotes. It never starts the HTTP app. The
- * workbook and the report stay outside the repository (ADR 0027).
+ * workbook, the report and the review workbook stay outside the repository (ADR 0027).
  */
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,10 +16,12 @@ import { config } from 'dotenv';
 import { DrizzleAccountRepository } from '../modules/accounts/infrastructure/drizzle-account-repository.js';
 import { ImportVerifiedList } from '../modules/atlas/application/import-verified-list.js';
 import { SaveSpecId } from '../modules/atlas/application/save-spec-id.js';
+import type { ImportReport, ImportReportSink } from '../modules/atlas/application/ports/import-report-sink.js';
 import { CsvImportReport } from '../modules/atlas/infrastructure/csv-import-report.js';
 import { DrizzleDictionaryRepository } from '../modules/atlas/infrastructure/drizzle-dictionary-repository.js';
 import { DrizzleSourcingRepository } from '../modules/atlas/infrastructure/drizzle-sourcing-repository.js';
 import { DrizzleSpecIdRepository } from '../modules/atlas/infrastructure/drizzle-spec-id-repository.js';
+import { ExcelReviewWorkbook } from '../modules/atlas/infrastructure/excel-review-workbook.js';
 import { ExcelVerifiedListSource } from '../modules/atlas/infrastructure/excel-verified-list-source.js';
 import { err, ok, type Result } from '../shared/domain/result.js';
 import { parseEnv } from '../shared/infrastructure/config/env.js';
@@ -29,6 +32,8 @@ import { SystemClock } from '../shared/infrastructure/system-clock.js';
 export interface AtlasImportOptions {
   workbook: string;
   report: string;
+  /** Where to write the review workbook (plan 0013), an `.xlsx` outside the repository; none when left out. */
+  review?: string | undefined;
   /** The email of the staff account recorded as having saved each Spec ID. */
   as: string;
   write: boolean;
@@ -54,30 +59,44 @@ export async function atlasImport(db: Database, options: AtlasImportOptions): Pr
     sourcing,
     new SaveSpecId(dictionaries, specIds, sourcing, clock, ids),
     new ExcelVerifiedListSource(options.workbook),
-    new CsvImportReport(options.report),
+    sinkOf(options),
     clock,
     ids,
   );
   const summary = await importer.execute({ write: options.write, savedBy: { id: account.id, fullName: account.fullName } });
 
+  const review = options.review === undefined ? '' : ` Review workbook: ${options.review}`;
   return ok(
     options.write
-      ? `Saved ${summary.created} Spec IDs from ${summary.rows} rows; ${summary.alreadySaved} were already saved; ${summary.skipped} rows skipped. Report: ${options.report}`
-      : `Dry run: nothing was saved. ${summary.created} Spec IDs would be created from ${summary.rows} rows; ${summary.skipped} rows skipped. Report: ${options.report}`,
+      ? `Saved ${summary.created} Spec IDs from ${summary.rows} rows; ${summary.alreadySaved} were already saved; ${summary.skipped} rows skipped. Report: ${options.report}${review}`
+      : `Dry run: nothing was saved. ${summary.created} Spec IDs would be created from ${summary.rows} rows; ${summary.skipped} rows skipped. Report: ${options.report}${review}`,
   );
 }
 
-const USAGE = 'Usage: npm --prefix backend run atlas:import -- --workbook "<path>" --report "<path>" --as <email> [--write]';
+/** The CSV report, and the review workbook beside it when one is asked for. */
+function sinkOf(options: AtlasImportOptions): ImportReportSink {
+  const sinks: ImportReportSink[] = [new CsvImportReport(options.report)];
+  if (options.review !== undefined) sinks.push(new ExcelReviewWorkbook(options.review));
+  return {
+    async write(report: ImportReport) {
+      for (const sink of sinks) await sink.write(report);
+    },
+  };
+}
+
+const USAGE =
+  'Usage: npm --prefix backend run atlas:import -- --workbook "<path>" --report "<path>" --as <email> [--review "<path>.xlsx"] [--write]';
 
 async function main(): Promise<number> {
   config({ quiet: true });
 
-  let values: { workbook?: string; report?: string; as?: string; write?: boolean };
+  let values: { workbook?: string; report?: string; review?: string; as?: string; write?: boolean };
   try {
     ({ values } = parseArgs({
       options: {
         workbook: { type: 'string' },
         report: { type: 'string' },
+        review: { type: 'string' },
         as: { type: 'string' },
         write: { type: 'boolean', default: false },
       },
@@ -87,7 +106,7 @@ async function main(): Promise<number> {
     return 2;
   }
 
-  const { workbook, report, as, write = false } = values;
+  const { workbook, report, review, as, write = false } = values;
   if (workbook === undefined || report === undefined || as === undefined) {
     console.error(`--workbook, --report and --as are all required.\n${USAGE}`);
     return 2;
@@ -102,7 +121,7 @@ async function main(): Promise<number> {
 
   const connection = connectDatabase(env.value.DATABASE_URL);
   try {
-    const result = await atlasImport(connection.db, { workbook, report, as, write });
+    const result = await atlasImport(connection.db, { workbook, report, review, as, write });
     if (!result.ok) {
       console.error(result.error);
       return 1;

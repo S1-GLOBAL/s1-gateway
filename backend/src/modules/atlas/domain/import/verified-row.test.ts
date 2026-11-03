@@ -187,6 +187,49 @@ describe('readVerifiedRow, each column for what it says (plan 0011)', () => {
     expect(reading.facts).toMatchObject({ height: { value: '13', unit: 'mm' } });
     expect(reading.notes).toContain('12 x 7.5 x 13 has no unit, so it was read in millimetres (#58). That is small for Bag (A16): check the unit.');
   });
+
+  it('flags no small sizes when a diameter says they are millimetres, nor for a small diameter alone (plan 0013)', () => {
+    const bowl = read({ itemName: 'Invented 20 oz round bowl', material: 'Bagasse', dimension: '180 Dia 45 H' });
+    expect(bowl.facts).toMatchObject({ topDiameter: { value: '180', unit: 'mm' }, height: { value: '45', unit: 'mm' } });
+    expect(bowl.notes.filter((note) => note.includes('read in millimetres'))).toEqual([]);
+
+    const straw = read({ itemName: 'Invented paper straw', material: 'Paper', dimension: '8 Dia' });
+    expect(straw.notes.filter((note) => note.includes('read in millimetres'))).toEqual([]);
+  });
+});
+
+describe('readVerifiedRow, for the review workbook (plan 0013)', () => {
+  it('says which cell and words each fact was read from', () => {
+    const reading = read({
+      itemName: 'Invented 20 oz Grease Resistant Round Bowl',
+      category: 'Invented bowls',
+      material: 'Bagasse',
+      dimension: '180 Dia 45 H',
+      weight: '21',
+    });
+    const from = Object.fromEntries(reading.factsRead.map(({ key, cell, words }) => [key, { cell, words }]));
+
+    expect(from).toMatchObject({
+      productType: { cell: 'Item name', words: 'Bowl' },
+      material: { cell: 'Material', words: 'Bagasse' },
+      coating: { cell: 'Item name', words: 'Grease Resistant' },
+      capacity: { cell: 'Item name', words: '20 oz' },
+      topDiameter: { cell: 'Dimension' },
+      height: { cell: 'Dimension' },
+      unitWeight: { cell: 'Weight' },
+    });
+    expect(reading.factsRead.find((fact) => fact.key === 'material')?.meaning).toBe('Molded fibre, bagasse');
+  });
+
+  it('lists the words no rule used, as Search does; a word a note explains is not among them', () => {
+    expect(read({ itemName: 'Invented 20 oz Oil Coated Bagasse Bowl' }).leftOut).toEqual(['Invented', 'Oil']);
+  });
+
+  it('names the Category column when it says which of two product types', () => {
+    const reading = read({ itemName: 'Invented cup or bowl, 12 oz', category: 'Bowl' });
+    expect(reading.facts.productType).toBe(PRODUCT_TYPE.bowl);
+    expect(reading.factsRead.find((fact) => fact.key === 'productType')?.cell).toBe('Category');
+  });
 });
 
 describe('readVerifiedRow after an approved change (ADR 0031)', () => {

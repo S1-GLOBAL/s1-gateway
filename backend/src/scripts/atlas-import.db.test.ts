@@ -78,6 +78,25 @@ describe('atlas:import', () => {
     expect(await saved()).toEqual([]);
   });
 
+  it('writes the review workbook beside the report with --review, one line per workbook row (plan 0013)', async () => {
+    const path = await workbook(ROWS);
+    const review = join(folder, 'review.xlsx');
+
+    const result = await atlasImport(connection.db, { workbook: path, report: join(folder, 'report.csv'), review, as: AS, write: false });
+
+    expect(result.ok && result.value).toBe(
+      `Dry run: nothing was saved. 2 Spec IDs would be created from 4 rows; 1 rows skipped. Report: ${join(folder, 'report.csv')} Review workbook: ${review}`,
+    );
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.readFile(review);
+    const rows = book.getWorksheet('Rows') as ExcelJS.Worksheet;
+    // Two header rows, then the four workbook rows.
+    expect(rows.rowCount).toBe(6);
+    expect(rows.getRow(3).getCell(2).value).toBe('Invented PP cup');
+    expect(rows.getRow(4).getCell(10).value).toBe('same as row 4');
+    expect(await saved()).toEqual([]);
+  });
+
   it('saves with --write, says so, and writes a report with the totals first and one line per row', async () => {
     const path = await workbook(ROWS);
 
