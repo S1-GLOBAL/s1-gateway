@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import ExcelJS from 'exceljs';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { composeApp } from './compose.js';
@@ -55,7 +56,7 @@ beforeAll(async () => {
   await agent.post('/api/v1/auth/sign-in').send({ email: ADMIN, password: PASSWORD });
 });
 beforeEach(async () => {
-  await connection.db.execute(sql`truncate table atlas_manufacturer_stage_changes, atlas_quotes, atlas_manufacturers, atlas_spec_id_changes, atlas_spec_ids`);
+  await connection.db.execute(sql`truncate table atlas_manufacturer_stage_changes, atlas_imported_rows, atlas_quotes, atlas_manufacturers, atlas_spec_id_changes, atlas_spec_ids`);
 });
 afterAll(() => connection.close());
 
@@ -92,6 +93,26 @@ describe('Atlas, composed over Postgres', () => {
     const response = await request(app)[method](path).send({});
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe('SIGN_IN_REQUIRED');
+  });
+
+  it('hands any signed-in staff the review workbook, and no one without a session (plan 0014)', async () => {
+    const refused = await request(app).get('/api/v1/atlas/review-sheet');
+    expect(refused.status).toBe(401);
+    expect(refused.body.error.code).toBe('SIGN_IN_REQUIRED');
+
+    await agent.post(SPEC_IDS).send({ name: 'Illustrative lid', facts: FACTS });
+    const response = await agent.get('/api/v1/atlas/review-sheet').buffer(true).parse((res, done) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk: Buffer) => chunks.push(chunk));
+      res.on('end', () => done(null, Buffer.concat(chunks)));
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers['content-disposition']).toMatch(/^attachment; filename="atlas-review-\d{4}-\d{2}-\d{2}\.xlsx"$/);
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(response.body as unknown as ExcelJS.Buffer);
+    const rows = book.getWorksheet('Rows') as ExcelJS.Worksheet;
+    // No import yet: the one Spec ID saved here, as saved in Atlas.
+    expect(rows.getRow(3).getCell(2).value).toBe('Illustrative lid');
   });
 
   it('refuses to save without a session, and saves nothing', async () => {

@@ -7,6 +7,7 @@ export {
   BookCheckIcon,
   BookOpenIcon,
   CheckIcon,
+  DownloadIcon,
   ExternalLinkIcon,
   InProductionIcon,
   MonitorIcon,

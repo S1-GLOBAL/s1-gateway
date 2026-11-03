@@ -38,6 +38,7 @@ import type {
   SpecIdTextReadingDto,
   UpdateSpecIdInput,
 } from '../application/atlas.dto.js';
+import type { ReviewSheetFile } from '../application/export-review-sheet.js';
 import { ManufacturerNotFoundError } from '../domain/sourcing/sourcing.errors.js';
 import {
   SpecIdNotFoundError,
@@ -71,6 +72,9 @@ type LibraryResult = Result<SpecIdLibraryPageDto, InvalidLookupError>;
 type ReadResult = Result<SpecIdTextReadingDto, InvalidLookupError | InvalidSpecIdError>;
 type ManufacturersResult = Result<SpecIdManufacturersDto, SpecIdNotFoundError>;
 type SetStageResult = Result<SpecIdManufacturerDto, SpecIdNotFoundError | ManufacturerNotFoundError>;
+
+/** The media type of an Excel workbook. */
+const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 type AtlasErrorCode =
   | InvalidSpecIdError['code']
@@ -119,7 +123,17 @@ export class AtlasController {
     private readonly saved: SavedSpecIdUseCases,
     private readonly readSpecIdText: UseCase<ReadSpecIdTextInput, ReadResult>,
     private readonly manufacturerUseCases: ManufacturerUseCases,
+    private readonly exportReviewSheet: UseCase<void, ReviewSheetFile>,
   ) {}
+
+  /** The review workbook of the library, as a file to save (plan 0014). Never cached: it holds Source One text. */
+  reviewSheet = async (_req: Request, res: Response): Promise<void> => {
+    const file = await this.exportReviewSheet.execute();
+    res.setHeader('Content-Type', XLSX);
+    res.setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).send(Buffer.from(file.bytes));
+  };
 
   dictionary = async (_req: Request, res: Response): Promise<void> => {
     const dictionary: AtlasDictionary = await this.getDictionary.execute();

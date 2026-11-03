@@ -19,6 +19,7 @@ import { SaveSpecId } from '../modules/atlas/application/save-spec-id.js';
 import type { ImportReport, ImportReportSink } from '../modules/atlas/application/ports/import-report-sink.js';
 import { CsvImportReport } from '../modules/atlas/infrastructure/csv-import-report.js';
 import { DrizzleDictionaryRepository } from '../modules/atlas/infrastructure/drizzle-dictionary-repository.js';
+import { DrizzleImportedRowRepository } from '../modules/atlas/infrastructure/drizzle-imported-row-repository.js';
 import { DrizzleSourcingRepository } from '../modules/atlas/infrastructure/drizzle-sourcing-repository.js';
 import { DrizzleSpecIdRepository } from '../modules/atlas/infrastructure/drizzle-spec-id-repository.js';
 import { ExcelReviewWorkbook } from '../modules/atlas/infrastructure/excel-review-workbook.js';
@@ -62,6 +63,7 @@ export async function atlasImport(db: Database, options: AtlasImportOptions): Pr
     sinkOf(options),
     clock,
     ids,
+    new DrizzleImportedRowRepository(db),
   );
   const summary = await importer.execute({ write: options.write, savedBy: { id: account.id, fullName: account.fullName } });
 

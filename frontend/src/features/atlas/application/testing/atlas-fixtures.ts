@@ -744,6 +744,7 @@ export function gatewayWith(overrides: Partial<AtlasGateway>): AtlasGateway {
     manufacturers: pending,
     setManufacturerStage: pending,
     library: pending,
+    reviewSheet: pending,
     ...overrides,
   };
 }

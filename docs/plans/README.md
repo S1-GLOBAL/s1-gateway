@@ -73,3 +73,4 @@ does not exist yet, say so and mark the plan blocked rather than inventing it.
 | [0011](./0011-tagged-spec-id-v2.md) | Tagged Spec ID, the V2 spelling | In progress |
 | [0012](./0012-options-by-number.md) | Dictionary options are known by their number, not their letters | In progress |
 | [0013](./0013-import-review-workbook.md) | A review workbook for the imported codes | In progress |
+| [0014](./0014-review-sheet-in-atlas.md) | The review sheet, downloaded from Atlas | In progress |

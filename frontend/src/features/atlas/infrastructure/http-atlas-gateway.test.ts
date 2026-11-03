@@ -487,3 +487,32 @@ describe('HttpAtlasGateway, manufacturers (#57)', () => {
     await expect(failed).rejects.toMatchObject({ code: 'NOT_ALLOWED', message: 'You are not allowed to do that.' });
   });
 });
+
+describe('HttpAtlasGateway.reviewSheet (plan 0014)', () => {
+  function answering(headers: Record<string, string>): { gateway: HttpAtlasGateway; asked: { url?: string; responseType?: string }[] } {
+    const asked: { url?: string; responseType?: string }[] = [];
+    const adapter: AxiosAdapter = async (config) => {
+      asked.push({ url: config.url, responseType: config.responseType });
+      return { data: new Blob(['PK']), status: 200, statusText: 'OK', headers, config };
+    };
+    return { gateway: new HttpAtlasGateway(axios.create({ adapter })), asked };
+  }
+
+  it('asks for the workbook as a file, and saves it under the name the answer gives', async () => {
+    const { gateway, asked } = answering({ 'content-disposition': 'attachment; filename="atlas-review-2026-11-04.xlsx"' });
+
+    const sheet = await gateway.reviewSheet();
+
+    expect(asked).toEqual([{ url: '/atlas/review-sheet', responseType: 'blob' }]);
+    expect(sheet.fileName).toBe('atlas-review-2026-11-04.xlsx');
+    expect(await sheet.file.text()).toBe('PK');
+  });
+
+  it('names the file plainly when the answer gives no name', async () => {
+    expect((await answering({}).gateway.reviewSheet()).fileName).toBe('atlas-review.xlsx');
+  });
+
+  it('rejects with an AppError when the workbook cannot be made', async () => {
+    await expect(gatewayAnswering(500, { error: { code: 'INTERNAL', message: 'Something went wrong.' } }).reviewSheet()).rejects.toBeInstanceOf(AppError);
+  });
+});

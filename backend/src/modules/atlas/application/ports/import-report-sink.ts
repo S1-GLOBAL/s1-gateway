@@ -1,18 +1,15 @@
+import type { ImportedCells } from '../../domain/import/imported-row.js';
 import type { RowFact } from '../../domain/import/verified-row.js';
 
-/** What happened to one row: a new Spec ID, the same code as an earlier row, one already saved, or skipped. */
-export type RowOutcome = 'new' | `same as row ${number}` | 'already saved' | 'skipped';
+/**
+ * What happened to one row: a new Spec ID, the same code as an earlier row,
+ * one already saved, or skipped; in the review workbook Atlas hands out, also
+ * a Spec ID saved in Atlas rather than imported (plan 0014).
+ */
+export type RowOutcome = 'new' | `same as row ${number}` | 'already saved' | 'skipped' | 'saved in Atlas';
 
 /** The cells a row's code is read from, as the workbook wrote them. */
-export interface ImportSourceCells {
-  readonly itemName: string;
-  readonly category: string;
-  readonly material: string;
-  readonly materialType: string;
-  readonly dimension: string;
-  readonly weight: string;
-  readonly printing: string;
-}
+export type ImportSourceCells = ImportedCells;
 
 /** One line of #28's report, per workbook row. */
 export interface ImportReportRow {

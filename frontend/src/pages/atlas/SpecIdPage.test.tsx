@@ -40,6 +40,7 @@ function renderAt(path: string, getSaved: AtlasGateway['getSaved'], state?: unkn
     manufacturers: pending,
     setManufacturerStage: pending,
     library: pending,
+    reviewSheet: pending,
   };
   const router = createMemoryRouter(
     [

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { FixedClock, SequentialIdGenerator } from '../../../shared/application/testing/fakes.js';
 import { NO_PRODUCT_TYPE, type VerifiedRow } from '../domain/import/verified-row.js';
 import { ImportVerifiedList } from './import-verified-list.js';
+import { InMemoryImportedRowRepository } from './testing/in-memory-imported-row-repository.js';
 import type { ImportReport, ImportReportSink } from './ports/import-report-sink.js';
 import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
@@ -43,12 +44,44 @@ function setup(given: VerifiedRow[]) {
   const saveSpy = vi.spyOn(save, 'execute');
   const written: ImportReport[] = [];
   const sink: ImportReportSink = { write: async (report) => void written.push(report) };
-  const importer = new ImportVerifiedList(dictionaries, specIds, sourcing, save, { rows: async () => given }, sink, clock, ids);
+  const importedRows = new InMemoryImportedRowRepository();
+  const importer = new ImportVerifiedList(dictionaries, specIds, sourcing, save, { rows: async () => given }, sink, clock, ids, importedRows);
   const run = (write: boolean) => importer.execute({ write, savedBy: SAVER });
-  return { run, specIds, sourcing, saveSpy, save, report: () => written.at(-1) as ImportReport };
+  return { run, specIds, sourcing, importedRows, saveSpy, save, report: () => written.at(-1) as ImportReport };
 }
 
 const PP_CUP = { category: 'Cup', material: 'Plastic', materialType: 'PP' };
+
+describe('ImportVerifiedList, keeping each row for the review sheet (plan 0014)', () => {
+  it('keeps every row with --write, its cells and what was read, against the Spec ID it went into, and none skipped against one', async () => {
+    const { run, specIds, importedRows } = setup(
+      rows({ itemName: 'Invented PP cup', ...PP_CUP, dimension: '90' }, { itemName: 'Invented PP cup', ...PP_CUP, dimension: '90' }, { itemName: 'Invented sample' }),
+    );
+
+    await run(true);
+
+    const [saved] = await specIds.list({ limit: 10 });
+    const kept = await importedRows.all();
+    expect(kept.map(({ row, specId, reading }) => [row, specId, reading.outcome])).toEqual([
+      [4, saved?.savedSpecId.id, 'new'],
+      [5, saved?.savedSpecId.id, 'same as row 4'],
+      [6, null, 'skipped'],
+    ]);
+    expect(kept[0]?.cells).toMatchObject({ itemName: 'Invented PP cup', category: 'Cup', materialType: 'PP', dimension: '90' });
+    expect(kept[0]?.reading.code).toBe(saved?.savedSpecId.specId.code);
+    expect(kept[0]?.reading.facts.find((fact) => fact.key === 'material')).toMatchObject({ cell: 'Material type', words: 'PP' });
+  });
+
+  it("keeps nothing in a dry run, and leaves the last import's rows as they were", async () => {
+    const { run, importedRows } = setup(rows({ itemName: 'Invented PP cup', ...PP_CUP }));
+    await run(true);
+    const before = await importedRows.all();
+
+    await run(false);
+
+    expect(await importedRows.all()).toEqual(before);
+  });
+});
 
 describe('ImportVerifiedList', () => {
   it('makes one Spec ID of three rows with one code, named by the item name most of them use', async () => {

@@ -22,6 +22,12 @@ import type {
  * `update` reject with a SpecIdExistsError when the code is another saved Spec
  * ID's, and `update` with a SpecIdChangedError when someone saved first.
  */
+/** The review workbook (plan 0014): the file, and the name to save it under. */
+export interface ReviewSheet {
+  readonly fileName: string;
+  readonly file: Blob;
+}
+
 export interface AtlasGateway {
   dictionary(): Promise<AtlasDictionary>;
   decode(code: string): Promise<DecodedSpecId>;
@@ -46,4 +52,6 @@ export interface AtlasGateway {
   manufacturers(id: string): Promise<SpecIdManufacturers>;
   /** Admins only: sets a manufacturer's stage on a Spec ID, or clears it with `null`. */
   setManufacturerStage(id: string, manufacturerId: string, stage: AdminStage | null): Promise<SpecIdManufacturer>;
+  /** The review workbook of the library as it stands: each imported row beside what was read from it (plan 0014). */
+  reviewSheet(): Promise<ReviewSheet>;
 }

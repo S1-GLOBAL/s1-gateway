@@ -20,6 +20,7 @@ export {
 export { atlasSpecIds } from './modules/atlas/infrastructure/atlas-spec-ids.table.js';
 export { atlasSpecIdChanges } from './modules/atlas/infrastructure/atlas-spec-id-changes.table.js';
 export { atlasManufacturers } from './modules/atlas/infrastructure/atlas-manufacturers.table.js';
+export { atlasImportedRows } from './modules/atlas/infrastructure/atlas-imported-rows.table.js';
 export { atlasQuotes } from './modules/atlas/infrastructure/atlas-quotes.table.js';
 export { atlasManufacturerStageChanges } from './modules/atlas/infrastructure/atlas-manufacturer-stage-changes.table.js';
 export { atlasDictionarySuggestions } from './modules/atlas/infrastructure/atlas-dictionary-suggestions.table.js';

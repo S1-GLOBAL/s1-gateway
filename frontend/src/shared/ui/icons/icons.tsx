@@ -285,6 +285,35 @@ export function PlusIcon(props: IconProps) {
   );
 }
 
+/* ------------------------------------------------------------- Download -- */
+
+/** The arrow drops into the tray and springs back; the tray settles as it lands. */
+const fall: Variants = {
+  rest: { y: 0 },
+  active: (order: number) => ({
+    y: [0, 3, -1, 0],
+    transition: { duration: 0.45, delay: order * 0.04, ease: ease.standard },
+  }),
+};
+
+const settle: Variants = {
+  rest: { y: 0 },
+  active: {
+    y: [0, 0, 1, 0],
+    transition: { duration: 0.45, times: [0, 0.4, 0.6, 1], ease: ease.standard },
+  },
+};
+
+export function DownloadIcon(props: IconProps) {
+  return (
+    <IconSvg {...props}>
+      <m.path custom={0} variants={fall} d="M12 15V3" />
+      <m.path custom={1} variants={fall} d="m7 10 5 5 5-5" />
+      <m.path variants={settle} d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    </IconSvg>
+  );
+}
+
 /* -------------------------------------------------------------- Sidebar -- */
 
 /** The panel stays; the chevron nudges the way the sidebar will move. */

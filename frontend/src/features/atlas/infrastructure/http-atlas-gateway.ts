@@ -21,7 +21,7 @@ import type { ApiErrorBody, DataEnvelope } from '@contracts/envelope';
 import { isAxiosError, type AxiosInstance } from 'axios';
 import type { AppError } from '@/shared/application/app-error';
 import { toAppError } from '@/shared/infrastructure/to-app-error';
-import type { AtlasGateway } from '../application/atlas-gateway';
+import type { AtlasGateway, ReviewSheet } from '../application/atlas-gateway';
 import { SpecIdChangedError } from '../application/spec-id-changed-error';
 import { SpecIdExistsError } from '../application/spec-id-exists-error';
 import type {
@@ -47,6 +47,15 @@ export class HttpAtlasGateway implements AtlasGateway {
 
   constructor(http: AxiosInstance) {
     this.http = http;
+  }
+
+  async reviewSheet(): Promise<ReviewSheet> {
+    try {
+      const response = await this.http.get<Blob>('/atlas/review-sheet', { responseType: 'blob' });
+      return { fileName: fileNameOf(response.headers['content-disposition']), file: response.data };
+    } catch (error) {
+      throw toAppError(error);
+    }
   }
 
   async dictionary(): Promise<AtlasDictionary> {
@@ -333,4 +342,10 @@ function toSpecIdManufacturer(contract: SpecIdManufacturerContract): SpecIdManuf
       : null,
     quotes: contract.quotes.map((quote) => ({ ...quote })),
   };
+}
+
+/** The file name a download says to save under, `attachment; filename="atlas-review-2026-11-04.xlsx"`; a plain one when it says none. */
+function fileNameOf(disposition: unknown): string {
+  const named = typeof disposition === 'string' ? /filename="([^"]+)"/.exec(disposition)?.[1] : undefined;
+  return named ?? 'atlas-review.xlsx';
 }
