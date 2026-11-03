@@ -4,7 +4,7 @@ import { buildKeepingWhatFits } from '../build-keeping-what-fits.js';
 import { describeText, factsInWords, type TextDescription } from '../reading/describe-text.js';
 import { gradeOverFamily, kindOverGeneric, readText } from '../reading/read-text.js';
 import { NAME_MAX_LENGTH } from '../saved-spec-id.js';
-import { slotDefinition, type SlotKey } from '../slots.js';
+import { slotDefinition, type MeasureSlotKey, type SlotKey } from '../slots.js';
 import type { SpecIdFactsInput } from '../spec-id.js';
 
 /** The verified list's quote columns, what one row quotes, and their names in the report (#56). */
@@ -64,12 +64,34 @@ interface RowBase {
   readonly notes: readonly string[];
 }
 
+/** A column of the verified list the code is read from, as the review sheet names it. */
+export type SourceCell = 'Item name' | 'Category' | 'Material' | 'Material type' | 'Dimension' | 'Weight' | 'Printing';
+
+/** One fact a row's code holds, in words, and where in the row it was read. */
+export interface RowFact {
+  readonly key: SlotKey;
+  /** The slot's name: "Top diameter". */
+  readonly name: string;
+  /** The fact as a person reads it: "Molded fibre, bagasse", "90 mm". */
+  readonly meaning: string;
+  /** The words it was read from, as the row wrote them; empty when no words were kept for it. */
+  readonly words: string;
+  /** The cell those words are in; null when no one cell holds them. */
+  readonly cell: SourceCell | null;
+  /** The size ruling it was read under, R1 to R6; null for any other fact. */
+  readonly ruling: string | null;
+}
+
 export type RowReading =
   | (RowBase & {
       readonly kind: 'read';
       readonly facts: Partial<SpecIdFactsInput> & { readonly productType: string };
       /** Each fact kept, as `Colour / clarity: Clear`, with the ruling and its words after one read under it. */
       readonly readFromRow: readonly string[];
+      /** Each fact kept, with the words and the cell it was read from, for the review sheet. */
+      readonly factsRead: readonly RowFact[];
+      /** The words no rule used, as the row wrote them: what Search lists as left out. */
+      readonly leftOut: readonly string[];
     })
   | (RowBase & { readonly kind: 'skipped'; readonly reason: string });
 
@@ -145,25 +167,40 @@ export function readVerifiedRow(row: VerifiedRow, dictionary: Dictionary): RowRe
   let productType = typeOf(named);
   let productNotes = named.productNotes;
   let fromCategory = false;
+  /** The cell that named the product type, for the review sheet; null when it took several. */
+  let typeCell: SourceCell | null = 'Item name';
+  let typeWords = productType === undefined ? '' : (named.reading.read.find((fact) => fact.key === 'productType')?.words ?? '');
   const between = named.reading.conflicts.find((conflict) => conflict.key === 'productType')?.values ?? [];
   if (productType === undefined && categoryType !== undefined && between.includes(categoryType)) {
     [productType, productNotes, fromCategory] = [categoryType, [`The item name names ${between.length} product types; the Category column says which.`], true];
+    [typeCell, typeWords] = ['Category', tidy(row.category)];
   }
   // "Invented pack + lid" filed as a lid names the lid only as what comes with it: the Category column does not say what it is.
   if (productType === undefined && !(named.reading.addOn !== undefined && named.reading.addOn === categoryType)) {
     last = describe([row.category, row.itemName], undefined, cells);
     [productType, productNotes, fromCategory] = [typeOf(last), last.productNotes, true];
+    typeWords = last.reading.read.find((fact) => fact.key === 'productType')?.words ?? '';
+    typeCell = cellOf(typeWords, row);
   }
   if (productType === undefined) {
     last = describe([row.itemName, row.dimension, bareWeight ? '' : row.weight, row.printing], undefined, cells);
     [productType, productNotes, fromCategory] = [typeOf(last), last.productNotes, false];
+    typeWords = last.reading.read.find((fact) => fact.key === 'productType')?.words ?? '';
+    typeCell = cellOf(typeWords, row);
   }
 
-  for (const cell of productType === undefined ? [] : [row.category, row.materialType, row.material]) {
+  for (const [cell, label] of productType === undefined
+    ? []
+    : ([
+        [row.category, 'Category'],
+        [row.materialType, 'Material type'],
+        [row.material, 'Material'],
+      ] as const)) {
     const kind = readText(tidy(cell), dictionary).facts.productType;
     if (typeof kind !== 'string' || kind === productType || kindOverGeneric([productType ?? '', kind], dictionary) !== kind) continue;
     productNotes = [...productNotes, `${cell} names the kind of ${productLabel(productType ?? '', dictionary)}, so the product is ${productLabel(kind, dictionary)}.`];
     productType = kind;
+    [typeCell, typeWords] = [label, tidy(cell)];
     break;
   }
 
@@ -182,6 +219,8 @@ export function readVerifiedRow(row: VerifiedRow, dictionary: Dictionary): RowRe
     dictionary,
   );
   const read = new Map(description.reading.read.map((fact) => [fact.key, fact]));
+  const inWords = factsInWords(description, dictionary);
+  const materialCell: SourceCell = tidy(row.materialType) !== '' ? 'Material type' : 'Material';
   return {
     row: row.row,
     name,
@@ -190,11 +229,65 @@ export function readVerifiedRow(row: VerifiedRow, dictionary: Dictionary): RowRe
     notes: [...productNotes, ...description.notes, ...weightNotes, ...smallSizes(description, tidy(row.dimension), productType, dictionary)],
     kind: 'read',
     facts: { ...description.facts, productType },
-    readFromRow: factsInWords(description, dictionary).map(({ key, name: slot, meaning }) => {
+    readFromRow: inWords.map(({ key, name: slot, meaning }) => {
       const fact = read.get(key);
       return `${slot}: ${meaning}${fact?.ruling ? ` (${fact.ruling}, from "${fact.words}")` : ''}`;
     }),
+    factsRead: inWords.map(({ key, name: slot, meaning }): RowFact => {
+      // Product type and material were settled before the last read, which takes them as given.
+      if (key === 'productType') return { key, name: slot, meaning, words: typeWords, cell: typeCell, ruling: null };
+      if (key === 'material' && cells !== undefined && material === cells) {
+        return { key, name: slot, meaning, words: materialWords, cell: materialCell, ruling: null };
+      }
+      if (key === 'material' && !read.has('material')) {
+        const words = readText(tidy(row.itemName), dictionary).read.find((fact) => fact.key === 'material')?.words ?? '';
+        return { key, name: slot, meaning, words, cell: cellOf(words, row), ruling: null };
+      }
+      const fact = read.get(key);
+      const words = fact?.words ?? '';
+      // A size a later pass read, beside its name, keeps no words: the cell holding its number is still where it came from.
+      const cell = cellOf(words, row) ?? (words === '' ? cellOf(numberOf(meaning), row) : null);
+      return { key, name: slot, meaning, words, cell, ruling: fact?.ruling ?? null };
+    }),
+    leftOut: [...description.ignored],
   };
+}
+
+/** The number a fact in words says, "210" of "210 mm"; empty when it says none. */
+function numberOf(meaning: string): string {
+  return /\d+(?:\.\d+)?/.exec(meaning)?.[0] ?? '';
+}
+
+/** The cells a fact's words are looked for in, in the order the review sheet shows them. */
+const SOURCE_CELLS: readonly (readonly [SourceCell, keyof VerifiedRow])[] = [
+  ['Item name', 'itemName'],
+  ['Category', 'category'],
+  ['Material', 'material'],
+  ['Material type', 'materialType'],
+  ['Dimension', 'dimension'],
+  ['Weight', 'weight'],
+  ['Printing', 'printing'],
+];
+
+/**
+ * The cell that holds a fact's words, compared without case or spaces; else the
+ * one that holds all of its numbers, as a weight read as "110 g" from "110" is.
+ * The Dimension cell is read first, so it is looked in first. Null when no one
+ * cell holds them, as when the words span two.
+ */
+function cellOf(words: string, row: VerifiedRow): SourceCell | null {
+  const squash = (text: string) => text.toLowerCase().replace(/\s+/g, '');
+  const wanted = squash(words);
+  if (wanted === '') return null;
+  const order = [...SOURCE_CELLS.filter(([cell]) => cell === 'Dimension'), ...SOURCE_CELLS.filter(([cell]) => cell !== 'Dimension')];
+  const text = (key: keyof VerifiedRow) => String(row[key] ?? '');
+  const holding = order.find(([, key]) => squash(text(key)).includes(wanted));
+  if (holding) return holding[0];
+  const numbersIn = (source: string): string[] => source.match(/\d+(?:\.\d+)?/g) ?? [];
+  const numbers = numbersIn(words);
+  if (numbers.length === 0) return null;
+  const numbered = order.find(([, key]) => numbers.every((number) => numbersIn(text(key)).includes(number)));
+  return numbered ? numbered[0] : null;
 }
 
 /**
@@ -241,17 +334,20 @@ const LENGTH_UNIT = /(?<![a-z])(?:mm|cm|in|inch|inches)(?![a-z])|"|''/i;
  * A note for sizes written with no unit whose every side is under
  * `SMALL_SIDE_MM`: they are read as millimetres (#58), but "12 x 7.5 x 13" on
  * a bag, or "17 x 15.5 (Top Length x Width)" on a napkin, is likely inches,
- * so the row is worth a look. The sizes are a ruling's words, else the
- * Dimension cell's.
+ * so the row is worth a look. A diameter of 50 or more says the sizes are
+ * millimetres ("210 Dia 48 H" on a bowl), but a small one alone raises nothing:
+ * a straw is 8 mm across. The sizes are a ruling's words, else the Dimension
+ * cell's.
  */
 function smallSizes(description: TextDescription, dimension: string, productType: string, dictionary: Dictionary): string[] {
   const ruled = description.reading.read.find((fact) => fact.ruling === 'R3' || fact.ruling === 'R5' || fact.ruling === 'R6');
   const sized = ruled?.words ?? dimension;
   if (sized === '' || LENGTH_UNIT.test(sized)) return [];
-  const sides = (['length', 'width', 'height', 'gusset'] as const)
-    .map((key) => description.facts[key])
-    .filter((side): side is { value: string; unit: string } => side != null && typeof side === 'object');
-  if (sides.length === 0 || sides.some((side) => Number(side.value) >= SMALL_SIDE_MM)) return [];
+  const sizes = (keys: readonly MeasureSlotKey[]) =>
+    keys.map((key) => description.facts[key]).filter((side): side is { value: string; unit: string } => side != null && typeof side === 'object');
+  const sides = sizes(['length', 'width', 'height', 'gusset']);
+  const across = sizes(['topDiameter', 'bottomDiameter']);
+  if (sides.length === 0 || [...sides, ...across].some((side) => Number(side.value) >= SMALL_SIDE_MM)) return [];
   return [`${sized} has no unit, so it was read in millimetres (#58). That is small for ${productLabel(productType, dictionary)}: check the unit.`];
 }
 

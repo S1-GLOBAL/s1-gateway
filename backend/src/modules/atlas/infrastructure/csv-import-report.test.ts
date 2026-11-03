@@ -19,6 +19,10 @@ describe('CsvImportReport', () => {
         {
           row: 4,
           itemName: 'Invented bag, 10x8x6" handle',
+          source: { itemName: 'Invented bag, 10x8x6" handle', category: '', material: '', materialType: '', dimension: '', weight: '', printing: '' },
+          facts: [],
+          leftOut: [],
+          categoryAgrees: null,
           outcome: 'new',
           code: 'BAG.Y',
           reason: null,
@@ -29,6 +33,7 @@ describe('CsvImportReport', () => {
           flags: [],
         },
       ],
+      options: [],
     });
 
     const lines = (await readFile(path, 'utf8')).split('\n');

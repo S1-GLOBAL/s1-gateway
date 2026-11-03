@@ -4,13 +4,14 @@ import type { UseCase } from '../../../shared/application/use-case.js';
 import { buildKeepingWhatFits } from '../domain/build-keeping-what-fits.js';
 import type { DictionaryRepository } from '../domain/dictionary-repository.js';
 import { QUOTE_COLUMNS, readVerifiedRow, type RowReading, type VerifiedRow } from '../domain/import/verified-row.js';
-import { CURRENT_RELEASE, slotDefinition } from '../domain/slots.js';
+import { letterOf } from '../domain/code.js';
+import { CURRENT_RELEASE, DICTIONARY_SLOTS, slotDefinition } from '../domain/slots.js';
 import { manufacturerKey } from '../domain/sourcing/manufacturer.js';
 import type { QuoteValues } from '../domain/sourcing/quote.js';
 import type { QuoteToRecord, SourcingRepository } from '../domain/sourcing/sourcing-repository.js';
 import type { SpecIdFactsInput } from '../domain/spec-id.js';
 import type { SpecIdRepository } from '../domain/spec-id-repository.js';
-import type { ImportReportRow, ImportReportSink, ImportSummary, RowOutcome } from './ports/import-report-sink.js';
+import type { ImportReportRow, ImportReportSink, ImportSourceCells, ImportSummary, RowOutcome } from './ports/import-report-sink.js';
 import type { VerifiedListSource } from './ports/verified-list-source.js';
 import type { SaveSpecId } from './save-spec-id.js';
 
@@ -30,6 +31,8 @@ interface Coded {
   readonly code: string;
   readonly facts: Partial<SpecIdFactsInput>;
   readonly dropped: readonly string[];
+  /** The slots the save rules refused, left out of the facts the report lists. */
+  readonly droppedKeys: ReadonlySet<string>;
 }
 
 /**
@@ -69,16 +72,20 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
         if (reading.agreement) agreed += 1;
       }
       if (reading.kind === 'skipped') {
-        lines.set(row.row, skippedLine(row, reading.reason, reading.nameCut, reading.notes));
+        lines.set(row.row, skippedLine(row, reading.reason, reading.nameCut, reading.notes, reading.agreement));
         continue;
       }
       const build = buildKeepingWhatFits(reading.facts, dictionary);
       if (!build.specId) {
-        lines.set(row.row, skippedLine(row, `${reading.facts.productType} is not a product type in ${dictionary.release}.`, reading.nameCut, reading.notes));
+        lines.set(
+          row.row,
+          skippedLine(row, `${reading.facts.productType} is not a product type in ${dictionary.release}.`, reading.nameCut, reading.notes, reading.agreement),
+        );
         continue;
       }
       const dropped = build.dropped.map(({ key, reasons }) => `${slotDefinition(key).name}: ${reasons.join(' ')}`);
-      const coded: Coded = { row, reading, code: build.specId.code, facts: build.facts, dropped };
+      const droppedKeys = new Set<string>(build.dropped.map(({ key }) => key));
+      const coded: Coded = { row, reading, code: build.specId.code, facts: build.facts, dropped, droppedKeys };
       groups.set(coded.code, [...(groups.get(coded.code) ?? []), coded]);
     }
 
@@ -123,6 +130,10 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
         lines.set(member.row.row, {
           row: member.row.row,
           itemName: member.row.itemName,
+          source: sourceOf(member.row),
+          facts: member.reading.factsRead.filter((fact) => !member.droppedKeys.has(fact.key)),
+          leftOut: [...member.reading.leftOut],
+          categoryAgrees: member.reading.agreement,
           outcome,
           code,
           reason: null,
@@ -146,16 +157,29 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
       quotes: quoted,
       agreement: { agreed, compared },
     };
-    await this.report.write({ summary, rows: rows.map((row) => lines.get(row.row)).filter((entry) => entry !== undefined) });
+    const options = DICTIONARY_SLOTS.flatMap((slot) =>
+      dictionary.valuesOf(slot).map(({ number, meaning }) => ({ list: slotDefinition(slot).name, part: `${letterOf(slot)}${number}`, meaning })),
+    );
+    await this.report.write({ summary, rows: rows.map((row) => lines.get(row.row)).filter((entry) => entry !== undefined), options });
     return summary;
   }
 }
 
 /** A row not imported: it records no quote (#56). */
-function skippedLine(row: VerifiedRow, reason: string, nameCut: boolean, notes: readonly string[]): ImportReportRow {
+function skippedLine(
+  row: VerifiedRow,
+  reason: string,
+  nameCut: boolean,
+  notes: readonly string[],
+  agreement: boolean | null,
+): ImportReportRow {
   return {
     row: row.row,
     itemName: row.itemName,
+    source: sourceOf(row),
+    facts: [],
+    leftOut: [],
+    categoryAgrees: agreement,
     outcome: 'skipped',
     code: null,
     reason,
@@ -174,6 +198,12 @@ function flagsOf(row: VerifiedRow, nameCut: boolean, notes: readonly string[]): 
     ...notes,
     ...row.unsavedFormulas.map((column) => `${QUOTE_COLUMNS[column]}: a formula with no value saved in the workbook`),
   ];
+}
+
+/** The cells a row's code is read from, as the workbook wrote them. */
+function sourceOf(row: VerifiedRow): ImportSourceCells {
+  const { itemName, category, material, materialType, dimension, weight, printing } = row;
+  return { itemName, category, material, materialType, dimension, weight, printing };
 }
 
 function orNull(text: string): string | null {

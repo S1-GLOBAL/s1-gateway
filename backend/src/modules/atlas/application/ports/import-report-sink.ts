@@ -1,11 +1,32 @@
+import type { RowFact } from '../../domain/import/verified-row.js';
+
 /** What happened to one row: a new Spec ID, the same code as an earlier row, one already saved, or skipped. */
 export type RowOutcome = 'new' | `same as row ${number}` | 'already saved' | 'skipped';
+
+/** The cells a row's code is read from, as the workbook wrote them. */
+export interface ImportSourceCells {
+  readonly itemName: string;
+  readonly category: string;
+  readonly material: string;
+  readonly materialType: string;
+  readonly dimension: string;
+  readonly weight: string;
+  readonly printing: string;
+}
 
 /** One line of #28's report, per workbook row. */
 export interface ImportReportRow {
   readonly row: number;
   /** As the workbook wrote it. */
   readonly itemName: string;
+  /** Every cell the code is read from, so a reviewer can compare it with what was read (plan 0013). */
+  readonly source: ImportSourceCells;
+  /** Each fact the code holds, with the words and the cell it was read from; none when skipped. */
+  readonly facts: readonly RowFact[];
+  /** The words no rule used, as Search lists them under Left out; none when skipped. */
+  readonly leftOut: readonly string[];
+  /** Whether the Category column names the product type read from the rest; null when it can't be compared. */
+  readonly categoryAgrees: boolean | null;
   readonly outcome: RowOutcome;
   /** Null when skipped. */
   readonly code: string | null;
@@ -41,9 +62,18 @@ export interface ImportSummary {
   readonly agreement: { readonly agreed: number; readonly compared: number };
 }
 
+/** One dictionary option as a code writes it: Material, `B25`, Molded fibre, bagasse. */
+export interface ImportReportOption {
+  readonly list: string;
+  readonly part: string;
+  readonly meaning: string;
+}
+
 export interface ImportReport {
   readonly summary: ImportSummary;
   readonly rows: readonly ImportReportRow[];
+  /** Every option of the dictionary the codes were read with, list by list, so a reader can decode a code. */
+  readonly options: readonly ImportReportOption[];
 }
 
 /** Where the import writes its report. It never enters the repository (#28, ADR 0027). */
