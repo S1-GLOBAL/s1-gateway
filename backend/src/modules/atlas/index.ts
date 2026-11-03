@@ -31,6 +31,9 @@ import { DrizzleDictionaryRepository } from './infrastructure/drizzle-dictionary
 import { DrizzleSourcingRepository } from './infrastructure/drizzle-sourcing-repository.js';
 import { DrizzleSpecIdRepository } from './infrastructure/drizzle-spec-id-repository.js';
 import { DrizzleSuggestionRepository } from './infrastructure/drizzle-suggestion-repository.js';
+import { ExportReviewSheet } from './application/export-review-sheet.js';
+import { DrizzleImportedRowRepository } from './infrastructure/drizzle-imported-row-repository.js';
+import { ExcelReviewSheetWriter } from './infrastructure/excel-review-workbook.js';
 import { AtlasController } from './presentation/atlas.controller.js';
 import { createAtlasAdminRouter, createAtlasRouter } from './presentation/atlas.routes.js';
 import { DictionarySuggestionsController } from './presentation/dictionary-suggestions.controller.js';
@@ -78,6 +81,7 @@ export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule[] {
       list: new GetSpecIdManufacturers(specIds, sourcing),
       setStage: new SetManufacturerStage(specIds, sourcing, deps.clock, deps.ids),
     },
+    new ExportReviewSheet(dictionaries, specIds, new DrizzleImportedRowRepository(deps.db), new ExcelReviewSheetWriter(), deps.clock),
   );
   const suggestionsController = new DictionarySuggestionsController(
     {

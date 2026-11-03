@@ -1,6 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AtlasLibrary, DictionarySheet, useDictionary } from '@/features/atlas';
+import { AtlasLibrary, DictionarySheet, ReviewSheetButton, useDictionary } from '@/features/atlas';
 import { Button } from '@/shared/ui/Button';
 import { cn } from '@/shared/ui/cn';
 import { BookOpenIcon } from '@/shared/ui/icons';
@@ -31,10 +31,13 @@ export function AtlasPage() {
       <h1 className="sr-only">Atlas</h1>
       <div className="flex items-end justify-between gap-4 border-b border-border">
         <AtlasTabs tab={tab} onChange={setTab} />
-        <Button variant="secondary" onClick={() => setDictionaryOpen(true)} className="mb-2">
-          <BookOpenIcon size={16} />
-          Dictionary
-        </Button>
+        <div className="mb-2 flex items-start gap-2">
+          <ReviewSheetButton />
+          <Button variant="secondary" onClick={() => setDictionaryOpen(true)} className="max-sm:w-10 max-sm:px-0">
+            <BookOpenIcon size={16} />
+            <span className="max-sm:sr-only">Dictionary</span>
+          </Button>
+        </div>
       </div>
 
       {/* Stays mounted, so a question survives a trip to the other tabs. */}

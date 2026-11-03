@@ -62,6 +62,7 @@ Request bodies are JSON, at most **100 kB**.
 | PATCH | `/atlas/saved/:id` | session | 200 `{ data: SavedSpecId }` | 401, 400 `INVALID_SPEC_ID`, 400 `VALIDATION_FAILED`, 404 `SPEC_ID_NOT_FOUND`, 409 `SPEC_ID_CHANGED`, 409 `SPEC_ID_EXISTS` |
 | GET | `/atlas/saved/:id/history` | session | 200 `{ data: SpecIdChange[] }`, newest first | 401, 404 `SPEC_ID_NOT_FOUND` |
 | GET | `/atlas/saved/:id/manufacturers` | session | 200 `{ data: SpecIdManufacturers }` | 401, 404 `SPEC_ID_NOT_FOUND` |
+| GET | `/atlas/review-sheet` | session | 200, the review workbook as an `.xlsx` file: `Content-Disposition: attachment; filename="atlas-review-<YYYY-MM-DD>.xlsx"`, `Cache-Control: no-store` ([plan 0014](../plans/0014-review-sheet-in-atlas.md)) | 401 |
 | PUT | `/atlas/saved/:id/manufacturers/:manufacturerId/stage` | admin | 200 `{ data: SpecIdManufacturer }` | 401, 403 `NOT_ALLOWED`, 400 `VALIDATION_FAILED`, 404 `SPEC_ID_NOT_FOUND`, 404 `MANUFACTURER_NOT_FOUND` |
 | GET | `/atlas/dictionary/usage/:slot/:code` | session | 200 `{ data: { count } }`: saved Spec IDs holding that option | 401, 400 `VALIDATION_FAILED` |
 | POST | `/atlas/dictionary/suggestions` | session | 201 `{ data: DictionarySuggestion }` | 401, 400 `VALIDATION_FAILED` |

@@ -18,6 +18,7 @@ export function createAtlasRouter(controller: AtlasController): Router {
   router.get('/spec-ids', controller.findSimilar);
   router.get('/spec-ids/:code', controller.findByCode);
   router.get('/saved', controller.library);
+  router.get('/review-sheet', controller.reviewSheet);
   router.get('/saved/:id', controller.getSaved);
   router.patch('/saved/:id', controller.update);
   router.get('/saved/:id/history', controller.history);

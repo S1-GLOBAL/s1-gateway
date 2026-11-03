@@ -7,6 +7,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { accountsTable } from '../modules/accounts/index.js';
 import { atlasManufacturers } from '../modules/atlas/infrastructure/atlas-manufacturers.table.js';
 import { atlasQuotes } from '../modules/atlas/infrastructure/atlas-quotes.table.js';
+import { DrizzleImportedRowRepository } from '../modules/atlas/infrastructure/drizzle-imported-row-repository.js';
 import { DrizzleSourcingRepository } from '../modules/atlas/infrastructure/drizzle-sourcing-repository.js';
 import { DrizzleSpecIdRepository } from '../modules/atlas/infrastructure/drizzle-spec-id-repository.js';
 import { connectTestDatabase, resetTables } from '../test/database.js';
@@ -130,6 +131,26 @@ describe('atlas:import', () => {
       '6,Invented PET lid,new',
       '7,Invented sample order,skipped',
     ]);
+  });
+
+  it('keeps every row with --write, for the review workbook, and replaces them on the next (plan 0014)', async () => {
+    const path = await workbook(ROWS);
+    const rows = new DrizzleImportedRowRepository(connection.db);
+
+    await run(path, true);
+    await run(path, true);
+
+    // The second import's rows replaced the first's: every code was saved by then.
+    const kept = await rows.all();
+    expect(kept.map(({ row, reading }) => [row, reading.outcome])).toEqual([
+      [4, 'already saved'],
+      [5, 'already saved'],
+      [6, 'already saved'],
+      [7, 'skipped'],
+    ]);
+    const cup = (await saved()).find((record) => record.savedSpecId.name === 'Invented PP cup');
+    expect(kept[0]).toMatchObject({ specId: cup?.savedSpecId.id, cells: { itemName: 'Invented PP cup', category: 'Cup', materialType: 'PP' } });
+    expect(kept[3]?.specId).toBeNull();
   });
 
   it('saves nothing the second time, and reports every saved row already saved', async () => {

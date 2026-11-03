@@ -3,6 +3,7 @@ import type { IdGenerator } from '../../../shared/application/ports/id-generator
 import type { UseCase } from '../../../shared/application/use-case.js';
 import { buildKeepingWhatFits } from '../domain/build-keeping-what-fits.js';
 import type { DictionaryRepository } from '../domain/dictionary-repository.js';
+import type { ImportedRow, ImportedRowRepository } from '../domain/import/imported-row.js';
 import { QUOTE_COLUMNS, readVerifiedRow, type RowReading, type VerifiedRow } from '../domain/import/verified-row.js';
 import { letterOf } from '../domain/code.js';
 import { CURRENT_RELEASE, DICTIONARY_SLOTS, slotDefinition } from '../domain/slots.js';
@@ -41,7 +42,10 @@ interface Coded {
  * most of them use, and, only when writing, saves each new one through
  * `SaveSpecId`. A code already saved is left as it is. Every row imported
  * that names its manufacturer gives a quote for its Spec ID; when writing,
- * they replace the quotes recorded before (ADR 0027). Writes #28's report.
+ * they replace the quotes recorded before (ADR 0027). When writing, every row
+ * read is kept with its cells and what was read from them, replacing the last
+ * import's, so Atlas can hand out the review workbook (plan 0014). Writes #28's
+ * report.
  */
 export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, ImportSummary> {
   constructor(
@@ -53,6 +57,7 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
     private readonly report: ImportReportSink,
     private readonly clock: Clock,
     private readonly ids: IdGenerator,
+    private readonly importedRows: ImportedRowRepository,
   ) {}
 
   async execute(input: ImportVerifiedListInput): Promise<ImportSummary> {
@@ -92,6 +97,8 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
     const importedAt = this.clock.now();
     const manufacturerIds = new Map<string, string>();
     const quotes: QuoteToRecord[] = [];
+    /** The Spec ID each code was saved as, or would be: null in a dry run. */
+    const specIdOf = new Map<string, string | null>();
     let quoted = 0;
     let created = 0;
     let alreadySaved = 0;
@@ -106,6 +113,7 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
         else if (result.error.code === 'SPEC_ID_EXISTS') specId = (await this.specIds.findByCode(code))?.savedSpecId.id ?? null;
         else throw new Error(`Row ${first.row.row} could not be saved: ${result.error.message}`);
       }
+      specIdOf.set(code, specId);
       if (saved) alreadySaved += 1;
       else created += 1;
       for (const member of members) {
@@ -145,7 +153,11 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
         });
       }
     }
-    if (input.write) await this.sourcing.replaceQuotes(quotes);
+    const reportRows = rows.map((row) => lines.get(row.row)).filter((entry) => entry !== undefined);
+    if (input.write) {
+      await this.sourcing.replaceQuotes(quotes);
+      await this.importedRows.replace(reportRows.map((line) => importedRowOf(line, specIdOf, importedAt)));
+    }
 
     const summary: ImportSummary = {
       rows: rows.length,
@@ -160,9 +172,21 @@ export class ImportVerifiedList implements UseCase<ImportVerifiedListInput, Impo
     const options = DICTIONARY_SLOTS.flatMap((slot) =>
       dictionary.valuesOf(slot).map(({ number, meaning }) => ({ list: slotDefinition(slot).name, part: `${letterOf(slot)}${number}`, meaning })),
     );
-    await this.report.write({ summary, rows: rows.map((row) => lines.get(row.row)).filter((entry) => entry !== undefined), options });
+    await this.report.write({ summary, rows: reportRows, options });
     return summary;
   }
+}
+
+/** A report line as the row it is kept as: its cells, what was read, and the Spec ID it went into. */
+function importedRowOf(line: ImportReportRow, specIdOf: ReadonlyMap<string, string | null>, importedAt: Date): ImportedRow {
+  const { outcome, code, reason, facts, leftOut, flags, dropped, categoryAgrees } = line;
+  return {
+    row: line.row,
+    specId: code === null ? null : (specIdOf.get(code) ?? null),
+    cells: line.source,
+    reading: { outcome, code, reason, facts, leftOut, flags, dropped, categoryAgrees },
+    importedAt,
+  };
 }
 
 /** A row not imported: it records no quote (#56). */

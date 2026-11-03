@@ -332,6 +332,37 @@ current rows, in one transaction.
 | `atlas_quotes_spec_id_idx` | `spec_id` | A Spec ID's manufacturers (#57) |
 | `atlas_quotes_manufacturer_id_idx` | `manufacturer_id` | A manufacturer's quotes |
 
+## `atlas_imported_rows`
+
+Each row of the verified list as the last `atlas:import --write` read it
+([plan 0014](../plans/0014-review-sheet-in-atlas.md)): its cells as the
+workbook wrote them, and what was read from them, so `GET /atlas/review-sheet`
+can hand out the review workbook without reading the list again. Defined in
+`backend/src/modules/atlas/infrastructure/atlas-imported-rows.table.ts`. Every
+such import replaces them all; a dry run leaves them. Like the quotes, they
+hold Source One text, and live only in the database
+([ADR 0027](../decisions/0027-manufacturers-and-quotes-live-in-atlas-behind-sign-in.md)).
+
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `row` | `integer` | no | — | Primary key: the workbook's own row number |
+| `spec_id` | `uuid` | yes | — | FK `atlas_imported_rows_spec_id_fk` → `atlas_spec_ids.id`: the Spec ID the row went into; null when it was skipped |
+| `item_name` | `text` | no | — | The cells the code is read from, as written, empty when the cell is: Item name |
+| `category` | `text` | no | — | Category |
+| `material` | `text` | no | — | Material |
+| `material_type` | `text` | no | — | Material Type |
+| `dimension` | `text` | no | — | Dimension |
+| `weight` | `text` | no | — | Weight |
+| `printing` | `text` | no | — | Printing |
+| `reading` | `jsonb` | no | — | What was read: `{ outcome, code, reason, facts, leftOut, flags, dropped, categoryAgrees }`, each fact `{ key, name, meaning, words, cell, ruling }`, as the review workbook shows it |
+| `imported_at` | `timestamptz` | no | — | When the import ran |
+
+| Name | On | Why |
+|---|---|---|
+| `atlas_imported_rows_spec_id_idx` | `spec_id` | A Spec ID's imported rows |
+
+Deleting a Spec ID's rows means deleting its imported rows first.
+
 ## `atlas_manufacturer_stage_changes`
 
 Every change an admin made to a manufacturer's stage on a Spec ID (#57).

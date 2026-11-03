@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import type { ImportReport, ImportReportRow, ImportReportSink, ImportSourceCells } from '../application/ports/import-report-sink.js';
+import type { ReviewSheetWriter } from '../application/ports/review-sheet-writer.js';
 import { letterOf, type CodedSlotKey } from '../domain/code.js';
 import { SLOTS, type SlotKey } from '../domain/slots.js';
 
@@ -49,26 +50,38 @@ function noteOf(fact: ImportReportRow['facts'][number]): string | null {
 const SMALL_SIZE = /has no unit, so it was read in millimetres/;
 
 /**
- * Writes the review workbook to a path outside the repository. Its sheets:
- * How to read this, Rows, Spec IDs, Needs a look, and Dictionary.
+ * Writes the review workbook to a path outside the repository, for the
+ * import's `--review`. Its sheets: How to read this, Rows, Spec IDs, Needs a
+ * look, and Dictionary.
  */
 export class ExcelReviewWorkbook implements ImportReportSink {
   constructor(private readonly path: string) {}
 
   async write(report: ImportReport): Promise<void> {
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Atlas import';
-    const factKeys = SLOTS.map(({ key }) => key).filter((key) => report.rows.some((row) => row.facts.some((fact) => fact.key === key)));
-    // Sheets appear in the order they are added: the read-me first.
-    readMe(workbook, report);
-    rowsOf(workbook, report, factKeys);
-    specIdsOf(workbook, report, factKeys);
-    needsALook(workbook, report);
-    dictionaryOf(workbook, report);
-    // The read-me opens first.
-    workbook.views = [{ x: 0, y: 0, width: 20000, height: 12000, firstSheet: 0, activeTab: 0, visibility: 'visible' }];
-    await workbook.xlsx.writeFile(this.path);
+    await reviewWorkbook(report).xlsx.writeFile(this.path);
   }
+}
+
+/** The same workbook as bytes, for Atlas to hand out as a download (plan 0014). */
+export class ExcelReviewSheetWriter implements ReviewSheetWriter {
+  async toBytes(report: ImportReport): Promise<Uint8Array> {
+    return new Uint8Array(await reviewWorkbook(report).xlsx.writeBuffer());
+  }
+}
+
+function reviewWorkbook(report: ImportReport): ExcelJS.Workbook {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Atlas';
+  const factKeys = SLOTS.map(({ key }) => key).filter((key) => report.rows.some((row) => row.facts.some((fact) => fact.key === key)));
+  // Sheets appear in the order they are added: the read-me first.
+  readMe(workbook, report);
+  rowsOf(workbook, report, factKeys);
+  specIdsOf(workbook, report, factKeys);
+  needsALook(workbook, report);
+  dictionaryOf(workbook, report);
+  // The read-me opens first.
+  workbook.views = [{ x: 0, y: 0, width: 20000, height: 12000, firstSheet: 0, activeTab: 0, visibility: 'visible' }];
+  return workbook;
 }
 
 function headerName(key: SlotKey): string {
@@ -116,7 +129,8 @@ function rowsOf(workbook: ExcelJS.Workbook, report: ImportReport, factKeys: read
   const verdictColumn = sourceColumns.length + resultColumns.length + readColumns.length + 1;
   report.rows.forEach((entry, index) => {
     const row = sheet.getRow(index + 3);
-    row.getCell(1).value = entry.row;
+    // A Spec ID saved in Atlas has no workbook row.
+    row.getCell(1).value = entry.row === 0 ? '' : entry.row;
     SOURCE.forEach(([key], offset) => {
       row.getCell(2 + offset).value = entry.source[key];
     });
@@ -177,6 +191,8 @@ function readMe(workbook: ExcelJS.Workbook, report: ImportReport): void {
     ['Left out', 'Words no rule used. A product word or size here may be something Atlas missed.'],
     ['Notes', 'What Atlas noticed: a fact the row gives two values for, a size with no unit, a word that could mean several things.'],
     ['Same as row N', 'This row describes exactly the same product as row N, so it shares that row\'s Spec ID and code. If the two rows are different products, the code is missing what tells them apart.'],
+    ['Already saved', 'The first row of its Spec ID when the sheet comes from Atlas: the import saved its code. Rows after it read "Same as row N".'],
+    ['Saved in Atlas', 'A Spec ID saved by hand in Atlas, not imported: it has no workbook row or cells, only its facts.'],
     ['Spec IDs', 'One line per code, with the rows that share it. Look for rows whose names differ but share one code.'],
     ['Needs a look', 'The rows most likely to be wrong, most likely first. A good place to start.'],
     ['Dictionary', 'What each number in a code means. A code is a letter and a number per fact: A is the product type, B the material, and so on; the sizes come after the hyphen. B25 is material 25, Molded fibre, bagasse. J110 is a height of 110 mm.'],
