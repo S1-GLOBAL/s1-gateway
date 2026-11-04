@@ -32,6 +32,7 @@ import { DrizzleSourcingRepository } from './infrastructure/drizzle-sourcing-rep
 import { DrizzleSpecIdRepository } from './infrastructure/drizzle-spec-id-repository.js';
 import { DrizzleSuggestionRepository } from './infrastructure/drizzle-suggestion-repository.js';
 import { ExportReviewSheet } from './application/export-review-sheet.js';
+import { GetReviewSheetLink } from './application/get-review-sheet-link.js';
 import { DrizzleImportedRowRepository } from './infrastructure/drizzle-imported-row-repository.js';
 import { ExcelReviewSheetWriter } from './infrastructure/excel-review-workbook.js';
 import { AtlasController } from './presentation/atlas.controller.js';
@@ -46,6 +47,8 @@ export interface AtlasModuleDependencies {
   db: Database;
   clock: Clock;
   ids: IdGenerator;
+  /** The shared Google Sheet the Review sheet button opens (plan 0016); null when none is set. */
+  reviewSheetUrl?: string | null;
 }
 
 /**
@@ -82,6 +85,7 @@ export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule[] {
       setStage: new SetManufacturerStage(specIds, sourcing, deps.clock, deps.ids),
     },
     new ExportReviewSheet(dictionaries, specIds, new DrizzleImportedRowRepository(deps.db), new ExcelReviewSheetWriter(), deps.clock),
+    new GetReviewSheetLink(deps.reviewSheetUrl ?? null),
   );
   const suggestionsController = new DictionarySuggestionsController(
     {

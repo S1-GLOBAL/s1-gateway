@@ -4,6 +4,7 @@ import { FixedClock, RecordingLogger, SequentialIdGenerator } from '../../../sha
 import { createApp } from '../../../shared/presentation/http/create-app.js';
 import { DecodeSpecId } from '../application/decode-spec-id.js';
 import { ExportReviewSheet } from '../application/export-review-sheet.js';
+import { GetReviewSheetLink } from '../application/get-review-sheet-link.js';
 import { InMemoryImportedRowRepository } from '../application/testing/in-memory-imported-row-repository.js';
 import { EncodeSpecId } from '../application/encode-spec-id.js';
 import { FindSimilarSpecIds } from '../application/find-similar-spec-ids.js';
@@ -40,6 +41,8 @@ const FACTS = {
 
 const STAFF = { id: '00000000-0000-4000-8000-0000000000aa', fullName: 'Ada Invented' };
 const ZIP = [0x50, 0x4b, 0x03, 0x04];
+/** An invented address: never the shared sheet's own. */
+const SHARED_SHEET = 'https://docs.google.com/spreadsheets/d/invented-sheet/edit';
 
 function setup() {
   const dictionaries = new InMemoryDictionaryRepository();
@@ -82,6 +85,7 @@ function setup() {
     },
     // The workbook's own bytes are ExcelReviewSheetWriter's to test: these are a zip's first four.
     new ExportReviewSheet(dictionaries, specIds, new InMemoryImportedRowRepository(), { toBytes: async () => new Uint8Array(ZIP) }, new FixedClock(new Date('2026-11-04T08:00:00.000Z'))),
+    new GetReviewSheetLink(SHARED_SHEET),
   );
   // Atlas route shape only — production mounts Atlas behind the session gate.
   return createApp({
@@ -115,9 +119,17 @@ describe('GET /api/v1/atlas/review-sheet (plan 0014)', () => {
     });
     expect(response.status).toBe(200);
     expect(response.headers['content-type']).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    expect(response.headers['content-disposition']).toBe('attachment; filename="atlas-review-2026-11-04.xlsx"');
+    expect(response.headers['content-disposition']).toBe('attachment; filename="atlas-spec-ids-2026-11-04.xlsx"');
     expect(response.headers['cache-control']).toBe('no-store');
     expect([...(response.body as Buffer)]).toEqual(ZIP);
+  });
+});
+
+describe('GET /api/v1/atlas/review-sheet/link (plan 0016)', () => {
+  it('answers where the shared review sheet is', async () => {
+    const response = await request(app).get('/api/v1/atlas/review-sheet/link');
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual({ url: SHARED_SHEET });
   });
 });
 

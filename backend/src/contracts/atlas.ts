@@ -485,3 +485,8 @@ export interface DictionaryChangeApproved {
 export interface DictionaryCount {
   count: number;
 }
+
+/** `GET /atlas/review-sheet/link`: the shared Google Sheet the codes are reviewed in (plan 0016); null when none is set. */
+export interface ReviewSheetLink {
+  url: string | null;
+}

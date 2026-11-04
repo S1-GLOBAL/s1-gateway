@@ -17,6 +17,7 @@ A missing or invalid value stops the process with the variable's name.
 | `DATABASE_URL` | — (required) | `postgres://` or `postgresql://` URL. Locally `postgres://s1gateway:s1gateway@localhost:5436/s1_gateway` |
 | `CORS_ORIGIN` | `http://localhost:5173` | The SPA's origin, allowed by CORS |
 | `ACCOUNT_ADMIN_EMAILS` | — (required) | Comma-separated `@sourceone.global` addresses: the first System Admins. When the API starts and no approved account is a System Admin, each approved account listed here becomes one; once one exists, roles change only in the app ([ADR 0030](../decisions/0030-roles-live-on-the-account.md)). `npm run db:create-admin` accepts only these. Trimmed and lower-cased at boot. Every entry must match `/^[^@]+@sourceone\.global$/` or the API refuses to start |
+| `ATLAS_REVIEW_SHEET_URL` | — (none) | The shared Google Sheet the departments review the codes in, which Atlas's **Review sheet** button opens ([plan 0016](../plans/0016-review-sheet-shared.md)). Must be `https://docs.google.com/spreadsheets/…` or the API refuses to start. Left out, the button is not shown. Given only to signed-in staff: it leads to Source One text, so it never goes in the repository |
 
 ### `npm run db:create-admin` only
 
@@ -54,6 +55,7 @@ one lives, and how to change it: [Deploy to staging](../guides/deploy-to-staging
 | `DATABASE_URL` | Render | Supabase's session pooler URL, port 5432, ending `?sslmode=require` |
 | `CORS_ORIGIN` | Render | The Vercel staging address |
 | `ACCOUNT_ADMIN_EMAILS` | Render | Your `@sourceone.global` address(es), comma-separated: the first System Admins |
+| `ATLAS_REVIEW_SHEET_URL` | Render | The shared Google Sheet's address, as its Share dialog copies it |
 | `PORT` | — | Set by Render; do not set it |
 | `VITE_API_URL` | — | Leave unset. `frontend/vercel.json` forwards `/api/*` to Render, so the default `/api/v1` works |
 

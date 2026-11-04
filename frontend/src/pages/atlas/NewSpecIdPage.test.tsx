@@ -53,6 +53,7 @@ function renderAt(path: string, overrides: Partial<AtlasGateway> = {}) {
     setManufacturerStage: pending,
     library: pending,
     reviewSheet: pending,
+    reviewSheetLink: async () => null,
     ...overrides,
   };
   const router = createMemoryRouter(

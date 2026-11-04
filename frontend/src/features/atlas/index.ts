@@ -28,7 +28,7 @@ export { DictionarySheet } from './presentation/library/DictionarySheet';
 export { DictionaryChanges } from './presentation/dictionary/DictionaryChanges';
 export { SuggestionListSkeleton } from './presentation/dictionary/SuggestionListSkeleton';
 export { NewSpecIdLink } from './presentation/library/NewSpecIdLink';
-export { ReviewSheetButton } from './presentation/ReviewSheetButton';
+export { ReviewSheetActions } from './presentation/ReviewSheetActions';
 export { ManufacturerGroups } from './presentation/manufacturers/ManufacturerGroups';
 export { NewSpecIdForm, type SavedNotice } from './presentation/NewSpecIdForm';
 export { SpecIdEditor } from './presentation/SpecIdEditor';

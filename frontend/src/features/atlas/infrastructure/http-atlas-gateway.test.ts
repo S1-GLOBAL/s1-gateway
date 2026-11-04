@@ -499,20 +499,30 @@ describe('HttpAtlasGateway.reviewSheet (plan 0014)', () => {
   }
 
   it('asks for the workbook as a file, and saves it under the name the answer gives', async () => {
-    const { gateway, asked } = answering({ 'content-disposition': 'attachment; filename="atlas-review-2026-11-04.xlsx"' });
+    const { gateway, asked } = answering({ 'content-disposition': 'attachment; filename="atlas-spec-ids-2026-11-04.xlsx"' });
 
     const sheet = await gateway.reviewSheet();
 
     expect(asked).toEqual([{ url: '/atlas/review-sheet', responseType: 'blob' }]);
-    expect(sheet.fileName).toBe('atlas-review-2026-11-04.xlsx');
+    expect(sheet.fileName).toBe('atlas-spec-ids-2026-11-04.xlsx');
     expect(await sheet.file.text()).toBe('PK');
   });
 
   it('names the file plainly when the answer gives no name', async () => {
-    expect((await answering({}).gateway.reviewSheet()).fileName).toBe('atlas-review.xlsx');
+    expect((await answering({}).gateway.reviewSheet()).fileName).toBe('atlas-spec-ids.xlsx');
   });
 
   it('rejects with an AppError when the workbook cannot be made', async () => {
     await expect(gatewayAnswering(500, { error: { code: 'INTERNAL', message: 'Something went wrong.' } }).reviewSheet()).rejects.toBeInstanceOf(AppError);
+  });
+});
+
+describe('HttpAtlasGateway.reviewSheetLink (plan 0016)', () => {
+  it('reads where the shared review sheet is, or none', async () => {
+    const sheet = 'https://docs.google.com/spreadsheets/d/invented-sheet/edit';
+    const sent: Sent[] = [];
+    expect(await gatewayAnswering(200, { data: { url: sheet } }, sent).reviewSheetLink()).toBe(sheet);
+    expect(sent.map(({ method, url }) => [method, url])).toEqual([['get', '/atlas/review-sheet/link']]);
+    expect(await gatewayAnswering(200, { data: { url: null } }).reviewSheetLink()).toBeNull();
   });
 });

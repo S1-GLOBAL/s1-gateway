@@ -11,6 +11,7 @@ const envSchema = z.object({
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   CORS_ORIGIN: z.url().default('http://localhost:5173'),
   ACCOUNT_ADMIN_EMAILS: z.string().min(1),
+  ATLAS_REVIEW_SHEET_URL: z.url({ protocol: /^https$/, hostname: /^docs\.google\.com$/ }).optional(),
 });
 
 export interface Env {
@@ -21,6 +22,8 @@ export interface Env {
   CORS_ORIGIN: string;
   /** Lower-cased @sourceone.global addresses that may administer accounts. */
   accountAdminEmails: string[];
+  /** The shared Google Sheet the Review sheet button opens (plan 0016); null when none is set. */
+  atlasReviewSheetUrl: string | null;
 }
 
 function parseAccountAdminEmails(raw: string): Result<string[], string> {
@@ -51,6 +54,9 @@ export function parseEnv(source: Record<string, string | undefined>): Result<Env
   const admins = parseAccountAdminEmails(parsed.data.ACCOUNT_ADMIN_EMAILS);
   if (!admins.ok) return err([admins.error]);
 
-  const { ACCOUNT_ADMIN_EMAILS: _raw, ...rest } = parsed.data;
-  return ok({ ...rest, accountAdminEmails: admins.value });
+  const { ACCOUNT_ADMIN_EMAILS: _raw, ATLAS_REVIEW_SHEET_URL: sheet, ...rest } = parsed.data;
+  if (sheet !== undefined && !new URL(sheet).pathname.startsWith('/spreadsheets/')) {
+    return err(["ATLAS_REVIEW_SHEET_URL: give the Google Sheet's address, https://docs.google.com/spreadsheets/d/…"]);
+  }
+  return ok({ ...rest, accountAdminEmails: admins.value, atlasReviewSheetUrl: sheet ?? null });
 }

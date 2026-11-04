@@ -61,7 +61,7 @@ describe('ExportReviewSheet (plan 0014)', () => {
 
     const file = await exporter.execute();
 
-    expect(file.fileName).toBe('atlas-review-2026-11-04.xlsx');
+    expect(file.fileName).toBe('atlas-spec-ids-2026-11-04.xlsx');
     expect([...file.bytes]).toEqual([1]);
     const [first, second] = report().rows;
     expect(first).toMatchObject({ row: 4, code: cup.code, outcome: 'new', source: { itemName: 'Invented PP cup', materialType: 'PP' }, flags: [] });

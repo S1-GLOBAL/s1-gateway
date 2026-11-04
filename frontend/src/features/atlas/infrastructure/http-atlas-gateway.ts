@@ -16,6 +16,7 @@ import type {
   SpecIdManufacturers as SpecIdManufacturersContract,
   SpecIdTextReading as SpecIdTextReadingContract,
   UpdateSpecIdRequest,
+  ReviewSheetLink as ReviewSheetLinkContract,
 } from '@contracts/atlas';
 import type { ApiErrorBody, DataEnvelope } from '@contracts/envelope';
 import { isAxiosError, type AxiosInstance } from 'axios';
@@ -47,6 +48,15 @@ export class HttpAtlasGateway implements AtlasGateway {
 
   constructor(http: AxiosInstance) {
     this.http = http;
+  }
+
+  async reviewSheetLink(): Promise<string | null> {
+    try {
+      const response = await this.http.get<DataEnvelope<ReviewSheetLinkContract>>('/atlas/review-sheet/link');
+      return response.data.data.url;
+    } catch (error) {
+      throw toAppError(error);
+    }
   }
 
   async reviewSheet(): Promise<ReviewSheet> {
@@ -344,8 +354,8 @@ function toSpecIdManufacturer(contract: SpecIdManufacturerContract): SpecIdManuf
   };
 }
 
-/** The file name a download says to save under, `attachment; filename="atlas-review-2026-11-04.xlsx"`; a plain one when it says none. */
+/** The file name a download says to save under, `attachment; filename="atlas-spec-ids-2026-11-04.xlsx"`; a plain one when it says none. */
 function fileNameOf(disposition: unknown): string {
   const named = typeof disposition === 'string' ? /filename="([^"]+)"/.exec(disposition)?.[1] : undefined;
-  return named ?? 'atlas-review.xlsx';
+  return named ?? 'atlas-spec-ids.xlsx';
 }

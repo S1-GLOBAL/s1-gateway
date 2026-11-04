@@ -191,15 +191,17 @@ describe('codes in reading order (plan 0015)', () => {
   });
 });
 
-describe('ExcelReviewSheetWriter (plan 0014)', () => {
-  it('writes the same workbook as bytes, a Spec ID saved in Atlas with no workbook row', async () => {
+describe('ExcelReviewSheetWriter (plan 0014, plan 0016)', () => {
+  it('writes the Spec IDs sheet alone as bytes, a Spec ID saved in Atlas in its group with no row numbers', async () => {
     const byHand = line({ row: 0, itemName: 'Invented lid, saved by hand', outcome: 'saved in Atlas', code: 'A1B4' });
     const bytes = await new ExcelReviewSheetWriter().toBytes({ ...REPORT, rows: [...REPORT.rows, byHand] });
 
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(Buffer.from(bytes) as unknown as ExcelJS.Buffer);
-    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(['How to read this', 'Rows', 'Spec IDs', 'Needs a look', 'Dictionary']);
-    const last = (workbook.getWorksheet('Rows') as ExcelJS.Worksheet).getRow(7);
-    expect([last.getCell(1).value, last.getCell(2).value, last.getCell(10).value]).toEqual(['', 'Invented lid, saved by hand', 'saved in Atlas']);
+    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(['Spec IDs']);
+    const sheet = workbook.getWorksheet('Spec IDs') as ExcelJS.Worksheet;
+    // A1B4 is the first group: its divider, then the lid.
+    const lid = sheet.getRow(3);
+    expect([lid.getCell(1).value, lid.getCell(4).value, lid.getCell(5).value, lid.getCell(6).value]).toEqual(['A1B4', 0, '', 'Invented lid, saved by hand']);
   });
 });

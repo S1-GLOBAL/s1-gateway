@@ -36,6 +36,7 @@ const atlasGateway: AtlasGateway = {
   setManufacturerStage: pending,
   library: async () => ({ items: [], page: 1, pageSize: 20, total: 0 }),
   reviewSheet: () => new Promise(() => undefined),
+  reviewSheetLink: async () => null,
 };
 
 /** No suggestion waits, unless a test says otherwise. */
