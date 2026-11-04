@@ -29,10 +29,12 @@ export function createAtlasRouter(controller: AtlasController): Router {
 
 /**
  * Atlas routes only admins may call, mounted behind the admin gate (ADR 0027):
- * setting or clearing a manufacturer's stage on a Spec ID (#57).
+ * setting or clearing a manufacturer's stage on a Spec ID (#57), and syncing
+ * the shared review sheet now (plan 0016).
  */
 export function createAtlasAdminRouter(controller: AtlasController): Router {
   const router = Router();
   router.put('/saved/:id/manufacturers/:manufacturerId/stage', controller.setManufacturerStage);
+  router.post('/review-sheet/sync', controller.syncReviewSheet);
   return router;
 }

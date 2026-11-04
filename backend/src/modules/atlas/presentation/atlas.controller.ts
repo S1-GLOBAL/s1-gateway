@@ -10,6 +10,7 @@ import type {
   SpecIdManufacturer,
   SpecIdManufacturers,
   ReviewSheetLink,
+  ReviewSheetSync,
   SpecIdTextReading,
 } from '../../../contracts/atlas.js';
 import type { UseCase } from '../../../shared/application/use-case.js';
@@ -40,7 +41,7 @@ import type {
   UpdateSpecIdInput,
 } from '../application/atlas.dto.js';
 import type { ReviewSheetFile } from '../application/export-review-sheet.js';
-import type { ReviewSheetLinkDto } from '../application/get-review-sheet-link.js';
+import type { ReviewSheetLinkDto, ReviewSheetSyncDto } from '../application/get-review-sheet-link.js';
 import { ManufacturerNotFoundError } from '../domain/sourcing/sourcing.errors.js';
 import {
   SpecIdNotFoundError,
@@ -127,9 +128,18 @@ export class AtlasController {
     private readonly manufacturerUseCases: ManufacturerUseCases,
     private readonly exportReviewSheet: UseCase<void, ReviewSheetFile>,
     private readonly getReviewSheetLink: UseCase<void, ReviewSheetLinkDto>,
+    private readonly syncReviewSheetNow: UseCase<void, ReviewSheetSyncDto | null> = { execute: async () => null },
   ) {}
 
-  /** Where the shared review sheet is (plan 0016), or null when none is set. */
+  /** An admin's Sync now (plan 0016): the shared sheet synced at once, and how it went. 404 when Atlas does not keep it. */
+  syncReviewSheet = async (_req: Request, res: Response): Promise<void> => {
+    const status = await this.syncReviewSheetNow.execute();
+    if (status === null) throw new HttpError(404, 'NOT_FOUND', 'Atlas does not keep a shared review sheet in step.');
+    const sync: ReviewSheetSync = status;
+    sendData(res, 200, sync);
+  };
+
+  /** Where the shared review sheet is (plan 0016), or null when none is set, and how its sync stands. */
   reviewSheetLink = async (_req: Request, res: Response): Promise<void> => {
     const link: ReviewSheetLink = await this.getReviewSheetLink.execute();
     sendData(res, 200, link);

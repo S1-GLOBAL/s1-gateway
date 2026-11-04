@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouteBoundary } from '@/app/shell/RouteBoundary';
+import { AccountsGatewayProvider } from '@/features/accounts';
 import { AtlasGatewayProvider, SuggestionsGatewayProvider, type AtlasGateway, type SuggestionsGateway } from '@/features/atlas';
 import {
   gatewayWith,
@@ -11,6 +12,7 @@ import {
   savedFor,
 } from '@/features/atlas/application/testing/atlas-fixtures';
 import { AppError } from '@/shared/application/app-error';
+import { account, fakeAccountsGateway } from '@/test/fake-accounts-gateway';
 import { AtlasPage } from './AtlasPage';
 import { AtlasPageSkeleton } from './AtlasPageSkeleton';
 import { LAST_SEARCH_KEY } from './last-search';
@@ -37,11 +39,12 @@ const suggestions: SuggestionsGateway = {
   withdraw: pending,
 };
 
-function renderPage(overrides: Partial<AtlasGateway> = {}, at = '/atlas') {
+function renderPage(overrides: Partial<AtlasGateway> = {}, at = '/atlas', { isAdmin = false }: { isAdmin?: boolean } = {}) {
   const library = overrides.library ?? vi.fn<AtlasGateway['library']>(async () => EMPTY);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
+      <AccountsGatewayProvider gateway={fakeAccountsGateway({ me: async () => account({ isAdmin }) })}>
       <AtlasGatewayProvider gateway={gatewayWith({ dictionary: async () => s1Dictionary, ...overrides, library })}>
         <SuggestionsGatewayProvider gateway={suggestions}>
           <MemoryRouter initialEntries={[at]}>
@@ -52,6 +55,7 @@ function renderPage(overrides: Partial<AtlasGateway> = {}, at = '/atlas') {
           </MemoryRouter>
         </SuggestionsGatewayProvider>
       </AtlasGatewayProvider>
+      </AccountsGatewayProvider>
     </QueryClientProvider>,
   );
   return library;

@@ -5,20 +5,28 @@ import { AppError } from '@/shared/application/app-error';
 import type { AtlasGateway } from '../application/atlas-gateway';
 import { AtlasGatewayProvider } from '../application/atlas-gateway-context';
 import { gatewayWith } from '../application/testing/atlas-fixtures';
+import type { ReviewSheetSync } from '../domain/review-sheet';
 import { ReviewSheetActions } from './ReviewSheetActions';
 
 /** An invented address: never the shared sheet's own. */
 const SHARED_SHEET = 'https://docs.google.com/spreadsheets/d/invented-sheet/edit';
 
-function renderActions(overrides: Partial<AtlasGateway>) {
+function renderActions(overrides: Partial<AtlasGateway>, { canSync = false }: { canSync?: boolean } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <AtlasGatewayProvider gateway={gatewayWith(overrides)}>
-        <ReviewSheetActions />
+        <ReviewSheetActions canSync={canSync} />
       </AtlasGatewayProvider>
     </QueryClientProvider>,
   );
+}
+
+/** Synced at 08:00 today, in the reader's own zone. */
+function syncedAt(hours: number, minutes = 0): ReviewSheetSync {
+  const at = new Date();
+  at.setHours(hours, minutes, 0, 0);
+  return { state: 'idle', lastSyncedAt: at, failure: null };
 }
 
 describe('ReviewSheetActions (plan 0016)', () => {
@@ -37,7 +45,7 @@ describe('ReviewSheetActions (plan 0016)', () => {
   });
 
   it('opens the shared review sheet in a new tab', async () => {
-    renderActions({ reviewSheetLink: async () => SHARED_SHEET });
+    renderActions({ reviewSheetLink: async () => ({ url: SHARED_SHEET, sync: null }) });
 
     const link = await screen.findByRole('link', { name: 'Review sheet (opens in a new tab)' });
 
@@ -47,12 +55,13 @@ describe('ReviewSheetActions (plan 0016)', () => {
   });
 
   it('offers no Review sheet until the host sets one, and still the Spec IDs', async () => {
-    const reviewSheetLink = vi.fn(async () => null);
+    const reviewSheetLink = vi.fn(async () => ({ url: null, sync: null }));
     renderActions({ reviewSheetLink });
 
     await waitFor(() => expect(reviewSheetLink).toHaveBeenCalled());
     expect(screen.queryByRole('link', { name: /Review sheet/ })).toBeNull();
     expect(screen.getByRole('button', { name: 'Download Spec IDs' })).toBeTruthy();
+    expect(screen.queryByText(/Sheet/)).toBeNull();
   });
 
   it("downloads the Spec IDs sheet, dated by the reader's own day, not the server's", async () => {
@@ -79,5 +88,44 @@ describe('ReviewSheetActions (plan 0016)', () => {
 
     expect((await screen.findByRole('alert')).textContent).toBe('The Spec IDs sheet could not be made. Try again.');
     expect(clicked).toEqual([]);
+  });
+
+  it('says when the shared sheet last synced, and offers no Sync now to staff', async () => {
+    renderActions({ reviewSheetLink: async () => ({ url: SHARED_SHEET, sync: syncedAt(8, 5) }) });
+
+    expect(await screen.findByText('Sheet synced 08:05')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Sync now' })).toBeNull();
+  });
+
+  it("lets an admin sync the sheet now, and shows the sync's answer", async () => {
+    const syncReviewSheet = vi.fn(async () => syncedAt(9, 30));
+    renderActions({ reviewSheetLink: async () => ({ url: SHARED_SHEET, sync: syncedAt(8) }), syncReviewSheet }, { canSync: true });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sync now' }));
+
+    expect(await screen.findByText('Sheet synced 09:30')).toBeTruthy();
+    expect(syncReviewSheet).toHaveBeenCalledTimes(1);
+  });
+
+  it('tells an admin why the last sync failed, and staff only that it will be tried again', async () => {
+    const failed: ReviewSheetSync = { ...syncedAt(8), failure: { at: syncedAt(8, 10).lastSyncedAt as Date, message: 'Share it with Atlas as an Editor.' } };
+    renderActions({ reviewSheetLink: async () => ({ url: SHARED_SHEET, sync: failed }) }, { canSync: true });
+    expect(await screen.findByText('Sheet sync failed at 08:10. Share it with Atlas as an Editor.')).toBeTruthy();
+  });
+
+  it('says when Sync now itself could not reach the API', async () => {
+    renderActions(
+      {
+        reviewSheetLink: async () => ({ url: SHARED_SHEET, sync: syncedAt(8) }),
+        syncReviewSheet: async () => {
+          throw new AppError('INTERNAL', 'Something went wrong.');
+        },
+      },
+      { canSync: true },
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sync now' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe('The sheet could not be synced. Try again.');
   });
 });

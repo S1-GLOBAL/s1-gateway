@@ -31,7 +31,11 @@ const app = composeApp({
   cookieSecure: env.NODE_ENV === 'production',
   requestLogger: createRequestLogger(pino),
   reviewSheetUrl: env.atlasReviewSheetUrl,
+  reviewSheetSync: env.atlasReviewSheetSync,
 });
+if (env.atlasReviewSheetSync !== null) {
+  logger.info('Keeping the shared review sheet in step', { serviceAccount: env.atlasReviewSheetSync.clientEmail });
+}
 
 const server = app.listen(env.PORT, () => {
   logger.info(`s1-gateway API listening on http://localhost:${env.PORT}`, { env: env.NODE_ENV });

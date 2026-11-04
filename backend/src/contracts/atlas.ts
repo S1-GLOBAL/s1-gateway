@@ -486,7 +486,24 @@ export interface DictionaryCount {
   count: number;
 }
 
-/** `GET /atlas/review-sheet/link`: the shared Google Sheet the codes are reviewed in (plan 0016); null when none is set. */
+/**
+ * How the shared review sheet's sync stands (plan 0016): idle, a change
+ * waiting a minute to be synced, or syncing now; when it last synced since the
+ * API started; and the last sync's failure, in words fit to show staff.
+ */
+export interface ReviewSheetSync {
+  state: 'idle' | 'waiting' | 'syncing';
+  /** ISO 8601; null before the first sync since the API started. */
+  lastSyncedAt: string | null;
+  failure: { at: string; message: string } | null;
+}
+
+/**
+ * `GET /atlas/review-sheet/link`: the shared Google Sheet the codes are
+ * reviewed in, or null when none is set; and its sync, or null when Atlas
+ * does not keep it in step (plan 0016).
+ */
 export interface ReviewSheetLink {
   url: string | null;
+  sync: ReviewSheetSync | null;
 }

@@ -4,7 +4,9 @@ import { FixedClock, RecordingLogger, SequentialIdGenerator } from '../../../sha
 import { createApp } from '../../../shared/presentation/http/create-app.js';
 import { DecodeSpecId } from '../application/decode-spec-id.js';
 import { ExportReviewSheet } from '../application/export-review-sheet.js';
-import { GetReviewSheetLink } from '../application/get-review-sheet-link.js';
+import { GetReviewSheetLink, SyncReviewSheetNow } from '../application/get-review-sheet-link.js';
+import type { ReviewSheetSyncScheduler } from '../application/review-sheet-sync-scheduler.js';
+import { LibraryReviewReport } from '../application/library-review-report.js';
 import { InMemoryImportedRowRepository } from '../application/testing/in-memory-imported-row-repository.js';
 import { EncodeSpecId } from '../application/encode-spec-id.js';
 import { FindSimilarSpecIds } from '../application/find-similar-spec-ids.js';
@@ -23,7 +25,7 @@ import { InMemorySourcingRepository } from '../application/testing/in-memory-sou
 import { InMemorySpecIdRepository } from '../application/testing/in-memory-spec-id-repository.js';
 import { ILLUSTRATIVE as ILLUSTRATIVE_DOTTED, ILLUSTRATIVE_LONG, ILLUSTRATIVE_S1, withSlot } from '../domain/testing/spec-id-codes.js';
 import { AtlasController } from './atlas.controller.js';
-import { createAtlasRouter } from './atlas.routes.js';
+import { createAtlasAdminRouter, createAtlasRouter } from './atlas.routes.js';
 import { CAPACITY_UNIT, COLOUR_CLARITY, HANDLE, LID_OPENING, MATERIAL, PRINT, PRODUCT_TYPE, PROFILE, SHAPE, WALL, WINDOW, WRAP } from '../domain/options.js';
 
 const ILLUSTRATIVE = 'A1B4D1E1F1-H90N33';
@@ -44,7 +46,10 @@ const ZIP = [0x50, 0x4b, 0x03, 0x04];
 /** An invented address: never the shared sheet's own. */
 const SHARED_SHEET = 'https://docs.google.com/spreadsheets/d/invented-sheet/edit';
 
-function setup() {
+/** The shared sheet's sync, as a test sees it: its status, and Sync now. */
+type FakeSync = Pick<ReviewSheetSyncScheduler, 'status' | 'syncNow'>;
+
+function setup(sync: FakeSync | null = null) {
   const dictionaries = new InMemoryDictionaryRepository();
   const specIds = new InMemorySpecIdRepository();
   specIds.nameSaver(STAFF.id, STAFF.fullName);
@@ -84,12 +89,16 @@ function setup() {
       ),
     },
     // The workbook's own bytes are ExcelReviewSheetWriter's to test: these are a zip's first four.
-    new ExportReviewSheet(dictionaries, specIds, new InMemoryImportedRowRepository(), { toBytes: async () => new Uint8Array(ZIP) }, new FixedClock(new Date('2026-11-04T08:00:00.000Z'))),
-    new GetReviewSheetLink(SHARED_SHEET),
+    new ExportReviewSheet(new LibraryReviewReport(dictionaries, specIds, new InMemoryImportedRowRepository()), { toBytes: async () => new Uint8Array(ZIP) }, new FixedClock(new Date('2026-11-04T08:00:00.000Z'))),
+    new GetReviewSheetLink(SHARED_SHEET, sync),
+    new SyncReviewSheetNow(sync),
   );
-  // Atlas route shape only — production mounts Atlas behind the session gate.
+  // Atlas route shape only — production mounts Atlas behind the session gate, and its admin routes behind the admin gate.
   return createApp({
-    modules: [{ path: '/atlas', router: createAtlasRouter(controller), access: 'public' }],
+    modules: [
+      { path: '/atlas', router: createAtlasRouter(controller), access: 'public' },
+      { path: '/atlas', router: createAtlasAdminRouter(controller), access: 'public' },
+    ],
     logger: new RecordingLogger(),
     corsOrigin: 'http://localhost:5173',
   });
@@ -126,10 +135,48 @@ describe('GET /api/v1/atlas/review-sheet (plan 0014)', () => {
 });
 
 describe('GET /api/v1/atlas/review-sheet/link (plan 0016)', () => {
-  it('answers where the shared review sheet is', async () => {
+  it('answers where the shared review sheet is, and no sync when Atlas does not keep it', async () => {
     const response = await request(app).get('/api/v1/atlas/review-sheet/link');
     expect(response.status).toBe(200);
-    expect(response.body.data).toEqual({ url: SHARED_SHEET });
+    expect(response.body.data).toEqual({ url: SHARED_SHEET, sync: null });
+  });
+
+  it('answers how the sync stands when Atlas keeps the sheet', async () => {
+    const failedAt = new Date('2026-11-04T08:05:00.000Z');
+    const synced = setup({
+      status: () => ({ state: 'waiting', lastSyncedAt: new Date('2026-11-04T08:00:00.000Z'), failure: { at: failedAt, message: 'Google Sheets is busy.' } }),
+      syncNow: async () => {
+        throw new Error('not called');
+      },
+    });
+    const response = await request(synced).get('/api/v1/atlas/review-sheet/link');
+    expect(response.body.data).toEqual({
+      url: SHARED_SHEET,
+      sync: { state: 'waiting', lastSyncedAt: '2026-11-04T08:00:00.000Z', failure: { at: '2026-11-04T08:05:00.000Z', message: 'Google Sheets is busy.' } },
+    });
+  });
+});
+
+describe('POST /api/v1/atlas/review-sheet/sync (plan 0016)', () => {
+  it('syncs now and answers how it went', async () => {
+    let asked = 0;
+    const synced = setup({
+      status: () => ({ state: 'idle', lastSyncedAt: null, failure: null }),
+      syncNow: async () => {
+        asked += 1;
+        return { state: 'idle', lastSyncedAt: new Date('2026-11-04T09:00:00.000Z'), failure: null };
+      },
+    });
+    const response = await request(synced).post('/api/v1/atlas/review-sheet/sync');
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual({ state: 'idle', lastSyncedAt: '2026-11-04T09:00:00.000Z', failure: null });
+    expect(asked).toBe(1);
+  });
+
+  it('answers 404 when Atlas does not keep a shared sheet', async () => {
+    const response = await request(app).post('/api/v1/atlas/review-sheet/sync');
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe('NOT_FOUND');
   });
 });
 

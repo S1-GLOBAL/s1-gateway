@@ -17,12 +17,14 @@ import type {
   SpecIdTextReading as SpecIdTextReadingContract,
   UpdateSpecIdRequest,
   ReviewSheetLink as ReviewSheetLinkContract,
+  ReviewSheetSync as ReviewSheetSyncContract,
 } from '@contracts/atlas';
 import type { ApiErrorBody, DataEnvelope } from '@contracts/envelope';
 import { isAxiosError, type AxiosInstance } from 'axios';
 import type { AppError } from '@/shared/application/app-error';
 import { toAppError } from '@/shared/infrastructure/to-app-error';
 import type { AtlasGateway, ReviewSheet } from '../application/atlas-gateway';
+import type { ReviewSheetLink, ReviewSheetSync } from '../domain/review-sheet';
 import { SpecIdChangedError } from '../application/spec-id-changed-error';
 import { SpecIdExistsError } from '../application/spec-id-exists-error';
 import type {
@@ -50,10 +52,20 @@ export class HttpAtlasGateway implements AtlasGateway {
     this.http = http;
   }
 
-  async reviewSheetLink(): Promise<string | null> {
+  async reviewSheetLink(): Promise<ReviewSheetLink> {
     try {
       const response = await this.http.get<DataEnvelope<ReviewSheetLinkContract>>('/atlas/review-sheet/link');
-      return response.data.data.url;
+      const { url, sync } = response.data.data;
+      return { url, sync: sync === null ? null : toSheetSync(sync) };
+    } catch (error) {
+      throw toAppError(error);
+    }
+  }
+
+  async syncReviewSheet(): Promise<ReviewSheetSync> {
+    try {
+      const response = await this.http.post<DataEnvelope<ReviewSheetSyncContract>>('/atlas/review-sheet/sync');
+      return toSheetSync(response.data.data);
     } catch (error) {
       throw toAppError(error);
     }
@@ -358,4 +370,13 @@ function toSpecIdManufacturer(contract: SpecIdManufacturerContract): SpecIdManuf
 function fileNameOf(disposition: unknown): string {
   const named = typeof disposition === 'string' ? /filename="([^"]+)"/.exec(disposition)?.[1] : undefined;
   return named ?? 'atlas-spec-ids.xlsx';
+}
+
+/** The shared sheet's sync, its times as dates (plan 0016). */
+function toSheetSync(sync: ReviewSheetSyncContract): ReviewSheetSync {
+  return {
+    state: sync.state,
+    lastSyncedAt: sync.lastSyncedAt === null ? null : new Date(sync.lastSyncedAt),
+    failure: sync.failure === null ? null : { at: new Date(sync.failure.at), message: sync.failure.message },
+  };
 }

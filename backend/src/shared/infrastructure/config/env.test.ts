@@ -18,6 +18,7 @@ describe('parseEnv', () => {
         CORS_ORIGIN: 'http://localhost:5173',
         accountAdminEmails: ['admin@sourceone.global'],
         atlasReviewSheetUrl: null,
+        atlasReviewSheetSync: null,
       },
     });
   });
@@ -31,6 +32,46 @@ describe('parseEnv', () => {
       const refused = parseEnv({ ...required, ATLAS_REVIEW_SHEET_URL: other });
       expect(!refused.ok && refused.error.some((line) => line.startsWith('ATLAS_REVIEW_SHEET_URL'))).toBe(true);
     }
+  });
+
+  describe('ATLAS_REVIEW_SHEET_SYNC_KEY (plan 0016)', () => {
+    const sheet = 'https://docs.google.com/spreadsheets/d/invented-sheet_1/edit#gid=0';
+    // An invented key: its private key is a placeholder, never a real one.
+    const privateKey = ['-----BEGIN PRIVATE KEY-----', 'invented', '-----END PRIVATE KEY-----', ''].join('\n');
+    const keyFile = JSON.stringify({
+      type: 'service_account',
+      client_email: 'atlas-sheet-sync@invented-project.iam.gserviceaccount.com',
+      private_key: privateKey,
+    });
+    const config = {
+      spreadsheetId: 'invented-sheet_1',
+      clientEmail: 'atlas-sheet-sync@invented-project.iam.gserviceaccount.com',
+      privateKey,
+    };
+
+    it('reads the key file as text, or in base64, with the sheet it syncs', () => {
+      for (const given of [keyFile, Buffer.from(keyFile).toString('base64')]) {
+        const read = parseEnv({ ...required, ATLAS_REVIEW_SHEET_URL: sheet, ATLAS_REVIEW_SHEET_SYNC_KEY: given });
+        expect(read.ok && read.value.atlasReviewSheetSync).toEqual(config);
+      }
+    });
+
+    it("needs the sheet's address", () => {
+      const read = parseEnv({ ...required, ATLAS_REVIEW_SHEET_SYNC_KEY: keyFile });
+      expect(!read.ok && read.error[0]).toMatch(/^ATLAS_REVIEW_SHEET_SYNC_KEY: set ATLAS_REVIEW_SHEET_URL/);
+    });
+
+    it("refuses what is not a service account's key, and never quotes it", () => {
+      const notKeys = ['not a key', Buffer.from('{"type":"authorized_user","client_secret":"invented-secret"}').toString('base64')];
+      for (const given of notKeys) {
+        const read = parseEnv({ ...required, ATLAS_REVIEW_SHEET_URL: sheet, ATLAS_REVIEW_SHEET_SYNC_KEY: given });
+        expect(read.ok).toBe(false);
+        const said = read.ok ? '' : read.error.join(' ');
+        expect(said.startsWith('ATLAS_REVIEW_SHEET_SYNC_KEY')).toBe(true);
+        expect(said).not.toContain('invented-secret');
+        expect(said).not.toContain(given);
+      }
+    });
   });
 
   it('reads PORT as a number', () => {
