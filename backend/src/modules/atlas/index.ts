@@ -1,5 +1,6 @@
 import type { Clock } from '../../shared/application/ports/clock.js';
 import type { IdGenerator } from '../../shared/application/ports/id-generator.js';
+import type { Logger } from '../../shared/application/ports/logger.js';
 import type { Database } from '../../shared/infrastructure/database/connection.js';
 import type { HttpModule } from '../../shared/presentation/http/http-module.js';
 import { requireAuth } from '../accounts/index.js';
@@ -32,7 +33,12 @@ import { DrizzleSourcingRepository } from './infrastructure/drizzle-sourcing-rep
 import { DrizzleSpecIdRepository } from './infrastructure/drizzle-spec-id-repository.js';
 import { DrizzleSuggestionRepository } from './infrastructure/drizzle-suggestion-repository.js';
 import { ExportReviewSheet } from './application/export-review-sheet.js';
-import { GetReviewSheetLink } from './application/get-review-sheet-link.js';
+import { GetReviewSheetLink, SyncReviewSheetNow } from './application/get-review-sheet-link.js';
+import { LibraryReviewReport } from './application/library-review-report.js';
+import { ReviewSheetSyncScheduler, thenSync } from './application/review-sheet-sync-scheduler.js';
+import { SyncReviewSheet } from './application/sync-review-sheet.js';
+import { GoogleAccessToken } from './infrastructure/google-access-token.js';
+import { GoogleReviewSpreadsheet } from './infrastructure/google-review-spreadsheet.js';
 import { DrizzleImportedRowRepository } from './infrastructure/drizzle-imported-row-repository.js';
 import { ExcelReviewSheetWriter } from './infrastructure/excel-review-workbook.js';
 import { AtlasController } from './presentation/atlas.controller.js';
@@ -49,6 +55,10 @@ export interface AtlasModuleDependencies {
   ids: IdGenerator;
   /** The shared Google Sheet the Review sheet button opens (plan 0016); null when none is set. */
   reviewSheetUrl?: string | null;
+  /** Keeps the shared sheet in step with the library (plan 0016): its id and the service account that writes to it; null when Atlas does not. */
+  reviewSheetSync?: { spreadsheetId: string; clientEmail: string; privateKey: string } | null;
+  /** Where a sync says how it went. Needed when `reviewSheetSync` is set. */
+  logger?: Logger;
 }
 
 /**
@@ -62,11 +72,13 @@ export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule[] {
   const specIds = new DrizzleSpecIdRepository(deps.db);
   const sourcing = new DrizzleSourcingRepository(deps.db);
   const suggestions = new DrizzleSuggestionRepository(deps.db);
+  const review = new LibraryReviewReport(dictionaries, specIds, new DrizzleImportedRowRepository(deps.db));
+  const sync = reviewSheetSyncOf(deps, review);
   const controller = new AtlasController(
     new GetDictionary(dictionaries),
     new DecodeSpecId(dictionaries),
     new EncodeSpecId(dictionaries),
-    new SaveSpecId(dictionaries, specIds, sourcing, deps.clock, deps.ids),
+    thenSync(new SaveSpecId(dictionaries, specIds, sourcing, deps.clock, deps.ids), sync),
     new FindSpecIdByCode(dictionaries, specIds, sourcing),
     new FindSimilarSpecIds(dictionaries, specIds, sourcing),
     (req) => {
@@ -75,7 +87,7 @@ export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule[] {
     },
     {
       getSaved: new GetSavedSpecId(dictionaries, specIds, sourcing),
-      update: new UpdateSpecId(dictionaries, specIds, sourcing, deps.clock, deps.ids),
+      update: thenSync(new UpdateSpecId(dictionaries, specIds, sourcing, deps.clock, deps.ids), sync),
       history: new GetSpecIdHistory(dictionaries, specIds),
       library: new ListSavedSpecIds(dictionaries, specIds, sourcing),
     },
@@ -84,8 +96,9 @@ export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule[] {
       list: new GetSpecIdManufacturers(specIds, sourcing),
       setStage: new SetManufacturerStage(specIds, sourcing, deps.clock, deps.ids),
     },
-    new ExportReviewSheet(dictionaries, specIds, new DrizzleImportedRowRepository(deps.db), new ExcelReviewSheetWriter(), deps.clock),
-    new GetReviewSheetLink(deps.reviewSheetUrl ?? null),
+    new ExportReviewSheet(review, new ExcelReviewSheetWriter(), deps.clock),
+    new GetReviewSheetLink(deps.reviewSheetUrl ?? null, sync),
+    new SyncReviewSheetNow(sync),
   );
   const suggestionsController = new DictionarySuggestionsController(
     {
@@ -96,13 +109,9 @@ export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule[] {
       get: new GetDictionarySuggestion(dictionaries, suggestions, specIds),
       countWaiting: new CountWaitingSuggestions(suggestions),
       usage: new GetDictionaryUsage(specIds),
-      approve: new ApproveDictionarySuggestion(
-        dictionaries,
-        specIds,
-        suggestions,
-        new DrizzleDictionaryChangeStore(deps.db),
-        deps.clock,
-        deps.ids,
+      approve: thenSync(
+        new ApproveDictionarySuggestion(dictionaries, specIds, suggestions, new DrizzleDictionaryChangeStore(deps.db), deps.clock, deps.ids),
+        sync,
       ),
       reject: new RejectDictionarySuggestion(suggestions, deps.clock, deps.ids),
     },
@@ -117,4 +126,19 @@ export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule[] {
     { path: '/atlas/dictionary', router: createDictionarySuggestionsAdminRouter(suggestionsController), access: 'admin' },
     { path: '/atlas', router: createAtlasAdminRouter(controller), access: 'admin' },
   ];
+}
+
+/**
+ * The shared review sheet's sync (plan 0016), when its key is set: a minute
+ * after the API starts, so a change made while it was down, or by an import,
+ * reaches the sheet; then a minute after each change.
+ */
+function reviewSheetSyncOf(deps: AtlasModuleDependencies, review: LibraryReviewReport): ReviewSheetSyncScheduler | null {
+  const config = deps.reviewSheetSync ?? null;
+  if (config === null) return null;
+  if (deps.logger === undefined) throw new Error('The review sheet sync needs a logger');
+  const sheet = new GoogleReviewSpreadsheet(config.spreadsheetId, new GoogleAccessToken(config), config.clientEmail);
+  const scheduler = new ReviewSheetSyncScheduler(new SyncReviewSheet(review, sheet), deps.clock, deps.logger);
+  scheduler.changed();
+  return scheduler;
 }

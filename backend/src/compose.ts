@@ -19,6 +19,8 @@ export interface AppDependencies {
   requestLogger?: RequestHandler;
   /** The shared Google Sheet the Review sheet button opens; none when left out (plan 0016). */
   reviewSheetUrl?: string | null;
+  /** Keeps the shared sheet in step with Atlas; not when left out (plan 0016). */
+  reviewSheetSync?: { spreadsheetId: string; clientEmail: string; privateKey: string } | null;
 }
 
 /** Every module, wired. `main.ts` and the end-to-end tests both build the app here. */
@@ -41,7 +43,14 @@ export function composeApp(deps: AppDependencies): Express {
       buildHealthModule(),
       ...accounts.modules,
       buildToolsModule({ db: deps.db, clock: deps.clock, ids: deps.ids }),
-      ...buildAtlasModule({ db: deps.db, clock: deps.clock, ids: deps.ids, reviewSheetUrl: deps.reviewSheetUrl ?? null }),
+      ...buildAtlasModule({
+        db: deps.db,
+        clock: deps.clock,
+        ids: deps.ids,
+        logger: deps.logger,
+        reviewSheetUrl: deps.reviewSheetUrl ?? null,
+        reviewSheetSync: deps.reviewSheetSync ?? null,
+      }),
     ],
   });
 }

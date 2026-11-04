@@ -41,7 +41,8 @@ function renderAt(path: string, getSaved: AtlasGateway['getSaved'], state?: unkn
     setManufacturerStage: pending,
     library: pending,
     reviewSheet: pending,
-    reviewSheetLink: async () => null,
+    reviewSheetLink: async () => ({ url: null, sync: null }),
+    syncReviewSheet: pending,
   };
   const router = createMemoryRouter(
     [

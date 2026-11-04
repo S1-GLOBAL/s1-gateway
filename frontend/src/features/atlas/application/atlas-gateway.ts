@@ -14,6 +14,7 @@ import type {
   SpecIdManufacturers,
   SpecIdTextReading,
 } from '../domain/atlas';
+import type { ReviewSheetLink, ReviewSheetSync } from '../domain/review-sheet';
 
 /**
  * Where the Atlas feature reads the dictionary, decodes, builds, saves, changes
@@ -54,6 +55,8 @@ export interface AtlasGateway {
   setManufacturerStage(id: string, manufacturerId: string, stage: AdminStage | null): Promise<SpecIdManufacturer>;
   /** The Spec IDs sheet of the library as it stands, to save (plan 0014, plan 0016). */
   reviewSheet(): Promise<ReviewSheet>;
-  /** The shared Google Sheet the codes are reviewed in, or null when none is set (plan 0016). */
-  reviewSheetLink(): Promise<string | null>;
+  /** The shared Google Sheet the codes are reviewed in, or none when none is set, and how its sync stands (plan 0016). */
+  reviewSheetLink(): Promise<ReviewSheetLink>;
+  /** Admins only: syncs the shared sheet now, and says how it went (plan 0016). */
+  syncReviewSheet(): Promise<ReviewSheetSync>;
 }

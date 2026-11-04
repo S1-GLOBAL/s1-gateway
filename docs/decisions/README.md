@@ -70,3 +70,4 @@ Number sequentially. Never renumber.
 | [0031](./0031-the-dictionary-is-edited-by-suggestion-and-approval.md) | The dictionary is edited in the app, by suggestion and approval | Accepted; partly superseded by 0033 |
 | [0032](./0032-spec-ids-are-written-tagged.md) | Spec IDs are written tagged: a letter and a number for each known fact | Accepted; partly superseded by 0033 |
 | [0033](./0033-dictionary-options-are-known-by-number.md) | Dictionary options are known by their number, not their letters | Accepted |
+| [0034](./0034-atlas-writes-the-shared-review-sheet-one-way.md) | Atlas writes the shared review sheet one way, owning only its own columns | Accepted |

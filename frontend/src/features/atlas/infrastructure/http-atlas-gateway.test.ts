@@ -521,8 +521,26 @@ describe('HttpAtlasGateway.reviewSheetLink (plan 0016)', () => {
   it('reads where the shared review sheet is, or none', async () => {
     const sheet = 'https://docs.google.com/spreadsheets/d/invented-sheet/edit';
     const sent: Sent[] = [];
-    expect(await gatewayAnswering(200, { data: { url: sheet } }, sent).reviewSheetLink()).toBe(sheet);
+    expect(await gatewayAnswering(200, { data: { url: sheet, sync: null } }, sent).reviewSheetLink()).toEqual({ url: sheet, sync: null });
     expect(sent.map(({ method, url }) => [method, url])).toEqual([['get', '/atlas/review-sheet/link']]);
-    expect(await gatewayAnswering(200, { data: { url: null } }).reviewSheetLink()).toBeNull();
+    expect(await gatewayAnswering(200, { data: { url: null, sync: null } }).reviewSheetLink()).toEqual({ url: null, sync: null });
+  });
+
+  it('reads how the sync stands, its times as dates', async () => {
+    const sync = { state: 'idle', lastSyncedAt: '2026-11-04T08:00:00.000Z', failure: { at: '2026-11-04T07:00:00.000Z', message: 'Google Sheets is busy.' } };
+    expect((await gatewayAnswering(200, { data: { url: null, sync } }).reviewSheetLink()).sync).toEqual({
+      state: 'idle',
+      lastSyncedAt: new Date('2026-11-04T08:00:00.000Z'),
+      failure: { at: new Date('2026-11-04T07:00:00.000Z'), message: 'Google Sheets is busy.' },
+    });
+  });
+});
+
+describe('HttpAtlasGateway.syncReviewSheet (plan 0016)', () => {
+  it('asks for a sync now, and reads how it went', async () => {
+    const sent: Sent[] = [];
+    const gateway = gatewayAnswering(200, { data: { state: 'idle', lastSyncedAt: '2026-11-04T09:00:00.000Z', failure: null } }, sent);
+    expect(await gateway.syncReviewSheet()).toEqual({ state: 'idle', lastSyncedAt: new Date('2026-11-04T09:00:00.000Z'), failure: null });
+    expect(sent.map(({ method, url }) => [method, url])).toEqual([['post', '/atlas/review-sheet/sync']]);
   });
 });

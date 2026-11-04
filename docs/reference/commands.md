@@ -40,6 +40,21 @@ Run from the repository root unless noted.
 | Command | Does |
 |---|---|
 | `npm run atlas:import -- --workbook "<path>" --report "<path>" --as <email> [--review "<path>.xlsx"] [--write]` | Imports the verified list into the Atlas library of the database in `DATABASE_URL` ([plan 0006](../plans/0006-s2-spec-ids-and-verified-list-import.md), [ADR 0027](../decisions/0027-manufacturers-and-quotes-live-in-atlas-behind-sign-in.md)). Without `--write` it is a dry run and saves nothing. See below |
+| `npm run atlas:sheet-sync -- [--sheet "<address>"] [--write]` | Syncs the shared review sheet with the library of the database in `DATABASE_URL` once, as the API does a minute after a change ([ADR 0034](../decisions/0034-atlas-writes-the-shared-review-sheet-one-way.md)). Without `--write` it writes nothing and lists every cell a sync would change. See below |
+
+### `atlas:sheet-sync`
+
+Needs `ATLAS_REVIEW_SHEET_SYNC_KEY`, and the sheet shared with the service
+account as an Editor ([environment](./environment.md)).
+
+| Option | Means |
+|---|---|
+| `--sheet` | Optional. Another Google Sheet to sync than `ATLAS_REVIEW_SHEET_URL`, such as a copy of the shared sheet to try a sync on first |
+| `--write` | Writes the sync. Without it, a dry run: it reads the sheet, writes nothing, and lists each cell on the Rows tab a sync would change, from what to what |
+
+It prints how many lines on the Rows tab it takes as Atlas's, changes, adds
+and marks "No longer in Atlas", the columns it adds, and the tabs it writes
+whole. What it lists is Source One text: keep it out of anything public.
 
 ### `atlas:import`
 

@@ -3,6 +3,7 @@ import { FixedClock, SequentialIdGenerator } from '../../../shared/application/t
 import type { ImportedRow } from '../domain/import/imported-row.js';
 import { MATERIAL, PRODUCT_TYPE } from '../domain/options.js';
 import { ExportReviewSheet } from './export-review-sheet.js';
+import { LibraryReviewReport } from './library-review-report.js';
 import type { ImportReport } from './ports/import-report-sink.js';
 import { SaveSpecId } from './save-spec-id.js';
 import { InMemoryDictionaryRepository } from './testing/in-memory-dictionary-repository.js';
@@ -45,9 +46,7 @@ async function setup() {
   const importedRows = new InMemoryImportedRowRepository();
   const reports: ImportReport[] = [];
   const exporter = new ExportReviewSheet(
-    dictionaries,
-    specIds,
-    importedRows,
+    new LibraryReviewReport(dictionaries, specIds, importedRows),
     { toBytes: async (report) => (reports.push(report), new Uint8Array([1])) },
     new FixedClock(AT),
   );

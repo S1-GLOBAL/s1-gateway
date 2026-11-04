@@ -745,7 +745,8 @@ export function gatewayWith(overrides: Partial<AtlasGateway>): AtlasGateway {
     setManufacturerStage: pending,
     library: pending,
     reviewSheet: pending,
-    reviewSheetLink: async () => null,
+    reviewSheetLink: async () => ({ url: null, sync: null }),
+    syncReviewSheet: pending,
     ...overrides,
   };
 }

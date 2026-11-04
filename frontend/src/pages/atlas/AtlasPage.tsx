@@ -1,5 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useMe } from '@/features/accounts';
 import { AtlasLibrary, DictionarySheet, ReviewSheetActions, useDictionary } from '@/features/atlas';
 import { Button } from '@/shared/ui/Button';
 import { cn } from '@/shared/ui/cn';
@@ -25,6 +26,7 @@ export function AtlasPage() {
   const [params, setParams] = useSearchParams();
   const [dictionaryOpen, setDictionaryOpen] = useState(false);
   const { data: dictionary } = useDictionary();
+  const { data: me } = useMe();
 
   return (
     <div className="flex flex-col gap-10">
@@ -32,7 +34,7 @@ export function AtlasPage() {
       <div className="flex items-end justify-between gap-4 border-b border-border">
         <AtlasTabs tab={tab} onChange={setTab} />
         <div className="mb-2 flex items-start gap-2">
-          <ReviewSheetActions />
+          <ReviewSheetActions canSync={me.isAdmin} />
           <Button variant="secondary" onClick={() => setDictionaryOpen(true)} className="max-sm:w-10 max-sm:px-0">
             <BookOpenIcon size={16} />
             <span className="max-sm:sr-only">Dictionary</span>

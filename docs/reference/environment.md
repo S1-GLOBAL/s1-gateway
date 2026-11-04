@@ -18,6 +18,7 @@ A missing or invalid value stops the process with the variable's name.
 | `CORS_ORIGIN` | `http://localhost:5173` | The SPA's origin, allowed by CORS |
 | `ACCOUNT_ADMIN_EMAILS` | — (required) | Comma-separated `@sourceone.global` addresses: the first System Admins. When the API starts and no approved account is a System Admin, each approved account listed here becomes one; once one exists, roles change only in the app ([ADR 0030](../decisions/0030-roles-live-on-the-account.md)). `npm run db:create-admin` accepts only these. Trimmed and lower-cased at boot. Every entry must match `/^[^@]+@sourceone\.global$/` or the API refuses to start |
 | `ATLAS_REVIEW_SHEET_URL` | — (none) | The shared Google Sheet the departments review the codes in, which Atlas's **Review sheet** button opens ([plan 0016](../plans/0016-review-sheet-shared.md)). Must be `https://docs.google.com/spreadsheets/…` or the API refuses to start. Left out, the button is not shown. Given only to signed-in staff: it leads to Source One text, so it never goes in the repository |
+| `ATLAS_REVIEW_SHEET_SYNC_KEY` | — (none) | The JSON key of the Google Cloud service account that keeps the shared sheet in step with Atlas ([ADR 0034](../decisions/0034-atlas-writes-the-shared-review-sheet-one-way.md)): the file's text, or the file in base64. Needs `ATLAS_REVIEW_SHEET_URL`, and the sheet shared with the account's `client_email` as an Editor. Left out, Atlas does not sync the sheet. A secret: never in the repository, chat or a screenshot. The API refuses to start with a value that is not a service account's key, and never quotes it |
 
 ### `npm run db:create-admin` only
 
@@ -56,6 +57,7 @@ one lives, and how to change it: [Deploy to staging](../guides/deploy-to-staging
 | `CORS_ORIGIN` | Render | The Vercel staging address |
 | `ACCOUNT_ADMIN_EMAILS` | Render | Your `@sourceone.global` address(es), comma-separated: the first System Admins |
 | `ATLAS_REVIEW_SHEET_URL` | Render | The shared Google Sheet's address, as its Share dialog copies it |
+| `ATLAS_REVIEW_SHEET_SYNC_KEY` | Render | The service account's JSON key file in base64. On Windows, in PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("<path to the key>.json")) \| Set-Clipboard`, then paste. Set it only after a dry run of `atlas:sheet-sync` ([plan 0016](../plans/0016-review-sheet-shared.md#rollout-phase-2)) |
 | `PORT` | — | Set by Render; do not set it |
 | `VITE_API_URL` | — | Leave unset. `frontend/vercel.json` forwards `/api/*` to Render, so the default `/api/v1` works |
 

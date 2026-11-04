@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import ExcelJS from 'exceljs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { ImportReport, ImportReportRow } from '../application/ports/import-report-sink.js';
-import { compareCodes, ExcelReviewSheetWriter, ExcelReviewWorkbook, partsOfCode } from './excel-review-workbook.js';
+import { compareCodes, partsOfCode } from '../application/review-sheet-layout.js';
+import { ExcelReviewSheetWriter, ExcelReviewWorkbook } from './excel-review-workbook.js';
 
 let folder: string;
 beforeEach(async () => {

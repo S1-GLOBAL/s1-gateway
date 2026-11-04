@@ -123,7 +123,7 @@ describe('Atlas, composed over Postgres', () => {
 
     expect(response.status).toBe(200);
     // This app is composed with none set.
-    expect(response.body.data).toEqual({ url: null });
+    expect(response.body.data).toEqual({ url: null, sync: null });
   });
 
   it('refuses to save without a session, and saves nothing', async () => {
