@@ -64,17 +64,28 @@ export class ExcelReviewWorkbook implements ImportReportSink {
   }
 }
 
-/** The same workbook as bytes, for Atlas to hand out as a download (plan 0014). */
+/**
+ * The Spec IDs sheet alone, as bytes, for Atlas to hand out as a download
+ * (plan 0014, plan 0016): the review itself lives in the shared Google Sheet.
+ */
 export class ExcelReviewSheetWriter implements ReviewSheetWriter {
   async toBytes(report: ImportReport): Promise<Uint8Array> {
-    return new Uint8Array(await reviewWorkbook(report).xlsx.writeBuffer());
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Atlas';
+    specIdsOf(workbook, report, factKeysOf(report));
+    return new Uint8Array(await workbook.xlsx.writeBuffer());
   }
+}
+
+/** The facts any row holds, in slot order: one column each. */
+function factKeysOf(report: ImportReport): SlotKey[] {
+  return SLOTS.map(({ key }) => key).filter((key) => report.rows.some((row) => row.facts.some((fact) => fact.key === key)));
 }
 
 function reviewWorkbook(report: ImportReport): ExcelJS.Workbook {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Atlas';
-  const factKeys = SLOTS.map(({ key }) => key).filter((key) => report.rows.some((row) => row.facts.some((fact) => fact.key === key)));
+  const factKeys = factKeysOf(report);
   // Sheets appear in the order they are added: the read-me first.
   readMe(workbook, report);
   rowsOf(workbook, report, factKeys);

@@ -30,6 +30,7 @@ const app = composeApp({
   corsOrigin: env.CORS_ORIGIN,
   cookieSecure: env.NODE_ENV === 'production',
   requestLogger: createRequestLogger(pino),
+  reviewSheetUrl: env.atlasReviewSheetUrl,
 });
 
 const server = app.listen(env.PORT, () => {

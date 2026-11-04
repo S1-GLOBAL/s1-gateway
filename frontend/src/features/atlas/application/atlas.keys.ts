@@ -18,4 +18,5 @@ export const atlasKeys = {
   suggestionList: (state: 'waiting' | 'decided') => [...atlasKeys.suggestions(), 'list', state] as const,
   suggestion: (id: string) => [...atlasKeys.suggestions(), 'one', id] as const,
   waitingCount: () => [...atlasKeys.suggestions(), 'waiting-count'] as const,
+  reviewSheetLink: () => [...atlasKeys.all, 'review-sheet-link'] as const,
 };

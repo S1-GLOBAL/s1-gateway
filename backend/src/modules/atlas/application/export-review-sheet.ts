@@ -12,7 +12,7 @@ import type { ReviewSheetWriter } from './ports/review-sheet-writer.js';
 
 /** The review workbook as a file to download. */
 export interface ReviewSheetFile {
-  /** `atlas-review-2026-11-04.xlsx`. */
+  /** `atlas-spec-ids-2026-11-04.xlsx`. */
   readonly fileName: string;
   readonly bytes: Uint8Array;
 }
@@ -66,7 +66,7 @@ export class ExportReviewSheet implements UseCase<void, ReviewSheetFile> {
         dictionary.valuesOf(slot).map(({ number, meaning }) => ({ list: slotDefinition(slot).name, part: `${letterOf(slot)}${number}`, meaning })),
       ),
     };
-    return { fileName: `atlas-review-${this.clock.now().toISOString().slice(0, 10)}.xlsx`, bytes: await this.writer.toBytes(report) };
+    return { fileName: `atlas-spec-ids-${this.clock.now().toISOString().slice(0, 10)}.xlsx`, bytes: await this.writer.toBytes(report) };
   }
 }
 

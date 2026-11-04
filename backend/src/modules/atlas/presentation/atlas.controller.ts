@@ -9,6 +9,7 @@ import type {
   SpecIdLookup,
   SpecIdManufacturer,
   SpecIdManufacturers,
+  ReviewSheetLink,
   SpecIdTextReading,
 } from '../../../contracts/atlas.js';
 import type { UseCase } from '../../../shared/application/use-case.js';
@@ -39,6 +40,7 @@ import type {
   UpdateSpecIdInput,
 } from '../application/atlas.dto.js';
 import type { ReviewSheetFile } from '../application/export-review-sheet.js';
+import type { ReviewSheetLinkDto } from '../application/get-review-sheet-link.js';
 import { ManufacturerNotFoundError } from '../domain/sourcing/sourcing.errors.js';
 import {
   SpecIdNotFoundError,
@@ -124,7 +126,14 @@ export class AtlasController {
     private readonly readSpecIdText: UseCase<ReadSpecIdTextInput, ReadResult>,
     private readonly manufacturerUseCases: ManufacturerUseCases,
     private readonly exportReviewSheet: UseCase<void, ReviewSheetFile>,
+    private readonly getReviewSheetLink: UseCase<void, ReviewSheetLinkDto>,
   ) {}
+
+  /** Where the shared review sheet is (plan 0016), or null when none is set. */
+  reviewSheetLink = async (_req: Request, res: Response): Promise<void> => {
+    const link: ReviewSheetLink = await this.getReviewSheetLink.execute();
+    sendData(res, 200, link);
+  };
 
   /** The review workbook of the library, as a file to save (plan 0014). Never cached: it holds Source One text. */
   reviewSheet = async (_req: Request, res: Response): Promise<void> => {

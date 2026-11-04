@@ -1,6 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AtlasLibrary, DictionarySheet, ReviewSheetButton, useDictionary } from '@/features/atlas';
+import { AtlasLibrary, DictionarySheet, ReviewSheetActions, useDictionary } from '@/features/atlas';
 import { Button } from '@/shared/ui/Button';
 import { cn } from '@/shared/ui/cn';
 import { BookOpenIcon } from '@/shared/ui/icons';
@@ -32,7 +32,7 @@ export function AtlasPage() {
       <div className="flex items-end justify-between gap-4 border-b border-border">
         <AtlasTabs tab={tab} onChange={setTab} />
         <div className="mb-2 flex items-start gap-2">
-          <ReviewSheetButton />
+          <ReviewSheetActions />
           <Button variant="secondary" onClick={() => setDictionaryOpen(true)} className="max-sm:w-10 max-sm:px-0">
             <BookOpenIcon size={16} />
             <span className="max-sm:sr-only">Dictionary</span>

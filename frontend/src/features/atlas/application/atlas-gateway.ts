@@ -52,6 +52,8 @@ export interface AtlasGateway {
   manufacturers(id: string): Promise<SpecIdManufacturers>;
   /** Admins only: sets a manufacturer's stage on a Spec ID, or clears it with `null`. */
   setManufacturerStage(id: string, manufacturerId: string, stage: AdminStage | null): Promise<SpecIdManufacturer>;
-  /** The review workbook of the library as it stands: each imported row beside what was read from it (plan 0014). */
+  /** The Spec IDs sheet of the library as it stands, to save (plan 0014, plan 0016). */
   reviewSheet(): Promise<ReviewSheet>;
+  /** The shared Google Sheet the codes are reviewed in, or null when none is set (plan 0016). */
+  reviewSheetLink(): Promise<string | null>;
 }

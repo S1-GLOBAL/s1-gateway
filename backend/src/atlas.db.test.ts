@@ -95,7 +95,7 @@ describe('Atlas, composed over Postgres', () => {
     expect(response.body.error.code).toBe('SIGN_IN_REQUIRED');
   });
 
-  it('hands any signed-in staff the review workbook, and no one without a session (plan 0014)', async () => {
+  it('hands any signed-in staff the Spec IDs sheet, and no one without a session (plan 0014, plan 0016)', async () => {
     const refused = await request(app).get('/api/v1/atlas/review-sheet');
     expect(refused.status).toBe(401);
     expect(refused.body.error.code).toBe('SIGN_IN_REQUIRED');
@@ -107,12 +107,23 @@ describe('Atlas, composed over Postgres', () => {
       res.on('end', () => done(null, Buffer.concat(chunks)));
     });
     expect(response.status).toBe(200);
-    expect(response.headers['content-disposition']).toMatch(/^attachment; filename="atlas-review-\d{4}-\d{2}-\d{2}\.xlsx"$/);
+    expect(response.headers['content-disposition']).toMatch(/^attachment; filename="atlas-spec-ids-\d{4}-\d{2}-\d{2}\.xlsx"$/);
     const book = new ExcelJS.Workbook();
     await book.xlsx.load(response.body as unknown as ExcelJS.Buffer);
-    const rows = book.getWorksheet('Rows') as ExcelJS.Worksheet;
-    // No import yet: the one Spec ID saved here, as saved in Atlas.
-    expect(rows.getRow(3).getCell(2).value).toBe('Illustrative lid');
+    expect(book.worksheets.map((sheet) => sheet.name)).toEqual(['Spec IDs']);
+    // No import yet: the one Spec ID saved here, under its facts' divider, as saved in Atlas.
+    const sheet = book.getWorksheet('Spec IDs') as ExcelJS.Worksheet;
+    expect(sheet.getRow(3).getCell(6).value).toBe('Illustrative lid');
+  });
+
+  it('tells signed-in staff where the shared review sheet is, and no one without a session (plan 0016)', async () => {
+    expect((await request(app).get('/api/v1/atlas/review-sheet/link')).status).toBe(401);
+
+    const response = await agent.get('/api/v1/atlas/review-sheet/link');
+
+    expect(response.status).toBe(200);
+    // This app is composed with none set.
+    expect(response.body.data).toEqual({ url: null });
   });
 
   it('refuses to save without a session, and saves nothing', async () => {

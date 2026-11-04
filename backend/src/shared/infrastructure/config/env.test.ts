@@ -17,8 +17,20 @@ describe('parseEnv', () => {
         DATABASE_URL,
         CORS_ORIGIN: 'http://localhost:5173',
         accountAdminEmails: ['admin@sourceone.global'],
+        atlasReviewSheetUrl: null,
       },
     });
+  });
+
+  it('reads the shared review sheet, a Google Sheet, and refuses any other address (plan 0016)', () => {
+    const sheet = 'https://docs.google.com/spreadsheets/d/invented-sheet/edit';
+    const read = parseEnv({ ...required, ATLAS_REVIEW_SHEET_URL: sheet });
+    expect(read.ok && read.value.atlasReviewSheetUrl).toBe(sheet);
+
+    for (const other of ['https://example.com/sheet', 'http://docs.google.com/spreadsheets/d/invented-sheet', 'https://docs.google.com/document/d/invented-doc']) {
+      const refused = parseEnv({ ...required, ATLAS_REVIEW_SHEET_URL: other });
+      expect(!refused.ok && refused.error.some((line) => line.startsWith('ATLAS_REVIEW_SHEET_URL'))).toBe(true);
+    }
   });
 
   it('reads PORT as a number', () => {
