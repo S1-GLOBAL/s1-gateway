@@ -143,9 +143,18 @@ describe('ExcelReviewWorkbook (plan 0013)', () => {
       'A17B24  ·  1 Spec ID, 1 row',
       'A17B24-K16L14',
     ]);
-    // Each Spec ID folds under its divider; a divider does not fold.
-    expect([2, 3, 4, 5, 6].map((index) => sheet.getRow(index).outlineLevel ?? 0)).toEqual([0, 1, 1, 0, 1]);
     expect(sheet.getRow(3).getCell(3).value).toBe('');
+    // A divider holds its facts, so a filter on Facts keeps it with its group, and is shaded across the row.
+    expect([2, 3, 4].map((index) => sheet.getRow(index).getCell(2).value)).toEqual(['A3B25', 'A3B25', 'A3B25']);
+    const lastColumn = (sheet.getRow(1).values as unknown[]).length - 1;
+    expect(sheet.getRow(2).getCell(lastColumn).fill).toMatchObject({ type: 'pattern', fgColor: { argb: 'FFD6E0EC' } });
+  });
+
+  it('folds and merges nothing, so Google Sheets opens every Spec ID in sight, and can sort and filter them', async () => {
+    const sheet = (await written()).getWorksheet('Spec IDs') as ExcelJS.Worksheet;
+    const rows = Array.from({ length: sheet.rowCount }, (_, index) => sheet.getRow(index + 1));
+    expect(rows.every((row) => (row.outlineLevel ?? 0) === 0 && !row.hidden)).toBe(true);
+    expect(rows.some((row) => row.getCell(2).isMerged)).toBe(false);
   });
 });
 

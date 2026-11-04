@@ -195,7 +195,7 @@ function readMe(workbook: ExcelJS.Workbook, report: ImportReport): void {
     ['Same as row N', 'This row describes exactly the same product as row N, so it shares that row\'s Spec ID and code. If the two rows are different products, the code is missing what tells them apart.'],
     ['Already saved', 'The first row of its Spec ID when the sheet comes from Atlas: the import saved its code. Rows after it read "Same as row N".'],
     ['Saved in Atlas', 'A Spec ID saved by hand in Atlas, not imported: it has no workbook row or cells, only its facts.'],
-    ['Spec IDs', 'One line per code, with the rows that share it. Look for rows whose names differ but share one code. The codes are grouped by their facts, the part before the hyphen: each group is the same product in its sizes, under a shaded divider naming it. A code with no sizes heads its group. In Excel, the + and - beside a divider fold its group.'],
+    ['Spec IDs', 'One line per code, with the rows that share it. Look for rows whose names differ but share one code. The codes are grouped by their facts, the part before the hyphen: each group is the same product in its sizes, under a shaded divider naming it. A code with no sizes heads its group. To see one group alone, filter the Facts column on its code.'],
     ['Needs a look', 'The rows most likely to be wrong, most likely first. A good place to start.'],
     ['Dictionary', 'What each number in a code means. A code is a letter and a number per fact: A is the product type, B the material, and so on; the sizes come after the hyphen. B25 is material 25, Molded fibre, bagasse. J110 is a height of 110 mm.'],
     ['Sizes', 'H top diameter, I bottom diameter, J height, K length, L width, M gusset: millimetres. N unit weight: tenths of a gram (N33 is 3.3 g). O basis weight: gsm. P thickness: micrometres. G capacity: the unit\'s number, then the amount (G112 is 12 oz).'],
@@ -253,15 +253,12 @@ function dividerOf(facts: string, members: readonly (readonly ImportReportRow[])
  * One line per code, grouped by its facts (plan 0015): every Spec ID whose
  * code begins with the same facts, with any sizes or none, under one divider
  * row that names them, the groups and their Spec IDs in code order. Each
- * line also holds its Facts and Sizes, so a filter still finds a group.
+ * line, the divider's too, holds its Facts, so a filter on Facts finds a
+ * group whole. Nothing is merged or folded: Google Sheets opens an outline
+ * folded shut, hiding every Spec ID, and cannot sort or filter merged rows.
  */
 function specIdsOf(workbook: ExcelJS.Workbook, report: ImportReport, factKeys: readonly SlotKey[]): void {
-  const sheet = workbook.addWorksheet('Spec IDs', {
-    views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }],
-    properties: { outlineLevelRow: 1 },
-  });
-  // A group's divider sits above the Spec IDs it folds.
-  sheet.properties.outlineProperties = { summaryBelow: false, summaryRight: false };
+  const sheet = workbook.addWorksheet('Spec IDs', { views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }] });
   const byCode = new Map<string, ImportReportRow[]>();
   for (const row of report.rows) if (row.code !== null) byCode.set(row.code, [...(byCode.get(row.code) ?? []), row]);
   const byFacts = new Map<string, string[]>();
@@ -281,14 +278,17 @@ function specIdsOf(workbook: ExcelJS.Workbook, report: ImportReport, factKeys: r
 
   let at = 2;
   for (const [facts, codes] of [...byFacts.entries()].sort(([a], [b]) => compareCodes(a, b))) {
+    // The divider: its words in the Code column, wrapped there, and the whole row shaded and ruled above.
     const divider = sheet.getRow(at);
     divider.getCell(1).value = dividerOf(facts, codes.map((code) => byCode.get(code) ?? []));
-    sheet.mergeCells(at, 1, at, columns.length);
-    divider.font = { bold: true };
-    divider.height = 22;
-    divider.alignment = { vertical: 'middle' };
-    divider.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BAND.group } };
-    divider.getCell(1).border = { top: { style: 'medium' }, bottom: { style: 'thin' } };
+    divider.getCell(2).value = facts;
+    for (let column = 1; column <= columns.length; column += 1) {
+      const cell = divider.getCell(column);
+      cell.font = { bold: true };
+      cell.alignment = { vertical: 'middle', wrapText: column === 1 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BAND.group } };
+      cell.border = { top: { style: 'medium' }, bottom: { style: 'thin' } };
+    }
     at += 1;
     for (const code of codes) {
       const members = byCode.get(code) ?? [];
@@ -309,12 +309,11 @@ function specIdsOf(workbook: ExcelJS.Workbook, report: ImportReport, factKeys: r
         if (fact) row.getCell(8 + offset).value = fact.meaning;
       });
       row.alignment = { vertical: 'top', wrapText: true };
-      // Folds under its divider in Excel's outline.
-      row.outlineLevel = 1;
       at += 1;
     }
   }
-  [28, 18, 16, 6, 16, 50, 10, ...factKeys.map(() => 18)].forEach((width, index) => {
+  // Wide enough for a divider's words on two lines at most.
+  [44, 18, 16, 6, 16, 50, 10, ...factKeys.map(() => 18)].forEach((width, index) => {
     sheet.getColumn(index + 1).width = width;
   });
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: at - 1, column: columns.length } };
