@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import ExcelJS from 'exceljs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { ImportReport, ImportReportRow } from '../application/ports/import-report-sink.js';
-import { ExcelReviewSheetWriter, ExcelReviewWorkbook } from './excel-review-workbook.js';
+import { compareCodes, ExcelReviewSheetWriter, ExcelReviewWorkbook, partsOfCode } from './excel-review-workbook.js';
 
 let folder: string;
 beforeEach(async () => {
@@ -122,9 +122,56 @@ describe('ExcelReviewWorkbook (plan 0013)', () => {
 
   it('lists each code once, with the rows that share it, and says when their names differ', async () => {
     const sheet = (await written()).getWorksheet('Spec IDs') as ExcelJS.Worksheet;
-    expect(sheet.rowCount).toBe(3);
-    const bowl = sheet.getRow(2);
-    expect([bowl.getCell(1).value, bowl.getCell(2).value, bowl.getCell(3).value, bowl.getCell(5).value]).toEqual(['A3B25-G120H180J45', 2, '4, 5', 'Yes']);
+    const bowl = sheet.getRow(3);
+    expect((sheet.getRow(1).values as unknown[]).slice(1, 8)).toEqual(['Code', 'Facts', 'Sizes', 'Rows', 'Row numbers', 'Item names', 'Names differ?']);
+    expect([1, 2, 3, 4, 5, 7].map((column) => bowl.getCell(column).value)).toEqual(['A3B25-G120H180J45', 'A3B25', 'G120H180J45', 2, '4, 5', 'Yes']);
+  });
+
+  it('groups the codes by their facts under a divider, a code of facts alone first in its group (plan 0015)', async () => {
+    const factsOnly = line({ row: 0, itemName: 'Invented bowl, size unknown', outcome: 'saved in Atlas', code: 'A3B25', facts: BOWL.facts.slice(0, 2) });
+    const path = join(folder, 'grouped.xlsx');
+    await new ExcelReviewWorkbook(path).write({ ...REPORT, rows: [...REPORT.rows, factsOnly] });
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.readFile(path);
+    const sheet = book.getWorksheet('Spec IDs') as ExcelJS.Worksheet;
+
+    const lines = [2, 3, 4, 5, 6].map((index) => sheet.getRow(index).getCell(1).value);
+    expect(lines).toEqual([
+      'A3B25  ·  Bowl, Molded fibre, bagasse  ·  2 Spec IDs, 2 rows',
+      'A3B25',
+      'A3B25-G120H180J45',
+      'A17B24  ·  1 Spec ID, 1 row',
+      'A17B24-K16L14',
+    ]);
+    expect(sheet.getRow(3).getCell(3).value).toBe('');
+    // A divider holds its facts, so a filter on Facts keeps it with its group, and is shaded across the row.
+    expect([2, 3, 4].map((index) => sheet.getRow(index).getCell(2).value)).toEqual(['A3B25', 'A3B25', 'A3B25']);
+    const lastColumn = (sheet.getRow(1).values as unknown[]).length - 1;
+    expect(sheet.getRow(2).getCell(lastColumn).fill).toMatchObject({ type: 'pattern', fgColor: { argb: 'FFD6E0EC' } });
+  });
+
+  it('folds and merges nothing, so Google Sheets opens every Spec ID in sight, and can sort and filter them', async () => {
+    const sheet = (await written()).getWorksheet('Spec IDs') as ExcelJS.Worksheet;
+    const rows = Array.from({ length: sheet.rowCount }, (_, index) => sheet.getRow(index + 1));
+    expect(rows.every((row) => (row.outlineLevel ?? 0) === 0 && !row.hidden)).toBe(true);
+    expect(rows.some((row) => row.getCell(2).isMerged)).toBe(false);
+  });
+});
+
+describe('codes in reading order (plan 0015)', () => {
+  it('splits a code into its facts and sizes', () => {
+    expect(partsOfCode('A3B25C8E1-G125')).toEqual({ facts: 'A3B25C8E1', sizes: 'G125' });
+    expect(partsOfCode('A3B25C8E1')).toEqual({ facts: 'A3B25C8E1', sizes: '' });
+  });
+
+  it('compares each part by its letter, then its number as a number, a shorter code first', () => {
+    expect(['A10B1', 'A3B25-G125', 'A3B25', 'A3B4', 'A3B25-G13.25'].sort(compareCodes)).toEqual([
+      'A3B4',
+      'A3B25',
+      'A3B25-G13.25',
+      'A3B25-G125',
+      'A10B1',
+    ]);
   });
 
   it('puts the rows most likely to be wrong first, each linked to its row', async () => {

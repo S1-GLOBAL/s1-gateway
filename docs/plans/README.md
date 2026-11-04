@@ -74,3 +74,4 @@ does not exist yet, say so and mark the plan blocked rather than inventing it.
 | [0012](./0012-options-by-number.md) | Dictionary options are known by their number, not their letters | In progress |
 | [0013](./0013-import-review-workbook.md) | A review workbook for the imported codes | In progress |
 | [0014](./0014-review-sheet-in-atlas.md) | The review sheet, downloaded from Atlas | In progress |
+| [0015](./0015-spec-ids-grouped-by-facts.md) | The review sheet's Spec IDs, grouped by their facts | In progress |
