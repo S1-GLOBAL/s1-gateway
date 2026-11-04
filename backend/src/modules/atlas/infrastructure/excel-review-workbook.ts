@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs';
 import type { ImportReport, ImportReportRow, ImportReportSink, ImportSourceCells } from '../application/ports/import-report-sink.js';
 import type { ReviewSheetWriter } from '../application/ports/review-sheet-writer.js';
-import { letterOf, type CodedSlotKey } from '../domain/code.js';
+import { letterOf, SIZE_SLOTS, type CodedSlotKey } from '../domain/code.js';
 import { SLOTS, type SlotKey } from '../domain/slots.js';
 
 /*
@@ -32,6 +32,8 @@ const BAND = {
   result: 'FFFFF4D6',
   read: 'FFE8F4EA',
   review: 'FFF3EAF7',
+  /** The divider above a group of Spec IDs with the same facts. */
+  group: 'FFD6E0EC',
 } as const;
 
 /** One reason a row should be looked at first, in order of how likely it is to be wrong. */
@@ -193,7 +195,7 @@ function readMe(workbook: ExcelJS.Workbook, report: ImportReport): void {
     ['Same as row N', 'This row describes exactly the same product as row N, so it shares that row\'s Spec ID and code. If the two rows are different products, the code is missing what tells them apart.'],
     ['Already saved', 'The first row of its Spec ID when the sheet comes from Atlas: the import saved its code. Rows after it read "Same as row N".'],
     ['Saved in Atlas', 'A Spec ID saved by hand in Atlas, not imported: it has no workbook row or cells, only its facts.'],
-    ['Spec IDs', 'One line per code, with the rows that share it. Look for rows whose names differ but share one code.'],
+    ['Spec IDs', 'One line per code, with the rows that share it. Look for rows whose names differ but share one code. The codes are grouped by their facts, the part before the hyphen: each group is the same product in its sizes, under a shaded divider naming it. A code with no sizes heads its group. In Excel, the + and - beside a divider fold its group.'],
     ['Needs a look', 'The rows most likely to be wrong, most likely first. A good place to start.'],
     ['Dictionary', 'What each number in a code means. A code is a letter and a number per fact: A is the product type, B the material, and so on; the sizes come after the hyphen. B25 is material 25, Molded fibre, bagasse. J110 is a height of 110 mm.'],
     ['Sizes', 'H top diameter, I bottom diameter, J height, K length, L width, M gusset: millimetres. N unit weight: tenths of a gram (N33 is 3.3 g). O basis weight: gsm. P thickness: micrometres. G capacity: the unit\'s number, then the amount (G112 is 12 oz).'],
@@ -215,37 +217,107 @@ function readMe(workbook: ExcelJS.Workbook, report: ImportReport): void {
   sheet.getColumn(2).width = 110;
 }
 
+/** A code's two parts: the facts before the hyphen, `A3B25C8E1`, and the sizes after it, `G125`; none when it has no hyphen. */
+export function partsOfCode(code: string): { readonly facts: string; readonly sizes: string } {
+  const hyphen = code.indexOf('-');
+  return hyphen === -1 ? { facts: code, sizes: '' } : { facts: code.slice(0, hyphen), sizes: code.slice(hyphen + 1) };
+}
+
+/**
+ * Two codes in the order a person reads them: part by part, each part's
+ * letter, then its number as a number, so A3 comes before A10, and a code that
+ * stops sooner comes first.
+ */
+export function compareCodes(a: string, b: string): number {
+  const partsOf = (code: string) => [...code.matchAll(/([A-Z])(\d+(?:\.\d+)?)/g)].map(([, letter = '', number = '0']) => ({ letter, number: Number(number) }));
+  const [left, right] = [partsOf(a), partsOf(b)];
+  for (let index = 0; index < Math.min(left.length, right.length); index += 1) {
+    const [x, y] = [left[index], right[index]];
+    if (!x || !y) break;
+    if (x.letter !== y.letter) return x.letter < y.letter ? -1 : 1;
+    if (x.number !== y.number) return x.number - y.number;
+  }
+  return left.length - right.length;
+}
+
+/** A group's divider: its facts code, what they say, and how many Spec IDs and rows it holds. */
+function dividerOf(facts: string, members: readonly (readonly ImportReportRow[])[]): string {
+  const first = members[0]?.[0];
+  const said = (first?.facts ?? []).filter((fact) => !SIZE_SLOTS.has(fact.key)).map((fact) => fact.meaning);
+  const rows = members.reduce((count, group) => count + group.filter((member) => member.row !== 0).length, 0);
+  const specIds = `${members.length} Spec ID${members.length === 1 ? '' : 's'}`;
+  return [facts, said.join(', '), rows > 0 ? `${specIds}, ${rows} row${rows === 1 ? '' : 's'}` : specIds].filter((part) => part !== '').join('  ·  ');
+}
+
+/**
+ * One line per code, grouped by its facts (plan 0015): every Spec ID whose
+ * code begins with the same facts, with any sizes or none, under one divider
+ * row that names them, the groups and their Spec IDs in code order. Each
+ * line also holds its Facts and Sizes, so a filter still finds a group.
+ */
 function specIdsOf(workbook: ExcelJS.Workbook, report: ImportReport, factKeys: readonly SlotKey[]): void {
-  const sheet = workbook.addWorksheet('Spec IDs', { views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }] });
-  const groups = new Map<string, ImportReportRow[]>();
-  for (const row of report.rows) if (row.code !== null) groups.set(row.code, [...(groups.get(row.code) ?? []), row]);
-  const columns = ['Code', 'Rows', 'Row numbers', 'Item names', 'Names differ?', ...factKeys.map(headerName)];
+  const sheet = workbook.addWorksheet('Spec IDs', {
+    views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }],
+    properties: { outlineLevelRow: 1 },
+  });
+  // A group's divider sits above the Spec IDs it folds.
+  sheet.properties.outlineProperties = { summaryBelow: false, summaryRight: false };
+  const byCode = new Map<string, ImportReportRow[]>();
+  for (const row of report.rows) if (row.code !== null) byCode.set(row.code, [...(byCode.get(row.code) ?? []), row]);
+  const byFacts = new Map<string, string[]>();
+  for (const code of [...byCode.keys()].sort(compareCodes)) {
+    const { facts } = partsOfCode(code);
+    byFacts.set(facts, [...(byFacts.get(facts) ?? []), code]);
+  }
+
+  const columns = ['Code', 'Facts', 'Sizes', 'Rows', 'Row numbers', 'Item names', 'Names differ?', ...factKeys.map(headerName)];
   const header = sheet.getRow(1);
   columns.forEach((name, index) => {
     const cell = header.getCell(index + 1);
     cell.value = name;
     cell.font = { bold: true };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: index < 5 ? BAND.result : BAND.read } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: index < 7 ? BAND.result : BAND.read } };
   });
-  [...groups.entries()].forEach(([code, members], index) => {
-    const row = sheet.getRow(index + 2);
-    const names = [...new Set(members.map((member) => member.itemName.trim()))];
-    row.getCell(1).value = code;
-    row.getCell(2).value = members.length;
-    row.getCell(3).value = members.map((member) => member.row).join(', ');
-    row.getCell(4).value = names.join('\n');
-    row.getCell(5).value = names.length > 1 ? 'Yes' : '';
-    const [first] = members;
-    factKeys.forEach((key, offset) => {
-      const fact = first?.facts.find((candidate) => candidate.key === key);
-      if (fact) row.getCell(6 + offset).value = fact.meaning;
-    });
-    row.alignment = { vertical: 'top', wrapText: true };
-  });
-  [28, 6, 16, 50, 10, ...factKeys.map(() => 18)].forEach((width, index) => {
+
+  let at = 2;
+  for (const [facts, codes] of [...byFacts.entries()].sort(([a], [b]) => compareCodes(a, b))) {
+    const divider = sheet.getRow(at);
+    divider.getCell(1).value = dividerOf(facts, codes.map((code) => byCode.get(code) ?? []));
+    sheet.mergeCells(at, 1, at, columns.length);
+    divider.font = { bold: true };
+    divider.height = 22;
+    divider.alignment = { vertical: 'middle' };
+    divider.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BAND.group } };
+    divider.getCell(1).border = { top: { style: 'medium' }, bottom: { style: 'thin' } };
+    at += 1;
+    for (const code of codes) {
+      const members = byCode.get(code) ?? [];
+      const row = sheet.getRow(at);
+      const names = [...new Set(members.map((member) => member.itemName.trim()))];
+      const { sizes } = partsOfCode(code);
+      const numbers = members.map((member) => member.row).filter((number) => number !== 0);
+      row.getCell(1).value = code;
+      row.getCell(2).value = facts;
+      row.getCell(3).value = sizes;
+      row.getCell(4).value = numbers.length;
+      row.getCell(5).value = numbers.join(', ');
+      row.getCell(6).value = names.join('\n');
+      row.getCell(7).value = names.length > 1 ? 'Yes' : '';
+      const [first] = members;
+      factKeys.forEach((key, offset) => {
+        const fact = first?.facts.find((candidate) => candidate.key === key);
+        if (fact) row.getCell(8 + offset).value = fact.meaning;
+      });
+      row.alignment = { vertical: 'top', wrapText: true };
+      // Folds under its divider in Excel's outline.
+      row.outlineLevel = 1;
+      at += 1;
+    }
+  }
+  [28, 18, 16, 6, 16, 50, 10, ...factKeys.map(() => 18)].forEach((width, index) => {
     sheet.getColumn(index + 1).width = width;
   });
-  sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: groups.size + 1, column: columns.length } };
+  sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: at - 1, column: columns.length } };
 }
 
 /** Why a row should be looked at first; null when nothing points at it. */
