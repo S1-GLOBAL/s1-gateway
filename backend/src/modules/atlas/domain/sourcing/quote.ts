@@ -20,5 +20,8 @@ export interface Quote {
   readonly specId: string;
   readonly manufacturerId: string;
   readonly values: QuoteValues;
+  /** When it was recorded: imported, or approved in Atlas. */
   readonly importedAt: Date;
+  /** The quotation it was approved from; null for a quote the import recorded (ADR 0035). */
+  readonly suggestionId: string | null;
 }

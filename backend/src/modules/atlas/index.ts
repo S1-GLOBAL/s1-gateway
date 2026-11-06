@@ -35,7 +35,21 @@ import { ExportReviewSheet } from './application/export-review-sheet.js';
 import { GetReviewSheetLink } from './application/get-review-sheet-link.js';
 import { DrizzleImportedRowRepository } from './infrastructure/drizzle-imported-row-repository.js';
 import { ExcelReviewSheetWriter } from './infrastructure/excel-review-workbook.js';
+import { ListManufacturers } from './application/list-manufacturers.js';
+import {
+  ApproveQuoteSuggestion,
+  CountWaitingQuoteSuggestions,
+  EditQuoteSuggestion,
+  GetQuoteSuggestion,
+  ListQuoteSuggestions,
+  RejectQuoteSuggestion,
+  WithdrawQuoteSuggestion,
+} from './application/quote-suggestion-steps.js';
+import { SuggestQuote } from './application/suggest-quote.js';
+import { DrizzleQuoteSuggestionRepository } from './infrastructure/drizzle-quote-suggestion-repository.js';
 import { AtlasController } from './presentation/atlas.controller.js';
+import { QuoteSuggestionsController } from './presentation/quote-suggestions.controller.js';
+import { createQuoteSuggestionsAdminRouter, createQuoteSuggestionsRouter } from './presentation/quote-suggestions.routes.js';
 import { createAtlasAdminRouter, createAtlasRouter } from './presentation/atlas.routes.js';
 import { DictionarySuggestionsController } from './presentation/dictionary-suggestions.controller.js';
 import {
@@ -111,8 +125,28 @@ export function buildAtlasModule(deps: AtlasModuleDependencies): HttpModule[] {
       return { id: account.id, isAdmin: account.isAdmin };
     },
   );
+  const quotations = new DrizzleQuoteSuggestionRepository(deps.db);
+  const quotationsController = new QuoteSuggestionsController(
+    {
+      suggest: new SuggestQuote(specIds, sourcing, quotations, deps.clock, deps.ids),
+      edit: new EditQuoteSuggestion(sourcing, quotations, deps.clock, deps.ids),
+      withdraw: new WithdrawQuoteSuggestion(quotations, deps.clock, deps.ids),
+      list: new ListQuoteSuggestions(quotations),
+      get: new GetQuoteSuggestion(quotations),
+      countWaiting: new CountWaitingQuoteSuggestions(quotations),
+      approve: new ApproveQuoteSuggestion(quotations, deps.clock, deps.ids),
+      reject: new RejectQuoteSuggestion(quotations, deps.clock, deps.ids),
+      manufacturers: new ListManufacturers(sourcing),
+    },
+    (req) => {
+      const { account } = requireAuth(req);
+      return { id: account.id, isAdmin: account.isAdmin };
+    },
+  );
   return [
     { path: '/atlas', router: createAtlasRouter(controller), access: 'session' },
+    { path: '/atlas', router: createQuoteSuggestionsRouter(quotationsController), access: 'session' },
+    { path: '/atlas', router: createQuoteSuggestionsAdminRouter(quotationsController), access: 'admin' },
     { path: '/atlas/dictionary', router: createDictionarySuggestionsRouter(suggestionsController), access: 'session' },
     { path: '/atlas/dictionary', router: createDictionarySuggestionsAdminRouter(suggestionsController), access: 'admin' },
     { path: '/atlas', router: createAtlasAdminRouter(controller), access: 'admin' },

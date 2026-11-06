@@ -76,3 +76,4 @@ does not exist yet, say so and mark the plan blocked rather than inventing it.
 | [0014](./0014-review-sheet-in-atlas.md) | The review sheet, downloaded from Atlas | In progress |
 | [0015](./0015-spec-ids-grouped-by-facts.md) | The review sheet's Spec IDs, grouped by their facts | In progress |
 | [0016](./0016-review-sheet-shared.md) | One shared review sheet, kept in step with Atlas | In progress |
+| [0017](./0017-quotations-added-in-atlas.md) | Quotations added in Atlas, approved by an admin | In progress |

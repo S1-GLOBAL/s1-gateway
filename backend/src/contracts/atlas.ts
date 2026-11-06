@@ -490,3 +490,97 @@ export interface DictionaryCount {
 export interface ReviewSheetLink {
   url: string | null;
 }
+
+/** A manufacturer to choose for a quotation: `GET /atlas/manufacturers` (plan 0017). */
+export interface ManufacturerSummary {
+  id: string;
+  name: string;
+  country: string | null;
+}
+
+/** Where a quotation added in Atlas stands (ADR 0035). */
+export type QuoteSuggestionState = 'waiting' | 'approved' | 'rejected' | 'withdrawn';
+
+/** A quotation's manufacturer: one already in Atlas, or a new one, made only when the quotation is approved. */
+export type SuggestedManufacturer =
+  | { kind: 'existing'; id: string; name: string; country: string | null }
+  | { kind: 'new'; name: string; country: string | null };
+
+/** A quotation added in Atlas, waiting for an admin or decided (plan 0017, ADR 0035). */
+export interface QuoteSuggestion {
+  id: string;
+  specId: string;
+  specName: string;
+  specCode: string;
+  manufacturer: SuggestedManufacturer;
+  /** As written; FOB per unit always given. */
+  values: ManufacturerQuote;
+  state: QuoteSuggestionState;
+  /** Raised on each edit. */
+  version: number;
+  suggestedBy: SavedBy;
+  suggestedAt: string;
+  /** Who approved or rejected it. */
+  decidedBy: SavedBy | null;
+  /** When it was approved, rejected or withdrawn. */
+  decidedAt: string | null;
+  /** Why it was rejected. */
+  reason: string | null;
+  /** The quote it became, once approved. */
+  quoteId: string | null;
+}
+
+/** What one step of a quotation's trail asked for. */
+export interface QuoteProposal {
+  manufacturer: { kind: 'existing'; id: string } | { kind: 'new'; name: string; country: string | null };
+  values: ManufacturerQuote;
+}
+
+/** One step of a quotation's trail. */
+export interface QuoteSuggestionEvent {
+  kind: 'suggested' | 'edited' | 'withdrawn' | 'approved' | 'rejected';
+  by: SavedBy;
+  at: string;
+  /** An edit's proposal before it. */
+  proposalBefore: QuoteProposal | null;
+  /** What an addition or an edit asks for. */
+  proposalAfter: QuoteProposal | null;
+  /** A rejection's reason. */
+  reason: string | null;
+}
+
+/** `GET /atlas/quote-suggestions/:id`: a quotation with its trail, the first step first. */
+export interface QuoteSuggestionDetail extends QuoteSuggestion {
+  trail: QuoteSuggestionEvent[];
+}
+
+/**
+ * A quotation as the form sends it: a manufacturer chosen by `id`, or a new
+ * one by `name` and `country`; FOB per unit required, every other value
+ * optional. Empty text is nothing.
+ */
+export interface QuotationFields {
+  manufacturer: { id?: string | null; name?: string | null; country?: string | null };
+  values: Partial<ManufacturerQuote>;
+}
+
+/** `POST /atlas/quote-suggestions`. */
+export interface SuggestQuoteRequest extends QuotationFields {
+  specId: string;
+}
+
+/** `PUT /atlas/quote-suggestions/:id`: its suggester replaces it, from the version they read. */
+export interface EditQuoteSuggestionRequest extends QuotationFields {
+  version: number;
+}
+
+/** `POST /atlas/quote-suggestions/:id/approve`, admins only. */
+export interface ApproveQuoteSuggestionRequest {
+  version: number;
+}
+
+/** `POST /atlas/quote-suggestions/:id/reject`, admins only. */
+export interface RejectQuoteSuggestionRequest {
+  /** 1–500 characters, shown to whoever added it. */
+  reason: string;
+}
