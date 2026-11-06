@@ -315,6 +315,35 @@ describe('AtlasLibrary, a pasted code', () => {
     expect(findSimilar).toHaveBeenCalledWith(expect.objectContaining({ productType: 'BLD', material: 'APS', topDiameter: '0090' }));
   });
 
+  it("lists a pasted code's product in its other sizes under its perfect match, asking for its facts without its sizes", async () => {
+    const code = 'A1B4-H90N170';
+    const match = lookupFor(ILLUSTRATIVE, 'Lid, 17 g', { code });
+    const sizes = (index: number) => savedFor(ILLUSTRATIVE, `Lid ${index}`, { id: `00000000-0000-4000-8000-0000000001${String(index).padStart(2, '0')}`, code: `A1B4-H90N${100 + index}` });
+    const findSimilar = vi.fn<AtlasGateway['findSimilar']>(async () => ({
+      fits: [match, ...Array.from({ length: 12 }, (_, index) => sizes(index + 1)), savedFor(ILLUSTRATIVE, 'Lid, round', { id: '00000000-0000-4000-8000-0000000000d1', code: 'A1B4E1-H90N170' })],
+      mightFit: [],
+    }));
+    renderLibrary({ findByCode: async () => match, findSimilar });
+
+    search(code);
+
+    const group = await screen.findByRole('region', { name: 'Same product, other sizes — A1B4' });
+    // The first ten in code order, the match left out; then all of them.
+    expect(within(group).getAllByRole('listitem')).toHaveLength(10);
+    expect(within(group).queryByText('Lid, 17 g')).toBeNull();
+    expect(within(group).getAllByRole('listitem')[0]?.textContent).toContain('A1B4-H90N101');
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 12' }));
+    expect(within(group).getAllByRole('listitem')).toHaveLength(12);
+    expect(screen.queryByRole('button', { name: /Show all/ })).toBeNull();
+    // One with more facts fits, and is listed there alone.
+    const fits = screen.getByRole('region', { name: 'Fits — every fact you gave matches' });
+    expect(within(fits).getAllByRole('listitem').map((item) => item.textContent)).toEqual([expect.stringContaining('Lid, round')]);
+    // Asked once with its sizes, once without: H90, after the hyphen, is a size; the product type is a fact.
+    const asked = findSimilar.mock.calls.map(([criteria]) => criteria);
+    expect(asked.some((criteria) => 'topDiameter' in criteria)).toBe(true);
+    expect(asked.some((criteria) => !('topDiameter' in criteria) && 'productType' in criteria)).toBe(true);
+  });
+
   it('says nothing more under a pasted code\'s perfect match when it is the only Spec ID that fits', async () => {
     const findSimilar = vi.fn<AtlasGateway['findSimilar']>(async () => ({ fits: [savedFor(ILLUSTRATIVE, 'Illustrative lid')], mightFit: [] }));
     renderLibrary({ findByCode: async () => lookupFor(ILLUSTRATIVE, 'Illustrative lid'), findSimilar });
