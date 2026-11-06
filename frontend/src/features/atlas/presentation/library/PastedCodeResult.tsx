@@ -10,6 +10,8 @@ import { formatSavedDate } from '../../domain/format-saved-date';
 import { knownCriteria } from '../../domain/known-criteria';
 import { DecodedSlotsTable, type DecodedSlotRow } from '../DecodedSlotsTable';
 import { MatchCard } from './MatchCard';
+import { hasSameFacts } from '../../domain/same-facts';
+import { SameFactsGroup } from './SameFactsGroup';
 import { SpecIdGroup } from './SpecIdGroup';
 import { SpecIdSummary } from './SpecIdSummary';
 import { FITS, MIGHT_FIT } from './TextSearchResults';
@@ -162,11 +164,12 @@ function Refused({ code, fields }: { code: string; fields: Record<string, string
 }
 
 /**
- * The saved Spec IDs with every fact a code gives, whatever else they hold:
- * `A16B24V2` finds each paper bag with a twisted handle, at any size. Then
- * those that might: nothing contradicts, but some of its facts aren't recorded.
- * The perfect match above, `leaveOut`, is not listed again; when it is the only
- * one that fits, nothing more is said.
+ * The saved Spec IDs with the same facts as a code in other sizes; then those
+ * with every fact it gives that record more: `A16B24V2` finds each paper bag
+ * with a twisted handle, at any size. Then those that might: nothing
+ * contradicts, but some of its facts aren't recorded. The perfect match above,
+ * `leaveOut`, is not listed again; when it is the only one that fits, nothing
+ * more is said.
  */
 function SavedThatFit({ decoded, leaveOut, timeZone }: { decoded: DecodedSpecId; leaveOut?: string; timeZone?: string }) {
   const similar = useSimilarSpecIds(knownCriteria(decoded));
@@ -181,19 +184,19 @@ function SavedThatFit({ decoded, leaveOut, timeZone }: { decoded: DecodedSpecId;
   }
   if (similar.isError) return <ErrorState message={similar.error.message} onRetry={() => void similar.refetch()} />;
 
-  const fits = similar.data.fits.filter((saved) => saved.id !== leaveOut);
+  const fitting = similar.data.fits.filter((saved) => saved.id !== leaveOut);
+  // Those with the same facts are listed in their own group, above.
+  const fits = fitting.filter((saved) => !hasSameFacts(decoded.code, saved));
   const mightFit = similar.data.mightFit.filter((saved) => saved.id !== leaveOut);
   return (
     <>
-      {fits.length > 0 ? (
-        <SpecIdGroup title={FITS} items={fits} timeZone={timeZone} />
-      ) : (
-        leaveOut === undefined && (
-          <p role="status" className="text-sm text-ink-muted">
-            No saved Spec ID has every fact in this code.
-          </p>
-        )
+      {fitting.length === 0 && leaveOut === undefined && (
+        <p role="status" className="text-sm text-ink-muted">
+          No saved Spec ID has every fact in this code.
+        </p>
       )}
+      <SameFactsGroup decoded={decoded} leaveOut={leaveOut} timeZone={timeZone} />
+      {fits.length > 0 && <SpecIdGroup title={FITS} items={fits} timeZone={timeZone} />}
       {mightFit.length > 0 && <SpecIdGroup title={MIGHT_FIT} items={mightFit} timeZone={timeZone} />}
     </>
   );

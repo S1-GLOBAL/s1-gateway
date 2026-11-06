@@ -5,6 +5,8 @@ import { SkeletonBlock, SkeletonRegion } from '@/shared/ui/Skeleton';
 import { useSimilarSpecIds } from '../../application/use-similar-spec-ids';
 import type { DecodedSpecId, SlotRuleEntry } from '../../domain/atlas';
 import { knownCriteria } from '../../domain/known-criteria';
+import { hasSameFacts } from '../../domain/same-facts';
+import { SameFactsGroup } from './SameFactsGroup';
 import { SaveFromSearch } from './SaveFromSearch';
 import { SpecIdGroup } from './SpecIdGroup';
 
@@ -27,12 +29,12 @@ export interface TextSearchResultsProps {
 }
 
 /**
- * The saved Spec IDs that fit every fact read, then those that might: nothing
- * contradicts them, but some facts aren't recorded. They show as the text is
- * typed, the last ones dimmed while the next are looked up. When none fits and
- * there is no perfect match, the way to start a Spec ID from the code, and to
- * save it at once, comes before those that might. Nothing is saved until Save
- * as a new Spec ID is pressed.
+ * The saved Spec IDs with the same facts in other sizes; then those that fit
+ * every fact read and record more; then those that might: nothing contradicts
+ * them, but some facts aren't recorded. They show as the text is typed, the
+ * last ones dimmed while the next are looked up. When none fits and there is
+ * no perfect match, the way to start a Spec ID from the code, and to save it
+ * at once, comes first. Nothing is saved until Save as a new Spec ID is pressed.
  */
 export function TextSearchResults({ decoded, text, rules, matchedId, timeZone }: TextSearchResultsProps) {
   const similar = useSimilarSpecIds(knownCriteria(decoded), { keepPrevious: true });
@@ -48,14 +50,14 @@ export function TextSearchResults({ decoded, text, rules, matchedId, timeZone }:
   }
   if (similar.isError) return <ErrorState message={similar.error.message} onRetry={() => void similar.refetch()} />;
 
-  const fits = similar.data.fits.filter((saved) => saved.id !== matchedId);
+  const fitting = similar.data.fits.filter((saved) => saved.id !== matchedId);
+  // Those with the same facts are listed in their own group, above.
+  const fits = fitting.filter((saved) => !hasSameFacts(decoded.code, saved));
   const mightFit = similar.data.mightFit.filter((saved) => saved.id !== matchedId);
   const busy = similar.isPlaceholderData;
   return (
     <div aria-busy={busy} className={busy ? 'flex flex-col gap-6 opacity-60 transition-opacity' : 'flex flex-col gap-6 transition-opacity'}>
-      {fits.length > 0 ? (
-        <SpecIdGroup title={FITS} items={fits} timeZone={timeZone} />
-      ) : (
+      {fitting.length === 0 &&
         matchedId === undefined && (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
@@ -69,8 +71,9 @@ export function TextSearchResults({ decoded, text, rules, matchedId, timeZone }:
             </div>
             <SaveFromSearch decoded={decoded} text={text} rules={rules} timeZone={timeZone} />
           </div>
-        )
-      )}
+        )}
+      <SameFactsGroup decoded={decoded} leaveOut={matchedId} timeZone={timeZone} />
+      {fits.length > 0 && <SpecIdGroup title={FITS} items={fits} timeZone={timeZone} />}
       {mightFit.length > 0 && <SpecIdGroup title={MIGHT_FIT} items={mightFit} timeZone={timeZone} />}
     </div>
   );

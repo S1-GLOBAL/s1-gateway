@@ -160,8 +160,8 @@ describe('AtlasLibrary, Search', () => {
   });
 
   it('Yes, proceed lists the Spec IDs that fit before those that might, and saves nothing', async () => {
-    const fits = savedFor(BOWL, '14oz Bagasse Bowl', { id: '00000000-0000-4000-8000-000000000001', manufacturerStages: { specificationsReceived: 2, quoted: 1, sampling: 0, inProduction: 0 } });
-    const alsoFits = savedFor(BOWL, '14oz Bagasse Bowl, printed', { id: '00000000-0000-4000-8000-000000000003' });
+    const fits = savedFor(BOWL, '14oz Bagasse Bowl', { id: '00000000-0000-4000-8000-000000000001', code: 'A3B25C8-G114', manufacturerStages: { specificationsReceived: 2, quoted: 1, sampling: 0, inProduction: 0 } });
+    const alsoFits = savedFor(BOWL, '14oz Bagasse Bowl, printed', { id: '00000000-0000-4000-8000-000000000003', code: 'A3B25R3-G114' });
     const might = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-000000000002' });
     // Two that fit: no single answer to highlight, so both are listed.
     const findSimilar = vi.fn<AtlasGateway['findSimilar']>(async () => ({ fits: [fits, alsoFits], mightFit: [might] }));
@@ -220,7 +220,7 @@ describe('AtlasLibrary, Search', () => {
 
   it('lists the Spec IDs that fit and might under a perfect match, leaving the match out', async () => {
     const match = lookupFor(BOWL, 'Bagasse bowl, 14 oz');
-    const also = savedFor(BOWL, 'Bagasse bowl with more facts', { id: '00000000-0000-4000-8000-0000000000c1' });
+    const also = savedFor(BOWL, 'Bagasse bowl with more facts', { id: '00000000-0000-4000-8000-0000000000c1', code: 'A3B25C8-G114' });
     const might = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-0000000000c2' });
     renderLibrary({
       readText: async () => READ_BOWL,
@@ -271,9 +271,35 @@ describe('AtlasLibrary, Search', () => {
     expect(screen.getAllByText('Bagasse bowl with its sizes')).toHaveLength(1);
   });
 
+  it('lists the same product in other sizes in a group of its own, above those that fit, and not again among them', async () => {
+    const read: SpecIdTextReading = { ...READ_BOWL, decoded: { ...bowl, code: 'A3B25-G114' } };
+    const sameFacts = savedFor(BOWL, 'Bagasse bowl, 20 oz', { id: '00000000-0000-4000-8000-0000000000f1', code: 'A3B25-G120' });
+    const factsAlone = savedFor(BOWL, 'Bagasse bowl, size unknown', { id: '00000000-0000-4000-8000-0000000000f2', code: 'A3B25' });
+    const more = savedFor(BOWL, 'Bagasse bowl, coated, 14 oz', { id: '00000000-0000-4000-8000-0000000000f3', code: 'A3B25C8-G114' });
+    renderLibrary({
+      readText: async () => read,
+      findSimilar: async () => ({ fits: [more, sameFacts, factsAlone], mightFit: [] }),
+    });
+    type(TEXT);
+    await proceed();
+
+    const group = await screen.findByRole('region', { name: 'Same product, other sizes — A3B25' });
+    expect(within(group).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      expect.stringContaining('Bagasse bowl, size unknown'),
+      expect.stringContaining('Bagasse bowl, 20 oz'),
+    ]);
+    const fits = screen.getByRole('region', { name: 'Fits — every fact you gave matches' });
+    expect(within(fits).getByText('Bagasse bowl, coated, 14 oz')).toBeTruthy();
+    expect(within(fits).queryByText('Bagasse bowl, 20 oz')).toBeNull();
+    const headings = screen.getAllByRole('heading').map((heading) => heading.textContent);
+    expect(headings).toEqual(['Same product, other sizes — A3B25', 'Fits — every fact you gave matches']);
+    // Something fits, so nothing offers to save it.
+    expect(screen.queryByText('No saved Spec ID fits these facts.')).toBeNull();
+  });
+
   it('highlights none of several Spec IDs that fit, and lists them', async () => {
-    const one = savedFor(BOWL, 'Bagasse bowl A', { id: '00000000-0000-4000-8000-0000000000e1' });
-    const two = savedFor(BOWL, 'Bagasse bowl B', { id: '00000000-0000-4000-8000-0000000000e2' });
+    const one = savedFor(BOWL, 'Bagasse bowl A', { id: '00000000-0000-4000-8000-0000000000e1', code: 'A3B25C8-G114' });
+    const two = savedFor(BOWL, 'Bagasse bowl B', { id: '00000000-0000-4000-8000-0000000000e2', code: 'A3B25R3-G114' });
     renderLibrary({
       readText: async () => READ_BOWL,
       findByCode: async () => Promise.reject(new AppError('SPEC_ID_NOT_FOUND', 'No saved Spec ID has this code.')),
