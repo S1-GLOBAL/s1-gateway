@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { BackToAtlas, ManufacturerGroups, useSpecIdManufacturers } from '@/features/atlas';
+import { useMe } from '@/features/accounts';
+import { AddQuotationButton, BackToAtlas, ManufacturerGroups, SpecIdQuotations, useSpecIdManufacturers } from '@/features/atlas';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { NoManufacturersIcon } from '@/shared/ui/icons';
 
@@ -9,11 +11,14 @@ const SECONDARY_LINK =
 /**
  * `/atlas/:id/manufacturers`: who has worked on this product, grouped from
  * Specifications received to In production (#57). The Spec ID page is one
- * click away.
+ * click away. Anyone may add a quotation; it waits above the groups until an
+ * admin approves it (plan 0017).
  */
 export function ManufacturersPage() {
   const { id = '' } = useParams();
   const { data } = useSpecIdManufacturers(id);
+  const { data: me } = useMe();
+  const [adding, setAdding] = useState(false);
 
   if (!data) {
     return (
@@ -42,14 +47,18 @@ export function ManufacturersPage() {
             <h1 className="text-xl font-semibold break-words text-ink">{data.specId.name}</h1>
             <p className="font-mono text-sm break-all text-ink-muted">{data.specId.code}</p>
           </div>
-          <div className="shrink-0">{openSpecId}</div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <AddQuotationButton onAdd={() => setAdding(true)} />
+            {openSpecId}
+          </div>
         </header>
       </div>
+      <SpecIdQuotations specId={data.specId.id} viewer={{ id: me.id, isAdmin: me.isAdmin }} adding={adding} onAddingChange={setAdding} />
       {data.manufacturers.length === 0 ? (
         <EmptyState
           icon={<NoManufacturersIcon size={24} />}
           title="No manufacturers are recorded for this Spec ID yet."
-          description="They come from the verified list import."
+          description="They come from the verified list import, or from a quotation added here once an admin approves it."
           action={openSpecId}
         />
       ) : (

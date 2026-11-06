@@ -3,18 +3,18 @@ import { navItemFor, navItemsFor, navSections } from './nav';
 
 describe('navItemsFor', () => {
   it('gives everyone Atlas and Dictionary Changes, then Theme last, and no one Tools', () => {
-    expect(navItemsFor(false).map((item) => item.label)).toEqual(['Atlas', 'Dictionary Changes', 'Theme']);
+    expect(navItemsFor(false).map((item) => item.label)).toEqual(['Atlas', 'Dictionary Changes', 'Quotation Changes', 'Theme']);
   });
 
   it('puts Accounts between Dictionary Changes and Theme for an admin', () => {
-    expect(navItemsFor(true).map((item) => item.label)).toEqual(['Atlas', 'Dictionary Changes', 'Accounts', 'Theme']);
+    expect(navItemsFor(true).map((item) => item.label)).toEqual(['Atlas', 'Dictionary Changes', 'Quotation Changes', 'Accounts', 'Theme']);
   });
 });
 
 describe('navSections', () => {
   it('puts Atlas and Dictionary Changes under Catalog, Accounts under Access, and Theme under Other', () => {
     expect(navSections(navItemsFor(true)).map((section) => [section.label, section.items.map((item) => item.label)])).toEqual([
-      ['Catalog', ['Atlas', 'Dictionary Changes']],
+      ['Catalog', ['Atlas', 'Dictionary Changes', 'Quotation Changes']],
       ['Access', ['Accounts']],
       ['Other', ['Theme']],
     ]);
@@ -22,7 +22,7 @@ describe('navSections', () => {
 
   it('hides Access from someone who is not an admin', () => {
     expect(navSections(navItemsFor(false)).map((section) => [section.label, section.items.map((item) => item.label)])).toEqual([
-      ['Catalog', ['Atlas', 'Dictionary Changes']],
+      ['Catalog', ['Atlas', 'Dictionary Changes', 'Quotation Changes']],
       ['Other', ['Theme']],
     ]);
   });

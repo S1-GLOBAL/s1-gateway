@@ -40,8 +40,8 @@ ID's quotes, and its manufacturer's stage then follows it.
 
 | Phase | What | Status |
 |---|---|---|
-| 1 | The backend: tables, the quotation's rules and trail, its routes, and an import that keeps Atlas's quotes | In progress |
-| 2 | The frontend: Add quotation, the waiting quotations on the manufacturers screen, Quotation Changes and its count | Not started |
+| 1 | The backend: tables, the quotation's rules and trail, its routes, and an import that keeps Atlas's quotes | Done — merged in #116 |
+| 2 | The frontend: Add quotation, the waiting quotations on the manufacturers screen, Quotation Changes and its count | In progress |
 
 ## Acceptance, phase 1
 
@@ -54,7 +54,7 @@ ID's quotes, and its manufacturer's stage then follows it.
 
 ## Acceptance, phase 2
 
-- [ ] **Add quotation** on a Spec ID's manufacturers screen opens a form: a manufacturer, chosen or new, and the quote's values
-- [ ] The screen lists its waiting quotations; admins approve or reject them there
-- [ ] **Quotation Changes** lists waiting and decided quotations, each with its trail; the sidebar counts those waiting for the viewer
-- [ ] A suggester edits or withdraws a waiting quotation
+- [x] **Add quotation** on a Spec ID's manufacturers screen opens a form: a manufacturer, chosen or new, and the quote's values
+- [x] The screen lists its waiting quotations; admins approve or reject them there
+- [x] **Quotation Changes** lists waiting and decided quotations, each with its trail; the sidebar counts those waiting for the viewer
+- [x] A suggester edits or withdraws a waiting quotation

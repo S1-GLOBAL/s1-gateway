@@ -1,5 +1,5 @@
 import { useMe } from '@/features/accounts';
-import { useWaitingCount } from '@/features/atlas';
+import { useQuotationWaitingCount, useWaitingCount } from '@/features/atlas';
 import { OfflineBanner } from '../pwa/OfflineBanner';
 import { UpdatePrompt } from '../pwa/UpdatePrompt';
 import { navItemsFor, type NavBadges } from '../nav';
@@ -14,9 +14,10 @@ export function AppShell() {
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
   const { data: me } = useMe();
   const items = navItemsFor(me.isAdmin);
-  // Staff decide no suggestion, so only an admin's count is asked for.
+  // Staff decide no suggestion or quotation, so only an admin's counts are asked for.
   const { data: waiting = 0 } = useWaitingCount(me.isAdmin);
-  const badges: NavBadges = { 'dictionary-waiting': waiting };
+  const { data: quotationsWaiting = 0 } = useQuotationWaitingCount(me.isAdmin);
+  const badges: NavBadges = { 'dictionary-waiting': waiting, 'quotations-waiting': quotationsWaiting };
 
   return (
     <div className="flex min-h-dvh bg-canvas">
