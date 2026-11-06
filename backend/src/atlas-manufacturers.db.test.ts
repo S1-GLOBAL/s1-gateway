@@ -59,7 +59,7 @@ beforeAll(async () => {
 });
 beforeEach(async () => {
   await connection.db.execute(
-    sql`truncate table atlas_manufacturer_stage_changes, atlas_imported_rows, atlas_quotes, atlas_manufacturers, atlas_spec_id_changes, atlas_spec_ids`,
+    sql`truncate table atlas_manufacturer_stage_changes, atlas_imported_rows, atlas_quote_suggestion_events, atlas_quote_suggestions, atlas_quotes, atlas_manufacturers, atlas_spec_id_changes, atlas_spec_ids`,
   );
 });
 afterAll(() => connection.close());
