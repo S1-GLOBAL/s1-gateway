@@ -162,6 +162,13 @@
       "when": 1793741802191,
       "tag": "0022_atlas_imported_rows",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793977528245,
+      "tag": "0023_atlas_quote_suggestions",
+      "breakpoints": true
     }
   ]
 }

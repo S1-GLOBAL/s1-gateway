@@ -11,7 +11,7 @@ import { recordedAt, type Stage, type StageChange, stageOf } from '../../domain/
 
 /** The SourcingRepository contract, in memory. A test double, never used in production. */
 export class InMemorySourcingRepository implements SourcingRepository {
-  private readonly manufacturers = new Map<string, Manufacturer>();
+  private readonly byKey = new Map<string, Manufacturer>();
   private quotes: Quote[] = [];
   private readonly stageChanges: StageChange[] = [];
   private readonly changerNames = new Map<string, string>();
@@ -30,7 +30,7 @@ export class InMemorySourcingRepository implements SourcingRepository {
 
   /** Every manufacturer held, in the order first added. */
   get allManufacturers(): Manufacturer[] {
-    return [...this.manufacturers.values()];
+    return [...this.byKey.values()];
   }
 
   /** Every quote held. */
@@ -40,21 +40,53 @@ export class InMemorySourcingRepository implements SourcingRepository {
 
   async replaceQuotes(quotes: readonly QuoteToRecord[]): Promise<void> {
     this.replaced += 1;
-    const next: Quote[] = [];
+    // Quotes approved in Atlas are not the import's to replace (ADR 0035).
+    const next: Quote[] = this.quotes.filter((quote) => quote.suggestionId !== null);
     for (const quote of quotes) {
       const key = manufacturerKey(quote.manufacturer.name);
-      const known = this.manufacturers.get(key);
+      const known = this.byKey.get(key);
       const manufacturer: Manufacturer = known
         ? { ...known, country: quote.manufacturer.country ?? known.country }
         : { id: quote.manufacturer.id, name: quote.manufacturer.name.trim(), country: quote.manufacturer.country, createdAt: quote.importedAt };
-      this.manufacturers.set(key, manufacturer);
-      next.push({ id: quote.id, specId: quote.specId, manufacturerId: manufacturer.id, values: quote.values, importedAt: quote.importedAt });
+      this.byKey.set(key, manufacturer);
+      next.push({ id: quote.id, specId: quote.specId, manufacturerId: manufacturer.id, values: quote.values, importedAt: quote.importedAt, suggestionId: null });
     }
     this.quotes = next;
   }
 
+  /**
+   * Records a quote approved in Atlas, finding or adding its manufacturer by
+   * name, as the real repository does inside an approval's transaction.
+   */
+  addApprovedQuote(input: {
+    quote: Omit<Quote, 'manufacturerId'>;
+    manufacturer: { kind: 'existing'; id: string } | { kind: 'new'; id: string; name: string; country: string | null };
+  }): void {
+    let manufacturerId: string;
+    if (input.manufacturer.kind === 'existing') {
+      manufacturerId = input.manufacturer.id;
+    } else {
+      const key = manufacturerKey(input.manufacturer.name);
+      const known = this.byKey.get(key);
+      const manufacturer: Manufacturer = known
+        ? { ...known, country: known.country ?? input.manufacturer.country }
+        : { id: input.manufacturer.id, name: input.manufacturer.name, country: input.manufacturer.country, createdAt: input.quote.importedAt };
+      this.byKey.set(key, manufacturer);
+      manufacturerId = manufacturer.id;
+    }
+    this.quotes.push({ ...input.quote, manufacturerId });
+  }
+
+  async manufacturers(): Promise<Manufacturer[]> {
+    return [...this.byKey.values()].sort((a, b) => manufacturerKey(a.name).localeCompare(manufacturerKey(b.name)));
+  }
+
+  async findManufacturer(id: string): Promise<Manufacturer | null> {
+    return [...this.byKey.values()].find((manufacturer) => manufacturer.id === id) ?? null;
+  }
+
   async quotesOf(specId: string): Promise<QuoteRecord[]> {
-    const byId = new Map([...this.manufacturers.values()].map((manufacturer) => [manufacturer.id, manufacturer]));
+    const byId = new Map([...this.byKey.values()].map((manufacturer) => [manufacturer.id, manufacturer]));
     return this.quotes
       .filter((quote) => quote.specId === specId)
       .map((quote) => ({ quote, manufacturer: byId.get(quote.manufacturerId) as Manufacturer }))

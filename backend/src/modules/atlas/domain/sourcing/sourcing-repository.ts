@@ -43,10 +43,13 @@ export interface SourcingRepository {
   /**
    * In one transaction: finds or adds each quote's manufacturer by name,
    * trimmed and ignoring case, updating its country when the quote gives one;
-   * deletes every quote; records the given ones. Manufacturers are never
-   * deleted.
+   * deletes every quote the import recorded, keeping those approved in Atlas
+   * (ADR 0035); records the given ones. Manufacturers are never deleted.
    */
   replaceQuotes(quotes: readonly QuoteToRecord[]): Promise<void>;
+  /** Every manufacturer, by name. */
+  manufacturers(): Promise<Manufacturer[]>;
+  findManufacturer(id: string): Promise<Manufacturer | null>;
   /** Every quote for one Spec ID, by manufacturer name, then item name. */
   quotesOf(specId: string): Promise<QuoteRecord[]>;
   /** Each manufacturer's newest stage change on one Spec ID, if an admin made one. */

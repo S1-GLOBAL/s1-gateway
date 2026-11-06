@@ -22,6 +22,8 @@ export { atlasSpecIdChanges } from './modules/atlas/infrastructure/atlas-spec-id
 export { atlasManufacturers } from './modules/atlas/infrastructure/atlas-manufacturers.table.js';
 export { atlasImportedRows } from './modules/atlas/infrastructure/atlas-imported-rows.table.js';
 export { atlasQuotes } from './modules/atlas/infrastructure/atlas-quotes.table.js';
+export { atlasQuoteSuggestions } from './modules/atlas/infrastructure/atlas-quote-suggestions.table.js';
+export { atlasQuoteSuggestionEvents } from './modules/atlas/infrastructure/atlas-quote-suggestion-events.table.js';
 export { atlasManufacturerStageChanges } from './modules/atlas/infrastructure/atlas-manufacturer-stage-changes.table.js';
 export { atlasDictionarySuggestions } from './modules/atlas/infrastructure/atlas-dictionary-suggestions.table.js';
 export { atlasDictionaryChanges } from './modules/atlas/infrastructure/atlas-dictionary-changes.table.js';

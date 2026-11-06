@@ -1,7 +1,7 @@
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { Database } from '../../../shared/infrastructure/database/connection.js';
 import { accountsTable } from '../../accounts/index.js';
-import { manufacturerKey } from '../domain/sourcing/manufacturer.js';
+import { manufacturerKey, type Manufacturer } from '../domain/sourcing/manufacturer.js';
 import type {
   QuoteRecord,
   QuoteToRecord,
@@ -51,7 +51,8 @@ export class DrizzleSourcingRepository implements SourcingRepository {
         for (const { id, nameKey } of saved) ids.set(nameKey, id);
       }
 
-      await tx.delete(atlasQuotes);
+      // The import's own quotes: those approved in Atlas outlive it (ADR 0035).
+      await tx.delete(atlasQuotes).where(isNull(atlasQuotes.suggestionId));
       const quoteRows = quotes.map((quote) => ({
         id: quote.id,
         specId: quote.specId,
@@ -88,9 +89,20 @@ export class DrizzleSourcingRepository implements SourcingRepository {
           productionLeadTime: quote.productionLeadTime,
         },
         importedAt: quote.importedAt,
+        suggestionId: quote.suggestionId,
       },
-      manufacturer: { id: manufacturer.id, name: manufacturer.name, country: manufacturer.country, createdAt: manufacturer.createdAt },
+      manufacturer: toManufacturer(manufacturer),
     }));
+  }
+
+  async manufacturers(): Promise<Manufacturer[]> {
+    const rows = await this.db.select().from(atlasManufacturers).orderBy(asc(atlasManufacturers.nameKey));
+    return rows.map(toManufacturer);
+  }
+
+  async findManufacturer(id: string): Promise<Manufacturer | null> {
+    const [row] = await this.db.select().from(atlasManufacturers).where(eq(atlasManufacturers.id, id));
+    return row ? toManufacturer(row) : null;
   }
 
   async currentStages(specId: string): Promise<StageChangeRecord[]> {
@@ -175,4 +187,8 @@ function toStageChange(row: typeof atlasManufacturerStageChanges.$inferSelect): 
     changedBy: row.changedBy,
     changedAt: row.changedAt,
   };
+}
+
+function toManufacturer(row: typeof atlasManufacturers.$inferSelect): Manufacturer {
+  return { id: row.id, name: row.name, country: row.country, createdAt: row.createdAt };
 }
