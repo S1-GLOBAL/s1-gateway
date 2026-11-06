@@ -18,5 +18,10 @@ export const atlasKeys = {
   suggestionList: (state: 'waiting' | 'decided') => [...atlasKeys.suggestions(), 'list', state] as const,
   suggestion: (id: string) => [...atlasKeys.suggestions(), 'one', id] as const,
   waitingCount: () => [...atlasKeys.suggestions(), 'waiting-count'] as const,
+  quotations: () => [...atlasKeys.all, 'quotations'] as const,
+  quotationList: (state: 'waiting' | 'decided', specId: string | null) => [...atlasKeys.quotations(), 'list', state, specId ?? 'all'] as const,
+  quotation: (id: string) => [...atlasKeys.quotations(), 'one', id] as const,
+  quotationWaitingCount: () => [...atlasKeys.quotations(), 'waiting-count'] as const,
+  manufacturerList: () => [...atlasKeys.all, 'manufacturer-list'] as const,
   reviewSheetLink: () => [...atlasKeys.all, 'review-sheet-link'] as const,
 };

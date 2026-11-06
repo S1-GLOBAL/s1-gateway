@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { AccountsIcon, AtlasIcon, BookCheckIcon, ThemeIcon, type IconProps } from '@/shared/ui/icons';
+import { AccountsIcon, AtlasIcon, BookCheckIcon, QuotedIcon, ThemeIcon, type IconProps } from '@/shared/ui/icons';
 
 export interface NavItem {
   /** Absolute path. */
@@ -24,7 +24,7 @@ export interface NavSection {
   items: NavItem[];
 }
 
-export type NavBadge = 'dictionary-waiting';
+export type NavBadge = 'dictionary-waiting' | 'quotations-waiting';
 
 /** Each badge's count now; one left out is 0. */
 export type NavBadges = Partial<Record<NavBadge, number>>;
@@ -34,6 +34,8 @@ export function badgeLabel(badge: NavBadge, count: number): string {
   switch (badge) {
     case 'dictionary-waiting':
       return count === 1 ? '1 suggestion waiting' : `${count} suggestions waiting`;
+    case 'quotations-waiting':
+      return count === 1 ? '1 quotation waiting' : `${count} quotations waiting`;
   }
 }
 
@@ -49,6 +51,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Dictionary Changes',
     icon: BookCheckIcon,
     badge: 'dictionary-waiting',
+    group: 'Catalog',
+  },
+  {
+    path: '/quotations/changes',
+    label: 'Quotation Changes',
+    icon: QuotedIcon,
+    badge: 'quotations-waiting',
     group: 'Catalog',
   },
   { path: '/accounts', label: 'Accounts', icon: AccountsIcon, adminOnly: true, group: 'Access' },

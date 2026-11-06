@@ -8,6 +8,7 @@ import { NewSpecIdPageSkeleton } from '@/pages/atlas/NewSpecIdPageSkeleton';
 import { SpecIdPageSkeleton } from '@/pages/atlas/SpecIdPageSkeleton';
 import { AuthPageSkeleton } from '@/pages/auth/AuthPageSkeleton';
 import { DictionaryChangesPageSkeleton } from '@/pages/dictionary/DictionaryChangesPageSkeleton';
+import { QuotationChangesPageSkeleton } from '@/pages/quotations/QuotationChangesPageSkeleton';
 import { LandingPageSkeleton } from '@/pages/landing/LandingPageSkeleton';
 import { ThemePageSkeleton } from '@/pages/theme/ThemePageSkeleton';
 import { AppShell } from './shell/AppShell';
@@ -28,6 +29,9 @@ const ManufacturersPage = lazy(() =>
 );
 const DictionaryChangesPage = lazy(() =>
   import('@/pages/dictionary/DictionaryChangesPage').then((module) => ({ default: module.DictionaryChangesPage })),
+);
+const QuotationChangesPage = lazy(() =>
+  import('@/pages/quotations/QuotationChangesPage').then((module) => ({ default: module.QuotationChangesPage })),
 );
 const AccountsPage = lazy(() =>
   import('@/pages/accounts/AccountsPage').then((module) => ({ default: module.AccountsPage })),
@@ -159,6 +163,14 @@ export const routes: RouteObject[] = [
             element: (
               <RouteBoundary skeleton={<DictionaryChangesPageSkeleton />}>
                 <DictionaryChangesPage />
+              </RouteBoundary>
+            ),
+          },
+          {
+            path: 'quotations/changes',
+            element: (
+              <RouteBoundary skeleton={<QuotationChangesPageSkeleton />}>
+                <QuotationChangesPage />
               </RouteBoundary>
             ),
           },

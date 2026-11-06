@@ -1,5 +1,12 @@
 import { HttpAccountsGateway, type AccountsGateway } from '@/features/accounts';
-import { HttpAtlasGateway, HttpSuggestionsGateway, type AtlasGateway, type SuggestionsGateway } from '@/features/atlas';
+import {
+  HttpAtlasGateway,
+  HttpQuotationsGateway,
+  HttpSuggestionsGateway,
+  type AtlasGateway,
+  type QuotationsGateway,
+  type SuggestionsGateway,
+} from '@/features/atlas';
 import {
   BrowserThemeDocument,
   LocalStorageThemePreferenceStore,
@@ -15,6 +22,7 @@ export interface Dependencies {
   accountsGateway: AccountsGateway;
   atlasGateway: AtlasGateway;
   suggestionsGateway: SuggestionsGateway;
+  quotationsGateway: QuotationsGateway;
   toolsGateway: ToolsGateway;
   themeStore: ThemePreferenceStore;
   themeDocument: ThemeDocument;
@@ -26,6 +34,7 @@ export function createDependencies(): Dependencies {
     accountsGateway: new HttpAccountsGateway(http),
     atlasGateway: new HttpAtlasGateway(http),
     suggestionsGateway: new HttpSuggestionsGateway(http),
+    quotationsGateway: new HttpQuotationsGateway(http),
     toolsGateway: new HttpToolsGateway(http),
     themeStore: new LocalStorageThemePreferenceStore(browserLocalStorage()),
     themeDocument: new BrowserThemeDocument(),
