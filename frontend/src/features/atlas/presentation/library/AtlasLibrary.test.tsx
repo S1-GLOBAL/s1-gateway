@@ -269,7 +269,7 @@ describe('AtlasLibrary, until asked', () => {
 });
 
 describe('AtlasLibrary, a pasted code', () => {
-  it('finds a code pasted in lower case, with a note for each Spec ID that had it before', async () => {
+  it('shows the Spec ID a pasted code belongs to as a perfect match, as Search shows one, with a note for each that had it before', async () => {
     const until = new Date('2026-10-17T09:30:00Z');
     const findByCode = vi.fn<AtlasGateway['findByCode']>(async () =>
       lookupFor(ILLUSTRATIVE, 'Illustrative lid', {
@@ -280,14 +280,52 @@ describe('AtlasLibrary, a pasted code', () => {
 
     search(` ${ILLUSTRATIVE.toLowerCase()} `);
 
-    expect(await screen.findByText('Saved as "Illustrative lid".')).toBeTruthy();
+    const match = await screen.findByRole('region', { name: 'Perfect match' });
+    expect(within(match).getByText('We found a perfect match!')).toBeTruthy();
     expect(findByCode).toHaveBeenCalledWith(ILLUSTRATIVE);
-    expect(screen.getAllByRole('link', { name: 'Open' }).map((link) => link.getAttribute('href'))).toEqual([
-      '/atlas/00000000-0000-4000-8000-000000000001',
-      '/atlas/00000000-0000-4000-8000-000000000002',
-    ]);
+    // The card opens its manufacturers, as Search's does; the way on starts a Spec ID from the code.
+    expect(within(match).getByRole('link', { name: 'Illustrative lid' }).getAttribute('href')).toBe(
+      '/atlas/00000000-0000-4000-8000-000000000001/manufacturers',
+    );
+    expect(
+      within(match).getByRole('link', { name: "This is not what I'm looking for, create a Spec ID" }).getAttribute('href'),
+    ).toBe(`/atlas/new?code=${encodeURIComponent(ILLUSTRATIVE)}`);
+    expect(screen.getByRole('link', { name: 'Open' }).getAttribute('href')).toBe('/atlas/00000000-0000-4000-8000-000000000002');
     expect(screen.getByText('This code also belonged to "Old lid" until 17 October 2026. It\'s now S1.OTHER.')).toBeTruthy();
     expect(screen.queryByRole('radiogroup', { name: 'Product type' })).toBeNull();
+  });
+
+  it('lists the other Spec IDs that fit a pasted code, then those that might, under its perfect match, leaving the match out', async () => {
+    const findSimilar = vi.fn<AtlasGateway['findSimilar']>(async () => ({
+      fits: [
+        savedFor(ILLUSTRATIVE, 'Illustrative lid'),
+        savedFor(withSlot(ILLUSTRATIVE, 'height', '0012'), 'Lid, 12 mm high', { id: '00000000-0000-4000-8000-0000000000c1' }),
+      ],
+      mightFit: [savedFor(withSlot(ILLUSTRATIVE, 'material', 'Y'), 'Lid, material not known', { id: '00000000-0000-4000-8000-0000000000c2' })],
+    }));
+    renderLibrary({ findByCode: async () => lookupFor(ILLUSTRATIVE, 'Illustrative lid'), findSimilar });
+
+    search(ILLUSTRATIVE);
+
+    const fits = await screen.findByRole('region', { name: 'Fits — every fact you gave matches' });
+    expect(within(fits).getByText('Lid, 12 mm high')).toBeTruthy();
+    expect(within(fits).queryByText('Illustrative lid')).toBeNull();
+    const might = screen.getByRole('region', { name: "Might fit — nothing contradicts, but some facts aren't recorded" });
+    expect(within(might).getByText('Lid, material not known')).toBeTruthy();
+    expect(findSimilar).toHaveBeenCalledWith(expect.objectContaining({ productType: 'BLD', material: 'APS', topDiameter: '0090' }));
+  });
+
+  it('says nothing more under a pasted code\'s perfect match when it is the only Spec ID that fits', async () => {
+    const findSimilar = vi.fn<AtlasGateway['findSimilar']>(async () => ({ fits: [savedFor(ILLUSTRATIVE, 'Illustrative lid')], mightFit: [] }));
+    renderLibrary({ findByCode: async () => lookupFor(ILLUSTRATIVE, 'Illustrative lid'), findSimilar });
+
+    search(ILLUSTRATIVE);
+
+    expect(await screen.findByRole('region', { name: 'Perfect match' })).toBeTruthy();
+    await waitFor(() => expect(screen.queryByLabelText('Loading Spec IDs')).toBeNull());
+    expect(findSimilar).toHaveBeenCalled();
+    expect(screen.queryByRole('region', { name: /Fits/ })).toBeNull();
+    expect(screen.queryByText('No saved Spec ID has every fact in this code.')).toBeNull();
   });
 
   it("shows a pasted code's Spec ID with its stage icons (#73)", async () => {
@@ -363,7 +401,7 @@ describe('AtlasLibrary, a pasted code', () => {
 
     search(` ${ILLUSTRATIVE_V2.toLowerCase()} `);
 
-    expect(await screen.findByText('Saved as "Illustrative lid".')).toBeTruthy();
+    expect(within(await screen.findByRole('region', { name: 'Perfect match' })).getByText('Illustrative lid')).toBeTruthy();
     expect(findByCode).toHaveBeenCalledWith(ILLUSTRATIVE_V2);
   });
 

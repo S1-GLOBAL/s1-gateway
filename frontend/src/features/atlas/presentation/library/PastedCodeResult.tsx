@@ -9,6 +9,7 @@ import { SLOT_NAMES, type DecodedSpecId, type FormerHolder, type SpecIdLookup } 
 import { formatSavedDate } from '../../domain/format-saved-date';
 import { knownCriteria } from '../../domain/known-criteria';
 import { DecodedSlotsTable, type DecodedSlotRow } from '../DecodedSlotsTable';
+import { MatchCard } from './MatchCard';
 import { SpecIdGroup } from './SpecIdGroup';
 import { SpecIdSummary } from './SpecIdSummary';
 import { FITS, MIGHT_FIT } from './TextSearchResults';
@@ -24,10 +25,11 @@ export interface PastedCodeResultProps {
 }
 
 /**
- * What a pasted code is: the saved Spec ID that has it, with a note for each
- * that had it before; the one it became; or, unsaved, its slots in plain
- * words, the way to start a Spec ID from it, and the saved Spec IDs that have
- * every fact it gives, then those that might; or the decoder's messages.
+ * What a pasted code is: the saved Spec ID that has it, a perfect match as
+ * Search shows one, with a note for each that had it before, then the other
+ * saved Spec IDs that have every fact it gives, and those that might; the one
+ * it became; or, unsaved, its slots in plain words, the way to start a Spec ID
+ * from it, and the saved Spec IDs that fit or might; or the decoder's messages.
  */
 export function PastedCodeResult({ code, result, timeZone }: PastedCodeResultProps) {
   if (result.isPending) {
@@ -40,7 +42,13 @@ export function PastedCodeResult({ code, result, timeZone }: PastedCodeResultPro
   if (result.isError) return <ErrorState message={result.error.message} onRetry={() => void result.refetch()} />;
 
   const found = result.data;
-  if (found.kind === 'saved') return <Saved lookup={found.lookup} timeZone={timeZone} />;
+  if (found.kind === 'saved') {
+    return found.lookup.replacedCode === null ? (
+      <Matched lookup={found.lookup} timeZone={timeZone} />
+    ) : (
+      <Replaced lookup={found.lookup} timeZone={timeZone} />
+    );
+  }
   if (found.kind === 'unsaved') {
     return (
       <div className="flex flex-col gap-6">
@@ -52,15 +60,27 @@ export function PastedCodeResult({ code, result, timeZone }: PastedCodeResultPro
   return <Refused code={code} fields={found.fields} />;
 }
 
-function Saved({ lookup, timeZone }: { lookup: SpecIdLookup; timeZone?: string }) {
+/** The saved Spec ID with the code pasted: a perfect match, any that had it before, then the others that fit or might. */
+function Matched({ lookup, timeZone }: { lookup: SpecIdLookup; timeZone?: string }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
+        <MatchCard saved={lookup} exact code={lookup.code} timeZone={timeZone} />
+        {lookup.formerHolders.map((holder) => (
+          <FormerHolderNote key={holder.id} holder={holder} timeZone={timeZone} />
+        ))}
+      </div>
+      <SavedThatFit decoded={lookup} leaveOut={lookup.id} timeZone={timeZone} />
+    </div>
+  );
+}
+
+/** The Spec ID a pasted code became: no Spec ID has it now, and this one had it last. */
+function Replaced({ lookup, timeZone }: { lookup: SpecIdLookup; timeZone?: string }) {
   return (
     <div className="flex flex-col gap-3">
       <section className="flex flex-col gap-4 rounded-surface border border-border bg-surface p-5 shadow-sm">
-        <Sentence>
-          {lookup.replacedCode === null
-            ? `Saved as "${lookup.name}".`
-            : `This code was updated. It's now ${lookup.code}.`}
-        </Sentence>
+        <Sentence>{`This code was updated. It's now ${lookup.code}.`}</Sentence>
         <SpecIdSummary saved={lookup} timeZone={timeZone} />
         <OpenLink id={lookup.id} />
       </section>
@@ -145,8 +165,10 @@ function Refused({ code, fields }: { code: string; fields: Record<string, string
  * The saved Spec IDs with every fact a code gives, whatever else they hold:
  * `A16B24V2` finds each paper bag with a twisted handle, at any size. Then
  * those that might: nothing contradicts, but some of its facts aren't recorded.
+ * The perfect match above, `leaveOut`, is not listed again; when it is the only
+ * one that fits, nothing more is said.
  */
-function SavedThatFit({ decoded, timeZone }: { decoded: DecodedSpecId; timeZone?: string }) {
+function SavedThatFit({ decoded, leaveOut, timeZone }: { decoded: DecodedSpecId; leaveOut?: string; timeZone?: string }) {
   const similar = useSimilarSpecIds(knownCriteria(decoded));
   if (similar.isPending) {
     return (
@@ -159,15 +181,18 @@ function SavedThatFit({ decoded, timeZone }: { decoded: DecodedSpecId; timeZone?
   }
   if (similar.isError) return <ErrorState message={similar.error.message} onRetry={() => void similar.refetch()} />;
 
-  const { fits, mightFit } = similar.data;
+  const fits = similar.data.fits.filter((saved) => saved.id !== leaveOut);
+  const mightFit = similar.data.mightFit.filter((saved) => saved.id !== leaveOut);
   return (
     <>
       {fits.length > 0 ? (
         <SpecIdGroup title={FITS} items={fits} timeZone={timeZone} />
       ) : (
-        <p role="status" className="text-sm text-ink-muted">
-          No saved Spec ID has every fact in this code.
-        </p>
+        leaveOut === undefined && (
+          <p role="status" className="text-sm text-ink-muted">
+            No saved Spec ID has every fact in this code.
+          </p>
+        )
       )}
       {mightFit.length > 0 && <SpecIdGroup title={MIGHT_FIT} items={mightFit} timeZone={timeZone} />}
     </>

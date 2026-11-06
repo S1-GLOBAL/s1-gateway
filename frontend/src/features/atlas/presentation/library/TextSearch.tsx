@@ -1,11 +1,6 @@
-import { CircleCheck } from 'lucide-react';
-import * as m from 'motion/react-m';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
-import { cn } from '@/shared/ui/cn';
-import { ArrowRightIcon } from '@/shared/ui/icons';
-import { useIconTrigger } from '@/shared/ui/motion';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SelectField } from '@/shared/ui/SelectField';
 import { SkeletonBlock, SkeletonRegion } from '@/shared/ui/Skeleton';
@@ -13,11 +8,9 @@ import type { useReadText } from '../../application/use-read-text';
 import type { SearchMatch } from '../../application/use-search-match';
 import type { AtlasDictionary, DecodedSpecId, SpecIdTextReading } from '../../domain/atlas';
 import { dictionaryOptions } from '../dictionary-options';
+import { MatchCard } from './MatchCard';
 import { NewSpecIdLink } from './NewSpecIdLink';
-import { SpecIdCard } from './SpecIdCard';
 import { TextSearchResults } from './TextSearchResults';
-
-const MotionLink = m.create(Link);
 
 const CARD = 'flex flex-col gap-4 rounded-surface border border-border bg-surface p-5 shadow-sm';
 
@@ -79,7 +72,7 @@ export function TextSearch({ reading, text, dictionary, onChooseProductType, pro
                 ))}
               </SkeletonRegion>
             )}
-            {match && <Match match={match} decoded={found.decoded} timeZone={timeZone} />}
+            {match && <MatchCard saved={match.saved} exact={match.exact} code={found.decoded.code} timeZone={timeZone} />}
             {match !== undefined && (
               <TextSearchResults decoded={found.decoded} text={text} rules={dictionary.rules} matchedId={match?.saved.id} timeZone={timeZone} />
             )}
@@ -105,44 +98,6 @@ function WhatSearchFound({ children }: { children: ReactNode }) {
   return (
     <section ref={region} tabIndex={-1} aria-label="What Search found" className="flex flex-col gap-6 focus:outline-none">
       {children}
-    </section>
-  );
-}
-
-/**
- * The saved Spec ID the facts answer: nothing to confirm. A perfect match has
- * exactly the facts read; a match has them all and records more. Starting
- * another opens New Spec ID with the facts read, where, for a perfect match,
- * Save waits until one of them changes, so it is never saved twice.
- */
-function Match({ match, decoded, timeZone }: { match: SearchMatch; decoded: DecodedSpecId; timeZone?: string }) {
-  const { saved, exact } = match;
-  // The arrow plays on hover only.
-  const { trigger } = useIconTrigger();
-  return (
-    <section
-      aria-label={exact ? 'Perfect match' : 'Match'}
-      className="flex flex-col gap-4 rounded-surface border border-accent bg-accent-soft p-5 shadow-sm"
-    >
-      <div className="flex flex-col gap-1">
-        <p role="status" className="inline-flex items-center gap-2 text-md font-medium text-accent-ink">
-          <CircleCheck size={20} strokeWidth={1.75} aria-hidden="true" />
-          {exact ? 'We found a perfect match!' : 'We found a match!'}
-        </p>
-        {!exact && <p className="text-sm text-ink-muted">It has every fact you typed, and records more.</p>}
-      </div>
-      <SpecIdCard saved={saved} timeZone={timeZone} />
-      <MotionLink
-        to={`/atlas/new?code=${encodeURIComponent(decoded.code)}`}
-        initial={trigger.initial}
-        animate={trigger.animate}
-        onHoverStart={trigger.onHoverStart}
-        // A long label wraps inside the box at phone width rather than running past it.
-        className={cn(SECONDARY_LINK, 'h-auto min-h-10 max-w-full self-start py-2 text-left whitespace-normal')}
-      >
-        This is not what I'm looking for, create a Spec ID
-        <ArrowRightIcon size={16} />
-      </MotionLink>
     </section>
   );
 }
